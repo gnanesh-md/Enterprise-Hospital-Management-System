@@ -1,12 +1,6 @@
-# ── Stage 1: build the React frontend ───────────────────────────────────────
-FROM node:20-slim AS frontend-build
-WORKDIR /frontend
-COPY ["Frontend OCR/package.json", "Frontend OCR/package-lock.json", "./"]
-RUN npm install
-COPY ["Frontend OCR/", "./"]
-RUN npm run build
-
-# ── Stage 2: Python API (serves the API and the built frontend) ────────────
+# ── Python API ───────────────────────────────────────────────────────────
+# The frontend is a separate app (dpi-ocr-frontend/, served by its own Vite
+# dev server) and is not built or served from this image.
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -40,9 +34,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of your application code
 COPY . .
-
-# Copy the built frontend static assets — api/main.py mounts this directory if present
-COPY --from=frontend-build ["/frontend/dist", "./Frontend OCR/dist"]
 
 # Expose the FastAPI gateway's port
 EXPOSE 8111
