@@ -600,16 +600,50 @@ export class NursingWorkflowDb {
     return list;
   }
 
-  static addNote(note: Omit<NursingNoteRecord, "id" | "createdAt">): NursingNoteRecord {
+  static addNote(noteOrPatientId: any, data?: any): any {
     const list = this.getNotes();
-    const newNote: NursingNoteRecord = {
-      ...note,
-      id: `NOT-${Math.floor(3000 + Math.random() * 7000)}`,
-      createdAt: new Date().toISOString(),
-    };
-    list.unshift(newNote);
-    localStorage.setItem(KEY_NOTES, JSON.stringify(list));
-    return newNote;
+    if (typeof noteOrPatientId === "string") {
+      const patientId = noteOrPatientId;
+      const user = this.getAuthenticatedUser();
+      const newNote = {
+        id: `NOT-${Math.floor(3000 + Math.random() * 7000)}`,
+        patientId,
+        patientName: data?.patientName || "John Smith",
+        mrn: data?.mrn || "100245",
+        admissionId: data?.admissionId || "IP-2026-00125",
+        ward: data?.ward || "Cardiac Care Unit",
+        bedNo: data?.bedNo || "204-A",
+        assessment: data?.clinicalObservations || data?.assessment || "",
+        observation: data?.observations || data?.observation || "",
+        intervention: data?.interventions || data?.intervention || "",
+        patientResponse: data?.patientResponse || "Patient resting comfortably.",
+        followUp: data?.followUpPlan || data?.followUp || "Continue monitoring.",
+        remarks: data?.remarks || "",
+        vitals: data?.vitals,
+        noteType: data?.noteType || "Shift Assessment",
+        patientCondition: data?.patientCondition || "Stable",
+        isAddendum: data?.isAddendum || false,
+        authorNurseId: user?.profile?.id || "N001",
+        authorNurseName: user?.profile?.name || "Jessica Carter, RN",
+        nurseName: user?.profile?.name || "Jessica Carter, RN",
+        shift: user?.profile?.defaultShift || "morning",
+        shiftLabel: user?.profile?.defaultShift || "Morning · 07:00–15:00",
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      list.unshift(newNote as any);
+      localStorage.setItem(KEY_NOTES, JSON.stringify(list));
+      return newNote;
+    } else {
+      const newNote: NursingNoteRecord = {
+        ...noteOrPatientId,
+        id: `NOT-${Math.floor(3000 + Math.random() * 7000)}`,
+        createdAt: new Date().toISOString(),
+      };
+      list.unshift(newNote);
+      localStorage.setItem(KEY_NOTES, JSON.stringify(list));
+      return newNote;
+    }
   }
 
   // ── 5. CLINICAL MESSAGES (Patient-Specific Doctor <-> Nurse) ──
@@ -680,17 +714,41 @@ export class NursingWorkflowDb {
     return list;
   }
 
-  static sendMessage(msg: Omit<ClinicalMessageRecord, "id" | "createdAt" | "read">): ClinicalMessageRecord {
+  static sendMessage(msgOrPatientId: any, text?: string, category?: string, isUrgent?: boolean): ClinicalMessageRecord {
     const list = this.getMessages();
-    const newMsg: ClinicalMessageRecord = {
-      ...msg,
-      id: `MSG-${Math.floor(4000 + Math.random() * 6000)}`,
-      createdAt: new Date().toISOString(),
-      read: false,
-    };
-    list.push(newMsg);
-    localStorage.setItem(KEY_MESSAGES, JSON.stringify(list));
-    return newMsg;
+    if (typeof msgOrPatientId === "string") {
+      const patientId = msgOrPatientId;
+      const user = this.getAuthenticatedUser();
+      const newMsg: ClinicalMessageRecord = {
+        id: `MSG-${Math.floor(4000 + Math.random() * 6000)}`,
+        patientId,
+        patientName: "John Smith",
+        admissionId: "IP-2026-00125",
+        bedNo: "204-A",
+        senderId: user?.profile?.id || "N001",
+        senderName: user?.profile?.name || "Staff",
+        senderRole: user?.type === "doctor" ? "doctor" : "nurse",
+        recipientId: "DOC-101",
+        recipientName: "Dr. Arjun Rao",
+        recipientRole: "doctor",
+        messageText: text || "",
+        createdAt: new Date().toISOString(),
+        read: false,
+      };
+      list.push(newMsg);
+      localStorage.setItem(KEY_MESSAGES, JSON.stringify(list));
+      return newMsg;
+    } else {
+      const newMsg: ClinicalMessageRecord = {
+        ...msgOrPatientId,
+        id: `MSG-${Math.floor(4000 + Math.random() * 6000)}`,
+        createdAt: new Date().toISOString(),
+        read: false,
+      };
+      list.push(newMsg);
+      localStorage.setItem(KEY_MESSAGES, JSON.stringify(list));
+      return newMsg;
+    }
   }
 
   // ── 6. SHIFT HANDOVERS ──
@@ -860,7 +918,6 @@ export class NursingWorkflowDb {
   static getAuthenticatedStaff(): any {
     return this.getAuthenticatedUser().profile;
   }
-
 }
 
 export const NursingDatabase = NursingWorkflowDb;

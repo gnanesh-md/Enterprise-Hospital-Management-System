@@ -63,36 +63,49 @@ export interface OPPatient {
   };
 }
 
-const INITIAL_DOCTORS = [
+export interface DoctorProfileInfo {
+  id: string;
+  name: string;
+  specialty: string;
+  gender: "Male" | "Female";
+  status: "Available" | "In Consultation" | "Busy" | "On Rounds";
+  room: string;
+  workload: number;
+  qualifications: string;
+  timing: string;
+  nextSlot: string;
+}
+
+const INITIAL_DOCTORS: DoctorProfileInfo[] = [
   // General Medicine
-  { id: "D2", name: "Dr. Vikram Malhotra", specialty: "General Medicine", gender: "Male", status: "Available", room: "Room 111", workload: 1 },
-  { id: "D1", name: "Dr. Ramesh Kumar", specialty: "General Medicine", gender: "Male", status: "Available", room: "Room 103", workload: 4 },
-  { id: "D4", name: "Dr. Sunita Rao", specialty: "General Medicine", gender: "Female", status: "Available", room: "Room 115", workload: 1 },
-  { id: "D3", name: "Dr. Anita Desai", specialty: "General Medicine", gender: "Female", status: "Available", room: "Room 101", workload: 3 },
+  { id: "D2", name: "Dr. Vikram Malhotra", specialty: "General Medicine", gender: "Male", status: "Available", room: "Room 111", workload: 1, qualifications: "MBBS, MD (Internal Med)", timing: "09:00 AM - 02:00 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D1", name: "Dr. Ramesh Kumar", specialty: "General Medicine", gender: "Male", status: "In Consultation", room: "Room 103", workload: 3, qualifications: "MBBS, MD (General Med)", timing: "09:30 AM - 03:00 PM", nextSlot: "11:20 AM (~15m wait)" },
+  { id: "D4", name: "Dr. Sunita Rao", specialty: "General Medicine", gender: "Female", status: "Available", room: "Room 115", workload: 1, qualifications: "MBBS, DNB (Medicine)", timing: "08:30 AM - 01:30 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D3", name: "Dr. Anita Desai", specialty: "General Medicine", gender: "Female", status: "In Consultation", room: "Room 101", workload: 2, qualifications: "MBBS, MD, FICP", timing: "10:00 AM - 04:00 PM", nextSlot: "11:30 AM (~10m wait)" },
   
   // Orthopedics
-  { id: "D6", name: "Dr. Sanjay Kapoor", specialty: "Orthopedics", gender: "Male", status: "Available", room: "Room 116", workload: 1 },
-  { id: "D5", name: "Dr. David Anderson", specialty: "Orthopedics", gender: "Male", status: "Available", room: "Room 112", workload: 3 },
-  { id: "D8", name: "Dr. Pooja Menon", specialty: "Orthopedics", gender: "Female", status: "Available", room: "Room 118", workload: 1 },
-  { id: "D7", name: "Dr. Elena Vance", specialty: "Orthopedics", gender: "Female", status: "Available", room: "Room 114", workload: 2 },
+  { id: "D6", name: "Dr. Sanjay Kapoor", specialty: "Orthopedics", gender: "Male", status: "Available", room: "Room 116", workload: 1, qualifications: "MBBS, MS (Ortho), DNB", timing: "09:00 AM - 02:00 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D5", name: "Dr. David Anderson", specialty: "Orthopedics", gender: "Male", status: "In Consultation", room: "Room 112", workload: 3, qualifications: "MD, FRCS (Ortho)", timing: "10:00 AM - 03:30 PM", nextSlot: "11:45 AM (~20m wait)" },
+  { id: "D8", name: "Dr. Pooja Menon", specialty: "Orthopedics", gender: "Female", status: "Available", room: "Room 118", workload: 1, qualifications: "MBBS, MS (Ortho)", timing: "09:00 AM - 01:00 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D7", name: "Dr. Elena Vance", specialty: "Orthopedics", gender: "Female", status: "In Consultation", room: "Room 114", workload: 2, qualifications: "MD (Ortho), Fellowship Spine", timing: "09:30 AM - 02:30 PM", nextSlot: "11:15 AM (~10m wait)" },
 
   // Cardiology
-  { id: "D10", name: "Dr. Arjun Mehta", specialty: "Cardiology", gender: "Male", status: "Available", room: "Room 107", workload: 1 },
-  { id: "D9", name: "Dr. Rajesh Sharma", specialty: "Cardiology", gender: "Male", status: "Available", room: "Room 104", workload: 3 },
-  { id: "D12", name: "Dr. Ananya Roy", specialty: "Cardiology", gender: "Female", status: "Available", room: "Room 110", workload: 1 },
-  { id: "D11", name: "Dr. Sarah Jenkins", specialty: "Cardiology", gender: "Female", status: "Available", room: "Room 102", workload: 2 },
+  { id: "D10", name: "Dr. Arjun Mehta", specialty: "Cardiology", gender: "Male", status: "Available", room: "Room 107", workload: 1, qualifications: "MBBS, MD, DM (Cardiology)", timing: "08:30 AM - 01:30 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D9", name: "Dr. Rajesh Sharma", specialty: "Cardiology", gender: "Male", status: "In Consultation", room: "Room 104", workload: 2, qualifications: "MD, DM, FACC", timing: "09:00 AM - 02:30 PM", nextSlot: "11:10 AM (~10m wait)" },
+  { id: "D12", name: "Dr. Ananya Roy", specialty: "Cardiology", gender: "Female", status: "Available", room: "Room 110", workload: 1, qualifications: "MBBS, MD, DNB (Cardiology)", timing: "09:00 AM - 01:00 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D11", name: "Dr. Sarah Jenkins", specialty: "Cardiology", gender: "Female", status: "In Consultation", room: "Room 102", workload: 2, qualifications: "MD, DM (Interventional Cardio)", timing: "10:00 AM - 04:00 PM", nextSlot: "11:25 AM (~12m wait)" },
 
   // Pulmonology
-  { id: "D14", name: "Dr. Rohan Joshi", specialty: "Pulmonology", gender: "Male", status: "Available", room: "Room 120", workload: 1 },
-  { id: "D13", name: "Dr. Michael Chen", specialty: "Pulmonology", gender: "Male", status: "Available", room: "Room 108", workload: 3 },
-  { id: "D16", name: "Dr. Neha Gupta", specialty: "Pulmonology", gender: "Female", status: "Available", room: "Room 122", workload: 1 },
-  { id: "D15", name: "Dr. Maya Lin", specialty: "Pulmonology", gender: "Female", status: "Available", room: "Room 109", workload: 2 },
+  { id: "D14", name: "Dr. Rohan Joshi", specialty: "Pulmonology", gender: "Male", status: "Available", room: "Room 120", workload: 1, qualifications: "MBBS, MD (Pulmonary Med)", timing: "09:00 AM - 02:00 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D13", name: "Dr. Michael Chen", specialty: "Pulmonology", gender: "Male", status: "In Consultation", room: "Room 108", workload: 3, qualifications: "MD, FCCP (Pulmonology)", timing: "09:30 AM - 03:00 PM", nextSlot: "11:35 AM (~18m wait)" },
+  { id: "D16", name: "Dr. Neha Gupta", specialty: "Pulmonology", gender: "Female", status: "Available", room: "Room 122", workload: 1, qualifications: "MBBS, DNB (Respiratory)", timing: "08:30 AM - 01:30 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D15", name: "Dr. Maya Lin", specialty: "Pulmonology", gender: "Female", status: "In Consultation", room: "Room 109", workload: 2, qualifications: "MD, Fellowship Critical Care & Pulmo", timing: "10:00 AM - 03:30 PM", nextSlot: "11:15 AM (~10m wait)" },
 
   // Pediatrics
-  { id: "D18", name: "Dr. Siddharth Sen", specialty: "Pediatrics", gender: "Male", status: "Available", room: "Room 124", workload: 1 },
-  { id: "D17", name: "Dr. Amit Verma", specialty: "Pediatrics", gender: "Male", status: "Available", room: "Room 106", workload: 2 },
-  { id: "D20", name: "Dr. Kavita Reddy", specialty: "Pediatrics", gender: "Female", status: "Available", room: "Room 126", workload: 1 },
-  { id: "D19", name: "Dr. Priya Patel", specialty: "Pediatrics", gender: "Female", status: "Available", room: "Room 105", workload: 2 },
+  { id: "D18", name: "Dr. Siddharth Sen", specialty: "Pediatrics", gender: "Male", status: "Available", room: "Room 124", workload: 1, qualifications: "MBBS, MD (Pediatrics), DCH", timing: "09:00 AM - 02:00 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D17", name: "Dr. Amit Verma", specialty: "Pediatrics", gender: "Male", status: "In Consultation", room: "Room 106", workload: 2, qualifications: "MBBS, DNB (Pediatrics)", timing: "09:30 AM - 02:30 PM", nextSlot: "11:20 AM (~12m wait)" },
+  { id: "D20", name: "Dr. Kavita Reddy", specialty: "Pediatrics", gender: "Female", status: "Available", room: "Room 126", workload: 1, qualifications: "MBBS, MD (Pediatrics), FIAP", timing: "08:30 AM - 01:30 PM", nextSlot: "Immediate (~5m wait)" },
+  { id: "D19", name: "Dr. Priya Patel", specialty: "Pediatrics", gender: "Female", status: "In Consultation", room: "Room 105", workload: 2, qualifications: "MD (Pediatrics), Fellowship Neonatology", timing: "10:00 AM - 04:00 PM", nextSlot: "11:15 AM (~10m wait)" },
 ];
 
 const DOCTOR_WAITING_QUEUES: Record<string, { name: string; age: number; sex: string; umr: string; token: string; complaint: string; status: string }[]> = {
@@ -224,6 +237,15 @@ export default function OPWorkflow({
   });
 
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiAnalysisResult, setAiAnalysisResult] = useState<{
+    specialty: string;
+    confidence: number;
+    rationale: string;
+    doctors: DoctorProfileInfo[];
+  } | null>(null);
+  const [selectedDoctorForBooking, setSelectedDoctorForBooking] = useState<DoctorProfileInfo | null>(null);
+  const [bookingConfirmed, setBookingConfirmed] = useState<boolean>(false);
+  const [bookingPriority, setBookingPriority] = useState<"Standard OP Queue" | "Priority / Senior Citizen" | "Emergency Triage">("Standard OP Queue");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [smsSentNotice, setSmsSentNotice] = useState(false);
   const [cashTendered, setCashTendered] = useState<string>("150");
@@ -437,6 +459,13 @@ export default function OPWorkflow({
     const currentAssignedDoc = enc.assignedDoctor || matchedDoctor.name;
     const currentDocObj = INITIAL_DOCTORS.find(d => d.name === currentAssignedDoc) || matchedDoctor;
 
+    const isBooked = Boolean(enc.assignedDoctor && enc.status && enc.status !== "Registered");
+    setBookingConfirmed(isBooked);
+    if (enc.assignedDoctor) {
+      const doc = INITIAL_DOCTORS.find(d => d.name === enc.assignedDoctor) || currentDocObj;
+      setSelectedDoctorForBooking(doc);
+    }
+
     setPatient({
       id: enc.id,
       umr: enc.umr,
@@ -491,9 +520,10 @@ export default function OPWorkflow({
     }));
   };
 
-  // AI Specialty Recommendation & Doctor Assignment
+  // AI Specialty & Doctor Availability Engine
   const runAiSymptomAnalysis = () => {
     setAiAnalyzing(true);
+    setBookingConfirmed(false);
     setTimeout(() => {
       const isFemalePatient = isFemaleGender(patient.sex);
       const patientGender: "Female" | "Male" = isFemalePatient ? "Female" : "Male";
@@ -574,90 +604,112 @@ export default function OPWorkflow({
         rationale = "Acute systemic presentation (fever, headache, general malaise, or abdominal discomfort) warrants comprehensive internal medicine evaluation.";
       }
 
-      // Find matching doctors for recommended specialty and patient gender
-      const eligibleDoctors = INITIAL_DOCTORS.filter(
-        d => d.specialty === specialty && d.gender === patientGender
-      );
+      // Filter all available doctors in the recommended specialty
+      const deptDoctors = INITIAL_DOCTORS.filter(d => d.specialty === specialty);
 
-      // AI Autonomous Queue Load Balancing: Sort by lowest active queue workload
-      eligibleDoctors.sort((a, b) => a.workload - b.workload);
+      // Sort doctors: Same gender match first, Available first, lowest workload first
+      const targetGender = patient.doctorGenderPref === "Female" ? "Female" : patient.doctorGenderPref === "Male" ? "Male" : patientGender;
+      deptDoctors.sort((a, b) => {
+        if (a.gender === targetGender && b.gender !== targetGender) return -1;
+        if (b.gender === targetGender && a.gender !== targetGender) return 1;
+        if (a.status === "Available" && b.status !== "Available") return -1;
+        if (b.status === "Available" && a.status !== "Available") return 1;
+        return a.workload - b.workload;
+      });
 
-      const matchedDoctorObj = eligibleDoctors[0] || 
-                               INITIAL_DOCTORS.find(d => d.gender === patientGender) || 
-                               INITIAL_DOCTORS[0];
+      const topMatchedDoctor = deptDoctors[0] || INITIAL_DOCTORS[0];
 
-      const otherDoctorsInDept = eligibleDoctors.filter(d => d.id !== matchedDoctorObj.id);
+      setAiAnalysisResult({
+        specialty,
+        confidence,
+        rationale,
+        doctors: deptDoctors
+      });
 
-      const assignedDoc = matchedDoctorObj.name;
-      const assignedRoom = matchedDoctorObj.room;
-      const docRationale = otherDoctorsInDept.length > 0 
-        ? `Auto-assigned ${matchedDoctorObj.name} (${matchedDoctorObj.workload} in queue) over ${otherDoctorsInDept.map(d => `${d.name} (${d.workload} in queue)`).join(", ")} due to shortest queue wait time.`
-        : `Directly assigned attending specialist in ${specialty}.`;
-      const queueToken = `${specialty.substring(0, 1)}-${patient.opNumber}`;
-      const queuePosition = 1;
+      setSelectedDoctorForBooking(topMatchedDoctor);
 
       setPatient(prev => ({
         ...prev,
         aiSpecialty: specialty,
-        aiDoctor: assignedDoc,
-        assignedDoctor: assignedDoc,
-        room: assignedRoom,
-        doctorStatus: matchedDoctorObj.status as any,
-        queueToken: queueToken,
-        queuePosition: queuePosition,
         aiConfidence: confidence,
         aiReasoning: rationale,
-        aiDoctorRationale: docRationale,
-        status: "Doctor Assigned" as const,
-        timestamps: {
-          ...prev.timestamps,
-          symptoms: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          doctorAssigned: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
+        aiDoctor: topMatchedDoctor.name,
       }));
 
-      if (patient.id) {
-        try {
-          db.updateEncounter(patient.id, {
-            dept: specialty,
-            assignedDoctor: assignedDoc,
-            room: assignedRoom,
-            doctorStatus: matchedDoctorObj.status as any,
-            queueToken: queueToken,
-            queuePosition: queuePosition,
-            chiefComplaint: patient.chiefComplaint,
-            symptoms: patient.symptoms,
-            status: "Doctor Assigned"
-          });
-        } catch (e) {
-          console.warn("DB update failed:", e);
-        }
-      }
-
-      // 1. Dispatch real-time notification to the Doctor Portal immediately upon booking
-      triggerDoctorNotification(
-        assignedDoc,
-        assignedRoom,
-        patient.name,
-        queueToken,
-        patient.chiefComplaint || patient.symptoms.join(", ")
-      );
-
-      // 2. Dispatch Patient SMS 2-3 minutes before turn (or immediately if next in line)
-      if (matchedDoctorObj.workload <= 1) {
-        setTimeout(() => {
-          triggerPatientNotification(
-            patient.name,
-            patient.phone,
-            assignedDoc,
-            assignedRoom,
-            queueToken
-          );
-        }, 1200);
-      }
-
       setAiAnalyzing(false);
-    }, 700);
+    }, 600);
+  };
+
+  // Nurse Manual Appointment Booking Handler
+  const handleNurseBookAppointment = (chosenDoc?: DoctorProfileInfo) => {
+    const docToBook = chosenDoc || selectedDoctorForBooking || INITIAL_DOCTORS[0];
+    const specialty = docToBook.specialty;
+    const assignedDoc = docToBook.name;
+    const assignedRoom = docToBook.room;
+    const queueToken = `${specialty.substring(0, 1)}-${patient.opNumber}`;
+    const queuePos = docToBook.status === "Available" ? 1 : docToBook.workload + 1;
+    const docRationale = `Nurse confirmed appointment booking with ${assignedDoc} (${docToBook.workload} active in queue, ${assignedRoom}) for ${specialty}.`;
+
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    setPatient(prev => ({
+      ...prev,
+      aiSpecialty: specialty,
+      aiDoctor: assignedDoc,
+      assignedDoctor: assignedDoc,
+      room: assignedRoom,
+      doctorStatus: docToBook.status as any,
+      queueToken: queueToken,
+      queuePosition: queuePos,
+      aiDoctorRationale: docRationale,
+      status: "Doctor Assigned" as const,
+      timestamps: {
+        ...prev.timestamps,
+        doctorAssigned: nowTime
+      }
+    }));
+
+    setBookingConfirmed(true);
+
+    if (patient.id) {
+      try {
+        db.updateEncounter(patient.id, {
+          dept: specialty,
+          assignedDoctor: assignedDoc,
+          room: assignedRoom,
+          doctorStatus: docToBook.status as any,
+          queueToken: queueToken,
+          queuePosition: queuePos,
+          chiefComplaint: patient.chiefComplaint,
+          symptoms: patient.symptoms,
+          status: "Doctor Assigned",
+          timestamps: {
+            ...patient.timestamps,
+            doctorAssigned: nowTime
+          }
+        });
+      } catch (e) {
+        console.warn("DB update failed:", e);
+      }
+    }
+
+    // 1. Dispatch real-time alert to Doctor Portal EMR queue
+    triggerDoctorNotification(
+      assignedDoc,
+      assignedRoom,
+      patient.name,
+      queueToken,
+      patient.chiefComplaint || patient.symptoms.join(", ")
+    );
+
+    // 2. Dispatch Patient SMS notification
+    triggerPatientNotification(
+      patient.name,
+      patient.phone,
+      assignedDoc,
+      assignedRoom,
+      queueToken
+    );
   };
 
   // Doctor assignment & Queue
@@ -1029,21 +1081,227 @@ export default function OPWorkflow({
               </button>
             </div>
 
-            {/* AI Recommendation & Booked Appointment Result Box */}
-            {patient.status !== "Registered" && patient.aiDoctor && (
+            {/* AI Recommendation & Available Doctors Selection for Nurse Booking */}
+            {aiAnalysisResult && (
+              <div className="space-y-5 animate-in fade-in">
+                {/* 1. Clinical AI Triage & Specialty Recommendation Cards */}
+                <div className="bg-[#F8FAFC] border-2 border-[#93C5FD] rounded-lg p-5 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#E2E8F0] pb-3">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="text-[11px] font-bold uppercase tracking-wider bg-[#1D4ED8] text-white px-2.5 py-1 rounded">
+                        ✨ Clinical AI Triage Engine
+                      </span>
+                      <span className="text-[12px] font-semibold text-[#1E3A8A] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                        Confidence: {aiAnalysisResult.confidence}% Match
+                      </span>
+                    </div>
+                    <span className="text-[11.5px] font-medium text-[#64748B]">
+                      Primary Speciality Match: <strong className="text-[#1B4FD8] font-bold">{aiAnalysisResult.specialty}</strong>
+                    </span>
+                  </div>
+
+                  <div className="bg-white p-4 rounded border border-[#E2E8F0] space-y-1.5">
+                    <div className="text-[11px] uppercase font-bold text-[#64748B] tracking-wider flex items-center gap-1.5">
+                      <span>🏥</span> Recommended Medical Specialty &amp; Clinical Rationale
+                    </div>
+                    <div className="text-[17px] font-bold text-[#1B4FD8] flex items-center gap-2">
+                      <span>{aiAnalysisResult.specialty}</span>
+                      <span className="text-[11px] font-normal text-[#64748B] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        {aiAnalysisResult.doctors.length} Doctors on duty
+                      </span>
+                    </div>
+                    <div className="text-[12.5px] text-gray-700 leading-relaxed pt-1">
+                      {aiAnalysisResult.rationale}
+                    </div>
+                  </div>
+
+                  {/* 2. Available Doctors Board according to Specialty and Availability */}
+                  <div className="space-y-3 pt-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                      <div>
+                        <h3 className="text-[13.5px] font-bold text-gray-900 flex items-center gap-2">
+                          <span>👨‍⚕️</span> Available Doctors in {aiAnalysisResult.specialty} (Sorted by Availability &amp; Queue)
+                        </h3>
+                        <p className="text-[11.5px] text-[#64748B]">
+                          Review attending doctors and their live OPD queues. Select a doctor to manually book the appointment.
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-[#1B4FD8] font-semibold bg-blue-50 border border-blue-200 px-2.5 py-1 rounded self-start sm:self-auto">
+                        Live Availability Status
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {aiAnalysisResult.doctors.map((doc, idx) => {
+                        const isSelected = selectedDoctorForBooking?.id === doc.id;
+                        const isPrimaryMatch = idx === 0;
+                        const isAvailable = doc.status === "Available";
+
+                        return (
+                          <div
+                            key={doc.id}
+                            onClick={() => setSelectedDoctorForBooking(doc)}
+                            className={`p-4 rounded-lg border-2 transition-all cursor-pointer relative flex flex-col justify-between gap-3 ${
+                              isSelected
+                                ? "border-[#1B4FD8] bg-blue-50/50 shadow-sm ring-2 ring-blue-500/20"
+                                : "border-[#E2E8F0] bg-white hover:border-[#CBD5E1] hover:bg-slate-50/50"
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-start justify-between gap-2 mb-1.5">
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold ${
+                                    isSelected ? "bg-[#1B4FD8] text-white" : "bg-slate-100 text-slate-700"
+                                  }`}>
+                                    {doc.gender === "Female" ? "👩‍⚕️" : "👨‍⚕️"}
+                                  </div>
+                                  <div>
+                                    <div className="text-[13.5px] font-bold text-gray-900 flex items-center gap-2">
+                                      <span>{doc.name}</span>
+                                      <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border ${
+                                        doc.gender === "Female" ? "bg-pink-50 text-pink-700 border-pink-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                                      }`}>
+                                        {doc.gender}
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-[#64748B] font-medium">
+                                      {doc.qualifications} · {doc.specialty}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                    isAvailable
+                                      ? "bg-green-100 text-green-800 border border-green-200"
+                                      : "bg-amber-100 text-amber-800 border border-amber-200"
+                                  }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? "bg-green-600 animate-pulse" : "bg-amber-600"}`}></span>
+                                    {doc.status}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Badges / Rationale */}
+                              {isPrimaryMatch && (
+                                <div className="mb-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2 py-0.5 rounded shadow-xs">
+                                    ✨ AI Recommended Match (Shortest Queue)
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Availability Details Grid */}
+                              <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2.5 rounded border border-slate-200 text-[11px] text-[#475569] mt-2">
+                                <div>
+                                  <span className="text-[#64748B] block text-[9.5px] uppercase font-bold">Room</span>
+                                  <strong className="text-gray-900 font-semibold">{doc.room}</strong>
+                                </div>
+                                <div>
+                                  <span className="text-[#64748B] block text-[9.5px] uppercase font-bold">Queue Workload</span>
+                                  <strong className={doc.workload <= 1 ? "text-green-700 font-semibold" : "text-amber-700 font-semibold"}>
+                                    {doc.workload} waiting
+                                  </strong>
+                                </div>
+                                <div>
+                                  <span className="text-[#64748B] block text-[9.5px] uppercase font-bold">Next Slot</span>
+                                  <strong className="text-gray-900 font-semibold">{doc.nextSlot}</strong>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Card Footer / Select Indicator */}
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-200 text-[11.5px]">
+                              <span className="text-[#64748B] text-[11px]">
+                                🕒 OPD Timings: <strong>{doc.timing}</strong>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedDoctorForBooking(doc);
+                                }}
+                                className={`px-3 py-1 rounded text-[11.5px] font-semibold transition-all cursor-pointer ${
+                                  isSelected
+                                    ? "bg-[#1B4FD8] text-white shadow-xs"
+                                    : "bg-white border border-[#CBD5E1] text-gray-700 hover:border-[#1B4FD8] hover:text-[#1B4FD8]"
+                                }`}
+                              >
+                                {isSelected ? "✓ Selected" : "Select Doctor"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 3. Nurse Manual Booking Action Panel */}
+                  {!bookingConfirmed && selectedDoctorForBooking && (
+                    <div className="bg-[#EFF6FF] border-2 border-[#60A5FA] rounded-lg p-4 space-y-3.5 mt-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-200/80 pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-[#1B4FD8] text-white flex items-center justify-center font-bold text-[14px]">
+                            👩‍⚕️
+                          </div>
+                          <div>
+                            <div className="text-[13px] font-bold text-gray-900">
+                              Nurse Manual Appointment Booking Station
+                            </div>
+                            <div className="text-[11.5px] text-[#475569]">
+                              Patient: <strong>{patient.name}</strong> ({patient.umr}) · Selected Doctor: <strong>{selectedDoctorForBooking.name}</strong> ({selectedDoctorForBooking.room})
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Priority Selector */}
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <label className="text-[11px] font-bold text-[#475569]">Priority:</label>
+                          <select
+                            value={bookingPriority}
+                            onChange={(e) => setBookingPriority(e.target.value as any)}
+                            className="bg-white border border-blue-300 rounded px-2.5 py-1 text-[11.5px] font-semibold text-gray-800 focus:outline-none focus:border-[#1B4FD8]"
+                          >
+                            <option value="Standard OP Queue">Standard OP Queue</option>
+                            <option value="Priority / Senior Citizen">Priority / Senior Citizen</option>
+                            <option value="Emergency Triage">Urgent Triage Consultation</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                        <div className="text-[11.5px] text-[#1E40AF]">
+                          <span>ℹ️ Confirming will issue a live Queue Token, register the visit in <strong>{selectedDoctorForBooking.specialty}</strong>, and send the encounter directly to <strong>Dr. {selectedDoctorForBooking.name}'s Doctor Portal</strong>.</span>
+                        </div>
+
+                        <button
+                          onClick={() => handleNurseBookAppointment(selectedDoctorForBooking)}
+                          className="px-6 py-2.5 bg-[#16A34A] hover:bg-[#15803D] text-white text-[13px] font-bold rounded shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                        >
+                          <span>👩‍⚕️</span> Book Appointment with {selectedDoctorForBooking.name} →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 4. Booked Appointment & Dispatched Success Box */}
+            {(bookingConfirmed || (patient.status !== "Registered" && patient.assignedDoctor)) && (
               <div className="space-y-4 animate-in fade-in">
-                {/* 1. Appointment Booked & Queue Success Banner */}
-                <div className="bg-[#F0FDF4] border-2 border-[#86EFAC] rounded p-5 shadow-sm space-y-4">
+                {/* Appointment Booked & Queue Success Banner */}
+                <div className="bg-[#F0FDF4] border-2 border-[#86EFAC] rounded-lg p-5 shadow-sm space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-green-200/80 pb-3.5">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded bg-[#16A34A] text-white flex items-center justify-center text-lg font-bold shadow-xs">
                         ✓
                       </div>
                       <div>
-                        <div className="font-bold text-[15px] text-[#166534] flex items-center gap-2">
-                          <span>Doctor Appointment Successfully Booked!</span>
+                        <div className="font-bold text-[15px] text-[#166534] flex items-center gap-2 flex-wrap">
+                          <span>Doctor Appointment Successfully Booked by Nurse!</span>
                           <span className="text-[10.5px] font-mono font-bold bg-[#16A34A] text-white px-2 py-0.5 rounded">
-                            CONFIRMED &amp; QUEUED
+                            CONFIRMED &amp; DISPATCHED TO DOCTOR PORTAL
                           </span>
                         </div>
                         <div className="text-[12.5px] text-[#15803D] mt-0.5">
@@ -1052,8 +1310,16 @@ export default function OPWorkflow({
                       </div>
                     </div>
 
-                    {/* Direct Action: Proceed to Nurse Vitals Station */}
+                    {/* Direct Actions: Proceed to Step 3 or Doctor Portal */}
                     <div className="flex items-center gap-2 flex-wrap">
+                      {onOpenDoctorPortal && (
+                        <button
+                          onClick={() => onOpenDoctorPortal(patient.id)}
+                          className="px-4 py-2.5 bg-white hover:bg-slate-50 text-[#1B4FD8] border border-[#1B4FD8] text-[12.5px] font-semibold rounded shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>👨‍⚕️</span> View in Doctor Portal
+                        </button>
+                      )}
                       <button
                         onClick={() => setCurrentStep(3)}
                         className="px-5 py-2.5 bg-[#1B4FD8] hover:bg-[#1740B4] text-white text-[13px] font-semibold rounded shadow-md transition-all flex items-center gap-2 cursor-pointer"
@@ -1086,55 +1352,26 @@ export default function OPWorkflow({
                     </div>
                   </div>
 
-                  <div className="bg-[#F8FAFC] border border-green-200/80 px-3.5 py-2 rounded text-[11.5px] text-[#166534] flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <span>📱</span>
-                      <span><strong>Automated Patient Alert:</strong> A "Get ready — You are UP NEXT" SMS will be sent to <strong>{patient.phone || "registered mobile"}</strong> 2-3 minutes before your turn.</span>
-                    </span>
-                    <span className="text-[10px] font-mono font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded">
-                      AUTO-DISPATCH READY
-                    </span>
-                  </div>
-                </div>
-
-                {/* 2. Clinical AI Triage & Specialty Recommendation Cards */}
-                <div className="bg-[#F8FAFC] border-2 border-[#93C5FD] rounded p-5 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-[11px] font-bold uppercase tracking-wider bg-[#1D4ED8] text-white px-2.5 py-1 rounded">
-                        ✨ Clinical AI Triage &amp; Load Analysis
+                  {/* Doctor Portal Integration & SMS Alerts */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11.5px]">
+                    <div className="bg-[#F8FAFC] border border-green-200/80 px-3.5 py-2 rounded text-[#166534] flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>🔔</span>
+                        <span><strong>Doctor Portal EMR:</strong> Encounter active in <strong>{patient.assignedDoctor}</strong>'s waiting queue.</span>
                       </span>
-                      <span className="text-[12px] font-semibold text-[#1E3A8A] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
-                        Confidence: {patient.aiConfidence}%
+                      <span className="text-[10px] font-mono font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                        EMR SYNCED
                       </span>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Department & Specialty Rationale */}
-                    <div className="bg-white p-4 rounded border border-[#E2E8F0] space-y-1.5">
-                      <div className="text-[11px] uppercase font-bold text-[#64748B] tracking-wider flex items-center gap-1.5">
-                        <span>🏥</span> Recommended Department
-                      </div>
-                      <div className="text-[16px] font-bold text-[#1B4FD8]">
-                        {patient.aiSpecialty}
-                      </div>
-                      <div className="text-[12px] text-gray-700 leading-relaxed pt-1">
-                        {patient.aiReasoning || "Symptom presentation correlates with internal clinical pathways requiring diagnostic workup."}
-                      </div>
-                    </div>
-
-                    {/* Doctor Match & Availability Rationale */}
-                    <div className="bg-white p-4 rounded border border-[#E2E8F0] space-y-1.5">
-                      <div className="text-[11px] uppercase font-bold text-[#64748B] tracking-wider flex items-center gap-1.5">
-                        <span>👨‍⚕️</span> Matched Physician &amp; Queue Rationale
-                      </div>
-                      <div className="text-[16px] font-bold text-gray-900">
-                        {patient.aiDoctor}
-                      </div>
-                      <div className="text-[12px] text-gray-700 leading-relaxed pt-1">
-                        {patient.aiDoctorRationale || `Attending specialist assigned with shortest queue wait time.`}
-                      </div>
+                    <div className="bg-[#F8FAFC] border border-green-200/80 px-3.5 py-2 rounded text-[#166534] flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <span>📱</span>
+                        <span><strong>Patient SMS:</strong> Notification scheduled for <strong>{patient.phone || "registered phone"}</strong>.</span>
+                      </span>
+                      <span className="text-[10px] font-mono font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                        SMS READY
+                      </span>
                     </div>
                   </div>
                 </div>

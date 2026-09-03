@@ -9,9 +9,13 @@ export interface ErPatient {
   last_name: string;
   gender: string;
   age: number;
+  dob?: string;
   phone: string;
   emergency_contact: string;
+  emergency_contact_name?: string;
+  emergency_contact_relation?: string;
   guardian_name?: string;
+  guardian_relation?: string;
   address?: string;
   allergies?: string;
   blood_group?: string;
@@ -109,6 +113,19 @@ export interface ErConsentItem {
   document_mime_type?: string | null;
 }
 
+export interface ErInvestigationItem {
+  id: number;
+  test_name: string;
+  category: string;
+  priority: string;
+  ordered_at: string;
+  ordered_by: string;
+  status: "Completed" | "In Progress" | "Ordered" | "Sample Collected";
+  result: string | null;
+  result_summary?: string | null;
+  verified_at?: string | null;
+}
+
 export interface ErVisitRecord {
   id: number;
   visit_no: string;
@@ -116,7 +133,12 @@ export interface ErVisitRecord {
   is_unknown_patient: boolean;
   unknown_patient_label: string | null;
   arrival_mode: string | null;
+  brought_by?: string | null;
+  attendant_name?: string | null;
+  attendant_relation?: string | null;
   condition_at_arrival: string | null;
+  consciousness?: string | null;
+  info_provided_by?: string | null;
   arrival_at: string | null;
   status: string;
   assigned_doctor_name: string | null;
@@ -138,6 +160,7 @@ export interface ErVisitRecord {
   triage: ErTriageItem | null;
   treatments: ErTreatmentItem[];
   clinical_notes: ErClinicalNoteItem[];
+  investigations?: ErInvestigationItem[];
   disposition: ErDispositionItem | null;
   bed_requests: ErBedRequestItem[];
   consents: ErConsentItem[];
@@ -166,39 +189,81 @@ const INITIAL_PATIENTS: ErPatient[] = [
     name: "John",
     last_name: "Smith",
     gender: "Male",
-    age: 41,
+    age: 45,
     phone: "9876543210",
     emergency_contact: "9876543211",
-    guardian_name: "Mary Smith",
+    guardian_name: "Mary Smith (Spouse)",
     address: "124 Park Avenue, South Block, Metro City",
     allergies: "Penicillin",
     blood_group: "O+",
     created_at: new Date(Date.now() - 3600000 * 5).toISOString(),
   },
   {
-    patient_id: "P-100246",
-    name: "Mary",
-    last_name: "Jones",
+    patient_id: "P-100342",
+    name: "Rahul",
+    last_name: "Sharma",
+    gender: "Male",
+    age: 28,
+    phone: "9823456789",
+    emergency_contact: "9823456780",
+    guardian_name: "Sunita Sharma (Mother)",
+    address: "45 Hill View Road, Metro City",
+    allergies: "None",
+    blood_group: "B+",
+    created_at: new Date(Date.now() - 3600000 * 6).toISOString(),
+  },
+  {
+    patient_id: "P-100289",
+    name: "Robert",
+    last_name: "Lee",
+    gender: "Male",
+    age: 64,
+    phone: "9833445566",
+    emergency_contact: "9833445567",
+    guardian_name: "Karen Lee (Spouse)",
+    address: "109 Sunset Boulevard, Metro City",
+    allergies: "NSAIDs",
+    blood_group: "A+",
+    created_at: new Date(Date.now() - 3600000 * 7).toISOString(),
+  },
+  {
+    patient_id: "P-100512",
+    name: "Maria",
+    last_name: "Garcia",
     gender: "Female",
-    age: 53,
+    age: 29,
     phone: "9845123456",
     emergency_contact: "9845123457",
-    guardian_name: "Robert Jones",
+    guardian_name: "Carlos Garcia (Brother)",
     address: "88 Lakeview Road, Metro City",
     allergies: "Sulfa drugs",
-    blood_group: "A+",
-    created_at: new Date(Date.now() - 3600000 * 8).toISOString(),
+    blood_group: "A-",
+    created_at: new Date(Date.now() - 3600000 * 4).toISOString(),
   },
   {
     patient_id: "P-100301",
     name: "Thomas",
     last_name: "Reed",
     gender: "Male",
-    age: 68,
+    age: 52,
     phone: "9712345678",
     emergency_contact: "9712345679",
-    guardian_name: "Helen Reed",
+    guardian_name: "Helen Reed (Spouse)",
     address: "12 Pine Ridge, Metro City",
+    allergies: "None",
+    blood_group: "O-",
+    created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+  },
+  {
+    patient_id: "P-100711",
+    name: "Baby Aarav",
+    last_name: "Sen",
+    gender: "Male",
+    age: 4,
+    phone: "9866778899",
+    emergency_contact: "9866778890",
+    guardian_name: "Dr. Siddharth Sen (Father)",
+    address: "22 Palm Grove, Metro City",
     allergies: "None",
     blood_group: "B+",
     created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
@@ -206,198 +271,1036 @@ const INITIAL_PATIENTS: ErPatient[] = [
 ];
 
 const INITIAL_VISITS: ErVisitRecord[] = [
+  // ── CASE 1: CARDIAC STEMI / CHEST PAIN (Immediate / Resuscitation - B1) ──
   {
-    id: 101,
-    visit_no: "ER-2026-00101",
+    id: 1,
+    visit_no: "ER-2026-00001",
     patient_id: "P-100245",
     is_unknown_patient: false,
     unknown_patient_label: null,
     arrival_mode: "ambulance_108",
-    condition_at_arrival: "Acute Chest Pain / Suspected STEMI / Acute Coronary Syndrome",
-    arrival_at: new Date(Date.now() - 3600000 * 2).toISOString(),
+    condition_at_arrival: "Acute STEMI / Severe Substernal Crushing Chest Pain radiating to left jaw and arm with diaphoresis",
+    arrival_at: new Date(Date.now() - 25 * 60000).toISOString(),
     status: "under_treatment",
-    assigned_doctor_name: "Dr. Vikram Seth (Cardiology)",
+    assigned_doctor_name: "Dr. Vikram Seth",
     assigned_specialty: "Cardiology",
-    doctor_assigned_at: new Date(Date.now() - 3600000 * 1.8).toISOString(),
-    doctor_accepted_at: new Date(Date.now() - 3600000 * 1.7).toISOString(),
+    doctor_assigned_at: new Date(Date.now() - 24 * 60000).toISOString(),
+    doctor_accepted_at: new Date(Date.now() - 23 * 60000).toISOString(),
     triage_category: "B1",
-    triage_bed_label: "ER Bed 01 (Red Zone)",
+    triage_bed_label: "ER-B1-02",
     closed_at: null,
-    police_involved: false,
     patient_name: "John",
     patient_last_name: "Smith",
     patient_gender: "Male",
-    patient_age: 41,
+    patient_age: 45,
     patient_phone: "9876543210",
     patient_emergency_contact: "9876543211",
     complaints: [
       {
         id: 1,
-        complaint: "Severe crushing retrosternal chest pain radiating to left jaw and shoulder with diaphoresis",
-        severity: "Severe",
+        complaint: "Sudden onset severe crushing retrosternal chest pain (10/10) with radiation to left arm, cold profuse sweating and shortness of breath for 45 mins",
+        severity: "Critical",
         case_category: "cardiac",
         duration: "45 mins",
-        reported_by: "Patient",
-        created_at: new Date(Date.now() - 3600000 * 1.9).toISOString(),
+        reported_by: "Patient & 108 Paramedic",
+        created_at: new Date(Date.now() - 25 * 60000).toISOString(),
       },
     ],
     vitals: [
       {
         id: 1,
-        recorded_at: new Date(Date.now() - 3600000 * 1.9).toISOString(),
+        recorded_at: new Date(Date.now() - 24 * 60000).toISOString(),
+        recorded_by: "Triage RN Lisa Park",
+        heart_rate: 118,
+        bp_systolic: 88,
+        bp_diastolic: 54,
+        respiratory_rate: 26,
+        spo2: 91,
+        temperature: 98.2,
+        consciousness_level: "Alert (A)",
+        blood_glucose: 148,
+        pain_score: 10,
+        gcs: 15,
+        notes: "Diaphoretic, pale, cool clammy extremities. ECG STAT ordered. Red alert activated.",
+      },
+      {
+        id: 2,
+        recorded_at: new Date(Date.now() - 10 * 60000).toISOString(),
         recorded_by: "Staff Nurse Priya",
-        heart_rate: 112,
-        bp_systolic: 155,
-        bp_diastolic: 95,
-        respiratory_rate: 22,
-        spo2: 94,
-        temperature: 98.6,
+        heart_rate: 96,
+        bp_systolic: 108,
+        bp_diastolic: 68,
+        respiratory_rate: 20,
+        spo2: 98,
+        temperature: 98.4,
         consciousness_level: "Alert (A)",
         blood_glucose: 142,
-        pain_score: 9,
+        pain_score: 5,
         gcs: 15,
-        notes: "ECG shows ST elevations in leads V1-V4. High priority cardiology alert triggered.",
+        notes: "Post dual antiplatelet loading + IV Fentanyl + O2 4L via nasal cannula. Pain reduced to 5/10.",
       },
     ],
     triage: {
       category: "B1",
-      triage_bed_label: "ER Bed 01 (Red Zone)",
-      reason: "Acute STEMI presentation with hemodynamic distress. Immediate thrombolysis / cath lab alert.",
-      triaged_at: new Date(Date.now() - 3600000 * 1.9).toISOString(),
-      assigned_by: "AI Triage & Dr. Mehra",
+      triage_bed_label: "ER-B1-02",
+      reason: "Acute Anterior Wall STEMI with cardiogenic instability; door-to-balloon protocol activated.",
+      triaged_at: new Date(Date.now() - 24 * 60000).toISOString(),
+      assigned_by: "Nurse Lisa Park",
     },
     treatments: [
       {
         id: 1,
-        intervention_type: "IV Access & High Flow O2",
-        description: "Wide bore 18G IV cannulation left antecubital, O2 at 4L/min via nasal cannula",
-        performed_at: new Date(Date.now() - 3600000 * 1.7).toISOString(),
-        administered_by: "Nurse Priya",
+        intervention_type: "Supplemental O2 & Defibrillator Pads",
+        description: "High flow O2 at 4 L/min via nasal prongs, continuous ECG rhythm monitoring and multifunction pacing/defibrillation pads applied",
+        performed_at: new Date(Date.now() - 22 * 60000).toISOString(),
+        administered_by: "Nurse Lisa Park",
       },
       {
         id: 2,
-        intervention_type: "Emergency Cardiac Loading Dose",
-        description: "Aspirin 300mg + Clopidogrel 300mg + Atorvastatin 80mg stat PO given",
-        performed_at: new Date(Date.now() - 3600000 * 1.6).toISOString(),
+        intervention_type: "Dual Antiplatelet Loading (Aspirin + Ticagrelor)",
+        description: "Dispersible Aspirin 300mg PO + Ticagrelor 180mg PO loading dose administered immediately",
+        performed_at: new Date(Date.now() - 20 * 60000).toISOString(),
+        administered_by: "Staff Nurse Priya",
+      },
+      {
+        id: 3,
+        intervention_type: "IV Heparin Bolus & High-Dose Statin",
+        description: "Unfractionated Heparin 5000 IU IV bolus + Atorvastatin 80mg PO administered",
+        performed_at: new Date(Date.now() - 18 * 60000).toISOString(),
+        administered_by: "Dr. Vikram Seth",
+      },
+      {
+        id: 4,
+        intervention_type: "Cath Lab Emergency Activation",
+        description: "Primary Percutaneous Coronary Intervention (PPCI) team and On-Call Interventional Cardiologist paged for immediate coronary angiography",
+        performed_at: new Date(Date.now() - 15 * 60000).toISOString(),
         administered_by: "Dr. Vikram Seth",
       },
     ],
     clinical_notes: [
       {
         id: 1,
-        note_type: "Physician Assessment",
+        note_type: "Cardiology ER Assessment",
         author: "Dr. Vikram Seth",
-        content: "Patient presented with acute anterior wall STEMI. Troponin-I sent. Cath Lab activated. Preparing for primary PCI.",
-        created_at: new Date(Date.now() - 3600000 * 1.5).toISOString(),
+        content: "45yo male presenting with acute anterior wall STEMI (ST elevations in V1-V4 > 3mm). Trop-I markedly positive (>50 ng/mL). Hemodynamically stabilized with dual antiplatelet loading, statin, and IV heparin. Cath lab is ready. Immediate transfer for primary angioplasty (PCI). Informed consent signed by spouse Mary Smith.",
+        created_at: new Date(Date.now() - 12 * 60000).toISOString(),
       },
     ],
-    disposition: null,
+    investigations: [
+      {
+        id: 1,
+        test_name: "STAT 12-Lead ECG",
+        category: "Cardiology",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 23 * 60000).toISOString(),
+        ordered_by: "Dr. Vikram Seth",
+        status: "Completed",
+        result: "Sinus tachycardia at 112 bpm. 3.5mm ST elevation in leads V1-V4 with reciprocal ST depression in II, III, aVF. Acute Extensive Anterior STEMI.",
+        result_summary: "Acute Anterior STEMI (V1-V4)",
+        verified_at: new Date(Date.now() - 20 * 60000).toISOString(),
+      },
+      {
+        id: 2,
+        test_name: "Cardiac Troponin-I (High Sensitivity Rapid Point of Care)",
+        category: "Laboratory",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 22 * 60000).toISOString(),
+        ordered_by: "Dr. Vikram Seth",
+        status: "Completed",
+        result: "Troponin I: 52.40 ng/mL (Reference: < 0.04 ng/mL - Highly Elevated).",
+        result_summary: "Trop-I: 52.40 ng/mL (Critical High)",
+        verified_at: new Date(Date.now() - 14 * 60000).toISOString(),
+      },
+      {
+        id: 3,
+        test_name: "Bedside Point-of-Care Echocardiogram (POCUS)",
+        category: "Cardiology",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 18 * 60000).toISOString(),
+        ordered_by: "Dr. Vikram Seth",
+        status: "Completed",
+        result: "Severe hypokinesia to akinesia of anterior wall and apex. LVEF estimated at 35-40%. No mechanical complications or pericardial effusion.",
+        result_summary: "LVEF 35-40%, Anterior Hypokinesia",
+        verified_at: new Date(Date.now() - 10 * 60000).toISOString(),
+      },
+    ],
+    disposition: {
+      outcome: "admit_icu",
+      required_specialty: "Cardiology / Cath Lab",
+      clinical_reason: "Immediate Cath Lab transfer for Primary PCI followed by Cardiac Intensive Care Unit (CCU) admission",
+      decided_by: "Dr. Vikram Seth",
+      decided_at: new Date(Date.now() - 12 * 60000).toISOString(),
+      priority: "Emergency",
+    },
     bed_requests: [
       {
         id: 1,
-        status: "pending",
-        requested_level_of_care: "ICU (Intensive Care Unit)",
+        status: "allocated",
+        requested_level_of_care: "Cardiac ICU (CCU)",
         requested_specialty: "Cardiology",
-        requested_at: new Date(Date.now() - 3600000 * 1.2).toISOString(),
-        allocated_bed_id: null,
-        allocated_admission_id: null,
-        allocated_at: null,
+        requested_at: new Date(Date.now() - 12 * 60000).toISOString(),
+        allocated_bed_id: 101,
+        allocated_admission_id: 501,
+        allocated_at: new Date(Date.now() - 5 * 60000).toISOString(),
       },
     ],
     consents: [
       {
         id: 1,
         patient_name: "John Smith",
-        consent_type: "Emergency Coronary Angiography & Primary PCI",
-        signed_by: "Mary Smith (Spouse)",
+        consent_type: "Emergency Coronary Angiography and Primary Angioplasty (PCI)",
+        signed_by: "Mary Smith",
         relation_to_patient: "Spouse",
-        status: "Signed",
+        status: "Completed",
         witness_doctor: "Dr. Vikram Seth",
-        signed_by_phone: "9876543211",
         legal_waiver_acknowledged: true,
-        signed_at: new Date(Date.now() - 3600000 * 1.4).toISOString(),
+        notes: "Risks, benefits, contrast allergy, and stent placement fully explained to spouse Mary Smith.",
+        signed_at: new Date(Date.now() - 15 * 60000).toISOString(),
       },
     ],
   },
+
+  // ── CASE 2: POLYTRAUMA / HIGH-SPEED RTA (Immediate / Resuscitation - B1) ──
   {
-    id: 102,
-    visit_no: "ER-2026-00102",
-    patient_id: "P-100301",
+    id: 2,
+    visit_no: "ER-2026-00002",
+    patient_id: "P-100342",
     is_unknown_patient: false,
     unknown_patient_label: null,
-    arrival_mode: "brought_by_family",
-    condition_at_arrival: "Conscious with Acute Distress (Severe Pain / Dyspnea)",
-    arrival_at: new Date(Date.now() - 3600000 * 1.1).toISOString(),
-    status: "doctor_assigned",
-    assigned_doctor_name: "Dr. Anita Roy (Pulmonology)",
-    assigned_specialty: "Pulmonology",
-    doctor_assigned_at: new Date(Date.now() - 3600000 * 0.9).toISOString(),
-    doctor_accepted_at: new Date(Date.now() - 3600000 * 0.8).toISOString(),
-    triage_category: "B2",
-    triage_bed_label: "ER Bed 04 (Yellow Zone)",
+    arrival_mode: "ambulance_108",
+    condition_at_arrival: "Polytrauma post High-Speed Motorcycle Collision vs Heavy Truck; Unresponsive, Hemoperitoneum, Multiple Long-Bone Fractures",
+    arrival_at: new Date(Date.now() - 40 * 60000).toISOString(),
+    status: "under_treatment",
+    assigned_doctor_name: "Dr. Sanjay Gupta",
+    assigned_specialty: "Orthopedics / Trauma",
+    doctor_assigned_at: new Date(Date.now() - 39 * 60000).toISOString(),
+    doctor_accepted_at: new Date(Date.now() - 38 * 60000).toISOString(),
+    triage_category: "B1",
+    triage_bed_label: "ER-TRAUMA-01",
     closed_at: null,
-    police_involved: false,
-    patient_name: "Thomas",
-    patient_last_name: "Reed",
+    patient_name: "Rahul",
+    patient_last_name: "Sharma",
     patient_gender: "Male",
-    patient_age: 68,
-    patient_phone: "9712345678",
-    patient_emergency_contact: "9712345679",
+    patient_age: 28,
+    patient_phone: "9823456789",
+    patient_emergency_contact: "9823456780",
     complaints: [
       {
         id: 2,
-        complaint: "Acute exacerbation of COPD, progressive breathlessness and productive cough",
-        severity: "Moderate",
-        case_category: "general_illness",
-        duration: "2 days",
-        reported_by: "Patient",
-        created_at: new Date(Date.now() - 3600000 * 1.0).toISOString(),
+        complaint: "High-energy road traffic collision, unrestrained rider thrown 15 feet. Blunt trauma chest/abdomen, compound fracture right femur, unstable pelvic ring",
+        severity: "Critical",
+        case_category: "trauma",
+        duration: "30 mins",
+        reported_by: "108 Advanced Life Support Paramedic",
+        created_at: new Date(Date.now() - 40 * 60000).toISOString(),
       },
     ],
     vitals: [
       {
+        id: 3,
+        recorded_at: new Date(Date.now() - 38 * 60000).toISOString(),
+        recorded_by: "Trauma RN David Miller",
+        heart_rate: 138,
+        bp_systolic: 78,
+        bp_diastolic: 46,
+        respiratory_rate: 32,
+        spo2: 86,
+        temperature: 96.8,
+        consciousness_level: "Voice (V)",
+        blood_glucose: 162,
+        pain_score: 10,
+        gcs: 9,
+        notes: "GCS E2V2M5 (9/15). Asymmetrical chest rise, open deformity right thigh, pelvic spring tenderness. Massive transfusion protocol triggered.",
+      },
+      {
+        id: 4,
+        recorded_at: new Date(Date.now() - 15 * 60000).toISOString(),
+        recorded_by: "Trauma RN David Miller",
+        heart_rate: 108,
+        bp_systolic: 102,
+        bp_diastolic: 64,
+        respiratory_rate: 18,
+        spo2: 99,
+        temperature: 97.6,
+        consciousness_level: "Sedated / Intubated",
+        blood_glucose: 138,
+        pain_score: 0,
+        gcs: 3,
+        notes: "Post rapid sequence intubation (ETT 8.0), right intercostal chest tube (300mL hemothorax drained), 2 units O-neg PRBC + 2 units FFP transfused.",
+      },
+    ],
+    triage: {
+      category: "B1",
+      triage_bed_label: "ER-TRAUMA-01",
+      reason: "Level-1 Code Red Polytrauma with Hemorrhagic Shock, Hemoperitoneum & Hemothorax.",
+      triaged_at: new Date(Date.now() - 38 * 60000).toISOString(),
+      assigned_by: "Dr. Sanjay Gupta",
+    },
+    treatments: [
+      {
+        id: 5,
+        intervention_type: "Emergency Rapid Sequence Intubation (RSI)",
+        description: "Size 8.0 cuffed ETT placed at 22cm mark with inline cervical stabilization; mechanical ventilation initiated (FiO2 100%, PEEP 5)",
+        performed_at: new Date(Date.now() - 35 * 60000).toISOString(),
+        administered_by: "Dr. Anita Roy",
+      },
+      {
+        id: 6,
+        intervention_type: "Right Intercostal Chest Tube Insertion (ICD)",
+        description: "28 Fr chest tube placed in 5th intercostal space anterior axillary line; drained 300 mL fresh blood with underwater seal",
+        performed_at: new Date(Date.now() - 30 * 60000).toISOString(),
+        administered_by: "Dr. Sanjay Gupta",
+      },
+      {
+        id: 7,
+        intervention_type: "Pelvic Binder & Thomas Splint Application",
+        description: "Sam Pelvic Sling applied at level of greater trochanters; Thomas traction splint applied to right femur",
+        performed_at: new Date(Date.now() - 25 * 60000).toISOString(),
+        administered_by: "Dr. Sanjay Gupta",
+      },
+      {
+        id: 8,
+        intervention_type: "Massive Transfusion Protocol (MTP) & TXA",
+        description: "Tranexamic Acid (TXA) 1g IV bolus + 2 units O-negative PRBC + 2 units FFP administered via Belmont rapid infuser",
+        performed_at: new Date(Date.now() - 22 * 60000).toISOString(),
+        administered_by: "Trauma RN David Miller",
+      },
+    ],
+    clinical_notes: [
+      {
         id: 2,
-        recorded_at: new Date(Date.now() - 3600000 * 1.0).toISOString(),
-        recorded_by: "Staff Nurse Arjun",
-        heart_rate: 98,
-        bp_systolic: 138,
-        bp_diastolic: 84,
-        respiratory_rate: 26,
-        spo2: 89,
-        temperature: 99.2,
+        note_type: "Trauma Team Leader Note",
+        author: "Dr. Sanjay Gupta",
+        content: "28yo male polytrauma victim. Primary survey completed: Airway secured via ETT, right hemothorax decompressed with chest tube, hemorrhagic shock resuscitated with MTP. FAST ultrasound positive in Morison's pouch and splenorenal recess with free fluid. Right femur open fracture Grade IIIA + unstable pelvis. Emergency damage control laparotomy and external fixation scheduled in OT 1.",
+        created_at: new Date(Date.now() - 15 * 60000).toISOString(),
+      },
+    ],
+    investigations: [
+      {
+        id: 4,
+        test_name: "STAT Extended Focused Assessment with Sonography for Trauma (E-FAST)",
+        category: "Point of Care",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 36 * 60000).toISOString(),
+        ordered_by: "Dr. Sanjay Gupta",
+        status: "Completed",
+        result: "Positive free fluid in Right Upper Quadrant (Morison's pouch) and pelvis. Right hemothorax confirmed. Normal cardiac views.",
+        result_summary: "E-FAST Positive (Hemoperitoneum & Hemothorax)",
+        verified_at: new Date(Date.now() - 32 * 60000).toISOString(),
+      },
+      {
+        id: 5,
+        test_name: "STAT Trauma Pan-Scan CT (Brain, C-Spine, Chest, Abdomen, Pelvis)",
+        category: "Radiology / CT",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 25 * 60000).toISOString(),
+        ordered_by: "Dr. Sanjay Gupta",
+        status: "Completed",
+        result: "Grade III Splenic laceration with active contrast extravasation. Right lung contusion with residual hemothorax. Comminuted right femoral shaft fracture with displaced right iliac wing fracture.",
+        result_summary: "Splenic Laceration Grade III, Femur + Pelvis Fx",
+        verified_at: new Date(Date.now() - 12 * 60000).toISOString(),
+      },
+      {
+        id: 6,
+        test_name: "STAT Arterial Blood Gas (ABG) & Lactate",
+        category: "Laboratory",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 36 * 60000).toISOString(),
+        ordered_by: "Dr. Sanjay Gupta",
+        status: "Completed",
+        result: "pH 7.26, PaO2 140 (on FiO2 1.0), PaCO2 34, HCO3 16 mEq/L, Base Deficit -8.4 mmol/L, Lactate 5.6 mmol/L.",
+        result_summary: "Severe Metabolic Acidosis (Lactate 5.6)",
+        verified_at: new Date(Date.now() - 28 * 60000).toISOString(),
+      },
+    ],
+    disposition: {
+      outcome: "admit_icu",
+      required_specialty: "Trauma Surgery / Surgical ICU",
+      clinical_reason: "Immediate transfer to Emergency OT for exploratory laparotomy, splenectomy/repair & damage control Ortho ex-fix, followed by Trauma ICU",
+      decided_by: "Dr. Sanjay Gupta",
+      decided_at: new Date(Date.now() - 10 * 60000).toISOString(),
+      priority: "Emergency",
+    },
+    bed_requests: [
+      {
+        id: 2,
+        status: "allocated",
+        requested_level_of_care: "Trauma ICU",
+        requested_specialty: "Trauma Surgery",
+        requested_at: new Date(Date.now() - 10 * 60000).toISOString(),
+        allocated_bed_id: 103,
+        allocated_admission_id: 503,
+        allocated_at: new Date(Date.now() - 5 * 60000).toISOString(),
+      },
+    ],
+    consents: [
+      {
+        id: 2,
+        patient_name: "Rahul Sharma",
+        consent_type: "Emergency Life-Saving Surgery (Damage Control Laparotomy & External Fixation)",
+        signed_by: "Sunita Sharma",
+        relation_to_patient: "Mother",
+        status: "Completed",
+        witness_doctor: "Dr. Sanjay Gupta",
+        legal_waiver_acknowledged: true,
+        notes: "Critical nature, risk of bleeding, anesthesia, splenectomy and ICU care fully explained.",
+        signed_at: new Date(Date.now() - 14 * 60000).toISOString(),
+      },
+    ],
+  },
+
+  // ── CASE 3: ACUTE ISCHEMIC STROKE / CODE STROKE (High / Emergent - B2) ──
+  {
+    id: 3,
+    visit_no: "ER-2026-00003",
+    patient_id: "P-100289",
+    is_unknown_patient: false,
+    unknown_patient_label: null,
+    arrival_mode: "private_vehicle",
+    condition_at_arrival: "Acute Ischemic Stroke (Code Stroke) / Right-sided Hemiplegia, Expressive Aphasia & Facial Droop (Onset 60 mins ago)",
+    arrival_at: new Date(Date.now() - 60 * 60000).toISOString(),
+    status: "under_treatment",
+    assigned_doctor_name: "Dr. Meenakshi Rao",
+    assigned_specialty: "Neurology",
+    doctor_assigned_at: new Date(Date.now() - 58 * 60000).toISOString(),
+    doctor_accepted_at: new Date(Date.now() - 56 * 60000).toISOString(),
+    triage_category: "B2",
+    triage_bed_label: "ER-B2-01",
+    closed_at: null,
+    patient_name: "Robert",
+    patient_last_name: "Lee",
+    patient_gender: "Male",
+    patient_age: 64,
+    patient_phone: "9833445566",
+    patient_emergency_contact: "9833445567",
+    complaints: [
+      {
+        id: 3,
+        complaint: "Sudden weakness in right arm and leg, slurred speech and facial asymmetry starting 1 hour ago",
+        severity: "Severe",
+        case_category: "neurological",
+        duration: "1 hour",
+        reported_by: "Spouse (Karen Lee)",
+        created_at: new Date(Date.now() - 60 * 60000).toISOString(),
+      },
+    ],
+    vitals: [
+      {
+        id: 5,
+        recorded_at: new Date(Date.now() - 58 * 60000).toISOString(),
+        recorded_by: "Triage RN Lisa Park",
+        heart_rate: 84,
+        bp_systolic: 178,
+        bp_diastolic: 102,
+        respiratory_rate: 18,
+        spo2: 97,
+        temperature: 98.4,
         consciousness_level: "Alert (A)",
-        blood_glucose: 128,
-        pain_score: 3,
-        gcs: 15,
-        notes: "Bilateral wheeze present. SpO2 89% on room air.",
+        blood_glucose: 118,
+        pain_score: 0,
+        gcs: 14,
+        notes: "NIHSS Score: 13. Right facial palsy, 2/5 power in right upper/lower extremity, expressive dysphasia.",
+      },
+      {
+        id: 6,
+        recorded_at: new Date(Date.now() - 25 * 60000).toISOString(),
+        recorded_by: "Staff Nurse Priya",
+        heart_rate: 78,
+        bp_systolic: 156,
+        bp_diastolic: 92,
+        respiratory_rate: 16,
+        spo2: 98,
+        temperature: 98.4,
+        consciousness_level: "Alert (A)",
+        blood_glucose: 115,
+        pain_score: 0,
+        gcs: 14,
+        notes: "Post IV Labetalol 10mg. BP reduced to target 156/92. Thrombolysis bolus initiated.",
       },
     ],
     triage: {
       category: "B2",
-      triage_bed_label: "ER Bed 04 (Yellow Zone)",
-      reason: "Hypoxia with COPD exacerbation and tachypnea.",
-      triaged_at: new Date(Date.now() - 3600000 * 1.0).toISOString(),
-      assigned_by: "AI Triage Assistant",
+      triage_bed_label: "ER-B2-01",
+      reason: "Hyperacute Ischemic Stroke (Code Stroke) presenting well within 4.5 hour IV thrombolytic window.",
+      triaged_at: new Date(Date.now() - 58 * 60000).toISOString(),
+      assigned_by: "Nurse Lisa Park",
     },
     treatments: [
       {
-        id: 3,
-        intervention_type: "Duolin + Budecort Nebulization",
-        description: "Ipratropium + Levosalbutamol with Budesonide nebulized stat",
-        performed_at: new Date(Date.now() - 3600000 * 0.7).toISOString(),
-        administered_by: "Nurse Arjun",
+        id: 9,
+        intervention_type: "Code Stroke Activation",
+        description: "Emergency Stroke Team & Neuro-Radiology rapid response triggered",
+        performed_at: new Date(Date.now() - 56 * 60000).toISOString(),
+        administered_by: "Dr. Meenakshi Rao",
+      },
+      {
+        id: 10,
+        intervention_type: "Labetalol IV",
+        description: "10 mg slow IV push over 2 mins for pre-thrombolysis BP optimization (<180/105)",
+        performed_at: new Date(Date.now() - 40 * 60000).toISOString(),
+        administered_by: "Nurse Priya",
+      },
+      {
+        id: 11,
+        intervention_type: "IV Tenecteplase / Alteplase Thrombolysis",
+        description: "0.25 mg/kg IV bolus administered post-CT negative for intracranial hemorrhage",
+        performed_at: new Date(Date.now() - 28 * 60000).toISOString(),
+        administered_by: "Dr. Meenakshi Rao",
       },
     ],
-    clinical_notes: [],
-    disposition: null,
+    clinical_notes: [
+      {
+        id: 3,
+        note_type: "Neurology Code Stroke Note",
+        author: "Dr. Meenakshi Rao",
+        content: "64yo male with acute left MCA territory ischemic stroke. Last known normal 60 mins prior to arrival. Non-contrast Head CT reveals no acute hemorrhage with ASPECTS score 9. CTA shows distal left M1 stenosis without completed infarct. IV thrombolytic therapy initiated after verifying strict inclusion/exclusion criteria. Patient scheduled for Stroke ICU transfer.",
+        created_at: new Date(Date.now() - 30 * 60000).toISOString(),
+      },
+    ],
+    investigations: [
+      {
+        id: 7,
+        test_name: "STAT Non-Contrast CT Brain (Stroke Protocol)",
+        category: "Radiology / CT",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 54 * 60000).toISOString(),
+        ordered_by: "Dr. Meenakshi Rao",
+        status: "Completed",
+        result: "No acute intracranial hemorrhage or mass effect. Early ischemic changes in left insular ribbon (ASPECTS 9).",
+        result_summary: "No Hemorrhage, ASPECTS 9",
+        verified_at: new Date(Date.now() - 42 * 60000).toISOString(),
+      },
+      {
+        id: 8,
+        test_name: "CT Angiography (CTA) Head & Neck",
+        category: "Radiology / CT",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 54 * 60000).toISOString(),
+        ordered_by: "Dr. Meenakshi Rao",
+        status: "Completed",
+        result: "Non-occlusive thrombus in left M1 MCA bifurcation with good collateral flow.",
+        result_summary: "Left M1 Non-Occlusive Thrombus",
+        verified_at: new Date(Date.now() - 38 * 60000).toISOString(),
+      },
+      {
+        id: 9,
+        test_name: "STAT Coagulation Profile & Platelet Count",
+        category: "Laboratory",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 55 * 60000).toISOString(),
+        ordered_by: "Dr. Meenakshi Rao",
+        status: "Completed",
+        result: "PT/INR: 1.05, aPTT: 28s, Platelets: 245,000/mcL. Safe for thrombolysis.",
+        result_summary: "Normal Coagulation Profile",
+        verified_at: new Date(Date.now() - 45 * 60000).toISOString(),
+      },
+    ],
+    disposition: {
+      outcome: "admit_icu",
+      required_specialty: "Neurology",
+      clinical_reason: "Post-thrombolysis neurological surveillance and Neuro ICU telemetry monitoring",
+      decided_by: "Dr. Meenakshi Rao",
+      decided_at: new Date(Date.now() - 25 * 60000).toISOString(),
+      priority: "High",
+    },
+    bed_requests: [
+      {
+        id: 3,
+        status: "allocated",
+        requested_level_of_care: "Neuro ICU",
+        requested_specialty: "Neurology",
+        requested_at: new Date(Date.now() - 25 * 60000).toISOString(),
+        allocated_bed_id: 104,
+        allocated_admission_id: 504,
+        allocated_at: new Date(Date.now() - 10 * 60000).toISOString(),
+      },
+    ],
+    consents: [
+      {
+        id: 3,
+        patient_name: "Robert Lee",
+        consent_type: "Intravenous Thrombolytic Therapy (tPA) for Acute Ischemic Stroke",
+        signed_by: "Karen Lee",
+        relation_to_patient: "Spouse",
+        status: "Completed",
+        witness_doctor: "Dr. Meenakshi Rao",
+        legal_waiver_acknowledged: true,
+        notes: "Benefits and bleeding risks of systemic thrombolysis fully discussed with spouse Karen Lee.",
+        signed_at: new Date(Date.now() - 35 * 60000).toISOString(),
+      },
+    ],
+  },
+
+  // ── CASE 4: ACUTE SEVERE ASTHMA / RESPIRATORY DISTRESS (High / Emergent - B2) ──
+  {
+    id: 4,
+    visit_no: "ER-2026-00004",
+    patient_id: "P-100512",
+    is_unknown_patient: false,
+    unknown_patient_label: null,
+    arrival_mode: "walk_in",
+    condition_at_arrival: "Acute severe asthma exacerbation / Severe breathlessness with audible expiratory wheeze",
+    arrival_at: new Date(Date.now() - 75 * 60000).toISOString(),
+    status: "under_treatment",
+    assigned_doctor_name: "Dr. Anita Roy",
+    assigned_specialty: "Emergency Medicine",
+    doctor_assigned_at: new Date(Date.now() - 70 * 60000).toISOString(),
+    doctor_accepted_at: new Date(Date.now() - 68 * 60000).toISOString(),
+    triage_category: "B2",
+    triage_bed_label: "ER-B2-02",
+    closed_at: null,
+    patient_name: "Maria",
+    patient_last_name: "Garcia",
+    patient_gender: "Female",
+    patient_age: 29,
+    patient_phone: "9845123456",
+    patient_emergency_contact: "9845123457",
+    complaints: [
+      {
+        id: 4,
+        complaint: "Acute onset intense shortness of breath, chest tightness, unable to speak full sentences, not relieved by home inhaler",
+        severity: "Severe",
+        case_category: "respiratory",
+        duration: "2 hours",
+        reported_by: "Patient",
+        created_at: new Date(Date.now() - 75 * 60000).toISOString(),
+      },
+    ],
+    vitals: [
+      {
+        id: 7,
+        recorded_at: new Date(Date.now() - 73 * 60000).toISOString(),
+        recorded_by: "Triage RN Lisa Park",
+        heart_rate: 126,
+        bp_systolic: 138,
+        bp_diastolic: 86,
+        respiratory_rate: 32,
+        spo2: 88,
+        temperature: 98.4,
+        consciousness_level: "Alert (A)",
+        blood_glucose: 110,
+        pain_score: 4,
+        gcs: 15,
+        notes: "Accessory muscle use, tachypneic, diffuse bilateral wheezes on auscultation.",
+      },
+      {
+        id: 8,
+        recorded_at: new Date(Date.now() - 35 * 60000).toISOString(),
+        recorded_by: "Staff Nurse Priya",
+        heart_rate: 104,
+        bp_systolic: 126,
+        bp_diastolic: 80,
+        respiratory_rate: 22,
+        spo2: 95,
+        temperature: 98.4,
+        consciousness_level: "Alert (A)",
+        blood_glucose: 114,
+        pain_score: 2,
+        gcs: 15,
+        notes: "Post dual bronchodilator nebulization + IV Hydrocortisone. SpO2 95% on 2L O2.",
+      },
+    ],
+    triage: {
+      category: "B2",
+      triage_bed_label: "ER-B2-02",
+      reason: "Acute severe bronchial asthma exacerbation with marked hypoxia and increased work of breathing.",
+      triaged_at: new Date(Date.now() - 73 * 60000).toISOString(),
+      assigned_by: "Nurse Lisa Park",
+    },
+    treatments: [
+      {
+        id: 12,
+        intervention_type: "Duolin Nebulization",
+        description: "Salbutamol 2.5mg + Ipratropium Bromide 500mcg via oxygen-driven nebulizer stat",
+        performed_at: new Date(Date.now() - 70 * 60000).toISOString(),
+        administered_by: "Staff Nurse Priya",
+      },
+      {
+        id: 13,
+        intervention_type: "Hydrocortisone IV",
+        description: "100 mg IV stat",
+        performed_at: new Date(Date.now() - 65 * 60000).toISOString(),
+        administered_by: "Staff Nurse Priya",
+      },
+      {
+        id: 14,
+        intervention_type: "Magnesium Sulfate IV",
+        description: "2 g in 100 ml NS IV infusion over 20 minutes",
+        performed_at: new Date(Date.now() - 55 * 60000).toISOString(),
+        administered_by: "Staff Nurse Priya",
+      },
+    ],
+    clinical_notes: [
+      {
+        id: 4,
+        note_type: "Pulmonology / ER Clinical Note",
+        author: "Dr. Anita Roy",
+        content: "29yo female known asthmatic presenting with acute severe exacerbation triggered by viral upper respiratory tract infection. Marked improvement following sequential nebulizations and IV steroids. ABG shows normalization of oxygenation. Admitting to Pulmonology High Dependency Unit for close observation.",
+        created_at: new Date(Date.now() - 40 * 60000).toISOString(),
+      },
+    ],
+    investigations: [
+      {
+        id: 10,
+        test_name: "Arterial Blood Gas (ABG)",
+        category: "Laboratory / Critical Care",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 72 * 60000).toISOString(),
+        ordered_by: "Dr. Anita Roy",
+        status: "Completed",
+        result: "pH: 7.36, PaCO2: 38 mmHg, PaO2: 68 mmHg (Room air) -> 92 mmHg (on O2), HCO3: 23 mEq/L, Lactate: 1.2.",
+        result_summary: "Hypoxia corrected on O2",
+        verified_at: new Date(Date.now() - 55 * 60000).toISOString(),
+      },
+      {
+        id: 11,
+        test_name: "Portable Chest X-Ray (AP View)",
+        category: "Radiology",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 68 * 60000).toISOString(),
+        ordered_by: "Dr. Anita Roy",
+        status: "Completed",
+        result: "Bilateral lung hyperinflation. No pneumothorax, consolidation or pleural effusion.",
+        result_summary: "Hyperinflation, No Pneumothorax",
+        verified_at: new Date(Date.now() - 48 * 60000).toISOString(),
+      },
+    ],
+    disposition: {
+      outcome: "admit_ward",
+      required_specialty: "Pulmonology",
+      clinical_reason: "High Dependency Unit (HDU) admission for ongoing bronchodilator therapy and steroid step-down",
+      decided_by: "Dr. Anita Roy",
+      decided_at: new Date(Date.now() - 35 * 60000).toISOString(),
+      priority: "High",
+    },
+    bed_requests: [
+      {
+        id: 4,
+        status: "pending",
+        requested_level_of_care: "High Dependency Unit (HDU)",
+        requested_specialty: "Pulmonology",
+        requested_at: new Date(Date.now() - 35 * 60000).toISOString(),
+        allocated_bed_id: null,
+        allocated_admission_id: null,
+        allocated_at: null,
+      },
+    ],
+    consents: [],
+  },
+
+  // ── CASE 5: ACUTE APPENDICITIS / SURGICAL ABDOMEN (Moderate / Urgent - B3) ──
+  {
+    id: 5,
+    visit_no: "ER-2026-00005",
+    patient_id: "P-100301",
+    is_unknown_patient: false,
+    unknown_patient_label: null,
+    arrival_mode: "walk_in",
+    condition_at_arrival: "Acute Right Lower Quadrant Abdominal Pain with Vomiting & Fever (Suspected Appendicitis)",
+    arrival_at: new Date(Date.now() - 90 * 60000).toISOString(),
+    status: "under_treatment",
+    assigned_doctor_name: "Dr. Priya Deshmukh",
+    assigned_specialty: "General Surgery",
+    doctor_assigned_at: new Date(Date.now() - 85 * 60000).toISOString(),
+    doctor_accepted_at: new Date(Date.now() - 82 * 60000).toISOString(),
+    triage_category: "B3",
+    triage_bed_label: "ER-B3-01",
+    closed_at: null,
+    patient_name: "Thomas",
+    patient_last_name: "Reed",
+    patient_gender: "Male",
+    patient_age: 52,
+    patient_phone: "9712345678",
+    patient_emergency_contact: "9712345679",
+    complaints: [
+      {
+        id: 5,
+        complaint: "Progressive periumbilical abdominal pain migrating to right iliac fossa, anorexia, nausea and 2 vomiting episodes",
+        severity: "Moderate",
+        case_category: "surgical_abdomen",
+        duration: "18 hours",
+        reported_by: "Patient",
+        created_at: new Date(Date.now() - 90 * 60000).toISOString(),
+      },
+    ],
+    vitals: [
+      {
+        id: 9,
+        recorded_at: new Date(Date.now() - 88 * 60000).toISOString(),
+        recorded_by: "Triage RN Lisa Park",
+        heart_rate: 96,
+        bp_systolic: 128,
+        bp_diastolic: 82,
+        respiratory_rate: 18,
+        spo2: 99,
+        temperature: 100.8,
+        consciousness_level: "Alert (A)",
+        blood_glucose: 104,
+        pain_score: 8,
+        gcs: 15,
+        notes: "Marked tenderness at McBurney's point, positive Rovsing and rebound tenderness.",
+      },
+      {
+        id: 10,
+        recorded_at: new Date(Date.now() - 40 * 60000).toISOString(),
+        recorded_by: "Staff Nurse Anita",
+        heart_rate: 82,
+        bp_systolic: 122,
+        bp_diastolic: 78,
+        respiratory_rate: 16,
+        spo2: 99,
+        temperature: 99.2,
+        consciousness_level: "Alert (A)",
+        blood_glucose: 102,
+        pain_score: 4,
+        gcs: 15,
+        notes: "Post IV Paracetamol and IV fluids. Pain reduced. Kept NPO for surgery.",
+      },
+    ],
+    triage: {
+      category: "B3",
+      triage_bed_label: "ER-B3-01",
+      reason: "Acute surgical abdomen / acute appendicitis requiring surgical evaluation and pre-op clearance.",
+      triaged_at: new Date(Date.now() - 88 * 60000).toISOString(),
+      assigned_by: "Nurse Lisa Park",
+    },
+    treatments: [
+      {
+        id: 15,
+        intervention_type: "Nil Per Os (NPO) Order",
+        description: "Strict bowel rest and NPO for emergent laparoscopic surgery",
+        performed_at: new Date(Date.now() - 84 * 60000).toISOString(),
+        administered_by: "Dr. Priya Deshmukh",
+      },
+      {
+        id: 16,
+        intervention_type: "IV Hydration & Antiemetic",
+        description: "Ringer's Lactate 1000 mL IV @ 100 ml/hr + Ondansetron 4 mg IV stat",
+        performed_at: new Date(Date.now() - 80 * 60000).toISOString(),
+        administered_by: "Staff Nurse Anita",
+      },
+      {
+        id: 17,
+        intervention_type: "Pre-Operative Antibiotics",
+        description: "Ceftriaxone 1 g IV + Metronidazole 500 mg IV infusion",
+        performed_at: new Date(Date.now() - 50 * 60000).toISOString(),
+        administered_by: "Staff Nurse Anita",
+      },
+    ],
+    clinical_notes: [
+      {
+        id: 5,
+        note_type: "Surgical Assessment",
+        author: "Dr. Priya Deshmukh",
+        content: "52yo male with classic Alvarado score 8/10 presentation of Acute Appendicitis. Ultrasound abdomen confirms dilated non-compressible appendix (9.2mm) with surrounding fat stranding. Leucocytosis (WBC 16,800). Patient and family briefed on procedure. Scheduled for Emergency Laparoscopic Appendectomy.",
+        created_at: new Date(Date.now() - 55 * 60000).toISOString(),
+      },
+    ],
+    investigations: [
+      {
+        id: 12,
+        test_name: "Ultrasound Abdomen & Pelvis (USG)",
+        category: "Radiology / Ultrasound",
+        priority: "Urgent",
+        ordered_at: new Date(Date.now() - 84 * 60000).toISOString(),
+        ordered_by: "Dr. Priya Deshmukh",
+        status: "Completed",
+        result: "Blind-ended tubular non-compressible aperistaltic structure in right iliac fossa measuring 9.2 mm in diameter with periappendiceal fat stranding. Target sign positive.",
+        result_summary: "Confirmed Acute Appendicitis (9.2mm)",
+        verified_at: new Date(Date.now() - 60 * 60000).toISOString(),
+      },
+      {
+        id: 13,
+        test_name: "Complete Blood Count (CBC) with Differential",
+        category: "Laboratory",
+        priority: "Urgent",
+        ordered_at: new Date(Date.now() - 84 * 60000).toISOString(),
+        ordered_by: "Dr. Priya Deshmukh",
+        status: "Completed",
+        result: "WBC: 16,800/mcL (Neutrophils 86%, Bands 6%), Hb: 14.2 g/dL, Platelets: 280,000/mcL.",
+        result_summary: "Leukocytosis (WBC 16.8k, Neutrophils 86%)",
+        verified_at: new Date(Date.now() - 65 * 60000).toISOString(),
+      },
+    ],
+    disposition: {
+      outcome: "admit_ward",
+      required_specialty: "General Surgery",
+      clinical_reason: "Pre-operative holding and admission for Emergency Laparoscopic Appendectomy",
+      decided_by: "Dr. Priya Deshmukh",
+      decided_at: new Date(Date.now() - 45 * 60000).toISOString(),
+      priority: "Urgent",
+    },
+    bed_requests: [
+      {
+        id: 5,
+        status: "allocated",
+        requested_level_of_care: "Surgical Ward",
+        requested_specialty: "General Surgery",
+        requested_at: new Date(Date.now() - 45 * 60000).toISOString(),
+        allocated_bed_id: 102,
+        allocated_admission_id: 502,
+        allocated_at: new Date(Date.now() - 20 * 60000).toISOString(),
+      },
+    ],
+    consents: [
+      {
+        id: 4,
+        patient_name: "Thomas Reed",
+        consent_type: "Emergency Laparoscopic Appendectomy & General Anesthesia",
+        signed_by: "Thomas Reed",
+        relation_to_patient: "Self",
+        status: "Completed",
+        witness_doctor: "Dr. Priya Deshmukh",
+        legal_waiver_acknowledged: true,
+        notes: "Surgical and anesthetic risks explained. Consent signed by patient.",
+        signed_at: new Date(Date.now() - 48 * 60000).toISOString(),
+      },
+    ],
+  },
+
+  // ── CASE 6: PEDIATRIC FEBRILE CONVULSION (Moderate / Urgent - B3) ──
+  {
+    id: 6,
+    visit_no: "ER-2026-00006",
+    patient_id: "P-100711",
+    is_unknown_patient: false,
+    unknown_patient_label: null,
+    arrival_mode: "private_vehicle",
+    condition_at_arrival: "Post-ictal state following single generalized febrile convulsion (2 mins); High fever 103.2°F",
+    arrival_at: new Date(Date.now() - 110 * 60000).toISOString(),
+    status: "under_treatment",
+    assigned_doctor_name: "Dr. Anita Roy",
+    assigned_specialty: "Pediatrics / Emergency Medicine",
+    doctor_assigned_at: new Date(Date.now() - 105 * 60000).toISOString(),
+    doctor_accepted_at: new Date(Date.now() - 104 * 60000).toISOString(),
+    triage_category: "B3",
+    triage_bed_label: "ER-PEDS-01",
+    closed_at: null,
+    patient_name: "Baby Aarav",
+    patient_last_name: "Sen",
+    patient_gender: "Male",
+    patient_age: 4,
+    patient_phone: "9866778899",
+    patient_emergency_contact: "9866778890",
+    complaints: [
+      {
+        id: 6,
+        complaint: "High grade fever for 2 days followed by sudden generalized tonic-clonic jerking episode for 2 minutes with brief post-ictal drowsiness",
+        severity: "Moderate",
+        case_category: "pediatric",
+        duration: "2 days",
+        reported_by: "Dr. Siddharth Sen (Father)",
+        created_at: new Date(Date.now() - 110 * 60000).toISOString(),
+      },
+    ],
+    vitals: [
+      {
+        id: 11,
+        recorded_at: new Date(Date.now() - 108 * 60000).toISOString(),
+        recorded_by: "Triage RN Lisa Park",
+        heart_rate: 130,
+        bp_systolic: 98,
+        bp_diastolic: 62,
+        respiratory_rate: 24,
+        spo2: 99,
+        temperature: 103.2,
+        consciousness_level: "Voice (V)",
+        blood_glucose: 94,
+        pain_score: 2,
+        gcs: 14,
+        notes: "Post-ictal somnolence, warm peripheries, clear airway, no meningeal signs.",
+      },
+      {
+        id: 12,
+        recorded_at: new Date(Date.now() - 30 * 60000).toISOString(),
+        recorded_by: "Staff Nurse Priya",
+        heart_rate: 102,
+        bp_systolic: 96,
+        bp_diastolic: 60,
+        respiratory_rate: 20,
+        spo2: 99,
+        temperature: 99.1,
+        consciousness_level: "Alert (A)",
+        blood_glucose: 98,
+        pain_score: 0,
+        gcs: 15,
+        notes: "Active, smiling, oriented, tolerating oral fluids well.",
+      },
+    ],
+    triage: {
+      category: "B3",
+      triage_bed_label: "ER-PEDS-01",
+      reason: "Simple Febrile Seizure in 4yo child; fever reduction and post-ictal pediatric monitoring.",
+      triaged_at: new Date(Date.now() - 108 * 60000).toISOString(),
+      assigned_by: "Nurse Lisa Park",
+    },
+    treatments: [
+      {
+        id: 18,
+        intervention_type: "Tepid Sponging & Antipyretic",
+        description: "Tepid water sponging + Paracetamol 250mg rectal suppository stat",
+        performed_at: new Date(Date.now() - 105 * 60000).toISOString(),
+        administered_by: "Staff Nurse Priya",
+      },
+      {
+        id: 19,
+        intervention_type: "Oral Hydration",
+        description: "Oral Rehydration Solution (ORS) 150 ml sips encouraged and tolerated",
+        performed_at: new Date(Date.now() - 50 * 60000).toISOString(),
+        administered_by: "Staff Nurse Priya",
+      },
+    ],
+    clinical_notes: [
+      {
+        id: 6,
+        note_type: "Pediatric Emergency Assessment",
+        author: "Dr. Anita Roy",
+        content: "4yo boy with typical presentation of Simple Febrile Seizure secondary to Viral Upper Respiratory Tract Infection. Fully recovered from post-ictal state, neurologically intact, GCS 15. Normal blood glucose and electrolytes. Parents counseled regarding benign nature of simple febrile seizures and fever management at home. Kept under 4-hour ED observation prior to discharge.",
+        created_at: new Date(Date.now() - 40 * 60000).toISOString(),
+      },
+    ],
+    investigations: [
+      {
+        id: 14,
+        test_name: "Pediatric Complete Blood Count (CBC) & CRP",
+        category: "Laboratory",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 104 * 60000).toISOString(),
+        ordered_by: "Dr. Anita Roy",
+        status: "Completed",
+        result: "WBC: 10,800/mcL (Lymphocytes 48%), Hb: 12.1 g/dL, CRP: 8 mg/L (Mild viral elevation).",
+        result_summary: "Viral pattern, normal WBC",
+        verified_at: new Date(Date.now() - 75 * 60000).toISOString(),
+      },
+      {
+        id: 15,
+        test_name: "Serum Electrolytes & Calcium",
+        category: "Laboratory",
+        priority: "STAT",
+        ordered_at: new Date(Date.now() - 104 * 60000).toISOString(),
+        ordered_by: "Dr. Anita Roy",
+        status: "Completed",
+        result: "Sodium: 137 mEq/L, Potassium: 4.1 mEq/L, Calcium: 9.4 mg/dL.",
+        result_summary: "Normal Electrolytes & Calcium",
+        verified_at: new Date(Date.now() - 70 * 60000).toISOString(),
+      },
+    ],
+    disposition: {
+      outcome: "discharge_home",
+      required_specialty: "Pediatrics",
+      clinical_reason: "Clinically stable post simple febrile convulsion, afebrile, active, safe for home discharge with oral Paracetamol syrup and pediatrician follow-up in 48 hours",
+      decided_by: "Dr. Anita Roy",
+      decided_at: new Date(Date.now() - 30 * 60000).toISOString(),
+      priority: "Routine",
+    },
     bed_requests: [],
     consents: [],
   },
 ];
 
-const ER_STORAGE_KEY_PATIENTS = "hospai_er_patients_v2";
-const ER_STORAGE_KEY_VISITS = "hospai_er_visits_v2";
-const ER_STORAGE_KEY_CATEGORIES = "hospai_er_categories_v2";
+const ER_STORAGE_KEY_PATIENTS = "hospai_er_patients_v6";
+const ER_STORAGE_KEY_VISITS = "hospai_er_visits_v6";
+const ER_STORAGE_KEY_CATEGORIES = "hospai_er_categories_v6";
 
 export class ErDatabase {
   private static load<T>(key: string, fallback: T): T {
@@ -509,8 +1412,15 @@ export class ErDatabase {
     patientDetails?: Partial<ErPatient>;
     isUnknown?: boolean;
     unknownLabel?: string;
+    arrivalDate?: string;
+    arrivalTime?: string;
     arrivalMode?: string;
+    broughtBy?: string;
+    attendantName?: string;
+    attendantRelation?: string;
     conditionAtArrival?: string;
+    consciousness?: string;
+    infoProvidedBy?: string;
     policeInvolved?: boolean;
     complaintText?: string;
     caseCategory?: string;
@@ -528,6 +1438,16 @@ export class ErDatabase {
     const nextId = visits.length > 0 ? Math.max(...visits.map((v) => v.id)) + 1 : 101;
     const visitNo = `ER-${new Date().getFullYear()}-${String(nextId).padStart(5, "0")}`;
 
+    let arrivalTimestamp = new Date().toISOString();
+    if (visitData.arrivalDate) {
+      try {
+        const timePart = visitData.arrivalTime || "12:00";
+        arrivalTimestamp = new Date(`${visitData.arrivalDate}T${timePart}`).toISOString();
+      } catch (e) {
+        arrivalTimestamp = new Date().toISOString();
+      }
+    }
+
     const now = new Date().toISOString();
 
     const complaintsList: ErComplaintItem[] = [];
@@ -538,7 +1458,7 @@ export class ErDatabase {
         severity: "Moderate",
         case_category: visitData.caseCategory || "general_illness",
         duration: "Immediate",
-        reported_by: "Intake Nurse / EMS",
+        reported_by: visitData.infoProvidedBy || "Intake Nurse / EMS",
         created_at: now,
       });
     }
@@ -555,7 +1475,7 @@ export class ErDatabase {
         respiratory_rate: visitData.vitals.respiratory_rate || null,
         spo2: visitData.vitals.spo2 || null,
         temperature: visitData.vitals.temperature || null,
-        consciousness_level: visitData.vitals.consciousness_level || "Alert (A)",
+        consciousness_level: visitData.consciousness || visitData.vitals.consciousness_level || "Alert (A)",
         blood_glucose: visitData.vitals.blood_glucose || null,
         pain_score: visitData.vitals.pain_score || null,
         gcs: visitData.vitals.gcs || 15,
@@ -572,9 +1492,14 @@ export class ErDatabase {
       patient_id: patient?.patient_id || (visitData.isUnknown ? null : visitData.patientId || null),
       is_unknown_patient: !!visitData.isUnknown,
       unknown_patient_label: visitData.unknownLabel || null,
-      arrival_mode: visitData.arrivalMode || "walk-in",
-      condition_at_arrival: visitData.conditionAtArrival || null,
-      arrival_at: now,
+      arrival_mode: visitData.arrivalMode || "Relative",
+      brought_by: visitData.broughtBy || "Family / Relatives",
+      attendant_name: visitData.attendantName || null,
+      attendant_relation: visitData.attendantRelation || null,
+      condition_at_arrival: visitData.conditionAtArrival || "Critical",
+      consciousness: visitData.consciousness || "Conscious",
+      info_provided_by: visitData.infoProvidedBy || "Relative",
+      arrival_at: arrivalTimestamp,
       status: "registered",
       assigned_doctor_name: triageCalc.suggestedDoctor || null,
       assigned_specialty: triageCalc.suggestedDepartment || "Emergency",
@@ -736,6 +1661,24 @@ export class ErDatabase {
     };
     visit.clinical_notes.push(newItem);
     this.updateVisit(visitId, { clinical_notes: visit.clinical_notes });
+    return newItem;
+  }
+
+  static addInvestigation(visitId: number, data: { name: string; priority?: string; category?: string }): ErInvestigationItem {
+    const visit = this.getVisit(visitId);
+    if (!visit) throw new Error("Visit not found");
+    const newItem: ErInvestigationItem = {
+      id: (visit.investigations || []).length + 1,
+      test_name: data.name,
+      category: data.category || "Emergency Lab / Imaging",
+      priority: data.priority || "STAT",
+      ordered_at: new Date().toISOString(),
+      ordered_by: visit.assigned_doctor_name || "Emergency Physician",
+      status: "Ordered",
+      result: "Sample Dispatched / In Progress",
+    };
+    visit.investigations = [...(visit.investigations || []), newItem];
+    this.updateVisit(visitId, { investigations: visit.investigations });
     return newItem;
   }
 
@@ -939,107 +1882,107 @@ export class ErDatabase {
     // Fallback rule-based logic function
     const runRuleBasedFallback = () => {
       const hr = vitals.heart_rate || 0;
-    const sys = vitals.bp_systolic || 0;
-    const dia = vitals.bp_diastolic || 0;
-    const spo2 = vitals.spo2 || 100;
-    const rr = vitals.respiratory_rate || 16;
-    const temp = vitals.temperature || 98.6;
-    const gcs = vitals.gcs || 15;
-    const grbs = vitals.blood_glucose || 100;
-    const pain = vitals.pain_score || 0;
-    const cons = (vitals.consciousness_level || "").toLowerCase();
+      const sys = vitals.bp_systolic || 0;
+      const dia = vitals.bp_diastolic || 0;
+      const spo2 = vitals.spo2 || 100;
+      const rr = vitals.respiratory_rate || 16;
+      const temp = vitals.temperature || 98.6;
+      const gcs = vitals.gcs || 15;
+      const grbs = vitals.blood_glucose || 100;
+      const pain = vitals.pain_score || 0;
+      const cons = (vitals.consciousness_level || "").toLowerCase();
 
-    // Critical Priority (B1 - Red)
-    if (
-      spo2 < 85 ||
-      sys < 80 ||
-      hr > 140 ||
-      hr < 40 ||
-      gcs < 9 ||
-      cons.includes("unresponsive") ||
-      cons.includes("comatose") ||
-      c.includes("cardiac arrest") ||
-      c.includes("unconscious") ||
-      c.includes("stemi") ||
-      c.includes("crushing chest pain") ||
-      c.includes("severe hemorrhage") ||
-      c.includes("active bleeding") ||
-      c.includes("anaphylaxis")
-    ) {
-      return {
-        categoryCode: "B1",
-        urgency: "Immediate / Resuscitation",
-        reasoning: "Critical presentation detected (Severe hemodynamic instability / hypoxia / acute coronary syndrome / altered consciousness). Immediate resuscitation protocol activated.",
-        suggestedDepartment: c.includes("trauma") ? "Trauma Surgery" : c.includes("chest") || c.includes("heart") ? "Cardiology" : "Emergency Medicine",
-        suggestedDoctor: "Dr. Vikram Seth (Cardiology / Critical Care)",
-        triageBedLabel: "ER Bed 01 (Red Zone - Resuscitation)",
-        suggestedTreatments: [
-          { intervention_type: "Immediate IV Resuscitation & High Flow O2", description: "Wide bore IV lines, O2 at 6-8 L/min, continuous ECG and SpO2 monitoring" },
-          { intervention_type: "Emergency Cardiac / Airway Protocol", description: "Stat ECG, cardiac loading doses / airway standby" },
-        ],
-      };
-    }
+      // Critical Priority (B1 - Red)
+      if (
+        spo2 < 85 ||
+        sys < 80 ||
+        hr > 140 ||
+        hr < 40 ||
+        gcs < 9 ||
+        cons.includes("unresponsive") ||
+        cons.includes("comatose") ||
+        c.includes("cardiac arrest") ||
+        c.includes("unconscious") ||
+        c.includes("stemi") ||
+        c.includes("crushing chest pain") ||
+        c.includes("severe hemorrhage") ||
+        c.includes("active bleeding") ||
+        c.includes("anaphylaxis")
+      ) {
+        return {
+          categoryCode: "B1",
+          urgency: "Immediate / Resuscitation",
+          reasoning: "Critical presentation detected (Severe hemodynamic instability / hypoxia / acute coronary syndrome / altered consciousness). Immediate resuscitation protocol activated.",
+          suggestedDepartment: c.includes("trauma") ? "Trauma Surgery" : c.includes("chest") || c.includes("heart") ? "Cardiology" : "Emergency Medicine",
+          suggestedDoctor: "Dr. Vikram Seth (Cardiology / Critical Care)",
+          triageBedLabel: "ER Bed 01 (Red Zone - Resuscitation)",
+          suggestedTreatments: [
+            { intervention_type: "Immediate IV Resuscitation & High Flow O2", description: "Wide bore IV lines, O2 at 6-8 L/min, continuous ECG and SpO2 monitoring" },
+            { intervention_type: "Emergency Cardiac / Airway Protocol", description: "Stat ECG, cardiac loading doses / airway standby" },
+          ],
+        };
+      }
 
-    // High Emergent Priority (B2 - Orange)
-    if (
-      spo2 < 92 ||
-      sys > 190 ||
-      dia > 115 ||
-      hr > 115 ||
-      rr > 26 ||
-      pain >= 8 ||
-      grbs > 350 ||
-      grbs < 55 ||
-      c.includes("chest pain") ||
-      c.includes("stroke") ||
-      c.includes("weakness") ||
-      c.includes("rta") ||
-      c.includes("accident") ||
-      c.includes("seizure") ||
-      c.includes("poisoning") ||
-      c.includes("burn") ||
-      c.includes("fracture") ||
-      c.includes("dyspnea")
-    ) {
-      return {
-        categoryCode: "B2",
-        urgency: "High / Emergent",
-        reasoning: "High emergent acuity (Significant vital abnormality, severe pain, or acute neurological/trauma presentation). Rapid physician assessment within 10 minutes required.",
-        suggestedDepartment: c.includes("rta") || c.includes("trauma") || c.includes("fracture") ? "Orthopedics / Trauma" : c.includes("stroke") ? "Neurology" : c.includes("chest") ? "Cardiology" : "Emergency Medicine",
-        suggestedDoctor: "Dr. Anita Roy (Emergency & Critical Care)",
-        triageBedLabel: "ER Bed 03 (Yellow Zone - High Care)",
-        suggestedTreatments: [
-          { intervention_type: "Vital Stabilization & IV Access", description: "IV Line secured, 0.9% Normal Saline slow infusion, continuous multi-para monitoring" },
-          { intervention_type: "Targeted Analgesia / Nebulization", description: "Immediate symptomatic relief per protocol" },
-        ],
-      };
-    }
+      // High Emergent Priority (B2 - Orange)
+      if (
+        spo2 < 92 ||
+        sys > 190 ||
+        dia > 115 ||
+        hr > 115 ||
+        rr > 26 ||
+        pain >= 8 ||
+        grbs > 350 ||
+        grbs < 55 ||
+        c.includes("chest pain") ||
+        c.includes("stroke") ||
+        c.includes("weakness") ||
+        c.includes("rta") ||
+        c.includes("accident") ||
+        c.includes("seizure") ||
+        c.includes("poisoning") ||
+        c.includes("burn") ||
+        c.includes("fracture") ||
+        c.includes("dyspnea")
+      ) {
+        return {
+          categoryCode: "B2",
+          urgency: "High / Emergent",
+          reasoning: "High emergent acuity (Significant vital abnormality, severe pain, or acute neurological/trauma presentation). Rapid physician assessment within 10 minutes required.",
+          suggestedDepartment: c.includes("rta") || c.includes("trauma") || c.includes("fracture") ? "Orthopedics / Trauma" : c.includes("stroke") ? "Neurology" : c.includes("chest") ? "Cardiology" : "Emergency Medicine",
+          suggestedDoctor: "Dr. Anita Roy (Emergency & Critical Care)",
+          triageBedLabel: "ER Bed 03 (Yellow Zone - High Care)",
+          suggestedTreatments: [
+            { intervention_type: "Vital Stabilization & IV Access", description: "IV Line secured, 0.9% Normal Saline slow infusion, continuous multi-para monitoring" },
+            { intervention_type: "Targeted Analgesia / Nebulization", description: "Immediate symptomatic relief per protocol" },
+          ],
+        };
+      }
 
-    // Moderate Urgent (B3 - Yellow)
-    if (
-      temp > 102 ||
-      pain >= 5 ||
-      hr > 100 ||
-      sys > 150 ||
-      c.includes("fever") ||
-      c.includes("vomiting") ||
-      c.includes("abdominal pain") ||
-      c.includes("infection") ||
-      c.includes("laceration") ||
-      c.includes("asthma")
-    ) {
-      return {
-        categoryCode: "B3",
-        urgency: "Moderate / Urgent",
-        reasoning: "Moderate acuity condition requiring structured evaluation and symptomatic emergency stabilization within 30 minutes.",
-        suggestedDepartment: c.includes("abdominal") || c.includes("vomiting") ? "General Surgery / Gastroenterology" : "General Medicine",
-        suggestedDoctor: "Dr. Rajesh Sharma (General Medicine)",
-        triageBedLabel: "ER Bed 06 (Yellow Zone - Observation)",
-        suggestedTreatments: [
-          { intervention_type: "Antipyretic / IV Antiemetic", description: "IV Paracetamol 1g / Ondansetron 4mg for acute symptom control" },
-        ],
-      };
-    }
+      // Moderate Urgent (B3 - Yellow)
+      if (
+        temp > 102 ||
+        pain >= 5 ||
+        hr > 100 ||
+        sys > 150 ||
+        c.includes("fever") ||
+        c.includes("vomiting") ||
+        c.includes("abdominal pain") ||
+        c.includes("infection") ||
+        c.includes("laceration") ||
+        c.includes("asthma")
+      ) {
+        return {
+          categoryCode: "B3",
+          urgency: "Moderate / Urgent",
+          reasoning: "Moderate acuity condition requiring structured evaluation and symptomatic emergency stabilization within 30 minutes.",
+          suggestedDepartment: c.includes("abdominal") || c.includes("vomiting") ? "General Surgery / Gastroenterology" : "General Medicine",
+          suggestedDoctor: "Dr. Rajesh Sharma (General Medicine)",
+          triageBedLabel: "ER Bed 06 (Yellow Zone - Observation)",
+          suggestedTreatments: [
+            { intervention_type: "Antipyretic / IV Antiemetic", description: "IV Paracetamol 1g / Ondansetron 4mg for acute symptom control" },
+          ],
+        };
+      }
 
       return {
         categoryCode: "B4",

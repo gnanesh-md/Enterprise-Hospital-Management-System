@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
-import Button from "./Button";
+import { FiX } from "react-icons/fi";
 
 type ModalProps = {
   open: boolean;
@@ -33,32 +33,35 @@ export default function Modal({
 
   return (
     <div
-      className="ui-modal-overlay"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className={cn("ui-modal", className)}
+        className={cn(
+          "relative bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200",
+          className
+        )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="ui-modal-header">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/80 shrink-0">
           <div>
-            {title ? <h3 className="ui-modal-title">{title}</h3> : null}
+            {title ? <h3 className="text-base font-bold text-gray-900 leading-tight">{title}</h3> : null}
             {description ? (
-              <p className="ui-modal-description">{description}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{description}</p>
             ) : null}
           </div>
-          <Button
-            variant="ghost"
-            className="ui-modal-close"
+          <button
+            type="button"
             onClick={onClose}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
             aria-label="Close modal"
           >
-            x
-          </Button>
+            <FiX className="text-lg" />
+          </button>
         </div>
-        <div className="ui-modal-content">{children}</div>
+        <div className="p-6 overflow-y-auto max-h-[calc(92vh-75px)]">{children}</div>
       </div>
     </div>
   );

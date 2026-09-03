@@ -41,18 +41,21 @@ function daysSinceAdmission(iso: string): number {
 // (not hidden behind a hover), and a hover tooltip adds the secondary detail
 // (phone, admission timestamp) that doesn't fit on the card. No cost/rate is
 // shown here by design -- this board is about occupancy, not billing.
-export function BedCard({
+export function BedCard<T extends BedCardData>({
   bed,
   onClick,
   onPatientClick,
   readOnly,
 }: {
-  bed: BedCardData;
+  bed: T;
   onClick?: () => void;
   // Opens the patient's real clinical chart -- kept separate from `onClick`
   // (which opens the bed-allocation modal) so the two actions don't collide;
   // the patient name renders as its own clickable link when this is set.
-  onPatientClick?: (bed: BedCardData) => void;
+  // Generic (T, not the base BedCardData) so a caller with a richer bed row
+  // shape (e.g. BedManagementPage's `Bed`) can pass a handler typed for that
+  // full shape without TS treating it as unsafe.
+  onPatientClick?: (bed: T) => void;
   // Inpatient Bed Board renders these read-only (it's a monitoring view, not
   // a workflow) -- a plain div instead of a button so it doesn't look
   // clickable when there's nothing behind the click.
