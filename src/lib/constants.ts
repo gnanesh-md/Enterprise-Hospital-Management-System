@@ -2,8 +2,15 @@
 // (see backend/README section of the integration report) -- same
 // hardcoded-localhost:8000 convention already used by SmartOCR.tsx/
 // SymptomAI.tsx/ClinicalSummaries.tsx elsewhere in this app.
-export const API_BASE = "http://localhost:8010";
-export const SYMPTOM_API_BASE = "http://localhost:8010";
+//
+// VITE_API_BASE overrides this at build time (see .env.production, used for
+// the Cloudflare Pages deploy, where the backend isn't reachable at
+// localhost -- it's a Cloudflare Tunnel URL instead). Local dev is
+// unaffected: no .env.production is loaded in dev mode, so this still
+// defaults to localhost.
+const API_BASE_OVERRIDE = import.meta.env.VITE_API_BASE as string | undefined;
+export const API_BASE = API_BASE_OVERRIDE || "http://localhost:8010";
+export const SYMPTOM_API_BASE = API_BASE_OVERRIDE || "http://localhost:8010";
 
 export const SUPPORTED_DOCUMENT_EXTENSIONS = [
   "pdf",

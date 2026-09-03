@@ -612,7 +612,7 @@ export default function App() {
               {module === "radiology" && <Radiology />}
               {module === "icu" && <ICU />}
               {module === "analytics" && <Analytics />}
-              {module === "discharge" && <Discharge onComplete={() => setModule("inpatient")} />}
+              {module === "discharge" && <Discharge setNotice={setNotice} onComplete={() => setModule("inpatient")} />}
               {module === "triage" && <Triage setNotice={setNotice} onNavigate={(m) => setModule(m as any)} />}
 
               {module === "insurance" && <Insurance />}
@@ -684,8 +684,8 @@ export default function App() {
                 />
               )}
               {module === "scheduling" && <DoctorScheduling />}
-              {module === "admissions" && <Admissions />}
-              {module === "readmission" && <Readmission />}
+              {module === "admissions" && <Admissions setNotice={setNotice} navigate={navigate} />}
+              {module === "readmission" && <Readmission setNotice={setNotice} />}
               {module === "payments" && <PaymentCollection />}
               {module === "revenue_reports" && <RevenueReports />}
               {module === "hrms" && <HRMS />}

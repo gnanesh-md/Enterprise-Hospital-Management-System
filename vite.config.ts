@@ -37,5 +37,10 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: parseInt(process.env.PORT || '8443'),
+    // Vite 8's DNS-rebinding guard rejects any Host header it doesn't
+    // recognize -- needed here because `vite preview` gets tunneled through
+    // a random *.trycloudflare.com hostname for demo links (see the "run"
+    // skill / deployment notes), not accessed as localhost.
+    allowedHosts: ['.trycloudflare.com'],
   },
 })

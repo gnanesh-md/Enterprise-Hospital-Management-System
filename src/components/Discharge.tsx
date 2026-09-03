@@ -1,314 +1,307 @@
-import React, { useState } from "react";
-import { Btn, Card, AlertBanner } from "./shared";
+import { useEffect, useMemo, useState } from "react";
+import { Btn, AlertBanner } from "./shared";
 import { Icon } from "./icons";
+import { apiFetch, reportError } from "../lib/api";
+import { formatDateTimeIST } from "../lib/format";
+import { generateAndSaveDischargeSummary } from "../lib/dischargeSummary";
+import type { Notice } from "../types";
 
-const STEPS = ["Clinical Review", "Discharge Orders", "Patient Education", "Follow-up", "Summary"];
+const STEPS = ["Select Patient", "Review Checklist", "Confirm & Discharge"];
 
-function StepIndicator({ steps, current }: { steps: string[]; current: number }) {
+function StepIndicator({ current }: { current: number }) {
   return (
     <div className="flex items-center">
-      {steps.map((s, i) => (
-        <React.Fragment key={i}>
+      {STEPS.map((s, i) => (
+        <div key={s} className="flex items-center flex-1 last:flex-none">
           <div className="flex flex-col items-center">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold border-2 transition-colors
-              ${i < current ? "bg-[#16A34A] border-[#16A34A] text-white"
-                : i === current ? "bg-[#1B4FD8] border-[#1B4FD8] text-white"
-                : "bg-white border-[#DDE2EC] text-[#94A3B8]"}`}>
+            <div
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-semibold border-2 transition-colors ${
+                i < current
+                  ? "bg-[#16A34A] border-[#16A34A] text-white"
+                  : i === current
+                    ? "bg-[#1B4FD8] border-[#1B4FD8] text-white"
+                    : "bg-white border-[#DDE2EC] text-[#94A3B8]"
+              }`}
+            >
               {i < current ? "✓" : i + 1}
             </div>
             <span className={`text-[10.5px] font-medium mt-1 whitespace-nowrap ${i === current ? "text-[#1B4FD8]" : i < current ? "text-[#16A34A]" : "text-[#94A3B8]"}`}>{s}</span>
           </div>
-          {i < steps.length - 1 && <div className={`h-0.5 flex-1 mx-1.5 ${i < current ? "bg-[#16A34A]" : "bg-[#DDE2EC]"}`} />}
-        </React.Fragment>
+          {i < STEPS.length - 1 && <div className={`h-0.5 flex-1 mx-1.5 ${i < current ? "bg-[#16A34A]" : "bg-[#DDE2EC]"}`} />}
+        </div>
       ))}
     </div>
   );
 }
 
-interface Check { label: string; done: boolean; required?: boolean }
+type Bed = {
+  id: number;
+  ward: string;
+  room_no: string;
+  bed_no: string;
+  bed_type: string;
+  status: "Available" | "Occupied" | "Maintenance";
+  patient_id: string | null;
+  patient_name: string | null;
+  patient_last_name: string | null;
+  admission_date: string | null;
+  admission_id: number | null;
+};
 
-function Checklist({ title, items, onChange }: { title: string; items: Check[]; onChange: (i: number) => void }) {
-  return (
-    <div className="mb-4">
-      <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-2.5 pb-1.5 border-b border-[#DDE2EC]">{title}</div>
-      <div className="space-y-2">
-        {items.map((item, i) => (
-          <label key={i} className="flex items-center gap-2.5 cursor-pointer group">
-            <input type="checkbox" checked={item.done} onChange={() => onChange(i)}
-              className="w-4 h-4 accent-[#1B4FD8] rounded" />
-            <span className={`text-[12.5px] ${item.done ? "line-through text-[#94A3B8]" : "text-gray-800"}`}>
-              {item.label}
-              {item.required && !item.done && <span className="text-[#DC2626] ml-1 text-[11px] font-semibold">*</span>}
-            </span>
-          </label>
-        ))}
-      </div>
-    </div>
-  );
+type RoomChargeSegment = { ward: string; room_no: string; bed_no: string; days: number; daily_rate: number; amount: number };
+type DischargeChecklist = {
+  billing: { ok: boolean; pending_invoices: { invoice_no: string; due_amount: number }[] };
+  prescriptions: { ok: boolean; pending_count: number };
+  documents: { count: number };
+  room_charges: { segments: RoomChargeSegment[]; total: number };
+};
+
+function formatINR(amount: number): string {
+  return `₹${Math.round(amount || 0).toLocaleString("en-IN")}`;
 }
 
-export default function Discharge({ onComplete }: { onComplete: () => void }) {
-  const [step, setStep] = useState(0);
-  const [clinicalChecks, setClinicalChecks] = useState<Check[]>([
-    { label: "Final diagnosis confirmed and documented", done: true, required: true },
-    { label: "All pending laboratory results reviewed", done: false, required: true },
-    { label: "Chest X-ray reviewed — Final report obtained", done: true, required: true },
-    { label: "Attending physician discharge summary complete", done: false, required: true },
-    { label: "Medication reconciliation performed", done: true, required: true },
-    { label: "Allergies verified and documented", done: true, required: true },
-    { label: "Physical therapy clearance obtained", done: true },
-    { label: "Social work assessment complete", done: false },
-  ]);
-  const [dcChecks, setDcChecks] = useState<Check[]>([
-    { label: "Discharge order signed by attending", done: false, required: true },
-    { label: "Outpatient prescriptions written", done: false, required: true },
-    { label: "Diet orders discontinued", done: true },
-    { label: "IV access removed / documented", done: false },
-    { label: "Activity restrictions documented", done: true },
-    { label: "Wound care instructions documented", done: false },
-    { label: "DME / home health arranged if needed", done: true },
-  ]);
-  const [eduChecks, setEduChecks] = useState<Check[]>([
-    { label: "Patient educated on diagnosis: T2DM / Hypertension", done: true, required: true },
-    { label: "Medication teaching completed — all new prescriptions", done: false, required: true },
-    { label: "Dietary restrictions reviewed with patient", done: true },
-    { label: "Activity limitations explained", done: true },
-    { label: "Return precautions reviewed (when to seek ER)", done: false, required: true },
-    { label: "Patient verbalized understanding (teach-back)", done: false, required: true },
-    { label: "Written discharge instructions provided (English)", done: false, required: true },
-  ]);
-  const [fupChecks, setFupChecks] = useState<Check[]>([
-    { label: "PCP follow-up scheduled within 7 days", done: false, required: true },
-    { label: "Cardiology follow-up scheduled (Dr. Patel — 2 weeks)", done: false, required: true },
-    { label: "Outpatient lab orders placed (BMP, HbA1c in 3 months)", done: false },
-    { label: "Patient portal account activated", done: true },
-    { label: "Referral to Diabetes Education Center placed", done: false },
-    { label: "Transportation arranged if needed", done: true },
-  ]);
+function occupantName(bed: Bed): string {
+  return `${bed.patient_name || ""} ${bed.patient_last_name || ""}`.trim() || bed.patient_id || "Patient";
+}
 
-  const toggle = (arr: Check[], setArr: React.Dispatch<React.SetStateAction<Check[]>>, i: number) => {
-    setArr(prev => prev.map((c, j) => j === i ? { ...c, done: !c.done } : c));
+export default function Discharge({ setNotice, onComplete }: { setNotice?: (n: Notice | null) => void; onComplete: () => void }) {
+  const [step, setStep] = useState(0);
+  const [beds, setBeds] = useState<Bed[]>([]);
+  const [loadingBeds, setLoadingBeds] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selectedBed, setSelectedBed] = useState<Bed | null>(null);
+  const [checklist, setChecklist] = useState<DischargeChecklist | null>(null);
+  const [checklistLoading, setChecklistLoading] = useState(false);
+  const [dischargeReason, setDischargeReason] = useState("");
+  const [discharging, setDischarging] = useState(false);
+  const [summaryFailed, setSummaryFailed] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoadingBeds(true);
+      try {
+        const data = await apiFetch<{ beds: Bed[] }>("/api/beds");
+        setBeds((data.beds || []).filter((b) => b.status === "Occupied"));
+      } catch (error: any) {
+        reportError(setNotice, error, "Failed to load occupied beds.");
+      } finally {
+        setLoadingBeds(false);
+      }
+    })();
+  }, []);
+
+  const filteredBeds = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return beds;
+    return beds.filter(
+      (b) =>
+        occupantName(b).toLowerCase().includes(q) ||
+        (b.patient_id || "").toLowerCase().includes(q) ||
+        b.ward.toLowerCase().includes(q) ||
+        b.room_no.toLowerCase().includes(q),
+    );
+  }, [beds, search]);
+
+  const selectPatient = async (bed: Bed) => {
+    setSelectedBed(bed);
+    setStep(1);
+    setChecklistLoading(true);
+    setDischargeReason("");
+    try {
+      const data = await apiFetch<DischargeChecklist>(`/api/beds/${bed.id}/discharge-checklist`);
+      setChecklist(data);
+    } catch (error: any) {
+      reportError(setNotice, error, "Failed to load the discharge checklist.");
+      setChecklist(null);
+    } finally {
+      setChecklistLoading(false);
+    }
   };
 
-  const steps = [
-    { checks: clinicalChecks, set: setClinicalChecks },
-    { checks: dcChecks, set: setDcChecks },
-    { checks: eduChecks, set: setEduChecks },
-    { checks: fupChecks, set: setFupChecks },
-  ];
+  const checklistClear = checklist ? checklist.billing.ok && checklist.prescriptions.ok : false;
 
-  const requiredComplete = step < 4 ? steps[step].checks.filter(c => c.required && !c.done).length === 0 : true;
+  const confirmDischarge = async () => {
+    if (!selectedBed) return;
+    setDischarging(true);
+    setSummaryFailed(false);
+    try {
+      const roomChargeTotal = checklist?.room_charges.total;
+      await apiFetch(`/api/beds/${selectedBed.id}/release`, {
+        method: "POST",
+        body: JSON.stringify({
+          discharge_override_reason: dischargeReason.trim() || undefined,
+          room_charge_total: roomChargeTotal,
+        }),
+      });
+      if (selectedBed.patient_id) {
+        try {
+          await generateAndSaveDischargeSummary(selectedBed.patient_id, selectedBed.admission_id ?? undefined);
+        } catch {
+          setSummaryFailed(true);
+        }
+      }
+      setStep(2);
+    } catch (error: any) {
+      reportError(setNotice, error, "Failed to discharge this patient.");
+    } finally {
+      setDischarging(false);
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F0F2F5]">
       <div className="bg-white border-b border-[#DDE2EC] px-6 py-3 flex items-center justify-between">
         <div>
           <h1 className="text-base font-semibold text-gray-900">Discharge Workflow</h1>
-          <p className="text-[11.5px] text-[#64748B]">John Smith · MRN 100245 · Room 204 · Admitted Aug 22, 2026</p>
+          <p className="text-[11.5px] text-[#64748B]">Guided discharge -- real billing/prescription checklist, real bed release, auto-generated discharge summary.</p>
         </div>
-        <div className="flex gap-2">
-          <Btn variant="ghost" size="sm" onClick={onComplete}>Cancel</Btn>
-          <Btn variant="primary" size="sm">Save Progress</Btn>
-        </div>
-      </div>
-
-      {/* Patient banner */}
-      <div className="bg-[#0C1524] border-b border-[#1E2D42] px-6 py-2.5 flex items-center gap-6">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-[#1B4FD8] flex items-center justify-center text-white text-[12px] font-semibold">JS</div>
-          <div>
-            <div className="text-[13px] font-semibold text-white">John Smith</div>
-            <div className="text-[11px] text-[#64748B]">41y Male · T2DM, HTN · Dr. Anderson</div>
-          </div>
-        </div>
-        {[
-          { l: "LOS", v: "2 days" }, { l: "Admit Dx", v: "Hyperglycemia + HTN urgency" },
-          { l: "Discharge Dx", v: "T2DM uncontrolled, Stage 2 HTN" }, { l: "DC Mode", v: "Home" },
-        ].map(({ l, v }) => (
-          <div key={l}>
-            <div className="text-[10.5px] text-[#64748B]">{l}</div>
-            <div className="text-[12px] font-medium text-white">{v}</div>
-          </div>
-        ))}
+        <Btn variant="ghost" size="sm" onClick={onComplete}>Close</Btn>
       </div>
 
       <div className="max-w-3xl mx-auto p-5">
-        {/* Stepper */}
         <div className="bg-white border border-[#DDE2EC] rounded p-4 mb-5">
-          <StepIndicator steps={STEPS} current={step} />
+          <StepIndicator current={step} />
         </div>
 
-        {step < 4 && (
-          <>
-            {!requiredComplete && (
-              <AlertBanner type="warning" title="Required items incomplete"
-                body="Complete all required items (marked *) before proceeding." />
-            )}
-            <div className="mt-3 bg-white border border-[#DDE2EC] rounded p-5">
-              {step === 0 && (
-                <>
-                  <h2 className="text-sm font-semibold text-gray-900 mb-4">Clinical Review Checklist</h2>
-                  <Checklist title="Clinical Documentation" items={clinicalChecks}
-                    onChange={(i) => toggle(clinicalChecks, setClinicalChecks, i)} />
-                </>
-              )}
-              {step === 1 && (
-                <>
-                  <h2 className="text-sm font-semibold text-gray-900 mb-4">Discharge Orders & Medications</h2>
-                  <Checklist title="Discharge Orders" items={dcChecks}
-                    onChange={(i) => toggle(dcChecks, setDcChecks, i)} />
-
-                  <div className="mt-4 pt-4 border-t border-[#DDE2EC]">
-                    <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-3">Discharge Medications</div>
-                    <div className="space-y-2">
-                      {[
-                        { drug: "Metformin 1000mg", sig: "1 tab PO BID with meals", qty: "60 tablets", refills: "3" },
-                        { drug: "Lisinopril 10mg", sig: "1 tab PO daily in AM", qty: "30 tablets", refills: "3" },
-                        { drug: "Atorvastatin 40mg", sig: "1 tab PO at bedtime", qty: "30 tablets", refills: "3" },
-                        { drug: "Metoprolol Succinate 50mg", sig: "1 tab PO daily in AM", qty: "30 tablets", refills: "3" },
-                        { drug: "Aspirin 81mg", sig: "1 tab PO daily", qty: "100 tablets", refills: "11" },
-                      ].map((med, i) => (
-                        <div key={i} className="flex items-center gap-3 p-2.5 border border-[#DDE2EC] rounded hover:bg-[#F8FAFC]">
-                          <div className="flex-1">
-                            <div className="text-[12.5px] font-semibold text-gray-900">{med.drug}</div>
-                            <div className="text-[11.5px] text-[#64748B]">{med.sig} · Qty: {med.qty} · Refills: {med.refills}</div>
-                          </div>
-                          <Btn variant="ghost" size="xs">Edit</Btn>
-                        </div>
-                      ))}
-                    </div>
-                    <Btn variant="outline" size="sm" className="mt-3"><Icon.Plus /> Add Medication</Btn>
-                  </div>
-                </>
-              )}
-              {step === 2 && (
-                <>
-                  <h2 className="text-sm font-semibold text-gray-900 mb-4">Patient Education</h2>
-                  <Checklist title="Education Checklist" items={eduChecks}
-                    onChange={(i) => toggle(eduChecks, setEduChecks, i)} />
-
-                  <div className="mt-4 pt-4 border-t border-[#DDE2EC]">
-                    <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-3">Discharge Instructions</div>
-                    <div className="bg-[#F8FAFC] border border-[#DDE2EC] rounded p-4 text-[12.5px] space-y-3">
-                      <div>
-                        <div className="font-semibold text-gray-900 mb-1">Diagnosis</div>
-                        <p className="text-[#64748B]">Type 2 Diabetes (uncontrolled) and Stage 2 Hypertension. These conditions require ongoing management with medication, diet, and lifestyle changes.</p>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900 mb-1">Medications</div>
-                        <p className="text-[#64748B]">Take all medications as prescribed. Do NOT stop any blood pressure or diabetes medication without speaking to your doctor first.</p>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-gray-900 mb-1">Diet</div>
-                        <p className="text-[#64748B]">Follow an ADA-consistent diet: limit refined carbohydrates, added sugars, and sodium (&lt;2g/day). Portion control is important.</p>
-                      </div>
-                      <div>
-                        <div className="font-semibold text-[#DC2626] mb-1">⚠ Return to ER if you experience:</div>
-                        <ul className="text-[#64748B] space-y-0.5 pl-3">
-                          <li>· Blood sugar &gt; 400 mg/dL or &lt; 60 mg/dL</li>
-                          <li>· Chest pain, shortness of breath, or severe headache</li>
-                          <li>· Severe dizziness, confusion, or loss of consciousness</li>
-                          <li>· Blood pressure &gt; 180/110 with symptoms</li>
-                        </ul>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-3">
-                      <Btn variant="outline" size="sm"><Icon.Download /> Print Instructions</Btn>
-                      <Btn variant="outline" size="sm">Send to Patient Portal</Btn>
-                      <Btn variant="outline" size="sm">Request Translator</Btn>
-                    </div>
-                  </div>
-                </>
-              )}
-              {step === 3 && (
-                <>
-                  <h2 className="text-sm font-semibold text-gray-900 mb-4">Follow-up Appointments</h2>
-                  <Checklist title="Follow-up Checklist" items={fupChecks}
-                    onChange={(i) => toggle(fupChecks, setFupChecks, i)} />
-
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    {[
-                      { type: "PCP Follow-up", provider: "Dr. M. Anderson", date: "Aug 30, 2026", note: "Within 7 days per protocol", status: "Schedule" },
-                      { type: "Cardiology", provider: "Dr. R. Patel", date: "Sep 06, 2026", note: "HTN management, EKG review", status: "Schedule" },
-                      { type: "Diabetes Education", provider: "GH Diabetes Center", date: "Sep 10, 2026", note: "Insulin management class", status: "Referred" },
-                      { type: "Lab Work", provider: "Outpatient Lab", date: "Nov 23, 2026", note: "BMP + HbA1c in 3 months", status: "Ordered" },
-                    ].map((f, i) => (
-                      <div key={i} className="border border-[#DDE2EC] rounded p-3 hover:border-[#1B4FD8] transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="text-[12.5px] font-semibold text-gray-900">{f.type}</div>
-                            <div className="text-[11.5px] text-[#64748B]">{f.provider}</div>
-                            <div className="text-[11.5px] font-medium text-gray-700 mt-0.5">{f.date}</div>
-                            <div className="text-[11px] text-[#94A3B8] mt-0.5">{f.note}</div>
-                          </div>
-                          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${f.status === "Schedule" ? "bg-[#FEF3C7] text-[#B45309]" : "bg-[#DCFCE7] text-[#15803D]"}`}>
-                            {f.status}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
+        {step === 0 && (
+          <div className="bg-white border border-[#DDE2EC] rounded p-5">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">Select the patient to discharge</h2>
+            <div className="ai-search-bar mb-3">
+              <Icon.Search />
+              <input
+                className="ai-search-input"
+                placeholder="Search by patient name, ID, ward, or room..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
-          </>
-        )}
-
-        {/* Confirmation */}
-        {step === 4 && (
-          <div className="space-y-4">
-            <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded p-4 flex items-center gap-3">
-              <span className="text-[#16A34A] text-2xl">✓</span>
-              <div>
-                <div className="font-semibold text-[#15803D] text-sm">Discharge Ready</div>
-                <div className="text-[12px] text-[#16A34A]">All required steps completed. Patient may be discharged.</div>
-              </div>
-            </div>
-            <Card title="Discharge Summary — John Smith">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[12.5px]">
-                {[
-                  { l: "Patient", v: "John Smith · MRN 100245" },
-                  { l: "Admission", v: "Aug 22, 2026 · 2:10 PM" },
-                  { l: "Discharge", v: "Aug 24, 2026 · 11:00 AM" },
-                  { l: "LOS", v: "2 days" },
-                  { l: "Attending", v: "Dr. M. Anderson" },
-                  { l: "Admit Diagnosis", v: "Hyperglycemia, HTN urgency" },
-                  { l: "Discharge Diagnosis", v: "T2DM uncontrolled, Stage 2 HTN" },
-                  { l: "Discharge Mode", v: "Home — independent" },
-                  { l: "Condition at DC", v: "Stable — improved" },
-                  { l: "Medications", v: "5 prescriptions — eRx sent" },
-                  { l: "PCP Follow-up", v: "Aug 30 · Dr. Anderson" },
-                  { l: "Code Status", v: "Full Code" },
-                ].map(({ l, v }) => (
-                  <div key={l} className="flex justify-between border-b border-[#F8FAFC] py-1">
-                    <span className="text-[#64748B]">{l}</span>
-                    <span className="font-medium text-gray-800">{v}</span>
-                  </div>
+            {loadingBeds ? (
+              <p className="text-[12.5px] text-[#64748B]">Loading occupied beds...</p>
+            ) : filteredBeds.length === 0 ? (
+              <p className="text-[12.5px] text-[#64748B]">No occupied beds match this search.</p>
+            ) : (
+              <div className="space-y-2 max-h-[420px] overflow-y-auto">
+                {filteredBeds.map((bed) => (
+                  <button
+                    key={bed.id}
+                    onClick={() => void selectPatient(bed)}
+                    className="w-full flex items-center justify-between p-3 border border-[#DDE2EC] rounded hover:border-[#1B4FD8] hover:bg-[#F8FAFC] transition-colors text-left"
+                  >
+                    <div>
+                      <div className="text-[13px] font-semibold text-gray-900">{occupantName(bed)}</div>
+                      <div className="text-[11.5px] text-[#64748B]">
+                        {bed.patient_id} · {bed.ward} · Room {bed.room_no} · Bed {bed.bed_no}
+                        {bed.admission_date ? ` · Admitted ${formatDateTimeIST(bed.admission_date)}` : ""}
+                      </div>
+                    </div>
+                    <span className="text-[12px] font-medium text-[#1B4FD8]">Select →</span>
+                  </button>
                 ))}
               </div>
-              <div className="flex gap-2 mt-4">
-                <Btn variant="outline" size="sm"><Icon.Download /> Print Summary</Btn>
-                <Btn variant="outline" size="sm">Send to PCP</Btn>
-                <Btn variant="outline" size="sm">Send to Patient Portal</Btn>
-              </div>
-            </Card>
-            <div className="flex justify-center">
-              <Btn variant="primary" size="md" onClick={onComplete}>
-                ✓ Confirm Discharge
+            )}
+          </div>
+        )}
+
+        {step === 1 && selectedBed && (
+          <div className="bg-white border border-[#DDE2EC] rounded p-5">
+            <h2 className="text-sm font-semibold text-gray-900 mb-1">Discharge Checklist -- {occupantName(selectedBed)}</h2>
+            <p className="text-[11.5px] text-[#64748B] mb-4">{selectedBed.ward} · Room {selectedBed.room_no} · Bed {selectedBed.bed_no}</p>
+
+            {checklistLoading ? (
+              <p className="text-[12.5px] text-[#64748B]">Loading checklist...</p>
+            ) : checklist ? (
+              <>
+                {!checklistClear && (
+                  <AlertBanner
+                    type="warning"
+                    title="Pending items found"
+                    body="Billing dues or unfulfilled prescriptions are still open. You can still discharge (e.g. LAMA/DAMA), but confirm this is intentional."
+                  />
+                )}
+                <div className="space-y-2 mt-3">
+                  <div className={`flex items-center justify-between p-3 rounded border ${checklist.billing.ok ? "bg-[#F0FDF4] border-[#BBF7D0]" : "bg-[#FEF2F2] border-[#FCA5A5]"}`}>
+                    <span className="text-[12.5px] font-medium text-gray-800">Billing</span>
+                    <span className={`text-[12px] font-semibold ${checklist.billing.ok ? "text-[#15803D]" : "text-[#991B1B]"}`}>
+                      {checklist.billing.ok ? "Clear" : `${checklist.billing.pending_invoices.length} pending invoice(s)`}
+                    </span>
+                  </div>
+                  <div className={`flex items-center justify-between p-3 rounded border ${checklist.prescriptions.ok ? "bg-[#F0FDF4] border-[#BBF7D0]" : "bg-[#FEF2F2] border-[#FCA5A5]"}`}>
+                    <span className="text-[12.5px] font-medium text-gray-800">Prescriptions</span>
+                    <span className={`text-[12px] font-semibold ${checklist.prescriptions.ok ? "text-[#15803D]" : "text-[#991B1B]"}`}>
+                      {checklist.prescriptions.ok ? "Clear" : `${checklist.prescriptions.pending_count} pending`}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded border bg-[#F8FAFC] border-[#F1F5F9]">
+                    <span className="text-[12.5px] font-medium text-gray-800">Documents on file</span>
+                    <span className="text-[12px] font-semibold text-gray-700">{checklist.documents.count}</span>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-[#DDE2EC]">
+                  <div className="text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-2">Room Charges</div>
+                  {checklist.room_charges.segments.length === 0 ? (
+                    <p className="text-[12px] text-[#94A3B8]">No room charges for this stay.</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {checklist.room_charges.segments.map((seg, i) => (
+                        <div key={i} className="flex justify-between text-[12px] text-gray-700">
+                          <span>{seg.ward} · Room {seg.room_no} · Bed {seg.bed_no} ({seg.days}d @ {formatINR(seg.daily_rate)})</span>
+                          <span className="font-medium">{formatINR(seg.amount)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between text-[13px] font-semibold text-gray-900 pt-1.5 border-t border-[#F1F5F9]">
+                        <span>Total</span>
+                        <span>{formatINR(checklist.room_charges.total)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {!checklistClear && (
+                  <div className="mt-4">
+                    <label className="text-[11px] font-medium text-[#64748B] block mb-1">Reason for discharging with pending items</label>
+                    <input
+                      className="w-full border border-[#DDE2EC] p-2 rounded text-[12.5px]"
+                      placeholder="e.g. LAMA -- patient insisted, dues to be settled later"
+                      value={dischargeReason}
+                      onChange={(e) => setDischargeReason(e.target.value)}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-[12.5px] text-[#B91C1C]">Could not load the checklist for this bed.</p>
+            )}
+
+            <div className="flex justify-between mt-5">
+              <Btn variant="outline" size="md" onClick={() => setStep(0)}>← Back</Btn>
+              <Btn variant="primary" size="md" onClick={() => void confirmDischarge()} disabled={discharging || checklistLoading}>
+                {discharging ? "Discharging..." : "Discharge Patient →"}
               </Btn>
             </div>
           </div>
         )}
 
-        {step < 4 && (
-          <div className="flex justify-between mt-5">
-            <Btn variant="outline" size="md" onClick={() => step > 0 ? setStep(s => s - 1) : onComplete()}>
-              {step === 0 ? "Cancel" : "← Back"}
-            </Btn>
-            <Btn variant="primary" size="md" onClick={() => setStep(s => s + 1)}
-              className={!requiredComplete ? "opacity-50 cursor-not-allowed" : ""}>
-              {step === 3 ? "Review Summary →" : "Continue →"}
-            </Btn>
+        {step === 2 && selectedBed && (
+          <div className="space-y-4">
+            <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded p-4 flex items-center gap-3">
+              <span className="text-[#16A34A] text-2xl">✓</span>
+              <div>
+                <div className="font-semibold text-[#15803D] text-sm">{occupantName(selectedBed)} discharged</div>
+                <div className="text-[12px] text-[#16A34A]">
+                  Bed {selectedBed.bed_no} released and room charges billed.
+                  {summaryFailed
+                    ? " Discharge summary could not be generated automatically -- add it manually from the patient's chart."
+                    : " A discharge summary was generated and saved to the patient's chart (Documents tab)."}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-center gap-2">
+              <Btn variant="outline" size="md" onClick={() => { setStep(0); setSelectedBed(null); setChecklist(null); }}>
+                Discharge Another Patient
+              </Btn>
+              <Btn variant="primary" size="md" onClick={onComplete}>Done</Btn>
+            </div>
           </div>
         )}
       </div>

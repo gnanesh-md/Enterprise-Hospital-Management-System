@@ -861,39 +861,6 @@ export class NursingWorkflowDb {
     return this.getAuthenticatedUser().profile;
   }
 
-  static addNote(patientId: string, data: any): any {
-    const list = this.getNotes();
-    const user = this.getAuthenticatedUser();
-    const newNote = {
-      id: `NOT-${Math.floor(3000 + Math.random() * 7000)}`,
-      patientId,
-      patientName: "John Smith",
-      mrn: "100245",
-      admissionId: "IP-2026-00125",
-      ward: "Cardiac Care Unit",
-      bedNo: "204-A",
-      assessment: data.clinicalObservations || data.assessment || "",
-      observation: data.observations || data.observation || "",
-      intervention: data.interventions || data.intervention || "",
-      patientResponse: data.patientResponse || "Patient resting comfortably.",
-      followUp: data.followUpPlan || data.followUp || "Continue monitoring.",
-      remarks: data.remarks || "",
-      vitals: data.vitals,
-      noteType: data.noteType || "Shift Assessment",
-      patientCondition: data.patientCondition || "Stable",
-      isAddendum: data.isAddendum || false,
-      authorNurseId: user.profile.id,
-      authorNurseName: user.profile.name,
-      nurseName: user.profile.name,
-      shift: user.profile.defaultShift || "morning",
-      shiftLabel: user.profile.defaultShift || "Morning · 07:00–15:00",
-      timestamp: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-    };
-    list.unshift(newNote as any);
-    localStorage.setItem(KEY_NOTES, JSON.stringify(list));
-    return newNote;
-  }
 }
 
 export const NursingDatabase = NursingWorkflowDb;
