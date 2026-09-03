@@ -284,6 +284,7 @@ const DEFAULT_STAFF: StaffProfile = {
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string>("admin");
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [activeStaff, setActiveStaff] = useState<StaffProfile>(DEFAULT_STAFF);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [module, setModule] = useState<Module>("dashboard");
@@ -309,8 +310,9 @@ export default function App() {
 
   const isNurse = userRole === "rn";
 
-  const handleLogin = (userData: { user: string; role: string; staffId: string }) => {
+  const handleLogin = (userData: { user: string; role: string; staffId: string; permissions: string[] }) => {
     setUserRole(userData.role);
+    setUserPermissions(userData.permissions);
     setLoggedIn(true);
     setModule("dashboard");
   };
@@ -602,15 +604,25 @@ export default function App() {
               )}
               {module === "appointments" && <Appointments onSelect={() => setModule("chart")} />}
               {module === "emergency" && <ErPage setNotice={setNotice} onNavigate={(m) => setModule(m as any)} />}
-              {module === "inpatient" && <Inpatient navigate={navigate} onOpenPatientClinical={openPatientClinical} />}
-              {module === "beds" && <BedManagementPage setNotice={setNotice} onOpenPatientClinical={openPatientClinical} />}
+              {module === "inpatient" && (
+                <Inpatient navigate={navigate} onOpenPatientClinical={openPatientClinical} permissions={userPermissions} />
+              )}
+              {module === "beds" && (
+                <BedManagementPage
+                  setNotice={setNotice}
+                  onOpenPatientClinical={openPatientClinical}
+                  permissions={userPermissions}
+                />
+              )}
               {module === "nursing" && <NursingPortal />}
               {module === "laboratory" && <Laboratory />}
               {module === "pharmacy" && <Pharmacy />}
               {module === "surgery" && <Surgery />}
               {module === "billing" && <Billing />}
               {module === "radiology" && <Radiology />}
-              {module === "icu" && <ICU />}
+              {module === "icu" && (
+                <ICU navigate={navigate} onOpenPatientClinical={openPatientClinical} permissions={userPermissions} />
+              )}
               {module === "analytics" && <Analytics />}
               {module === "discharge" && <Discharge setNotice={setNotice} onComplete={() => setModule("inpatient")} />}
               {module === "triage" && <Triage setNotice={setNotice} onNavigate={(m) => setModule(m as any)} />}

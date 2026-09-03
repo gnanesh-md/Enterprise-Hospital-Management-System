@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiClock, FiUsers } from "react-icons/fi";
+import { FiBell, FiClock, FiUsers } from "react-icons/fi";
 import { Btn } from "./shared";
 import { bedGenderVariant, bedOccupantName } from "./bed/BedCard";
 import { WardBedBoard } from "./bed/WardBedBoard";
+import ICU from "./ICU";
 import { apiFetch } from "../lib/api";
 import { formatDateTimeIST } from "../lib/format";
 
@@ -23,6 +24,9 @@ type Bed = {
   patient_phone: string | null;
   patient_age: number | null;
   patient_gender: string | null;
+  admission_id: number | null;
+  allocation_id: number | null;
+  allocated_at: string | null;
 };
 
 type Summary = { total: number; available: number; occupied: number; maintenance: number };
@@ -78,6 +82,42 @@ function findMixedGenderRooms(beds: Bed[]): { ward: string; room_no: string; bed
   return flagged;
 }
 
+// A patient is "in ICU" if their bed's ward name contains ICU -- covers the
+// umbrella "ICU" ward plus its SICU/IICU rooms, since ward is free text the
+// hospital names however it likes (see Bed Management's ward field).
+function isIcuBed(bed: Bed): boolean {
+  return bed.ward.toUpperCase().includes("ICU");
+}
+
+// Keyed on allocation_id, not admission_id -- a transfer INTO an ICU bed is
+// its own new bed_allocations row (allocation_id changes) even though the
+// underlying hospital admission_date doesn't, and a transfer is exactly the
+// kind of event ICU staff need notified about, same as a fresh admission.
+function icuAdmissionKey(bed: Bed): string {
+  return `${bed.id}:${bed.allocation_id ?? bed.admission_id ?? bed.admission_date ?? ""}`;
+}
+
+const ICU_ACK_STORAGE_KEY = "hms_icu_admission_acks";
+
+function loadAckedIcuAdmissions(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(ICU_ACK_STORAGE_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveAckedIcuAdmissions(keys: Set<string>) {
+  try {
+    // Cap stored history so this can't grow unbounded over months of use.
+    window.localStorage.setItem(ICU_ACK_STORAGE_KEY, JSON.stringify(Array.from(keys).slice(-500)));
+  } catch {
+    // Best-effort -- a private/blocked storage context just means the same
+    // alert may resurface next visit, not a functional failure.
+  }
+}
+
 function wardOccupancyLevel(occupied: number, total: number): "low" | "high" | "critical" {
   if (total === 0) return "low";
   const pct = (occupied / total) * 100;
@@ -89,9 +129,10 @@ function wardOccupancyLevel(occupied: number, total: number): "low" | "high" | "
 type Props = {
   navigate?: (page: string, sub?: string) => void;
   onOpenPatientClinical?: (patientId: string) => void;
+  permissions?: string[];
 };
 
-export default function Inpatient({ navigate, onOpenPatientClinical }: Props) {
+export default function Inpatient({ navigate, onOpenPatientClinical, permissions }: Props) {
   const [beds, setBeds] = useState<Bed[]>([]);
   const [summary, setSummary] = useState<Summary>({ total: 0, available: 0, occupied: 0, maintenance: 0 });
   const [pendingRequests, setPendingRequests] = useState<ErBedRequest[]>([]);
@@ -139,6 +180,28 @@ export default function Inpatient({ navigate, onOpenPatientClinical }: Props) {
   const mixedGenderRooms = useMemo(() => findMixedGenderRooms(beds), [beds]);
   const hasAlerts = overdueBeds.length > 0 || mixedGenderRooms.length > 0;
 
+  const [ackedIcuAdmissions, setAckedIcuAdmissions] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setAckedIcuAdmissions(loadAckedIcuAdmissions());
+  }, []);
+  const icuAdmissionAlerts = useMemo(
+    () =>
+      beds.filter(
+        (b) =>
+          b.status === "Occupied" &&
+          isIcuBed(b) &&
+          (b.allocated_at || b.admission_date) &&
+          !ackedIcuAdmissions.has(icuAdmissionKey(b)),
+      ),
+    [beds, ackedIcuAdmissions],
+  );
+  const acknowledgeIcuAdmission = (bed: Bed) => {
+    const next = new Set(ackedIcuAdmissions);
+    next.add(icuAdmissionKey(bed));
+    setAckedIcuAdmissions(next);
+    saveAckedIcuAdmissions(next);
+  };
+
   const goToBedManagement = () => navigate?.("beds");
   const openWard = (ward: string) => {
     setSelectedWard(ward);
@@ -183,6 +246,41 @@ export default function Inpatient({ navigate, onOpenPatientClinical }: Props) {
           </div>
         ) : (
           <>
+            {/* ICU admission notifications -- persists per-browser via
+                localStorage until acknowledged, so a fresh allocation always
+                surfaces here even after the page is reloaded. */}
+            {icuAdmissionAlerts.length > 0 && (
+              <div className="bg-[#FEF2F2] border border-[#FCA5A5] rounded mb-5 overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-[#FCA5A5] flex items-center gap-2">
+                  <FiBell className="text-[#B91C1C] animate-pulse" aria-hidden />
+                  <span className="text-xs font-bold text-[#991B1B] uppercase tracking-wider">
+                    ICU Admission Alert{icuAdmissionAlerts.length > 1 ? "s" : ""} ({icuAdmissionAlerts.length})
+                  </span>
+                </div>
+                <div className="p-3 space-y-2">
+                  {icuAdmissionAlerts.map((bed) => (
+                    <div
+                      key={icuAdmissionKey(bed)}
+                      className="flex items-center gap-3 p-2.5 bg-white border border-[#FCA5A5] rounded"
+                    >
+                      <div className="flex-1">
+                        <div className="text-[12.5px] font-semibold text-gray-900">
+                          {bedOccupantName(bed)} allocated to {bed.ward} &middot; Room {bed.room_no} &middot; Bed {bed.bed_no}
+                        </div>
+                        <div className="text-[11.5px] text-[#64748B]">
+                          {bed.patient_age ? `${bed.patient_age}y · ` : ""}
+                          {bed.patient_gender || "Gender N/A"} &middot; Allocated {formatDateTimeIST(bed.allocated_at || bed.admission_date!)}
+                        </div>
+                      </div>
+                      <Btn variant="outline" size="xs" onClick={() => acknowledgeIcuAdmission(bed)}>
+                        Acknowledge
+                      </Btn>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Ward occupancy heatmap -- click a ward to jump to its beds below */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 mb-5">
               {wardNames.map((ward) => {
@@ -276,15 +374,19 @@ export default function Inpatient({ navigate, onOpenPatientClinical }: Props) {
                   </span>
                 )}
               </div>
-              <WardBedBoard
-                rooms={activeRooms}
-                readOnly
-                onPatientClick={
-                  onOpenPatientClinical
-                    ? (bed) => bed.patient_id && onOpenPatientClinical(bed.patient_id)
-                    : undefined
-                }
-              />
+              {activeWard === "ICU" ? (
+                <ICU embedded navigate={navigate} onOpenPatientClinical={onOpenPatientClinical} permissions={permissions} />
+              ) : (
+                <WardBedBoard
+                  rooms={activeRooms}
+                  readOnly
+                  onPatientClick={
+                    onOpenPatientClinical
+                      ? (bed) => bed.patient_id && onOpenPatientClinical(bed.patient_id)
+                      : undefined
+                  }
+                />
+              )}
             </div>
           </>
         )}

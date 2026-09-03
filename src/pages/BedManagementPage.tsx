@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import { FaBed } from "react-icons/fa";
 import {
+  FiActivity,
   FiAlertTriangle,
+  FiBell,
   FiCheckCircle,
+  FiDollarSign,
+  FiHome,
   FiPlus,
   FiRepeat,
   FiSearch,
@@ -35,6 +40,12 @@ type Props = {
   // Clinical chart (Patient Chart) instead of just opening this page's own
   // bed-allocation modal.
   onOpenPatientClinical?: (patientId: string) => void;
+  // From the logged-in user's real backend permissions (see App.tsx's
+  // handleLogin). The server already enforces beds.write on every mutating
+  // route regardless of this -- this is purely UI: hide/disable actions a
+  // receptionist-only or clinician-only account could never actually
+  // complete, instead of letting them click through to a 403.
+  permissions?: string[];
 };
 
 type BedStatus = "Available" | "Occupied" | "Maintenance";
@@ -182,7 +193,13 @@ function bedTypeStyle(bedType: string): CSSProperties {
   return { background: "#f1f5f9", color: "#334155", border: "1px solid #cbd5e1" };
 }
 
-export default function BedManagementPage({ setNotice, onOpenPatientClinical }: Props) {
+export default function BedManagementPage({ setNotice, onOpenPatientClinical, permissions }: Props) {
+  // An empty/undefined permissions array means "not verified against the
+  // real backend" (e.g. the offline login fallback) -- treat that as
+  // allowed rather than locking everyone out; a logged-in account that HAS
+  // a real permissions list but genuinely lacks beds.write is the actual
+  // case this hides actions for.
+  const canManageBeds = !permissions || permissions.length === 0 || permissions.includes("beds.write");
   const [beds, setBeds] = useState<Bed[]>([]);
   const [summary, setSummary] = useState<Summary>({
     total: 0,
@@ -826,7 +843,7 @@ export default function BedManagementPage({ setNotice, onOpenPatientClinical }: 
           </button>
         </div>
 
-        {activeView === "bed_board" && (
+        {activeView === "bed_board" && canManageBeds && (
           <div className="pb-2">
             <Button onClick={() => setAddBedOpen(true)}>
               <FiPlus aria-hidden /> Add Bed
@@ -846,18 +863,21 @@ export default function BedManagementPage({ setNotice, onOpenPatientClinical }: 
         <>
           <div className="stat-grid">
             <StatCard
+              icon={<FaBed aria-hidden />}
               label={selectedWard === "all" ? "Total Beds" : `${selectedWard} — Beds`}
               value={displaySummary.total}
             />
-            <StatCard label="Available" value={displaySummary.available} />
-            <StatCard label="Occupied" value={displaySummary.occupied} />
-            <StatCard label="Maintenance" value={displaySummary.maintenance} />
+            <StatCard icon={<FiCheckCircle aria-hidden />} label="Available" value={displaySummary.available} />
+            <StatCard icon={<FiUser aria-hidden />} label="Occupied" value={displaySummary.occupied} />
+            <StatCard icon={<FiTool aria-hidden />} label="Maintenance" value={displaySummary.maintenance} />
           </div>
 
           {(erRequestsLoading || erRequests.length > 0) && (
             <div className="panel">
               <div className="module-panel-head">
-                <h3 style={{ margin: 0 }}>ER Bed Requests</h3>
+                <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <FiBell aria-hidden /> ER Bed Requests
+                </h3>
                 <p className="muted" style={{ margin: 0 }}>
                   The ER doctor's clinical decision -- pick the actual bed here.
                 </p>
@@ -884,20 +904,26 @@ export default function BedManagementPage({ setNotice, onOpenPatientClinical }: 
                       <TableCell>{req.requested_specialty || "-"}</TableCell>
                       <TableCell>{formatDateTimeIST(req.requested_at)}</TableCell>
                       <TableCell style={{ textAlign: "right" }}>
-                        <Button
-                          type="button"
-                          onClick={() => setAllocatingRequest(req)}
-                        >
-                          Allocate Bed
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="danger"
-                          style={{ marginLeft: "0.5rem" }}
-                          onClick={() => setLamaRequest(req)}
-                        >
-                          LAMA / Cancel
-                        </Button>
+                        {canManageBeds ? (
+                          <>
+                            <Button
+                              type="button"
+                              onClick={() => setAllocatingRequest(req)}
+                            >
+                              Allocate Bed
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="danger"
+                              style={{ marginLeft: "0.5rem" }}
+                              onClick={() => setLamaRequest(req)}
+                            >
+                              LAMA / Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="muted" style={{ fontSize: "0.8rem" }}>View only</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -972,7 +998,14 @@ export default function BedManagementPage({ setNotice, onOpenPatientClinical }: 
             return (
               <div className="bed-ward-block" key={ward}>
                 <div className="bed-ward-header">
-                  <h4 className="bed-ward-title">{ward}</h4>
+                  <h4 className="bed-ward-title">
+                    {ward.toUpperCase().includes("ICU") ? (
+                      <FiActivity aria-hidden style={{ color: "#DC2626" }} />
+                    ) : (
+                      <FiHome aria-hidden />
+                    )}{" "}
+                    {ward}
+                  </h4>
                   <div className="bed-ward-counts">
                     <span
                       className="bed-count-badge bed-count-badge-available"
@@ -1200,12 +1233,16 @@ export default function BedManagementPage({ setNotice, onOpenPatientClinical }: 
                   <FiUser aria-hidden /> View Clinical Chart
                 </Button>
               )}
-              <Button variant="ghost" onClick={openTransfer}>
-                <FiRepeat aria-hidden /> Transfer
-              </Button>
-              <Button variant="destructive" onClick={() => void openDischarge()}>
-                Discharge
-              </Button>
+              {canManageBeds && (
+                <>
+                  <Button variant="ghost" onClick={openTransfer}>
+                    <FiRepeat aria-hidden /> Transfer
+                  </Button>
+                  <Button variant="destructive" onClick={() => void openDischarge()}>
+                    Discharge
+                  </Button>
+                </>
+              )}
             </div>
           </>
         )}
@@ -1383,8 +1420,8 @@ export default function BedManagementPage({ setNotice, onOpenPatientClinical }: 
                   </Table>
                 </div>
                 <div className="module-panel-head" style={{ marginTop: "0.75rem" }}>
-                  <h3>
-                    Room Charges Total:{" "}
+                  <h3 style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                    <FiDollarSign aria-hidden /> Room Charges Total:{" "}
                     {formatINR(
                       roomChargeSegments.reduce((sum, s) => sum + s.days * s.daily_rate, 0),
                     )}
@@ -1437,7 +1474,10 @@ export default function BedManagementPage({ setNotice, onOpenPatientClinical }: 
                 <FiTool aria-hidden /> This bed is marked under maintenance.
               </p>
             )}
-            {selectedBed.status === "Available" && (
+            {selectedBed.status === "Available" && !canManageBeds && (
+              <p className="muted">This bed is available. You don't have permission to admit a patient here.</p>
+            )}
+            {selectedBed.status === "Available" && canManageBeds && (
               <>
                 <Label>Find Patient</Label>
                 <Input
@@ -1531,25 +1571,27 @@ export default function BedManagementPage({ setNotice, onOpenPatientClinical }: 
               </>
             )}
 
-            <div className="bed-detail-footer-actions">
-              <button
-                type="button"
-                className="bed-link-button"
-                onClick={handleToggleMaintenance}
-                disabled={savingBedEdit}
-              >
-                {selectedBed.status === "Maintenance"
-                  ? "Mark Available"
-                  : "Mark Under Maintenance"}
-              </button>
-              <button
-                type="button"
-                className="bed-link-button"
-                onClick={() => setEditingBedDetails(true)}
-              >
-                Edit Bed Details
-              </button>
-            </div>
+            {canManageBeds && (
+              <div className="bed-detail-footer-actions">
+                <button
+                  type="button"
+                  className="bed-link-button"
+                  onClick={handleToggleMaintenance}
+                  disabled={savingBedEdit}
+                >
+                  {selectedBed.status === "Maintenance"
+                    ? "Mark Available"
+                    : "Mark Under Maintenance"}
+                </button>
+                <button
+                  type="button"
+                  className="bed-link-button"
+                  onClick={() => setEditingBedDetails(true)}
+                >
+                  Edit Bed Details
+                </button>
+              </div>
+            )}
           </>
         )}
 

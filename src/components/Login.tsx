@@ -3,7 +3,7 @@ import { API_BASE } from "../lib/constants";
 import { withAuthHeaders } from "../lib/api";
 
 interface LoginProps {
-  onLogin: (userData: { user: string; role: string; staffId: string }) => void;
+  onLogin: (userData: { user: string; role: string; staffId: string; permissions: string[] }) => void;
 }
 
 export default function Login({ onLogin }: LoginProps) {
@@ -32,7 +32,7 @@ export default function Login({ onLogin }: LoginProps) {
       const effectiveRole = data.user?.role || role;
       const staffId = data.user?.employee_id ||
         (effectiveRole === "admin" ? "ADM-001" : effectiveRole === "rn" ? "RN-8821" : "DOC-4401");
-      onLogin({ user: user.trim(), role: effectiveRole, staffId });
+      onLogin({ user: user.trim(), role: effectiveRole, staffId, permissions: data.user?.permissions || [] });
     } catch (err) {
       // If backend API is unreachable (connection refused / offline), fallback to standalone client-side authentication
       const isConnectionError = err instanceof TypeError || (err instanceof Error && (err.message.includes("fetch") || err.message.includes("network") || err.message.includes("Is the backend running")));
@@ -40,7 +40,10 @@ export default function Login({ onLogin }: LoginProps) {
       if (isConnectionError) {
         const effectiveRole = role;
         const staffId = effectiveRole === "admin" ? "ADM-001" : effectiveRole === "rn" ? "RN-8821" : "DOC-4401";
-        onLogin({ user: user.trim(), role: effectiveRole, staffId });
+        // No real backend to check permissions against in this fallback --
+        // nothing that needs beds.write etc. can actually save without the
+        // backend anyway, so this is never a real privilege escalation.
+        onLogin({ user: user.trim(), role: effectiveRole, staffId, permissions: [] });
         return;
       }
       setError(err instanceof Error ? err.message : "Unable to sign in. Please check your credentials.");
