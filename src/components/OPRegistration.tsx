@@ -441,7 +441,14 @@ export default function OPRegistration({ onProceedToQueue }: { onProceedToQueue?
                     <>
                       <span>✓</span> Register OP &amp; Generate UMR / OP Number
                     </>
-            {/* ── TAB 2: EXISTING PATIENT REVISIT WORKFLOW ───────────────── */}
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ── TAB 2: EXISTING PATIENT REVISIT WORKFLOW ───────────────── */}
         {activeTab === "revisit" && (
           <div className="bg-white border-2 border-[#CBD5E1] rounded p-7 shadow-md space-y-6">
             <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-4">

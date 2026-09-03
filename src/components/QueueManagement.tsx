@@ -185,7 +185,9 @@ export default function QueueManagement({
 
     loadData();
     const unsubscribe = db.subscribe(loadData);
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Sync token doctor choices when dept changes

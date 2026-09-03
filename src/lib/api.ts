@@ -66,8 +66,15 @@ async function handleLocalErMock<T = any>(path: string, options: RequestInit = {
     const { patient: pData, visit: vData, complaint: cData, vitals: vtData } = body;
     const res = await ErDatabase.createVisit({
       patientDetails: pData,
+      arrivalDate: vData?.arrival_date,
+      arrivalTime: vData?.arrival_time,
       arrivalMode: vData?.arrival_mode,
+      broughtBy: vData?.brought_by,
+      attendantName: vData?.attendant_name,
+      attendantRelation: vData?.attendant_relation,
       conditionAtArrival: vData?.condition_at_arrival,
+      consciousness: vData?.consciousness,
+      infoProvidedBy: vData?.info_provided_by,
       policeInvolved: vData?.police_involved,
       complaintText: cData?.[0]?.complaint,
       caseCategory: cData?.[0]?.case_category,
@@ -86,8 +93,15 @@ async function handleLocalErMock<T = any>(path: string, options: RequestInit = {
       patientId: body.patient_id,
       isUnknown: body.is_unknown_patient,
       unknownLabel: body.unknown_patient_label,
+      arrivalDate: body.arrival_date,
+      arrivalTime: body.arrival_time,
       arrivalMode: body.arrival_mode,
+      broughtBy: body.brought_by,
+      attendantName: body.attendant_name,
+      attendantRelation: body.attendant_relation,
       conditionAtArrival: body.condition_at_arrival,
+      consciousness: body.consciousness,
+      infoProvidedBy: body.info_provided_by,
       policeInvolved: body.police_involved,
     });
     return { id: res.visit.id, visit_no: res.visit.visit_no } as T;
@@ -146,11 +160,19 @@ async function handleLocalErMock<T = any>(path: string, options: RequestInit = {
   }
 
   // POST /api/er/visits/:id/notes
-  const notesMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/notes$/);
+  const notesMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/(notes|clinical-notes)$/);
   if (notesMatch && method === "POST") {
     const visitId = parseInt(notesMatch[1]);
     const n = ErDatabase.addClinicalNote(visitId, body);
     return { note_id: n.id } as T;
+  }
+
+  // POST /api/er/visits/:id/investigations
+  const invMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/investigations$/);
+  if (invMatch && method === "POST") {
+    const visitId = parseInt(invMatch[1]);
+    const inv = ErDatabase.addInvestigation(visitId, body);
+    return { investigation_id: inv.id } as T;
   }
 
   // POST /api/er/visits/:id/bed-requests

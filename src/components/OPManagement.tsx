@@ -123,7 +123,9 @@ export default function OPManagement({
     };
     loadData();
     const unsubscribe = db.subscribe(loadData);
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   // Top Statistics Calculations
