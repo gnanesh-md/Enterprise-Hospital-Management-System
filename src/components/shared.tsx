@@ -244,41 +244,6 @@ export function TimelineItem({ time, type, title, detail, isLast }: {
   );
 }
 
-// ─── Patient Banner ───────────────────────────────────────────────────────────
-export function PatientBanner({ onAction }: { onAction?: (a: string) => void }) {
-  return (
-    <div className="bg-white border-b border-[#DDE2EC] px-5 py-3">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#1B4FD8] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">JS</div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-base font-semibold text-gray-900">John Smith</span>
-              <span className="bg-[#FEE2E2] text-[#B91C1C] text-[11px] font-semibold px-2 py-0.5 rounded border border-[#FECACA] flex items-center gap-1">
-                ⚠ ALLERGY: Penicillin
-              </span>
-              <StatusBadge status="Inpatient" />
-            </div>
-            <div className="flex items-center gap-3 mt-0.5 text-[11.5px] text-[#64748B] flex-wrap">
-              <span>DOB: 04/12/1985 · 41 yrs · Male</span>
-              <span className="font-mono text-[#374151]">MRN: 100245</span>
-              <span>PCP: Dr. Anderson</span>
-              <span>Room: 204 · 3N Medical</span>
-              <span>Ins: BlueCross PPO</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Btn variant="primary" size="xs" onClick={() => onAction?.("order")}>+ New Order</Btn>
-          <Btn variant="outline" size="xs" onClick={() => onAction?.("note")}>Note</Btn>
-          <Btn variant="outline" size="xs" onClick={() => onAction?.("message")}>Message</Btn>
-          <Btn variant="outline" size="xs" onClick={() => onAction?.("admit")}>Admit</Btn>
-          <Btn variant="ghost" size="xs">More ▼</Btn>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Tab Bar ──────────────────────────────────────────────────────────────────
 export function TabBar({ tabs, active, onChange }: { tabs: string[]; active: string; onChange: (t: string) => void }) {

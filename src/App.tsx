@@ -287,6 +287,14 @@ export default function App() {
   const [activeStaff, setActiveStaff] = useState<StaffProfile>(DEFAULT_STAFF);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [module, setModule] = useState<Module>("dashboard");
+  // Set alongside setModule("chart") when another page (e.g. a bed card's
+  // patient name) wants Patient Chart to open directly on that patient
+  // instead of its own directory.
+  const [clinicalPatientId, setClinicalPatientId] = useState<string | null>(null);
+  const openPatientClinical = (patientId: string) => {
+    setClinicalPatientId(patientId);
+    setModule("chart");
+  };
   const [expanded, setExpanded] = useState<string[]>(["patients", "outpatient"]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
@@ -587,13 +595,15 @@ export default function App() {
               {module === "chart" && (
                 <PatientChart
                   onBack={() => setModule("patients")}
-                  openOrder={() => setOrderOpen(true)}
+                  setNotice={setNotice}
+                  initialPatientId={clinicalPatientId}
+                  onConsumeInitialPatient={() => setClinicalPatientId(null)}
                 />
               )}
               {module === "appointments" && <Appointments onSelect={() => setModule("chart")} />}
               {module === "emergency" && <ErPage setNotice={setNotice} onNavigate={(m) => setModule(m as any)} />}
-              {module === "inpatient" && <Inpatient />}
-              {module === "beds" && <BedManagementPage setNotice={setNotice} />}
+              {module === "inpatient" && <Inpatient navigate={navigate} onOpenPatientClinical={openPatientClinical} />}
+              {module === "beds" && <BedManagementPage setNotice={setNotice} onOpenPatientClinical={openPatientClinical} />}
               {module === "nursing" && <NursingPortal />}
               {module === "laboratory" && <Laboratory />}
               {module === "pharmacy" && <Pharmacy />}

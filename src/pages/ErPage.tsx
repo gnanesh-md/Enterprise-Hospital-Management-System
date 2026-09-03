@@ -452,6 +452,41 @@ function mapUrgencyToTriageCategory(urgency: string, categories: TriageCategory[
   return byCode ? byCode.category_code : "";
 }
 
+type BedNeedSuggestion = { levelOfCare: string; specialty: string | null; reason: string } | null;
+
+// Suggests which ward/level-of-care a visit will likely need at disposition
+// time, purely from what's already been charted in the ER (triage category's
+// acuity + the specialty a doctor was already assigned under) -- no new AI
+// call, so it's free and instant, and it never overrides staff: DispositionForm
+// only offers it as a one-click "Apply" hint, staff still choose the outcome.
+function suggestBedNeed(
+  triageCategory: string | null,
+  assignedSpecialty: string | null,
+  categories: TriageCategory[],
+): BedNeedSuggestion {
+  const cat = categories.find((c) => c.category_code === triageCategory);
+  const label = (cat?.category_label || "").toLowerCase();
+  let levelOfCare = "";
+  if (label.includes("immediate") || label.includes("critical") || label.includes("resuscitation")) {
+    levelOfCare = "icu";
+  } else if (label.includes("high") || label.includes("severe") || label.includes("emergent")) {
+    levelOfCare = "icu";
+  } else if (label.includes("moderate") || label.includes("urgent")) {
+    levelOfCare = "ward";
+  } else if (label.includes("low") || label.includes("minor")) {
+    levelOfCare = "observation";
+  }
+  if (!levelOfCare && !assignedSpecialty) return null;
+  const reasonParts: string[] = [];
+  if (cat) reasonParts.push(`triage ${cat.category_code} — ${cat.category_label}`);
+  if (assignedSpecialty) reasonParts.push(`assigned to ${assignedSpecialty}`);
+  return {
+    levelOfCare: levelOfCare || "ward",
+    specialty: assignedSpecialty || null,
+    reason: reasonParts.join(", ") || "ER assessment",
+  };
+}
+
 // Turns a visit's recorded complaints + most recent vitals into the free-text
 // "symptoms" the AI triage prompt reasons over -- the same shape Quick Intake,
 // the AI Triage Assistant panel, and Doctor Assignment's AI suggestion all
@@ -2025,7 +2060,12 @@ function VisitDetailPanel({
                 )}
 
                 {!detail.disposition && (
-                  <DispositionForm visitId={detail.id} setNotice={setNotice} onSaved={onRefresh} />
+                  <DispositionForm
+                    visitId={detail.id}
+                    bedNeed={suggestBedNeed(detail.triage_category, detail.assigned_specialty, categories)}
+                    setNotice={setNotice}
+                    onSaved={onRefresh}
+                  />
                 )}
 
                 {pendingBedRequest && (
@@ -4058,10 +4098,12 @@ function AddNoteForm({
 
 function DispositionForm({
   visitId,
+  bedNeed,
   setNotice,
   onSaved,
 }: {
   visitId: number;
+  bedNeed: BedNeedSuggestion;
   setNotice: (notice: Notice | null) => void;
   onSaved: () => void;
 }) {
@@ -4070,6 +4112,12 @@ function DispositionForm({
   const [clinicalReason, setClinicalReason] = useState("");
   const [priority, setPriority] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const applyBedNeedSuggestion = () => {
+    if (!bedNeed) return;
+    setOutcome(bedNeed.levelOfCare);
+    if (bedNeed.specialty) setRequiredSpecialty(bedNeed.specialty);
+  };
 
   const submit = async () => {
     if (!outcome || !clinicalReason.trim()) {
@@ -4106,6 +4154,29 @@ function DispositionForm({
 
   return (
     <div className="module-form-grid" style={{ marginTop: "0.75rem" }}>
+      {bedNeed && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "0.6rem",
+            background: "#f0f9ff",
+            border: "1px solid #bae6fd",
+            borderRadius: "8px",
+            padding: "0.55rem 0.75rem",
+          }}
+        >
+          <span style={{ fontSize: "0.82rem", color: "#0369a1" }}>
+            <strong>Suggested: {OUTCOME_OPTIONS.find((o) => o.value === bedNeed.levelOfCare)?.label || bedNeed.levelOfCare}</strong>
+            {bedNeed.specialty ? ` · ${bedNeed.specialty}` : ""}
+            <span className="muted"> (based on {bedNeed.reason})</span>
+          </span>
+          <Button size="sm" variant="secondary" onClick={applyBedNeedSuggestion}>
+            Apply
+          </Button>
+        </div>
+      )}
       <Select value={outcome} onChange={(e) => setOutcome(e.target.value)}>
         <option value="">Select outcome</option>
         {OUTCOME_OPTIONS.map((o) => (

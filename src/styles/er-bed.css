@@ -620,6 +620,57 @@
   font-weight: 600;
 }
 
+/* ── Horizontal room tabs (ward dropdown selects the ward; these select
+   which room within it is open) ─────────────────────────────────────── */
+.ward-room-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.ward-room-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 120ms ease;
+}
+
+.ward-room-tab:hover {
+  border-color: #1B4FD8;
+  color: #1B4FD8;
+}
+
+.ward-room-tab-active {
+  background: #1B4FD8;
+  border-color: #1B4FD8;
+  color: #fff;
+}
+
+.ward-room-tab-count {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.ward-room-tab:not(.ward-room-tab-active) .ward-room-tab-count {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
 .bed-legend-item {
   display: flex;
   align-items: center;
@@ -679,17 +730,6 @@
 .bed-count-badge-occupied { background: #DC2626; }
 .bed-count-badge-maintenance { background: #D97706; }
 
-.bed-room-block {
-  margin-bottom: 0.95rem;
-}
-
-.bed-room-title {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: hsl(var(--muted-foreground));
-  margin: 0 0 0.4rem 0;
-}
-
 .bed-icon {
   font-size: 0.95rem;
 }
@@ -708,6 +748,11 @@
   border: 1px solid #C4B5FD;
 }
 
+.bed-legend-swatch-available { background: #F8FAFC; border: 1px dashed #94A3B8; }
+.bed-legend-swatch-male { background: #2563EB; }
+.bed-legend-swatch-female { background: #DB2777; }
+.bed-legend-swatch-maintenance { background: #D97706; }
+
 .bed-occupancy-bar {
   display: flex;
   height: 0.35rem;
@@ -722,143 +767,172 @@
 .bed-occupancy-segment-occupied { background: #DC2626; }
 .bed-occupancy-segment-maintenance { background: #D97706; }
 
-.bed-card-grid {
+/* ── Inpatient bed board / Bed Management shared card ────────────────────
+   The same visible-details card (patient name/age/gender right on the tile,
+   not hidden behind a hover) used on both the Inpatient Bed Board and Bed
+   Management pages, so the two screens read identically. Color = gender for
+   an occupied bed (blue/male, pink/female, violet/other-or-unknown) so
+   occupancy reads at a glance; a hover tooltip adds the secondary details
+   (phone, admission timestamp, charges) that don't fit on the card itself. */
+.bed-info-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 0.6rem;
 }
 
-.bed-card {
-  display: flex;
-  flex-direction: column;
+.bed-info-card {
+  position: relative;
   border-radius: var(--radius);
-  border: 1px solid hsl(var(--border));
-  background: hsl(var(--card));
-  overflow: hidden;
-  transition: border-color 120ms ease;
+  overflow: visible;
 }
 
-.bed-card:hover {
-  border-color: #1B4FD8;
-}
-
-.bed-card-icu {
+.bed-info-card-icu .bed-info-card-main {
   border-left: 3px solid #7C3AED;
 }
 
-.bed-card-main {
+.bed-info-card-main {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.65rem 0.75rem;
-  border: none;
-  background: none;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  min-height: 78px;
+  border-radius: var(--radius);
+  border: 1px solid;
   text-align: left;
   cursor: pointer;
   font-family: inherit;
-  width: 100%;
+  transition: box-shadow 120ms ease, transform 120ms ease;
 }
 
-.bed-card-top {
+.bed-info-card-main:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+}
+
+.bed-info-card-main-static {
+  cursor: default;
+}
+
+.bed-info-card-main-static:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.bed-info-card-available .bed-info-card-main { background: #F0FDF4; border-color: #BBF7D0; color: #15803D; }
+.bed-info-card-maintenance .bed-info-card-main { background: #FFFBEB; border-color: #FDE68A; color: #B45309; }
+.bed-info-card-occupied-male .bed-info-card-main { background: #EFF6FF; border-color: #BFDBFE; color: #1E40AF; }
+.bed-info-card-occupied-female .bed-info-card-main { background: #FDF2F8; border-color: #FBCFE8; color: #BE185D; }
+.bed-info-card-occupied-other .bed-info-card-main { background: #F5F3FF; border-color: #DDD6FE; color: #6D28D9; }
+
+.bed-info-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
-.bed-card-number {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-weight: 700;
-  font-size: 12.5px;
-  color: hsl(var(--foreground));
-}
-
-.bed-card-type-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 0.12rem 0.45rem;
-  border-radius: 999px;
-  white-space: nowrap;
-  background: hsl(var(--muted));
-  color: hsl(var(--muted-foreground));
-}
-
-.bed-card-status-text {
+.bed-info-card-label {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  font-size: 11.5px;
-  color: hsl(var(--muted-foreground));
-}
-
-.bed-card-status-available {
-  color: #16A34A;
+  font-size: 11px;
   font-weight: 600;
+  color: #64748B;
 }
 
-.bed-card-occupant {
+.bed-info-card-icon {
+  font-size: 0.85rem;
+}
+
+.bed-info-card-type {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.bed-info-card-occupant {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.1rem;
 }
 
-.bed-card-occupant-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: hsl(var(--foreground));
+.bed-info-card-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #0F172A;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.bed-card-los-label {
-  font-size: 10.5px;
-  color: hsl(var(--muted-foreground));
+.bed-info-card-name-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  transition: text-decoration-color 120ms ease;
 }
 
-.bed-card-charges-label {
-  font-size: 10.5px;
-  font-weight: 600;
-  color: #15803D;
+.bed-info-card-name-link:hover,
+.bed-info-card-name-link:focus-visible {
+  text-decoration-color: currentColor;
 }
 
-.bed-los-bar {
-  height: 0.28rem;
-  border-radius: 999px;
-  background: hsl(var(--muted));
-  overflow: hidden;
+.bed-info-card-meta {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
 }
 
-.bed-los-bar-fill { height: 100%; background: #16A34A; }
-.bed-los-bar-fill-warning { background: #DC2626; }
-
-.bed-card-actions {
-  display: flex;
-  border-top: 1px solid hsl(var(--border));
-}
-
-.bed-card-action-btn {
-  flex: 1;
+.bed-info-card-status {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  padding: 0.35rem;
-  font-size: 10.5px;
+  gap: 0.3rem;
+  font-size: 11.5px;
   font-weight: 600;
-  color: hsl(var(--muted-foreground));
-  background: none;
-  border: none;
-  border-right: 1px solid hsl(var(--border));
-  cursor: pointer;
-  font-family: inherit;
+  flex: 1;
 }
 
-.bed-card-action-btn:last-child { border-right: none; }
-.bed-card-action-btn:hover { background: #F8FAFC; }
-.bed-card-action-btn-danger:hover { color: #DC2626; }
+.bed-info-card-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 190px;
+  max-width: 240px;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: #0F172A;
+  color: #F1F5F9;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: left;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 20;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
+}
+
+.bed-info-card-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #0F172A;
+}
+
+.bed-info-card:hover .bed-info-card-tooltip {
+  opacity: 1;
+}
 
 .bed-transfer-target-list {
   max-height: 210px;
