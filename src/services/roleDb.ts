@@ -15,13 +15,13 @@ export interface AppUser {
   status?: "Active" | "Inactive";
 }
 
-const ROLES_STORAGE_KEY = "hospai_rbac_roles_v8";
+const ROLES_STORAGE_KEY = "hospai_rbac_roles_v9";
 const USERS_STORAGE_KEY = "hospai_rbac_users_v2";
 
 export const ALL_SYSTEM_MODULES = [
   "dashboard", "patients", "appointments", "emergency",
   "clinical", "inpatient", "nursing", "laboratory",
-  "radiology", "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns",
+  "radiology", "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns", "pharmacy_supplier_returns",
   "pharmacy_medicine", "pharmacy_category", "pharmacy_suppliers", "pharmacy_po",
   "pharmacy_grn", "pharmacy_ledger", "pharmacy_transfers", "pharmacy_expiry", "pharmacy_analytics",
   "pharmacy_notifications", "pharmacy_users", "pharmacy_audit", "pharmacy_settings",
@@ -63,7 +63,7 @@ const INITIAL_ROLES: AppRole[] = [
     id: "ROLE_PHARMACY",
     name: "Pharmacist / Pharmacy Staff",
     allowedModules: [
-      "dashboard", "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns",
+      "dashboard", "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns", "pharmacy_supplier_returns",
       "pharmacy_medicine", "pharmacy_category", "pharmacy_suppliers", "pharmacy_po",
       "pharmacy_grn", "pharmacy_ledger", "pharmacy_transfers", "pharmacy_expiry", "pharmacy_analytics",
       "pharmacy_notifications", "pharmacy_settings",
@@ -85,7 +85,7 @@ const INITIAL_ROLES: AppRole[] = [
     name: "Pharmacy Manager",
     allowedModules: [
       "dashboard", "reports", "inventory",
-      "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns",
+      "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns", "pharmacy_supplier_returns",
       "pharmacy_medicine", "pharmacy_category", "pharmacy_suppliers", "pharmacy_po",
       "pharmacy_grn", "pharmacy_ledger", "pharmacy_transfers", "pharmacy_expiry", "pharmacy_analytics",
       "pharmacy_notifications", "pharmacy_users", "pharmacy_audit", "pharmacy_settings"
@@ -96,7 +96,7 @@ const INITIAL_ROLES: AppRole[] = [
     name: "Pharmacist",
     allowedModules: [
       "dashboard",
-      "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns",
+      "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns", "pharmacy_supplier_returns",
       "pharmacy_medicine", "pharmacy_category", "pharmacy_suppliers", "pharmacy_po",
       "pharmacy_grn", "pharmacy_ledger", "pharmacy_transfers", "pharmacy_expiry", "pharmacy_analytics"
     ]
@@ -105,7 +105,7 @@ const INITIAL_ROLES: AppRole[] = [
     id: "ROLE_PHARMACY_ASSISTANT",
     name: "Pharmacy Assistant",
     allowedModules: [
-      "dashboard", "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns",
+      "dashboard", "pharmacy", "pharmacy_dispensing", "pharmacy_rx", "pharmacy_ocr", "pharmacy_returns", "pharmacy_supplier_returns",
       "pharmacy_medicine", "pharmacy_ledger", "pharmacy_expiry"
     ]
   }

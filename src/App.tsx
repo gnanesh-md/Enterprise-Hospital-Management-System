@@ -57,7 +57,7 @@ type Module =
   | "dashboard" | "patients" | "appointments" | "emergency"
   | "clinical" | "inpatient" | "nursing" | "laboratory"
   | "radiology" | "pharmacy"
-  | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns"
+  | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns"
   | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers"
   | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger"
   | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics"
@@ -143,9 +143,10 @@ const NAV: NavItem[] = [
       { key: "pharmacy_rx", label: "Prescription Queue", group: "Sales & Dispensing" },
       { key: "pharmacy_returns", label: "Sales Returns", group: "Sales & Dispensing" },
       { key: "pharmacy_medicine", label: "Medicine Master", group: "Catalog" },
-      { key: "pharmacy_category", label: "Category Master", group: "Catalog" },
-      { key: "pharmacy_suppliers", label: "Suppliers", group: "Procurement" },
-      { key: "pharmacy_po", label: "Purchase Orders", group: "Procurement" },
+      { key: "pharmacy_category", label: "Categories", group: "Inventory Management" },
+      { key: "pharmacy_suppliers", label: "Suppliers", group: "Inventory Management" },
+      { key: "pharmacy_supplier_returns", label: "Supplier Returns", group: "Inventory Management" },
+      { key: "pharmacy_po", label: "Purchase Orders", group: "Procurement & Receiving" },
       { key: "pharmacy_grn", label: "Scan Invoice (GRN)", group: "Procurement" },
       { key: "pharmacy_ledger", label: "Inventory Ledger", group: "Inventory" },
       { key: "pharmacy_expiry", label: "Expiry Management", group: "Inventory" },

@@ -14,6 +14,7 @@ const MODULE_TO_PAGE: Record<string, string> = {
   pharmacy_rx: "prescriptions",
   pharmacy_ocr: "ocr",
   pharmacy_returns: "sales-returns",
+  pharmacy_supplier_returns: "supplier-returns",
   pharmacy_medicine: "medicines",
   pharmacy_category: "categories",
   pharmacy_suppliers: "suppliers",

@@ -275,7 +275,25 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 const completeTransaction = () => {
       if (cart.length === 0) return;
       
-      const billId = "INV-" + new Date().getFullYear() + "-" + Math.floor(1000 + Math.random() * 9000);
+      // Real-world sequential bill ID generation
+      const allBills = PharmacyDatabase.getBills();
+      const year = new Date().getFullYear();
+      const currentYearBills = allBills.filter(b => b.billNumber.startsWith(`BILL-${year}-`));
+      
+      let nextSeq = 1;
+      if (currentYearBills.length > 0) {
+        const sequences = currentYearBills.map(b => {
+          const parts = b.billNumber.split('-');
+          return parts.length === 3 ? parseInt(parts[2], 10) : 0;
+        }).filter(n => !isNaN(n));
+        
+        if (sequences.length > 0) {
+          nextSeq = Math.max(...sequences) + 1;
+        }
+      }
+      
+      const seqString = String(nextSeq).padStart(6, '0');
+      const billId = `BILL-${year}-${seqString}`;
       setLastBillId(billId);
       setPrintDate(new Date().toLocaleString());
       

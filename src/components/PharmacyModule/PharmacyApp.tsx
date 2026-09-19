@@ -19,6 +19,8 @@ import Reports from "./pages/Reports";
 import Notifications from "./pages/Notifications";
 import AuditLog from "./pages/AuditLog";
 
+import SupplierReturns from "./pages/SupplierReturns";
+
 const pages: Record<string, React.ComponentType<{ onNavigate: (page: string) => void }>> = {
   dashboard: Dashboard,
   dispensing: Dispensing,
@@ -32,6 +34,7 @@ const pages: Record<string, React.ComponentType<{ onNavigate: (page: string) => 
   "stock-transfers": StockTransfers,
   "expiry-low-stock": ExpiryLowStock,
   "sales-returns": SalesReturns,
+  "supplier-returns": SupplierReturns,
   reports: Reports,
   notifications: Notifications,
   "audit-log": AuditLog,

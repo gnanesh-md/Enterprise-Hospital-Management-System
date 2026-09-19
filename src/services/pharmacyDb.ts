@@ -147,7 +147,7 @@ export interface AppGRN {
   createdAt: string;
 }
 
-export type StockTransactionType = "PURCHASE_RECEIVED" | "DISPENSED" | "RETURNED" | "EXPIRED" | "ADJUSTMENT" | "DAMAGED" | "TRANSFER_OUT" | "TRANSFER_IN";
+export type StockTransactionType = "PURCHASE_RECEIVED" | "DISPENSED" | "RETURNED" | "EXPIRED" | "ADJUSTMENT" | "DAMAGED" | "TRANSFER_OUT" | "TRANSFER_IN" | "SUPPLIER_RETURN";
 
 export interface AppStockTransaction {
   id: string;
@@ -371,15 +371,23 @@ export interface AppStockTransfer {
 }
 
 export interface AppSupplierReturn {
-  id: string;
+  id: string; // returnId internal
+  debitNoteNumber: string; // DN-YYYY-XXXXX
   supplierId: string;
   medicineId: string;
   batchId: string;
   quantity: number;
-  reason: "Expired" | "Damaged" | "Wrong Item";
-  status: "Requested" | "Approved" | "Credit Note Received";
-  creditNoteId?: string;
+  purchaseRate: number;
+  returnAmount: number;
+  reason: string;
+  status: "Draft" | "Submitted" | "Approved" | "Sent To Supplier" | "Credit Note Pending" | "Credit Received" | "Closed";
+  poNumber?: string;
+  grnNumber?: string;
+  invoiceNumber?: string;
+  createdBy: string;
+  approvedBy?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AppStockAdjustment {
@@ -396,24 +404,24 @@ export interface AppStockAdjustment {
 }
 
 
-const USERS_KEY = "hospai_pharm_users_v2";
-const NOTIFICATIONS_KEY = "hospai_pharm_notifications_v2";
-const AUDIT_LOGS_KEY = "hospai_pharm_audit_logs_v2";
+const USERS_KEY = "hospai_pharm_users_v4";
+const NOTIFICATIONS_KEY = "hospai_pharm_notifications_v4";
+const AUDIT_LOGS_KEY = "hospai_pharm_audit_logs_v4";
 
-const CATEGORIES_KEY = "hospai_pharm_categories_v2";
-const SUPPLIERS_KEY = "hospai_pharm_suppliers_v2";
-const MEDICINES_KEY = "hospai_pharm_medicines_v2";
-const BATCHES_KEY = "hospai_pharm_batches_v2";
-const POS_KEY = "hospai_pharm_pos_v2";
-const GRNS_KEY = "hospai_pharm_grns_v2";
-const STOCK_TXS_KEY = "hospai_pharm_stock_txs_v2";
-const PRESCRIPTIONS_KEY = "hospai_pharm_rx_v2";
-const BILLS_KEY = "hospai_pharm_bills_v2";
-const RETURNS_KEY = "hospai_pharm_returns_v2";
-const TRANSFERS_KEY = "hospai_pharm_transfers_v2";
-const SUPPLIER_RETURNS_KEY = "hospai_pharm_supp_returns_v2";
-const ADJUSTMENTS_KEY = "hospai_pharm_adjustments_v2";
-const CLARIFICATIONS_KEY = "hospai_pharm_clarifications_v2";
+const CATEGORIES_KEY = "hospai_pharm_categories_v4";
+const SUPPLIERS_KEY = "hospai_pharm_suppliers_v4";
+const MEDICINES_KEY = "hospai_pharm_medicines_v4";
+const BATCHES_KEY = "hospai_pharm_batches_v4";
+const POS_KEY = "hospai_pharm_pos_v4";
+const GRNS_KEY = "hospai_pharm_grns_v4";
+const STOCK_TXS_KEY = "hospai_pharm_stock_txs_v4";
+const PRESCRIPTIONS_KEY = "hospai_pharm_rx_v4";
+const BILLS_KEY = "hospai_pharm_bills_v4";
+const RETURNS_KEY = "hospai_pharm_returns_v4";
+const TRANSFERS_KEY = "hospai_pharm_transfers_v4";
+const SUPPLIER_RETURNS_KEY = "hospai_pharm_supp_returns_v4";
+const ADJUSTMENTS_KEY = "hospai_pharm_adjustments_v4";
+const CLARIFICATIONS_KEY = "hospai_pharm_clarifications_v4";
 
 export class PharmacyDatabase {
   // Categories
@@ -687,7 +695,8 @@ export class PharmacyDatabase {
     if (typeof window === "undefined") return [];
     try {
       const stored = window.localStorage.getItem(PRESCRIPTIONS_KEY);
-      return stored ? JSON.parse(stored) : [];
+      const prescriptions: AppPrescription[] = stored ? JSON.parse(stored) : [];
+      return prescriptions;
     } catch { return []; }
   }
   static savePrescriptions(rx: AppPrescription[]) {
@@ -705,173 +714,6 @@ export class PharmacyDatabase {
       const stored = window.localStorage.getItem(BILLS_KEY);
       let bills: AppPharmacyBill[] = stored ? JSON.parse(stored) : [];
       if (!Array.isArray(bills)) bills = [];
-
-      // Ensure standard seed bills exist for immediate testing
-      const hasStandardSeed1 = bills.some(b => b.billNumber === "BILL-2026-001245");
-      const hasStandardSeed2 = bills.some(b => b.billNumber === "INV-2026-8845");
-
-      let hasNewSeeds = false;
-
-      // Seed Bill 1: Rahul Verma (BILL-2026-001245)
-      if (!hasStandardSeed1) {
-        const seedBill1: AppPharmacyBill = {
-          id: "PB-2026-001245",
-          billNumber: "BILL-2026-001245",
-          patientId: "P-10042",
-          patientName: "Rahul Verma",
-          uhid: "UHID-2026-042",
-          doctorName: "Dr. Ananya Sharma",
-          department: "General Medicine",
-          billType: "Cash",
-          paymentStatus: "Paid",
-          paymentMode: "Cash",
-          items: [
-            {
-              medicineId: "MED-PCM-500",
-              medicineName: "Paracetamol 500mg",
-              batchNumber: "PCM-2026-B1",
-              expiryDate: "2027-08",
-              quantity: 10,
-              unitPrice: 2,
-              grossAmount: 20,
-              discount: 0,
-              taxableAmount: 17.86,
-              cgstAmount: 1.07,
-              sgstAmount: 1.07,
-              tax: 12,
-              totalPrice: 20,
-            },
-            {
-              medicineId: "MED-AMX-500",
-              medicineName: "Amoxicillin 500mg",
-              batchNumber: "AMX-2026-B2",
-              expiryDate: "2027-05",
-              quantity: 10,
-              unitPrice: 8,
-              grossAmount: 80,
-              discount: 0,
-              taxableAmount: 71.43,
-              cgstAmount: 4.29,
-              sgstAmount: 4.29,
-              tax: 12,
-              totalPrice: 80,
-            },
-            {
-              medicineId: "MED-CTZ-10",
-              medicineName: "Cetirizine 10mg",
-              batchNumber: "CTZ-2026-B3",
-              expiryDate: "2027-11",
-              quantity: 5,
-              unitPrice: 3,
-              grossAmount: 15,
-              discount: 0,
-              taxableAmount: 13.39,
-              cgstAmount: 0.8,
-              sgstAmount: 0.8,
-              tax: 12,
-              totalPrice: 15,
-            },
-          ],
-          subTotal: 102.68,
-          discount: 0,
-          tax: 12.32,
-          taxableTotal: 102.68,
-          cgstTotal: 6.16,
-          sgstTotal: 6.16,
-          totalAmount: 115,
-          createdBy: "Pharmacist",
-          createdAt: "2026-09-15T10:30:00.000Z",
-        };
-        bills = [seedBill1, ...bills];
-        hasNewSeeds = true;
-      }
-
-      // Seed Bill 2: Priya Sharma (INV-2026-8845)
-      if (!hasStandardSeed2) {
-        const seedBill2: AppPharmacyBill = {
-          id: "PB-2026-008845",
-          billNumber: "INV-2026-8845",
-          patientId: "P-10088",
-          patientName: "Priya Sharma",
-          uhid: "UHID-2026-088",
-          doctorName: "Dr. Rajesh Kumar",
-          department: "Internal Medicine",
-          billType: "Cash",
-          paymentStatus: "Paid",
-          paymentMode: "UPI",
-          items: [
-            {
-              medicineId: "MED-AZM-500",
-              medicineName: "Azithromycin 500mg",
-              batchNumber: "AZM-2026-C1",
-              expiryDate: "2027-09",
-              quantity: 6,
-              unitPrice: 35,
-              grossAmount: 210,
-              discount: 0,
-              taxableAmount: 187.50,
-              cgstAmount: 11.25,
-              sgstAmount: 11.25,
-              tax: 12,
-              totalPrice: 210,
-            },
-            {
-              medicineId: "MED-PAN-40",
-              medicineName: "Pantoprazole 40mg",
-              batchNumber: "PAN-2026-C2",
-              expiryDate: "2027-12",
-              quantity: 15,
-              unitPrice: 10,
-              grossAmount: 150,
-              discount: 0,
-              taxableAmount: 133.93,
-              cgstAmount: 8.04,
-              sgstAmount: 8.04,
-              tax: 12,
-              totalPrice: 150,
-            },
-            {
-              medicineId: "MED-VTC-500",
-              medicineName: "Vitamin C 500mg Chewable",
-              batchNumber: "VTC-2026-C3",
-              expiryDate: "2028-02",
-              quantity: 20,
-              unitPrice: 4,
-              grossAmount: 80,
-              discount: 0,
-              taxableAmount: 71.43,
-              cgstAmount: 4.29,
-              sgstAmount: 4.29,
-              tax: 12,
-              totalPrice: 80,
-            },
-          ],
-          subTotal: 392.86,
-          discount: 0,
-          tax: 47.14,
-          taxableTotal: 392.86,
-          cgstTotal: 23.57,
-          sgstTotal: 23.57,
-          totalAmount: 440,
-          createdBy: "Pharmacist",
-          createdAt: "2026-09-15T14:15:00.000Z",
-        };
-        bills = [...bills, seedBill2];
-        hasNewSeeds = true;
-      }
-
-      // Purge any previous test modified return bills for Rahul Verma
-      const cleanedBills = bills.filter(
-        b => !(b.billNumber === "MOD-BILL-2026-001245" || (b.originalBillNumber === "BILL-2026-001245" && b.billNumber.startsWith("MOD-")))
-      );
-      if (cleanedBills.length !== bills.length) {
-        bills = cleanedBills;
-        hasNewSeeds = true;
-      }
-
-      if (hasNewSeeds) {
-        this.saveBills(bills);
-      }
       return bills;
     } catch { return []; }
   }
@@ -948,7 +790,7 @@ export class PharmacyDatabase {
     notes?: string
   ): { returnRecord: AppPharmacyReturn; modifiedBill: AppPharmacyBill } {
     const returnNumber = "RET-" + new Date().getFullYear() + "-" + String(Math.floor(10000 + Math.random() * 90000));
-    const modifiedBillNumber = "MOD-" + originalBill.billNumber;
+    const modifiedBillNumber = originalBill.originalBillNumber || originalBill.billNumber;
     const now = new Date().toISOString();
 
     const refundAmount = returnedItems.reduce((sum, item) => sum + (item.refundAmount || 0), 0);
@@ -1145,6 +987,87 @@ export class PharmacyDatabase {
   }
   static saveSupplierReturns(returns: AppSupplierReturn[]) {
     if (typeof window !== "undefined") { window.localStorage.setItem(SUPPLIER_RETURNS_KEY, JSON.stringify(returns)); window.dispatchEvent(new Event("storage")); window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated")); }
+  }
+
+  static processSupplierReturn(payload: Omit<AppSupplierReturn, "id" | "debitNoteNumber" | "status" | "createdAt" | "returnAmount" | "purchaseRate">, createdBy: string): AppSupplierReturn {
+    const returns = this.getSupplierReturns();
+    
+    // Auto-calculate financial value
+    const batches = this.getBatches();
+    const batch = batches.find(b => b.id === payload.batchId);
+    if (!batch) throw new Error("Batch not found.");
+    if (batch.availableQuantity < payload.quantity) throw new Error("Return quantity cannot exceed available stock.");
+    
+    const purchaseRate = batch.purchasePrice || 0;
+    const returnAmount = payload.quantity * purchaseRate;
+
+    const newReturn: AppSupplierReturn = {
+      ...payload,
+      id: "RET-" + Date.now(),
+      debitNoteNumber: "DN-" + new Date().getFullYear() + "-" + String(Math.floor(1 + Math.random() * 90000)).padStart(5, '0'),
+      purchaseRate,
+      returnAmount,
+      status: "Draft",
+      createdBy,
+      createdAt: new Date().toISOString()
+    };
+    
+    // NOTE: Stock is NOT deducted during "Draft" or "Submitted". It happens at "Approved".
+    
+    returns.push(newReturn);
+    this.saveSupplierReturns(returns);
+    
+    this.logAudit(createdBy, "Return Created", "Inventory", newReturn.debitNoteNumber, `Draft Return created for ${payload.quantity} units of batch ${batch.batchNumber}`);
+    return newReturn;
+  }
+
+  static updateSupplierReturnStatus(returnId: string, newStatus: AppSupplierReturn["status"], user: string): AppSupplierReturn {
+    const returns = this.getSupplierReturns();
+    const rtn = returns.find(r => r.id === returnId);
+    if (!rtn) throw new Error("Return not found.");
+    
+    const oldStatus = rtn.status;
+    rtn.status = newStatus;
+    rtn.updatedAt = new Date().toISOString();
+    
+    // Stock Deduction Logic (only happens exactly when Approved)
+    if (newStatus === "Approved" && oldStatus !== "Approved") {
+      rtn.approvedBy = user;
+      const batches = this.getBatches();
+      const batch = batches.find(b => b.id === rtn.batchId);
+      
+      if (batch) {
+        if (batch.availableQuantity >= rtn.quantity) {
+          batch.availableQuantity -= rtn.quantity;
+          this.updateBatch(batch.id, batch);
+          
+          this.addTransaction({
+            id: "TXN" + Math.floor(Math.random() * 100000),
+            date: new Date().toISOString(),
+            medicineId: rtn.medicineId,
+            batchId: rtn.batchId,
+            quantity: rtn.quantity,
+            transactionType: "SUPPLIER_RETURN",
+            userId: user,
+            reason: `Supplier Return (DN: ${rtn.debitNoteNumber}): ${rtn.reason}`
+          });
+          this.logAudit(user, "Stock Deducted", "Inventory", rtn.debitNoteNumber, `Stock deducted for Approved Return (${rtn.quantity} units)`);
+        } else {
+          throw new Error(`Cannot approve: Insufficient stock available. Only ${batch.availableQuantity} left.`);
+        }
+      }
+    }
+
+    this.saveSupplierReturns(returns);
+    this.logAudit(user, `Return ${newStatus}`, "Inventory", rtn.debitNoteNumber, `Return status changed from ${oldStatus} to ${newStatus}`);
+    
+    if (newStatus === "Approved") {
+       this.addNotification("Return Approved", `Debit Note ${rtn.debitNoteNumber} approved and stock deducted.`, "success");
+    } else if (newStatus === "Credit Received") {
+       this.addNotification("Credit Received", `Credit applied for Debit Note ${rtn.debitNoteNumber} (₹${rtn.returnAmount}).`, "success");
+    }
+
+    return rtn;
   }
 
   // Adjustments

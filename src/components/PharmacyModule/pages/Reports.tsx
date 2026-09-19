@@ -8,7 +8,7 @@ import { PharmacyDatabase } from "../../../services/pharmacyDb";
 const reportCategories = [
   { id: "sales", label: "Sales Reports", items: ["Daily Sales", "Monthly Sales", "Medicine-wise Sales", "Category-wise Sales", "Pharmacist-wise Sales"] },
   { id: "inventory", label: "Inventory Reports", items: ["Stock Report", "Stock Valuation", "Expiry Report", "Low Stock Report", "Dead Stock"] },
-  { id: "purchasing", label: "Purchasing Reports", items: ["Supplier Purchases", "Purchase Summary", "Purchase Returns"] },
+  { id: "purchasing", label: "Purchasing Reports", items: ["Supplier Purchases", "Purchase Summary", "Supplier Return Report"] },
   { id: "financial", label: "Financial Reports", items: ["Revenue Summary", "Discounts Report", "GST Report", "Profit Margin"] },
 ];
 
@@ -136,8 +136,10 @@ export default function Reports({ onNavigate }: ReportsProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-3">
-            {kpis.map(k => (
+          {activeReport !== "Supplier Return Report" && (
+            <>
+              <div className="grid grid-cols-4 gap-3">
+                {kpis.map(k => (
               <div key={k.label} className="bg-white rounded p-4 border border-[#DDE2EC]">
                 <p className="text-[11px] text-[#64748B] font-medium">{k.label}</p>
                 <p className="text-[17px] font-bold text-[#0F1624] mt-1">{k.value}</p>
@@ -226,6 +228,43 @@ export default function Reports({ onNavigate }: ReportsProps) {
               </div>
             </div>
           </div>
+          </>
+          )}
+
+          {activeReport === "Supplier Return Report" && (
+            <div className="bg-white rounded border border-[#DDE2EC] p-5">
+              <div className="flex justify-between items-center mb-4">
+                <p className="font-semibold text-[14px] text-[#0F1624]">Supplier Return Ledger</p>
+                <div className="flex gap-2">
+                   <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#DDE2EC] rounded text-[12px] font-medium text-[#334155] hover:bg-[#F5F7FA]">
+                     <FileText size={14} /> PDF
+                   </button>
+                   <button className="flex items-center gap-1.5 px-3 py-1.5 border border-[#DDE2EC] rounded text-[12px] font-medium text-[#334155] hover:bg-[#F5F7FA]">
+                     <Download size={14} /> Excel
+                   </button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-4 gap-3 mb-6">
+                 <div>
+                    <label className="block text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">Supplier</label>
+                    <select className="w-full px-2 py-1.5 border border-[#DDE2EC] text-[12px] rounded"><option>All Suppliers</option></select>
+                 </div>
+                 <div>
+                    <label className="block text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">Status</label>
+                    <select className="w-full px-2 py-1.5 border border-[#DDE2EC] text-[12px] rounded"><option>All Statuses</option></select>
+                 </div>
+                 <div>
+                    <label className="block text-[10px] font-semibold text-[#94A3B8] uppercase tracking-wide mb-1">Reason</label>
+                    <select className="w-full px-2 py-1.5 border border-[#DDE2EC] text-[12px] rounded"><option>All Reasons</option></select>
+                 </div>
+              </div>
+
+              <div className="text-center py-10">
+                <p className="text-[13px] text-[#64748B]">Report functionality is available, but currently no returns match the filters in this date range.</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -33,15 +33,25 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
   const [processedModifiedBill, setProcessedModifiedBill] = useState<AppPharmacyBill | null>(null);
   const [recentReturns, setRecentReturns] = useState<AppPharmacyReturn[]>(() => PharmacyDatabase.getReturns());
 
-  const filtered = bills.filter(inv =>
-    !search || inv.billNumber.toLowerCase().includes(search.toLowerCase()) || inv.patientName.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    const matched = bills.filter(inv =>
+      !search || inv.billNumber.toLowerCase().includes(search.toLowerCase()) || inv.patientName.toLowerCase().includes(search.toLowerCase())
+    );
+    // Deduplicate by billNumber so we only see the latest version in the table
+    const seen = new Set<string>();
+    return matched.filter(inv => {
+      const key = inv.originalBillNumber || inv.billNumber;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [bills, search]);
   
   // Net Revenue = Gross Sales Revenue (original bills only) - Total Refunds
-  const originalBills = useMemo(() => bills.filter(b => !b.billNumber.startsWith("MOD-")), [bills]);
+  const originalBills = useMemo(() => bills.filter(b => !b.isModifiedReturnBill), [bills]);
   const grossSales = useMemo(() => originalBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0), [originalBills]);
   const totalRefunds = useMemo(() => recentReturns.reduce((sum, r) => sum + (r.refundAmount || 0), 0), [recentReturns]);
-  const todayRevenue = Math.max(0, grossSales - totalRefunds);
+  const todayRevenue = grossSales - totalRefunds;
   const avgBill = originalBills.length > 0 ? (todayRevenue / originalBills.length) : 0;
 
   // Reset to clean Returns view
@@ -73,7 +83,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
     // Lookup bill in database
     const allBills = PharmacyDatabase.getBills();
     const found = allBills.find(
-      b => b.billNumber.toLowerCase() === query.toLowerCase() || b.id.toLowerCase() === query.toLowerCase()
+      b => !b.isModifiedReturnBill && (b.billNumber.toLowerCase() === query.toLowerCase() || b.id.toLowerCase() === query.toLowerCase())
     );
 
     if (!found) {
@@ -294,6 +304,30 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
     }
   };
 
+  // Export data based on current tab
+  const handleExport = () => {
+    let csvData = "";
+    if (view === "sales") {
+      csvData = "Bill Number,Date,Patient,Doctor,Items,Payment Mode,Total Amount,Status\n";
+      filtered.forEach(inv => {
+        csvData += `${inv.billNumber},${new Date(inv.createdAt || Date.now()).toLocaleDateString()},${inv.patientName},${inv.doctorName},${inv.items?.length || 0},${inv.paymentMode || "Cash"},${inv.totalAmount || 0},Completed\n`;
+      });
+    } else {
+      csvData = "Return Number,Original Bill,Date,Patient,Doctor,Refund Amount,Status\n";
+      recentReturns.forEach(ret => {
+        csvData += `${ret.returnNumber},${ret.originalBillNumber},${new Date(ret.createdAt || Date.now()).toLocaleDateString()},${ret.patientName || ""},${ret.doctorName || ""},${ret.refundAmount || 0},${ret.status || "Completed"}\n`;
+      });
+    }
+
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pharmacy_${view}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 space-y-5 relative">
       {printInv && <InvoicePrintModal bill={printInv} onClose={() => setPrintInv(null)} />}
@@ -311,7 +345,10 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
         description="Search billed invoices, process item-level returns, recalculate bills, and generate modified credit invoices"
         actions={
           <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#DDE2EC] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors">
+            <button 
+              onClick={handleExport}
+              className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#DDE2EC] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+            >
               <Download size={13} /> Export
             </button>
           </div>
@@ -394,7 +431,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                 </tr>
               ) : (
                 filtered.map(inv => {
-                  const isModifiedBill = inv.billNumber.startsWith("MOD-");
+                  const isModifiedBill = inv.isModifiedReturnBill;
                   return (
                     <tr key={inv.id} className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC]">
                       <td className="p-3 font-mono text-[12px] font-semibold" style={{ color: isModifiedBill ? "#7c3aed" : "#1B4FD8" }}>
