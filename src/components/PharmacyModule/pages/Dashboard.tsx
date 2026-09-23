@@ -1,7 +1,7 @@
 import { usePharmacyData } from "../data/usePharmacyData";
 import { useState } from "react";
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { ShoppingCart, ClipboardList, AlertTriangle, Clock, TrendingUp, TrendingDown, Package, FileText, IndianRupee, RefreshCcw, BarChart3, ChevronRight, ArrowRight, Zap, Trash2 } from "lucide-react";
+import { ShoppingCart, ClipboardList, AlertTriangle, Clock, TrendingUp, TrendingDown, Package, FileText, IndianRupee, RefreshCcw, BarChart3, ChevronRight, ArrowRight, Zap, Trash2, LayoutGrid } from "lucide-react";
 import toast from "react-hot-toast";
 
 import PageHeader from "../components/PageHeader";
@@ -105,24 +105,25 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="flex-1 flex flex-col overflow-y-auto bg-[#F4F6F9]">
       <PageHeader
         breadcrumbs={[{ label: "Pharmacy" }, { label: "Dashboard" }]}
-        title="Pharmacy Dashboard"
-        description={`Here's what's happening in your pharmacy today – ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+        title="Pharmacy Operations Dashboard"
+        badge="OVERVIEW"
+        description={`Real-time sales tracking, clinical prescriptions, stock alerts, and financial overview for ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
         actions={
           <div className="flex gap-2 items-center">
             <input 
               type="date" 
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-2 rounded text-[13px] font-medium border border-[#DDE2EC] bg-white text-[#334155] focus:border-[#1B4FD8] focus:outline-none"
+              className="px-3 py-1.5 rounded text-[13px] font-medium border border-[#DDE2EC] bg-white text-[#334155] focus:border-[#1B4FD8] focus:outline-none shadow-xs"
             />
-            <button onClick={() => onNavigate("dispensing")} className="px-4 py-2 rounded text-white text-[13px] font-medium flex items-center gap-1.5" style={{ background: "#1B4FD8" }}>
+            <button onClick={() => onNavigate("dispensing")} className="px-3.5 py-1.5 rounded text-white text-[13px] font-medium flex items-center gap-1.5 shadow-xs transition-colors" style={{ background: "#1B4FD8" }}>
               <ShoppingCart size={14} /> New Sale
             </button>
-            <button onClick={() => onNavigate("prescriptions")} className="px-4 py-2 rounded text-[13px] font-medium border border-[#DDE2EC] bg-white text-[#334155] hover:bg-[#F5F7FA] flex items-center gap-1.5 transition-colors">
-              <ClipboardList size={14} /> Scan Prescription
+            <button onClick={() => onNavigate("prescriptions")} className="px-3.5 py-1.5 rounded text-[13px] font-medium border border-[#DDE2EC] bg-white text-[#334155] hover:bg-[#F5F7FA] flex items-center gap-1.5 transition-colors shadow-xs">
+              <ClipboardList size={14} /> Scan Rx
             </button>
             <button 
               onClick={() => {
@@ -131,7 +132,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                   toast.success("All pharmacy data deleted successfully. Clean state ready!");
                 }
               }} 
-              className="px-3 py-2 rounded text-[13px] font-medium border border-[#FEE2E2] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] flex items-center gap-1.5 transition-colors"
+              className="px-3 py-1.5 rounded text-[13px] font-medium border border-[#FEE2E2] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] flex items-center gap-1.5 transition-colors shadow-xs"
               title="Purge all pharmacy demo and seed data"
             >
               <Trash2 size={14} /> Clear All Data
@@ -139,7 +140,11 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         }
         onNavigate={onNavigate}
+        icon={LayoutGrid}
+        iconBg="bg-blue-600"
       />
+
+      <div className="p-6 space-y-6">
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -376,6 +381,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </table>
         </div>
       </div>
+    </div>
     </div>
   );
 }
