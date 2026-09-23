@@ -61,7 +61,7 @@ export interface AppMedicine {
   genericName: string;
   brandName: string;
   hsnCode?: string;
-  categoryId: string;
+  categoryId?: string;
   manufacturer: string;
   dosageForm: string;
   strength: string;
@@ -372,26 +372,67 @@ export interface AppStockTransfer {
 
 export interface AppSupplierReturn {
   id: string;
+  debitNoteNumber?: string;
+  returnNumber?: string;
   supplierId: string;
+  supplierName?: string;
   medicineId: string;
+  medicineName?: string;
   batchId: string;
+  batchNumber?: string;
   quantity: number;
-  reason: "Expired" | "Damaged" | "Wrong Item";
-  status: "Requested" | "Approved" | "Credit Note Received";
+  purchaseRate?: number;
+  unitCost?: number;
+  returnAmount?: number;
+  reason: string;
+  status:
+    | "Draft"
+    | "Submitted"
+    | "Approved"
+    | "Requested"
+    | "Sent To Supplier"
+    | "Credit Note Pending"
+    | "Credit Received"
+    | "Closed"
+    | "Credit Note Received"
+    | string;
+  poNumber?: string;
+  grnNumber?: string;
+  invoiceNumber?: string;
   creditNoteId?: string;
+  notes?: string;
+  requestedBy?: string;
+  createdBy?: string;
+  approvedBy?: string;
+  returnDate?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AppStockAdjustment {
   id: string;
+  adjustmentNumber?: string;
+  supplierId?: string;
+  supplierName?: string;
   medicineId: string;
+  medicineName?: string;
   batchId: string;
+  batchNumber?: string;
+  category?: string;
+  quantity?: number;
   systemQuantity: number;
   physicalQuantity: number;
   difference: number;
-  reason: "Physical Mismatch" | "Damage" | "Missing Stock";
+  unitCost?: number;
+  lossValue?: number;
+  reason: string;
+  disposalMethod?: string;
+  location?: string;
+  witnessName?: string;
+  reportedBy?: string;
+  adjustmentDate?: string;
   approvedBy: string;
-  status: "Approved";
+  status: "Approved" | string;
   createdAt: string;
 }
 
@@ -1553,6 +1594,38 @@ export class PharmacyDatabase {
   }
   static saveSupplierReturns(returns: AppSupplierReturn[]) {
     if (typeof window !== "undefined") { window.localStorage.setItem(SUPPLIER_RETURNS_KEY, JSON.stringify(returns)); window.dispatchEvent(new Event("storage")); window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated")); }
+  }
+  static processSupplierReturn(payload: any, user: string = "Pharmacist") {
+    const list = this.getSupplierReturns();
+    const id = "SR-" + Date.now().toString().slice(-6);
+    const newReturn: AppSupplierReturn = {
+      id,
+      debitNoteNumber: "DN-" + Date.now().toString().slice(-6),
+      supplierId: payload.supplierId,
+      medicineId: payload.medicineId,
+      batchId: payload.batchId,
+      quantity: payload.quantity,
+      reason: payload.reason,
+      poNumber: payload.poNumber,
+      grnNumber: payload.grnNumber,
+      invoiceNumber: payload.invoiceNumber,
+      status: "Draft",
+      requestedBy: user,
+      createdAt: new Date().toISOString()
+    };
+    list.unshift(newReturn);
+    this.saveSupplierReturns(list);
+    return newReturn;
+  }
+  static updateSupplierReturnStatus(id: string, status: string, user: string = "Pharmacist") {
+    const list = this.getSupplierReturns();
+    const idx = list.findIndex(r => r.id === id);
+    if (idx !== -1) {
+      list[idx].status = status;
+      list[idx].updatedAt = new Date().toISOString();
+      if (status === "Approved") list[idx].approvedBy = user;
+      this.saveSupplierReturns(list);
+    }
   }
 
   // Adjustments

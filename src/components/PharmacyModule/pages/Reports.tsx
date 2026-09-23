@@ -1544,8 +1544,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
           badge="ANALYTICS & AUDIT"
           description="Operational metrics, sales velocity, valuation ledgers, and vendor compliance reports"
           actions={
-            <div className="flex items-center gap-2" icon={BarChart3} iconBg="bg-sky-600"
-        >
+            <div className="flex items-center gap-2">
               <Btn variant="outline" size="sm" onClick={handlePrint} className="shadow-xs">
                 <Printer size={13} className="text-gray-600" /> Print
               </Btn>
