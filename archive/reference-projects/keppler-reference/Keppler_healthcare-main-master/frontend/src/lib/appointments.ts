@@ -1,4 +1,4 @@
-import { apiFetch } from "./api";
+import { apiFetch } from "./api"
 
 export async function updateAppointmentStatus(
   appointmentId: number,
@@ -7,5 +7,5 @@ export async function updateAppointmentStatus(
   return apiFetch(`/api/appointments/${appointmentId}`, {
     method: "PUT",
     body: JSON.stringify({ status }),
-  });
+  })
 }

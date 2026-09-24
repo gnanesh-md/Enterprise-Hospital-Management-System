@@ -1,16 +1,15 @@
-import { defineConfig } from 'vite'
-import path from 'path'
-import tailwindcss from '@tailwindcss/vite'
-import react from '@vitejs/plugin-react'
-
+import { defineConfig } from "vite"
+import path from "path"
+import tailwindcss from "@tailwindcss/vite"
+import react from "@vitejs/plugin-react"
 
 function figmaAssetResolver() {
   return {
-    name: 'figma-asset-resolver',
+    name: "figma-asset-resolver",
     resolveId(id) {
-      if (id.startsWith('figma:asset/')) {
-        const filename = id.replace('figma:asset/', '')
-        return path.resolve(__dirname, 'src/assets', filename)
+      if (id.startsWith("figma:asset/")) {
+        const filename = id.replace("figma:asset/", "")
+        return path.resolve(__dirname, "src/assets", filename)
       }
     },
   }
@@ -27,19 +26,19 @@ export default defineConfig({
   resolve: {
     alias: {
       // Alias @ to the src directory
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 
   // Served through the host HMS app's own dev server at /keppler-ocr (see
   // ../vite.config.ts's proxy) rather than as its own directly-reachable
   // port, since only the host's port is forwarded to the browser.
-  base: '/keppler-ocr/',
+  base: "/keppler-ocr/",
 
   server: {
     port: 3000,
     proxy: {
-      '/api': 'http://localhost:7620',
+      "/api": "http://localhost:7620",
     },
     // Allows access via the cloudflared quick-tunnel URL used for remote browser access.
     allowedHosts: true,
@@ -50,10 +49,10 @@ export default defineConfig({
     // app/page modules at server start instead, in the background, so that
     // cost is already paid by the time anyone opens the tab.
     warmup: {
-      clientFiles: ['./src/main.tsx', './src/app/**/*.tsx'],
+      clientFiles: ["./src/main.tsx", "./src/app/**/*.tsx"],
     },
   },
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
-  assetsInclude: ['**/*.svg', '**/*.csv'],
+  assetsInclude: ["**/*.svg", "**/*.csv"],
 })

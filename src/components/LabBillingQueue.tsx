@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Btn, StatusBadge } from "./shared";
-import { LabOrder, LabOrderDatabase } from "../services/labOrdersDb";
-import { AuditDatabase } from "../services/auditDb";
-import { ClaimRecord } from "../services/billingDb";
-import HospitalReceiptModal from "./HospitalReceiptModal";
+import React, { useEffect, useMemo, useState } from "react"
+import { Btn, StatusBadge } from "./shared"
+import { LabOrder, LabOrderDatabase } from "../services/labOrdersDb"
+import { AuditDatabase } from "../services/auditDb"
+import { ClaimRecord } from "../services/billingDb"
+import HospitalReceiptModal from "./HospitalReceiptModal"
 
 /**
  * Reception's side of the doctor -> lab hand-off.
@@ -14,65 +14,91 @@ import HospitalReceiptModal from "./HospitalReceiptModal";
  * rule `LabOrderDatabase` enforces.
  */
 
-const PAYMENT_MODES: NonNullable<LabOrder["billing"]["mode"]>[] = ["Cash", "Card", "UPI", "Insurance", "Corporate"];
+const PAYMENT_MODES: NonNullable<LabOrder["billing"]["mode"]>[] = [
+  "Cash",
+  "Card",
+  "UPI",
+  "Insurance",
+  "Corporate",
+]
 
-export default function LabBillingQueue({ collectedBy = "Reception" }: { collectedBy?: string }) {
-  const [tick, setTick] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mode, setMode] = useState<NonNullable<LabOrder["billing"]["mode"]>>("Cash");
-  const [discount, setDiscount] = useState(0);
-  const [view, setView] = useState<"pending" | "settled">("pending");
-  const [receipt, setReceipt] = useState<LabOrder | null>(null);
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
+export default function LabBillingQueue({
+  collectedBy = "Reception",
+}: {
+  collectedBy?: string
+}) {
+  const [tick, setTick] = useState(0)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [mode, setMode] =
+    useState<NonNullable<LabOrder["billing"]["mode"]>>("Cash")
+  const [discount, setDiscount] = useState(0)
+  const [view, setView] = useState<"pending" | "settled">("pending")
+  const [receipt, setReceipt] = useState<LabOrder | null>(null)
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
 
-  useEffect(() => LabOrderDatabase.subscribe(() => setTick(t => t + 1)), []);
+  useEffect(() => LabOrderDatabase.subscribe(() => setTick((t) => t + 1)), [])
 
-  const pending = useMemo(() => LabOrderDatabase.getBillingQueue(), [tick]);
+  const pending = useMemo(() => LabOrderDatabase.getBillingQueue(), [tick])
   const settled = useMemo(
-    () => LabOrderDatabase.getOrders().filter(order => order.billing.status === "Paid"),
-    [tick]
-  );
-  const list = view === "pending" ? pending : settled;
+    () =>
+      LabOrderDatabase.getOrders().filter(
+        (order) => order.billing.status === "Paid",
+      ),
+    [tick],
+  )
+  const list = view === "pending" ? pending : settled
 
   const selected = useMemo(
-    () => list.find(order => order.id === selectedId) || list[0],
-    [list, selectedId]
-  );
+    () => list.find((order) => order.id === selectedId) || list[0],
+    [list, selectedId],
+  )
 
   useEffect(() => {
     // A fresh selection starts from its own subtotal, never the previous order's discount.
-    setDiscount(0);
-  }, [selected?.id]);
+    setDiscount(0)
+  }, [selected?.id])
 
   const collect = () => {
-    if (!selected || selected.billing.status === "Paid") return;
-    const updated = LabOrderDatabase.markBilled(selected.id, { mode, discount, collectedBy });
-    if (!updated) return;
+    if (!selected || selected.billing.status === "Paid") return
+    const updated = LabOrderDatabase.markBilled(selected.id, {
+      mode,
+      discount,
+      collectedBy,
+    })
+    if (!updated) return
     AuditDatabase.logEvent(
       "Lab Order Billed",
       "Billing",
       `${collectedBy} collected ₹${updated.billing.total.toLocaleString("en-IN")} (${mode}) for ${updated.id} — ` +
         `${updated.tests.length} investigation(s) for ${updated.patientName} (${updated.umr}) released to the laboratory.`,
-      "Success"
-    );
-    setReceipt(updated);
-    setSelectedId(null);
-  };
+      "Success",
+    )
+    setReceipt(updated)
+    setSelectedId(null)
+  }
 
-  const pendingTotal = pending.reduce((sum, order) => sum + order.billing.subtotal, 0);
+  const pendingTotal = pending.reduce(
+    (sum, order) => sum + order.billing.subtotal,
+    0,
+  )
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F0F2F5]">
       <div className="bg-white border-b border-[#DDE2EC] px-6 py-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-base font-semibold text-gray-900">Lab Test Billing</h1>
+          <h1 className="text-base font-semibold text-gray-900">
+            Lab Test Billing
+          </h1>
           <p className="text-[11.5px] text-[#64748B]">
-            Investigations ordered by doctors · payment releases them to the laboratory
+            Investigations ordered by doctors · payment releases them to the
+            laboratory
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-[11px] text-[#94A3B8] uppercase tracking-wide font-bold">Awaiting payment</div>
+            <div className="text-[11px] text-[#94A3B8] uppercase tracking-wide font-bold">
+              Awaiting payment
+            </div>
             <div className="text-[15px] font-bold text-gray-900 font-mono">
               {pending.length} · ₹{pendingTotal.toLocaleString("en-IN")}
             </div>
@@ -81,23 +107,31 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
       </div>
 
       <div className="bg-white border-b border-[#DDE2EC] flex">
-        {([
-          { key: "pending" as const, label: "Awaiting Billing", count: pending.length },
+        {[
+          {
+            key: "pending" as const,
+            label: "Awaiting Billing",
+            count: pending.length,
+          },
           { key: "settled" as const, label: "Settled", count: settled.length },
-        ]).map(tab => (
+        ].map((tab) => (
           <button
             key={tab.key}
             type="button"
             onClick={() => {
-              setView(tab.key);
-              setSelectedId(null);
+              setView(tab.key)
+              setSelectedId(null)
             }}
             className={`px-5 py-2.5 text-[12.5px] font-semibold border-b-2 transition-colors ${
-              view === tab.key ? "border-[#1B4FD8] text-[#1B4FD8]" : "border-transparent text-[#64748B] hover:text-[#334155]"
+              view === tab.key
+                ? "border-[#1B4FD8] text-[#1B4FD8]"
+                : "border-transparent text-[#64748B] hover:text-[#334155]"
             }`}
           >
             {tab.label}
-            <span className="ml-1.5 text-[10px] font-bold bg-[#F1F5F9] text-[#475569] px-1.5 py-0.5 rounded">{tab.count}</span>
+            <span className="ml-1.5 text-[10px] font-bold bg-[#F1F5F9] text-[#475569] px-1.5 py-0.5 rounded">
+              {tab.count}
+            </span>
           </button>
         ))}
       </div>
@@ -106,11 +140,18 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
         <div className="mx-5 mt-4 bg-[#F0FDF4] border border-[#BBF7D0] rounded px-4 py-3 flex flex-wrap items-center justify-between gap-2">
           <div className="text-[12.5px] text-[#166534]">
             <span className="font-bold">✓ Payment collected</span> — receipt{" "}
-            <span className="font-mono font-bold">{receipt.billing.receiptNo}</span>, ₹
-            {receipt.billing.total.toLocaleString("en-IN")} for {receipt.patientName}. {receipt.id} is now on the
-            laboratory worklist.
+            <span className="font-mono font-bold">
+              {receipt.billing.receiptNo}
+            </span>
+            , ₹{receipt.billing.total.toLocaleString("en-IN")} for{" "}
+            {receipt.patientName}. {receipt.id} is now on the laboratory
+            worklist.
           </div>
-          <button type="button" onClick={() => setReceipt(null)} className="text-[#15803D] font-bold text-[12px]">
+          <button
+            type="button"
+            onClick={() => setReceipt(null)}
+            className="text-[#15803D] font-bold text-[12px]"
+          >
             ✕
           </button>
         </div>
@@ -120,7 +161,9 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
         <div className="lg:col-span-2 bg-white border border-[#DDE2EC] rounded">
           <div className="px-4 py-2.5 border-b border-[#DDE2EC]">
             <h2 className="text-[13px] font-bold text-gray-900">
-              {view === "pending" ? "Orders waiting on payment" : "Settled orders"}
+              {view === "pending"
+                ? "Orders waiting on payment"
+                : "Settled orders"}
             </h2>
           </div>
 
@@ -128,48 +171,60 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
             <div className="p-10 text-center">
               <div className="text-2xl mb-2">🧾</div>
               <p className="text-[12.5px] font-semibold text-[#334155]">
-                {view === "pending" ? "Nothing waiting on billing" : "No settled orders yet"}
+                {view === "pending"
+                  ? "Nothing waiting on billing"
+                  : "No settled orders yet"}
               </p>
               <p className="text-[11.5px] text-[#94A3B8] mt-1">
-                Lab tests appear here the moment a doctor dispatches a consultation sheet.
+                Lab tests appear here the moment a doctor dispatches a
+                consultation sheet.
               </p>
             </div>
           ) : (
             <div className="divide-y divide-[#F1F5F9]">
-              {list.map(order => (
+              {list.map((order) => (
                 <button
                   key={order.id}
                   type="button"
                   onClick={() => setSelectedId(order.id)}
                   className={`w-full text-left px-4 py-3 transition-colors ${
-                    selected?.id === order.id ? "bg-[#EFF6FF]" : "hover:bg-[#F8FAFC]"
+                    selected?.id === order.id
+                      ? "bg-[#EFF6FF]"
+                      : "hover:bg-[#F8FAFC]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-[13px] text-gray-900">{order.patientName}</span>
+                        <span className="font-semibold text-[13px] text-gray-900">
+                          {order.patientName}
+                        </span>
                         <span className="text-[11px] font-mono text-[#64748B]">
                           {order.umr} · {order.opNumber}
                         </span>
-                        {order.tests.some(test => test.urgency === "STAT") && (
+                        {order.tests.some(
+                          (test) => test.urgency === "STAT",
+                        ) && (
                           <span className="text-[10px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 py-0.5 rounded border border-[#FECACA]">
                             STAT
                           </span>
                         )}
                       </div>
                       <div className="text-[11.5px] text-[#64748B] mt-0.5">
-                        {order.doctorName} · {order.department} · {order.diagnosis || "No diagnosis recorded"}
+                        {order.doctorName} · {order.department} ·{" "}
+                        {order.diagnosis || "No diagnosis recorded"}
                       </div>
                       <div className="text-[11.5px] text-[#475569] mt-1">
-                        {order.tests.map(test => test.name).join(" · ")}
+                        {order.tests.map((test) => test.name).join(" · ")}
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
                       <div className="text-[14px] font-bold text-gray-900 font-mono">
                         ₹{order.billing.total.toLocaleString("en-IN")}
                       </div>
-                      <div className="text-[10.5px] text-[#94A3B8] font-mono">{order.id}</div>
+                      <div className="text-[10.5px] text-[#94A3B8] font-mono">
+                        {order.id}
+                      </div>
                       <div className="mt-1">
                         <StatusBadge status={order.status} />
                       </div>
@@ -186,7 +241,9 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
             <div className="bg-white border border-[#DDE2EC] rounded">
               <div className="px-4 py-2.5 border-b border-[#DDE2EC]">
                 <h2 className="text-[13px] font-bold text-gray-900">
-                  {selected.billing.status === "Paid" ? "Receipt" : "Collect payment"}
+                  {selected.billing.status === "Paid"
+                    ? "Receipt"
+                    : "Collect payment"}
                 </h2>
                 <p className="text-[11px] text-[#64748B] font-mono mt-0.5">
                   {selected.id} · invoice {selected.billing.invoiceNo}
@@ -196,26 +253,46 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
               <div className="p-4 space-y-3">
                 <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded p-3 space-y-1">
                   {[
-                    ["Patient", `${selected.patientName} (${selected.age}${selected.sex?.[0] || ""})`],
+                    [
+                      "Patient",
+                      `${selected.patientName} (${selected.age}${selected.sex?.[0] || ""})`,
+                    ],
                     ["UMR / OP", `${selected.umr} · ${selected.opNumber}`],
                     ["Phone", selected.phone || "Not recorded"],
-                    ["Referred by", `${selected.doctorName}, ${selected.department}`],
+                    [
+                      "Referred by",
+                      `${selected.doctorName}, ${selected.department}`,
+                    ],
                   ].map(([label, value]) => (
-                    <div key={label} className="flex justify-between gap-3 text-[11.5px]">
+                    <div
+                      key={label}
+                      className="flex justify-between gap-3 text-[11.5px]"
+                    >
                       <span className="text-[#94A3B8]">{label}</span>
-                      <span className="text-gray-900 font-medium text-right">{value}</span>
+                      <span className="text-gray-900 font-medium text-right">
+                        {value}
+                      </span>
                     </div>
                   ))}
                 </div>
 
                 <div className="space-y-1">
-                  {selected.tests.map(test => (
-                    <div key={test.id} className="flex justify-between gap-3 text-[12px] py-1 border-b border-[#F8FAFC] last:border-0">
+                  {selected.tests.map((test) => (
+                    <div
+                      key={test.id}
+                      className="flex justify-between gap-3 text-[12px] py-1 border-b border-[#F8FAFC] last:border-0"
+                    >
                       <span className="text-[#475569]">
                         {test.name}
-                        {test.urgency === "STAT" && <span className="text-[#DC2626] font-bold ml-1">STAT</span>}
+                        {test.urgency === "STAT" && (
+                          <span className="text-[#DC2626] font-bold ml-1">
+                            STAT
+                          </span>
+                        )}
                       </span>
-                      <span className="font-mono text-gray-900">₹{test.price.toLocaleString("en-IN")}</span>
+                      <span className="font-mono text-gray-900">
+                        ₹{test.price.toLocaleString("en-IN")}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -224,7 +301,9 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                   <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded p-3 text-[12px] text-[#166534] space-y-1">
                     <div className="flex justify-between">
                       <span>Paid</span>
-                      <span className="font-mono font-bold">₹{selected.billing.total.toLocaleString("en-IN")}</span>
+                      <span className="font-mono font-bold">
+                        ₹{selected.billing.total.toLocaleString("en-IN")}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>Mode</span>
@@ -232,7 +311,9 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                     </div>
                     <div className="flex justify-between">
                       <span>Receipt</span>
-                      <span className="font-mono">{selected.billing.receiptNo}</span>
+                      <span className="font-mono">
+                        {selected.billing.receiptNo}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span>Collected by</span>
@@ -240,7 +321,11 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                     </div>
                     <div className="flex justify-between">
                       <span>At</span>
-                      <span>{selected.billing.paidAt ? new Date(selected.billing.paidAt).toLocaleString() : "--"}</span>
+                      <span>
+                        {selected.billing.paidAt
+                          ? new Date(selected.billing.paidAt).toLocaleString()
+                          : "--"}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -254,7 +339,9 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                   <>
                     <div className="flex justify-between text-[12px] pt-1">
                       <span className="text-[#64748B]">Subtotal</span>
-                      <span className="font-mono text-gray-900">₹{selected.billing.subtotal.toLocaleString("en-IN")}</span>
+                      <span className="font-mono text-gray-900">
+                        ₹{selected.billing.subtotal.toLocaleString("en-IN")}
+                      </span>
                     </div>
 
                     <div>
@@ -265,10 +352,22 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                         type="number"
                         min={0}
                         max={selected.billing.subtotal}
-                        value={discount}
-                        onChange={event =>
-                          setDiscount(Math.max(0, Math.min(selected.billing.subtotal, parseInt(event.target.value, 10) || 0)))
+                        value={
+                          discount === undefined ||
+                          discount === null ||
+                          (discount as any) === ""
+                            ? ""
+                            : discount
                         }
+                        onChange={event => {
+                          const val = event.target.value;
+                          if (val === "") {
+                            setDiscount("" as any);
+                          } else {
+                            const parsed = parseInt(val, 10);
+                            setDiscount(isNaN(parsed) ? ("" as any) : Math.max(0, Math.min(selected.billing.subtotal, parsed)));
+                          }
+                        }}
                         className="w-full border border-[#DDE2EC] rounded px-3 py-2 text-[13px] font-mono focus:outline-none focus:border-[#1B4FD8]"
                       />
                     </div>
@@ -278,7 +377,7 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                         Payment mode
                       </label>
                       <div className="flex flex-wrap gap-1.5">
-                        {PAYMENT_MODES.map(option => (
+                        {PAYMENT_MODES.map((option) => (
                           <button
                             key={option}
                             type="button"
@@ -296,13 +395,23 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                     </div>
 
                     <div className="flex justify-between items-center border-t border-[#DDE2EC] pt-3">
-                      <span className="text-[12px] font-semibold text-[#334155]">Amount due</span>
+                      <span className="text-[12px] font-semibold text-[#334155]">
+                        Amount due
+                      </span>
                       <span className="text-[18px] font-bold text-gray-900 font-mono">
-                        ₹{(selected.billing.subtotal - discount).toLocaleString("en-IN")}
+                        ₹
+                        {(selected.billing.subtotal - discount).toLocaleString(
+                          "en-IN",
+                        )}
                       </span>
                     </div>
 
-                    <Btn variant="primary" size="sm" onClick={collect} className="w-full">
+                    <Btn
+                      variant="primary"
+                      size="sm"
+                      onClick={collect}
+                      className="w-full"
+                    >
                       Collect payment &amp; send to laboratory
                     </Btn>
                     <p className="text-[11px] text-[#94A3B8] text-center">
@@ -314,7 +423,9 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
             </div>
           ) : (
             <div className="bg-white border border-[#DDE2EC] rounded p-6 text-center">
-              <p className="text-[12.5px] text-[#94A3B8]">Select an order to take payment.</p>
+              <p className="text-[12.5px] text-[#94A3B8]">
+                Select an order to take payment.
+              </p>
             </div>
           )}
         </div>
@@ -324,15 +435,18 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
         <HospitalReceiptModal
           claim={{
             id: `CLM-${selected.id}`,
-            invoiceNo: selected.billing.invoiceNo || `INV-LAB-${selected.id.slice(-6)}`,
+            invoiceNo:
+              selected.billing.invoiceNo || `INV-LAB-${selected.id.slice(-6)}`,
             patientId: selected.umr,
             patientName: selected.patientName,
             mrn: selected.umr,
             age: selected.age,
-            gender: (selected.sex === "Female" ? "Female" : "Male"),
+            gender: selected.sex === "Female" ? "Female" : "Male",
             phone: selected.phone || "",
             department: "Laboratory",
-            dateOfService: selected.createdAt ? selected.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
+            dateOfService: selected.createdAt
+              ? selected.createdAt.split("T")[0]
+              : new Date().toISOString().split("T")[0],
             encounterId: selected.opNumber || selected.id,
             insuranceProvider: "Self-Pay",
             policyNumber: "N/A",
@@ -363,13 +477,14 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                     invoiceId: selected.billing.invoiceNo || selected.id,
                     receiptNo: selected.billing.receiptNo,
                     amount: selected.billing.total,
-                    paymentDate: selected.billing.paidAt || new Date().toISOString(),
+                    paymentDate:
+                      selected.billing.paidAt || new Date().toISOString(),
                     paymentMethod:
                       selected.billing.mode === "Cash"
                         ? "Cash"
                         : selected.billing.mode === "UPI"
-                        ? "UPI / Digital"
-                        : "Credit Card",
+                          ? "UPI / Digital"
+                          : "Credit Card",
                     collectedBy: selected.billing.collectedBy || collectedBy,
                     notes: "Laboratory Investigation Charges",
                   },
@@ -387,13 +502,14 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
                   invoiceId: selected.billing.invoiceNo || selected.id,
                   receiptNo: selected.billing.receiptNo,
                   amount: selected.billing.total,
-                  paymentDate: selected.billing.paidAt || new Date().toISOString(),
+                  paymentDate:
+                    selected.billing.paidAt || new Date().toISOString(),
                   paymentMethod:
                     selected.billing.mode === "Cash"
                       ? "Cash"
                       : selected.billing.mode === "UPI"
-                      ? "UPI / Digital"
-                      : "Credit Card",
+                        ? "UPI / Digital"
+                        : "Credit Card",
                   collectedBy: selected.billing.collectedBy || collectedBy,
                   notes: "Laboratory Investigation Charges",
                 }
@@ -403,5 +519,5 @@ export default function LabBillingQueue({ collectedBy = "Reception" }: { collect
         />
       )}
     </div>
-  );
+  )
 }

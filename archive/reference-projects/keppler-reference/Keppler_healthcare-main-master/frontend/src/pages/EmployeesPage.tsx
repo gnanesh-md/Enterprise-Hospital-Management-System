@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import type { Dispatch, FormEvent, SetStateAction } from "react";
-import StatCard from "../components/StatCard";
+import { useEffect, useState } from "react"
+import type { Dispatch, FormEvent, SetStateAction } from "react"
+import StatCard from "../components/StatCard"
 import {
   Badge,
   Button,
@@ -17,43 +17,43 @@ import {
   TabsContent,
   TabsTrigger,
   Textarea,
-} from "../components/ui";
+} from "../components/ui"
 import {
   EMPTY_SIGNUP_FORM,
   MODULE_OPTIONS,
   SUB_MODULES,
   USER_TYPE_LABELS,
   USER_TYPE_OPTIONS,
-} from "../lib/constants";
-import { apiFetch, reportError } from "../lib/api";
-import { formatDate } from "../lib/format";
-import type { Employee, ModuleAccessEntry, Notice, SignupForm } from "../types";
+} from "../lib/constants"
+import { apiFetch, reportError } from "../lib/api"
+import { formatDate } from "../lib/format"
+import type { Employee, ModuleAccessEntry, Notice, SignupForm } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
+  setNotice: Dispatch<SetStateAction<Notice | null>>
   // Edit name/email/phone/department/status/job_role, activate/deactivate.
-  canEditProfile: boolean;
+  canEditProfile: boolean
   // Edit user_type/access_role/module_access on an existing employee --
   // separately grantable, server-side clamped to never exceed what the
   // caller granting it holds themselves (see backend/core/auth.py's
   // authorize_employee_access_change).
-  canManageAccess: boolean;
+  canManageAccess: boolean
   // Creating brand-new accounts and deleting existing ones stay admin-only.
-  canCreateOrDelete: boolean;
-};
+  canCreateOrDelete: boolean
+}
 
 type EditForm = {
-  full_name: string;
-  email: string;
-  phone: string;
-  department: string;
-  address: string;
-  emergency_contact: string;
-  status: string;
-  job_role: string;
-  user_type: SignupForm["user_type"];
-  module_access: ModuleAccessEntry[];
-};
+  full_name: string
+  email: string
+  phone: string
+  department: string
+  address: string
+  emergency_contact: string
+  status: string
+  job_role: string
+  user_type: SignupForm["user_type"]
+  module_access: ModuleAccessEntry[]
+}
 
 // A module checkbox alone grants full access to everything under it; a
 // sub-item checkbox grants just that one write permission. Both are stored
@@ -63,7 +63,7 @@ type EditForm = {
 const isModuleFullyGranted = (
   moduleAccess: ModuleAccessEntry[],
   moduleValue: string,
-) => moduleAccess.includes(moduleValue);
+) => moduleAccess.includes(moduleValue)
 
 const isSubItemGranted = (
   moduleAccess: ModuleAccessEntry[],
@@ -71,7 +71,7 @@ const isSubItemGranted = (
   subKey: string,
 ) =>
   moduleAccess.includes(moduleValue) ||
-  moduleAccess.includes(`${moduleValue}.${subKey}`);
+  moduleAccess.includes(`${moduleValue}.${subKey}`)
 
 const toggleWholeModule = (
   moduleAccess: ModuleAccessEntry[],
@@ -79,13 +79,13 @@ const toggleWholeModule = (
 ): ModuleAccessEntry[] => {
   const withoutModule = moduleAccess.filter(
     (entry) => entry !== moduleValue && !entry.startsWith(`${moduleValue}.`),
-  );
+  )
   // Already fully granted -> turn the whole module off. Otherwise (absent or
   // only partially granted via sub-items) -> grant it fully.
   return moduleAccess.includes(moduleValue)
     ? withoutModule
-    : [...withoutModule, moduleValue];
-};
+    : [...withoutModule, moduleValue]
+}
 
 const toggleSubItem = (
   moduleAccess: ModuleAccessEntry[],
@@ -93,33 +93,33 @@ const toggleSubItem = (
   subKey: string,
   allSubKeys: string[],
 ): ModuleAccessEntry[] => {
-  const dotted = `${moduleValue}.${subKey}`;
+  const dotted = `${moduleValue}.${subKey}`
   if (moduleAccess.includes(moduleValue)) {
     // Was fully granted -- narrow to every other sub-item explicitly so the
     // rest of the module's access survives, dropping just this one.
-    const withoutModule = moduleAccess.filter((entry) => entry !== moduleValue);
+    const withoutModule = moduleAccess.filter((entry) => entry !== moduleValue)
     const others = allSubKeys
       .filter((key) => key !== subKey)
-      .map((key) => `${moduleValue}.${key}`);
-    return [...withoutModule, ...others];
+      .map((key) => `${moduleValue}.${key}`)
+    return [...withoutModule, ...others]
   }
   if (moduleAccess.includes(dotted)) {
-    return moduleAccess.filter((entry) => entry !== dotted);
+    return moduleAccess.filter((entry) => entry !== dotted)
   }
-  return [...moduleAccess, dotted];
-};
+  return [...moduleAccess, dotted]
+}
 
 const describeModuleAccessEntry = (entry: ModuleAccessEntry): string => {
-  const [moduleValue, subKey] = entry.split(".", 2);
+  const [moduleValue, subKey] = entry.split(".", 2)
   const moduleLabel =
-    MODULE_OPTIONS.find((m) => m.value === moduleValue)?.label || moduleValue;
-  if (!subKey) return moduleLabel;
+    MODULE_OPTIONS.find((m) => m.value === moduleValue)?.label || moduleValue
+  if (!subKey) return moduleLabel
   const subLabel =
-    SUB_MODULES[moduleValue as keyof typeof SUB_MODULES]?.find(
+    SUB_MODULES[(moduleValue as keyof typeof SUB_MODULES)]?.find(
       (s) => s.value === subKey,
-    )?.label || subKey;
-  return `${moduleLabel}: ${subLabel}`;
-};
+    )?.label || subKey
+  return `${moduleLabel}: ${subLabel}`
+}
 
 export default function EmployeesPage({
   setNotice,
@@ -127,139 +127,139 @@ export default function EmployeesPage({
   canManageAccess,
   canCreateOrDelete,
 }: Props) {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
-  const [query, setQuery] = useState("");
-  const [form, setForm] = useState<SignupForm>(EMPTY_SIGNUP_FORM);
-  const [tab, setTab] = useState("list");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<EditForm>>({});
-  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
-  const [deletingEmployee, setDeletingEmployee] = useState(false);
-  const [departments, setDepartments] = useState<
-    { department_name?: string }[]
-  >([]);
-  const [customDept, setCustomDept] = useState("");
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 })
+  const [query, setQuery] = useState("")
+  const [form, setForm] = useState<SignupForm>(EMPTY_SIGNUP_FORM)
+  const [tab, setTab] = useState("list")
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<Partial<EditForm>>({})
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null)
+  const [deletingEmployee, setDeletingEmployee] = useState(false)
+  const [departments, setDepartments] = useState<{
+    department_name?: string
+  }[]>([])
+  const [customDept, setCustomDept] = useState("")
 
   const loadEmployees = async (search?: string) => {
     const path = search
       ? `/api/employees/search?q=${encodeURIComponent(search)}`
-      : "/api/employees";
-    const data = await apiFetch<{ employees?: Employee[] }>(path);
-    setEmployees(data.employees || []);
-  };
+      : "/api/employees"
+    const data = await apiFetch<{ employees?: Employee[] }>(path)
+    setEmployees(data.employees || [])
+  }
 
   const loadStats = async () => {
     const data = await apiFetch<{
-      total: number;
-      active: number;
-      inactive: number;
-    }>("/api/employees/stats");
-    setStats(data);
-  };
+      total: number
+      active: number
+      inactive: number
+    }>("/api/employees/stats")
+    setStats(data)
+  }
 
   const loadDepartments = async () => {
     try {
       const data = await apiFetch<{
-        departments?: { department_name?: string }[];
-      }>("/api/registration/departments");
-      setDepartments(data.departments || []);
+        departments?: { department_name?: string }[]
+      }>("/api/registration/departments")
+      setDepartments(data.departments || [])
     } catch {
       // ignore
     }
-  };
+  }
 
   useEffect(() => {
-    void loadEmployees();
-    void loadStats();
-    void loadDepartments();
-  }, []);
+    void loadEmployees()
+    void loadStats()
+    void loadDepartments()
+  }, [])
 
   const handleAdd = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+    event.preventDefault()
     if (!canCreateOrDelete) {
       setNotice({
         type: "warning",
         message: "You do not have permission to add employees.",
-      });
-      return;
+      })
+      return
     }
 
     const finalDepartment =
-      form.department === "Other" ? customDept : form.department;
-    const payload = { ...form, department: finalDepartment };
+      form.department === "Other" ? customDept : form.department
+    const payload = { ...form, department: finalDepartment }
 
     try {
-      const res = await apiFetch<{ success: boolean; message: string }>(
+      const res = await apiFetch<{ success: boolean message: string }>(
         "/api/employees",
         { method: "POST", body: JSON.stringify(payload) },
-      );
+      )
       if (res.success) {
-        setNotice({ type: "success", message: res.message });
-        setForm(EMPTY_SIGNUP_FORM);
-        setCustomDept("");
-        void loadEmployees();
-        void loadStats();
-        setTab("list");
+        setNotice({ type: "success", message: res.message })
+        setForm(EMPTY_SIGNUP_FORM)
+        setCustomDept("")
+        void loadEmployees()
+        void loadStats()
+        setTab("list")
       } else {
-        setNotice({ type: "error", message: res.message });
+        setNotice({ type: "error", message: res.message })
       }
     } catch (error) {
-      reportError(setNotice, error as { message?: string; status?: number });
+      reportError(setNotice, error as { message?: string status?: number })
     }
-  };
+  }
 
   const toggleStatus = async (employee: Employee) => {
     if (!canEditProfile) {
       setNotice({
         type: "warning",
         message: "You do not have permission to update employee status.",
-      });
-      return;
+      })
+      return
     }
-    const path = employee.status === "active" ? "deactivate" : "activate";
+    const path = employee.status === "active" ? "deactivate" : "activate"
     await apiFetch(`/api/employees/${employee.employee_id}/${path}`, {
       method: "POST",
-    });
-    void loadEmployees(query);
-    void loadStats();
-  };
+    })
+    void loadEmployees(query)
+    void loadStats()
+  }
 
   const handleDelete = async (employee: Employee) => {
     if (!canCreateOrDelete) {
       setNotice({
         type: "warning",
         message: "You do not have permission to delete employees.",
-      });
-      return;
+      })
+      return
     }
     await apiFetch(`/api/employees/${employee.employee_id}`, {
       method: "DELETE",
-    });
-    void loadEmployees(query);
-    void loadStats();
-  };
+    })
+    void loadEmployees(query)
+    void loadStats()
+  }
 
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
-    setDeletingEmployee(true);
+    if (!deleteTarget) return
+    setDeletingEmployee(true)
     try {
-      await handleDelete(deleteTarget);
-      setDeleteTarget(null);
+      await handleDelete(deleteTarget)
+      setDeleteTarget(null)
     } finally {
-      setDeletingEmployee(false);
+      setDeletingEmployee(false)
     }
-  };
+  }
 
   const startEdit = (employee: Employee) => {
     if (!canManageAccess) {
       setNotice({
         type: "warning",
         message: "You do not have permission to manage employee access.",
-      });
-      return;
+      })
+      return
     }
-    setEditingId(employee.employee_id);
+    setEditingId(employee.employee_id)
     setEditForm({
       full_name: employee.full_name || "",
       email: employee.email || "",
@@ -271,42 +271,42 @@ export default function EmployeesPage({
       job_role: employee.job_role || "",
       user_type: employee.user_type || "normal",
       module_access: employee.module_access ?? [],
-    });
-  };
+    })
+  }
 
   const handleEditSave = async (employeeId: string) => {
     if (!canManageAccess) {
       setNotice({
         type: "warning",
         message: "You do not have permission to manage employee access.",
-      });
-      return;
+      })
+      return
     }
     try {
       await apiFetch(`/api/employees/${employeeId}`, {
         method: "PUT",
         body: JSON.stringify(editForm),
-      });
-      setNotice({ type: "success", message: "Employee updated successfully." });
-      setEditingId(null);
-      void loadEmployees(query);
-      void loadStats();
+      })
+      setNotice({ type: "success", message: "Employee updated successfully." })
+      setEditingId(null)
+      void loadEmployees(query)
+      void loadStats()
     } catch (error) {
-      reportError(setNotice, error as { message?: string; status?: number });
+      reportError(setNotice, error as { message?: string status?: number })
     }
-  };
+  }
 
   const deptCounts = employees.reduce<Record<string, number>>((acc, emp) => {
-    const key = emp.department || "Unassigned";
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
+    const key = emp.department || "Unassigned"
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
 
   const statusCounts = employees.reduce<Record<string, number>>((acc, emp) => {
-    const key = emp.status || "unknown";
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
+    const key = emp.status || "unknown"
+    acc[key] = (acc[key] || 0) + 1
+    return acc
+  }, {})
 
   return (
     <section className="panel">
@@ -788,12 +788,12 @@ export default function EmployeesPage({
                               >
                                 {MODULE_OPTIONS.map((module) => {
                                   const moduleAccess =
-                                    editForm.module_access || [];
+                                    editForm.module_access || []
                                   const fullyGranted = isModuleFullyGranted(
                                     moduleAccess,
                                     module.value,
-                                  );
-                                  const subItems = SUB_MODULES[module.value];
+                                  )
+                                  const subItems = SUB_MODULES[module.value]
                                   return (
                                     <div
                                       key={module.value}
@@ -880,7 +880,7 @@ export default function EmployeesPage({
                                         </div>
                                       )}
                                     </div>
-                                  );
+                                  )
                                 })}
                               </div>
                             </Label>
@@ -1085,5 +1085,5 @@ export default function EmployeesPage({
         confirmLabel="Delete Employee"
       />
     </section>
-  );
+  )
 }

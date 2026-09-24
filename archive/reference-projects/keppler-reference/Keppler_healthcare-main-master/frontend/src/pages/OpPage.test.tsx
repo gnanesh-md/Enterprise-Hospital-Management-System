@@ -1,22 +1,22 @@
-import { act } from "react";
-import { createRoot } from "react-dom/client";
-import OpPage from "./OpPage";
+import { act } from "react"
+import { createRoot } from "react-dom/client"
+import OpPage from "./OpPage"
 
 function flush() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 function jsonResponse(payload: unknown) {
   return Promise.resolve({
     ok: true,
     json: () => Promise.resolve(payload),
-  });
+  })
 }
 
 describe("OpPage", () => {
   test("renders OP desk scheduling and queue controls", async () => {
-    global.fetch = vi.fn((url: string) => {
-      const requestUrl = String(url);
+    global.fetch = (vi.fn((url: string) => {
+      const requestUrl = String(url)
       if (requestUrl.includes("/api/op/summary")) {
         return jsonResponse({
           total_appointments: 4,
@@ -25,7 +25,7 @@ describe("OpPage", () => {
           no_shows: 1,
           reminders_sent: 3,
           available_doctors: 2,
-        });
+        })
       }
       if (requestUrl.includes("/api/op/doctor-schedules")) {
         return jsonResponse({
@@ -41,7 +41,7 @@ describe("OpPage", () => {
               status: "available",
             },
           ],
-        });
+        })
       }
       if (requestUrl.includes("/api/appointments")) {
         return jsonResponse({
@@ -60,36 +60,36 @@ describe("OpPage", () => {
               no_show_marked: 0,
             },
           ],
-        });
+        })
       }
-      return jsonResponse({});
-    }) as any;
+      return jsonResponse({})
+    }) as any)
 
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root = createRoot(container)
 
     await act(async () => {
-      root.render(<OpPage setNotice={vi.fn()} canEdit={true} />);
-      await flush();
-      await flush();
-      await flush();
-    });
+      root.render(<OpPage setNotice={vi.fn()} canEdit={true} />)
+      await flush()
+      await flush()
+      await flush()
+    })
 
-    expect(container.textContent).toContain("OP Desk");
-    expect(container.textContent).toContain("Doctor Schedule");
-    expect(container.textContent).toContain("Schedule OP Visit");
-    expect(container.textContent).toContain("Reminders Sent");
+    expect(container.textContent).toContain("OP Desk")
+    expect(container.textContent).toContain("Doctor Schedule")
+    expect(container.textContent).toContain("Schedule OP Visit")
+    expect(container.textContent).toContain("Reminders Sent")
     expect(
       container.querySelector('input[aria-label="Doctor name"]'),
-    ).toBeTruthy();
+    ).toBeTruthy()
     expect(
       container.querySelector('input[aria-label="OP patient name"]'),
-    ).toBeTruthy();
+    ).toBeTruthy()
 
     act(() => {
-      root.unmount();
-    });
-    container.remove();
-  });
-});
+      root.unmount()
+    })
+    container.remove()
+  })
+})

@@ -1,9 +1,9 @@
-import type { Notice } from "../../types";
+import type { Notice } from "../../types"
 
 type Props = {
-  notice: Notice;
-  onClose: () => void;
-};
+  notice: Notice
+  onClose: () => void
+}
 
 export default function Toast({ notice, onClose }: Props) {
   return (
@@ -20,5 +20,5 @@ export default function Toast({ notice, onClose }: Props) {
         </button>
       </div>
     </div>
-  );
+  )
 }

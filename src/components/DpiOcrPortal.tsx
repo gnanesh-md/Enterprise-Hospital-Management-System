@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState } from "react"
 
 // Embeds the Keppler Medical Document Intelligence Platform (dpi-ocr) app
 // unmodified, as its own build running in a container on port 3005. It is a
@@ -10,11 +10,11 @@ import { useState } from "react";
 // rather than http://localhost:3005 directly: only this app's own port is
 // forwarded to the browser, so a cross-port iframe src is unreachable from
 // outside this sandbox even though it resolves fine from inside it.
-const OCR_APP_URL = import.meta.env.VITE_DPI_OCR_URL || "/keppler-ocr/";
+const OCR_APP_URL = import.meta.env.VITE_DPI_OCR_URL || "/keppler-ocr/"
 
 export default function DpiOcrPortal() {
-  const [failed, setFailed] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   return (
     <div className="h-full w-full flex flex-col bg-[#F0F2F5] relative">
@@ -22,9 +22,16 @@ export default function DpiOcrPortal() {
         <div className="px-3.5 py-2.5 bg-[#FFFBEB] border-b border-[#FDE68A] text-[#92400E] text-[12.5px] flex items-start gap-2.5">
           <span className="font-bold mt-px text-sm">⚠</span>
           <span>
-            Could not reach the Keppler OCR app at <code className="font-mono">{OCR_APP_URL}</code>. Start it with{" "}
-            <code className="font-mono">cd dpi-ocr-frontend && npm install && npm run dev</code> (and its backend with{" "}
-            <code className="font-mono">cd dpi-ocr-backend && docker compose up -d</code>), then reload this tab.
+            Could not reach the Keppler OCR app at{" "}
+            <code className="font-mono">{OCR_APP_URL}</code>. Start it with{" "}
+            <code className="font-mono">
+              cd dpi-ocr-frontend && npm install && npm run dev
+            </code>{" "}
+            (and its backend with{" "}
+            <code className="font-mono">
+              cd dpi-ocr-backend && docker compose up -d
+            </code>
+            ), then reload this tab.
           </span>
         </div>
       )}
@@ -41,5 +48,5 @@ export default function DpiOcrPortal() {
         </div>
       )}
     </div>
-  );
+  )
 }

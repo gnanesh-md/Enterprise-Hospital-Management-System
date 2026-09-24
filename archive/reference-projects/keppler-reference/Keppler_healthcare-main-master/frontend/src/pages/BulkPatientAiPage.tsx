@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { FaWhatsapp } from "react-icons/fa";
+import { useEffect, useRef, useState } from "react"
+import { FaWhatsapp } from "react-icons/fa"
 import {
   FiCheck,
   FiLoader,
   FiSearch,
   FiUploadCloud,
   FiUsers,
-} from "react-icons/fi";
-import DocumentUploadDropzone from "../components/DocumentUploadDropzone";
+} from "react-icons/fi"
+import DocumentUploadDropzone from "../components/DocumentUploadDropzone"
 import {
   Button,
   Modal,
@@ -16,235 +16,235 @@ import {
   TableHead,
   TableRow,
   Textarea,
-} from "../components/ui";
+} from "../components/ui"
 import {
   apiFetch,
   getHospitalCode,
   getCsrfToken,
   reportError,
-} from "../lib/api";
-import { API_BASE } from "../lib/constants";
-import type { Notice } from "../types";
+} from "../lib/api"
+import { API_BASE } from "../lib/constants"
+import type { Notice } from "../types"
 
 type Props = {
-  setNotice: (notice: Notice | null) => void;
-};
+  setNotice: (notice: Notice | null) => void
+}
 
-type StepKey = "upload" | "processing" | "query";
+type StepKey = "upload" | "processing" | "query"
 
 type JobStatus = {
-  id: number;
-  status: "IMPORTING" | "EXTRACTING" | "AWAITING_PROMPT" | "DONE" | "FAILED";
-  kind?: "spreadsheet" | "document";
-  processed_rows?: number;
-  imported_count?: number;
-  skipped_count?: number;
-  original_filename?: string;
-  created_at?: string;
-  error?: string;
-};
+  id: number
+  status: "IMPORTING" | "EXTRACTING" | "AWAITING_PROMPT" | "DONE" | "FAILED"
+  kind?: "spreadsheet" | "document"
+  processed_rows?: number
+  imported_count?: number
+  skipped_count?: number
+  original_filename?: string
+  created_at?: string
+  error?: string
+}
 
 type BulkPatientRow = {
-  patient_id: string;
-  name: string;
-  last_name: string;
-  phone: string;
-  age?: number;
-  gender?: string;
-  area?: string;
-  medical_condition?: string;
-};
+  patient_id: string
+  name: string
+  last_name: string
+  phone: string
+  age?: number
+  gender?: string
+  area?: string
+  medical_condition?: string
+}
 
-const JOB_ID_STORAGE_KEY = "hospai_bulk_import_job_id";
-const POLL_INTERVAL_MS = 2000;
-const PAGE_SIZE = 150;
+const JOB_ID_STORAGE_KEY = "hospai_bulk_import_job_id"
+const POLL_INTERVAL_MS = 2000
+const PAGE_SIZE = 150
 
-const SPREADSHEET_STEPS: { key: StepKey; label: string; hint: string }[] = [
+const SPREADSHEET_STEPS: { key: StepKey label: string hint: string }[] = [
   { key: "upload", label: "Upload", hint: "Add your file" },
   { key: "processing", label: "Import", hint: "AI reads & imports" },
   { key: "query", label: "Search", hint: "Find & contact" },
-];
+]
 
-const DOCUMENT_STEPS: { key: StepKey; label: string; hint: string }[] = [
+const DOCUMENT_STEPS: { key: StepKey label: string hint: string }[] = [
   { key: "upload", label: "Upload", hint: "Add your file" },
   { key: "processing", label: "Extract Text", hint: "Reading document" },
   { key: "query", label: "Ask AI", hint: "Prompt & review" },
-];
+]
 
 const SPREADSHEET_SEARCH_SUGGESTIONS = [
   "Age above 60",
   "Age below 18",
   "Missing area",
-];
+]
 
 const DOCUMENT_SEARCH_SUGGESTIONS = [
   "List everyone mentioned with their phone number",
   "What conditions are discussed in this document?",
-];
+]
 
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export default function BulkPatientAiPage({ setNotice }: Props) {
-  const [step, setStep] = useState<StepKey>("upload");
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [jobId, setJobId] = useState<number | null>(null);
-  const [job, setJob] = useState<JobStatus | null>(null);
+  const [step, setStep] = useState<StepKey>("upload")
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [jobId, setJobId] = useState<number | null>(null)
+  const [job, setJob] = useState<JobStatus | null>(null)
   const [jobKind, setJobKind] = useState<"spreadsheet" | "document">(
     "spreadsheet",
-  );
-  const [prompt, setPrompt] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<BulkPatientRow[]>([]);
-  const [answer, setAnswer] = useState("");
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [loadingMore, setLoadingMore] = useState(false);
+  )
+  const [prompt, setPrompt] = useState("")
+  const [searching, setSearching] = useState(false)
+  const [results, setResults] = useState<BulkPatientRow[]>([])
+  const [answer, setAnswer] = useState("")
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [whatsappTarget, setWhatsappTarget] = useState<BulkPatientRow | null>(
     null,
-  );
-  const [whatsappMessage, setWhatsappMessage] = useState("");
-  const [lastSearchedPrompt, setLastSearchedPrompt] = useState("");
-  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false);
-  const [broadcastMessage, setBroadcastMessage] = useState("");
-  const [broadcastSending, setBroadcastSending] = useState(false);
+  )
+  const [whatsappMessage, setWhatsappMessage] = useState("")
+  const [lastSearchedPrompt, setLastSearchedPrompt] = useState("")
+  const [broadcastModalOpen, setBroadcastModalOpen] = useState(false)
+  const [broadcastMessage, setBroadcastMessage] = useState("")
+  const [broadcastSending, setBroadcastSending] = useState(false)
   const [broadcastStatus, setBroadcastStatus] = useState<{
-    status: "PENDING" | "SENDING" | "DONE";
-    total_recipients: number;
-    sent_count: number;
-    failed_count: number;
-  } | null>(null);
-  const broadcastPollRef = useRef(false);
-  const pollingRef = useRef(false);
+    status: "PENDING" | "SENDING" | "DONE"
+    total_recipients: number
+    sent_count: number
+    failed_count: number
+  } | null>(null)
+  const broadcastPollRef = useRef(false)
+  const pollingRef = useRef(false)
   // startPolling's async loop and its callbacks are captured as closures at
   // the render they were created in, so reading `jobId` state there can be
   // stale (e.g. right after setJobId, before the next render commits).
   // A ref stays current across renders without needing to recreate the closure.
-  const jobIdRef = useRef<number | null>(null);
+  const jobIdRef = useRef<number | null>(null)
 
-  const STEPS = jobKind === "document" ? DOCUMENT_STEPS : SPREADSHEET_STEPS;
-  const stepIndex = STEPS.findIndex((s) => s.key === step);
+  const STEPS = jobKind === "document" ? DOCUMENT_STEPS : SPREADSHEET_STEPS
+  const stepIndex = STEPS.findIndex((s) => s.key === step)
 
   const startPolling = (id: number) => {
-    if (pollingRef.current) return;
-    pollingRef.current = true;
-    (async () => {
+    if (pollingRef.current) return
+    pollingRef.current = true
+    ;(async () => {
       while (pollingRef.current) {
         try {
-          const data = await apiFetch<JobStatus>(`/api/bulk-import/jobs/${id}`);
-          setJob(data);
-          if (data.kind) setJobKind(data.kind);
+          const data = await apiFetch<JobStatus>(`/api/bulk-import/jobs/${id}`)
+          setJob(data)
+          if (data.kind) setJobKind(data.kind)
           if (data.status === "AWAITING_PROMPT") {
-            setStep("query");
-            pollingRef.current = false;
-            return;
+            setStep("query")
+            pollingRef.current = false
+            return
           }
           if (data.status === "DONE") {
-            setStep("query");
-            pollingRef.current = false;
+            setStep("query")
+            pollingRef.current = false
             // Show the imported list immediately instead of making the user
             // click Search once just to see what came in.
-            void runSearch(1, false, "");
-            return;
+            void runSearch(1, false, "")
+            return
           }
           if (data.status === "FAILED") {
             setNotice({
               type: "error",
               message: data.error || "Bulk import failed.",
-            });
-            pollingRef.current = false;
-            return;
+            })
+            pollingRef.current = false
+            return
           }
           if (data.status === "IMPORTING" || data.status === "EXTRACTING") {
-            setStep("processing");
+            setStep("processing")
           }
         } catch (error) {
           reportError(
             setNotice,
-            error as { message?: string; status?: number },
+            error as { message?: string status?: number },
             "Unable to check import status.",
-          );
-          pollingRef.current = false;
-          return;
+          )
+          pollingRef.current = false
+          return
         }
-        await sleep(POLL_INTERVAL_MS);
+        await sleep(POLL_INTERVAL_MS)
       }
-    })();
-  };
+    })()
+  }
 
   useEffect(() => {
-    const stored = localStorage.getItem(JOB_ID_STORAGE_KEY);
+    const stored = localStorage.getItem(JOB_ID_STORAGE_KEY)
     if (stored) {
-      const id = Number(stored);
-      jobIdRef.current = id;
-      setJobId(id);
-      startPolling(id);
+      const id = Number(stored)
+      jobIdRef.current = id
+      setJobId(id)
+      startPolling(id)
     }
     return () => {
-      pollingRef.current = false;
-      broadcastPollRef.current = false;
-    };
-  }, []);
+      pollingRef.current = false
+      broadcastPollRef.current = false
+    }
+  }, [])
 
   const handleUpload = () => {
-    if (!file) return;
-    setUploading(true);
-    setUploadProgress(0);
+    if (!file) return
+    setUploading(true)
+    setUploadProgress(0)
 
-    const formData = new FormData();
-    formData.append("file", file);
+    const formData = new FormData()
+    formData.append("file", file)
 
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_BASE}/api/bulk-import/upload`);
-    xhr.withCredentials = true;
-    xhr.setRequestHeader("X-Hospital-Code", getHospitalCode());
-    const csrfToken = getCsrfToken();
-    if (csrfToken) xhr.setRequestHeader("X-CSRF-Token", csrfToken);
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", `${API_BASE}/api/bulk-import/upload`)
+    xhr.withCredentials = true
+    xhr.setRequestHeader("X-Hospital-Code", getHospitalCode())
+    const csrfToken = getCsrfToken()
+    if (csrfToken) xhr.setRequestHeader("X-CSRF-Token", csrfToken)
 
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
-        setUploadProgress(Math.round((event.loaded / event.total) * 100));
+        setUploadProgress(Math.round((event.loaded / event.total) * 100))
       }
-    };
+    }
 
     xhr.onload = () => {
-      setUploading(false);
+      setUploading(false)
       if (xhr.status >= 200 && xhr.status < 300) {
-        const data = JSON.parse(xhr.responseText);
-        localStorage.setItem(JOB_ID_STORAGE_KEY, String(data.job_id));
-        jobIdRef.current = data.job_id;
-        setJobId(data.job_id);
-        startPolling(data.job_id);
+        const data = JSON.parse(xhr.responseText)
+        localStorage.setItem(JOB_ID_STORAGE_KEY, String(data.job_id))
+        jobIdRef.current = data.job_id
+        setJobId(data.job_id)
+        startPolling(data.job_id)
       } else {
-        const payload = JSON.parse(xhr.responseText || "{}");
+        const payload = JSON.parse(xhr.responseText || "{}")
         setNotice({
           type: "error",
           message: payload.error || "Upload failed.",
-        });
+        })
       }
-    };
+    }
     xhr.onerror = () => {
-      setUploading(false);
+      setUploading(false)
       setNotice({
         type: "error",
         message: "Upload failed. Check your connection and try again.",
-      });
-    };
+      })
+    }
 
-    xhr.send(formData);
-  };
+    xhr.send(formData)
+  }
 
   const runSearch = async (
     targetPage: number,
     append: boolean,
     promptOverride?: string,
   ) => {
-    const effectivePrompt = promptOverride ?? prompt;
+    const effectivePrompt = promptOverride ?? prompt
     try {
-      const data = await apiFetch<{ results: BulkPatientRow[]; total: number }>(
+      const data = await apiFetch<{ results: BulkPatientRow[] total: number }>(
         "/api/bulk-import/query",
         {
           method: "POST",
@@ -255,197 +255,197 @@ export default function BulkPatientAiPage({ setNotice }: Props) {
             page_size: PAGE_SIZE,
           }),
         },
-      );
+      )
       setResults((prev) =>
         append ? [...prev, ...(data.results || [])] : data.results || [],
-      );
-      setTotal(data.total || 0);
-      setPage(targetPage);
-      if (!append) setLastSearchedPrompt(effectivePrompt.trim());
+      )
+      setTotal(data.total || 0)
+      setPage(targetPage)
+      if (!append) setLastSearchedPrompt(effectivePrompt.trim())
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to run that search.",
-      );
+      )
     }
-  };
+  }
 
   const handleAskDocument = async (promptOverride?: string) => {
-    const effectivePrompt = promptOverride ?? prompt;
-    const currentJobId = jobIdRef.current;
-    if (!currentJobId || !effectivePrompt.trim()) return;
-    setSearching(true);
+    const effectivePrompt = promptOverride ?? prompt
+    const currentJobId = jobIdRef.current
+    if (!currentJobId || !effectivePrompt.trim()) return
+    setSearching(true)
     try {
       const data = await apiFetch<{
-        results: BulkPatientRow[];
-        total: number;
-        answer?: string;
+        results: BulkPatientRow[]
+        total: number
+        answer?: string
       }>(`/api/bulk-import/jobs/${currentJobId}/ask`, {
         method: "POST",
         body: JSON.stringify({ prompt: effectivePrompt }),
-      });
-      setResults(data.results || []);
-      setTotal(data.total || 0);
-      setAnswer(data.answer || "");
-      setLastSearchedPrompt(effectivePrompt.trim());
+      })
+      setResults(data.results || [])
+      setTotal(data.total || 0)
+      setAnswer(data.answer || "")
+      setLastSearchedPrompt(effectivePrompt.trim())
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to answer that prompt.",
-      );
+      )
     } finally {
-      setSearching(false);
+      setSearching(false)
     }
-  };
+  }
 
   const handleSearch = async (promptOverride?: string) => {
     if (jobKind === "document") {
-      await handleAskDocument(promptOverride);
-      return;
+      await handleAskDocument(promptOverride)
+      return
     }
-    setSearching(true);
-    await runSearch(1, false, promptOverride);
-    setSearching(false);
-  };
+    setSearching(true)
+    await runSearch(1, false, promptOverride)
+    setSearching(false)
+  }
 
   const handleSuggestionClick = (suggestion: string) => {
-    setPrompt(suggestion);
-    void handleSearch(suggestion);
-  };
+    setPrompt(suggestion)
+    void handleSearch(suggestion)
+  }
 
   const handleClearSearch = () => {
-    setPrompt("");
-    setAnswer("");
-    setSearching(true);
-    void runSearch(1, false, "").finally(() => setSearching(false));
-  };
+    setPrompt("")
+    setAnswer("")
+    setSearching(true)
+    void runSearch(1, false, "").finally(() => setSearching(false))
+  }
 
   const handleLoadMore = async () => {
-    setLoadingMore(true);
-    await runSearch(page + 1, true);
-    setLoadingMore(false);
-  };
+    setLoadingMore(true)
+    await runSearch(page + 1, true)
+    setLoadingMore(false)
+  }
 
   const handleStartOver = () => {
-    localStorage.removeItem(JOB_ID_STORAGE_KEY);
-    pollingRef.current = false;
-    broadcastPollRef.current = false;
-    jobIdRef.current = null;
-    setJobId(null);
-    setJob(null);
-    setJobKind("spreadsheet");
-    setFile(null);
-    setPrompt("");
-    setLastSearchedPrompt("");
-    setResults([]);
-    setAnswer("");
-    setTotal(0);
-    setPage(1);
-    setStep("upload");
-  };
+    localStorage.removeItem(JOB_ID_STORAGE_KEY)
+    pollingRef.current = false
+    broadcastPollRef.current = false
+    jobIdRef.current = null
+    setJobId(null)
+    setJob(null)
+    setJobKind("spreadsheet")
+    setFile(null)
+    setPrompt("")
+    setLastSearchedPrompt("")
+    setResults([])
+    setAnswer("")
+    setTotal(0)
+    setPage(1)
+    setStep("upload")
+  }
 
   const openWhatsappModal = (row: BulkPatientRow) => {
-    setWhatsappTarget(row);
-    const name = `${row.name || ""} ${row.last_name || ""}`.trim() || "there";
+    setWhatsappTarget(row)
+    const name = `${row.name || ""} ${row.last_name || ""}`.trim() || "there"
     setWhatsappMessage(
       row.medical_condition
         ? `Hello ${name}, our records show: ${row.medical_condition}. Please contact us or visit for a follow-up.`
         : `Hello ${name}, please contact us at your earliest convenience for a follow-up.`,
-    );
-  };
+    )
+  }
 
   const handleSendWhatsapp = () => {
-    if (!whatsappTarget?.phone) return;
-    const digits = whatsappTarget.phone.replace(/\D/g, "");
+    if (!whatsappTarget?.phone) return
+    const digits = whatsappTarget.phone.replace(/\D/g, "")
     window.open(
       `https://wa.me/${digits}?text=${encodeURIComponent(whatsappMessage)}`,
       "_blank",
-    );
-    setWhatsappTarget(null);
-  };
+    )
+    setWhatsappTarget(null)
+  }
 
   const openBroadcastModal = () => {
     setBroadcastMessage(
       "Hello {name}, this is a message from our hospital. {condition}",
-    );
-    setBroadcastStatus(null);
-    setBroadcastModalOpen(true);
-  };
+    )
+    setBroadcastStatus(null)
+    setBroadcastModalOpen(true)
+  }
 
   const closeBroadcastModal = () => {
     // Once the broadcast has actually been created, sending continues on the
     // server regardless of whether this modal stays open -- only block
     // closing during the brief window before that initial request resolves.
-    if (broadcastSending && !broadcastStatus) return;
-    broadcastPollRef.current = false;
-    setBroadcastModalOpen(false);
-  };
+    if (broadcastSending && !broadcastStatus) return
+    broadcastPollRef.current = false
+    setBroadcastModalOpen(false)
+  }
 
   const pollBroadcastStatus = (broadcastId: number) => {
-    if (broadcastPollRef.current) return;
-    broadcastPollRef.current = true;
-    (async () => {
+    if (broadcastPollRef.current) return
+    broadcastPollRef.current = true
+    ;(async () => {
       while (broadcastPollRef.current) {
         try {
           const data = await apiFetch<{
-            status: "PENDING" | "SENDING" | "DONE";
-            total_recipients: number;
-            sent_count: number;
-            failed_count: number;
-          }>(`/api/bulk-import/whatsapp/broadcasts/${broadcastId}`);
-          setBroadcastStatus(data);
+            status: "PENDING" | "SENDING" | "DONE"
+            total_recipients: number
+            sent_count: number
+            failed_count: number
+          }>(`/api/bulk-import/whatsapp/broadcasts/${broadcastId}`)
+          setBroadcastStatus(data)
           if (data.status === "DONE") {
-            broadcastPollRef.current = false;
-            setBroadcastSending(false);
-            return;
+            broadcastPollRef.current = false
+            setBroadcastSending(false)
+            return
           }
         } catch (error) {
-          broadcastPollRef.current = false;
-          setBroadcastSending(false);
+          broadcastPollRef.current = false
+          setBroadcastSending(false)
           reportError(
             setNotice,
-            error as { message?: string; status?: number },
+            error as { message?: string status?: number },
             "Unable to check message progress.",
-          );
-          return;
+          )
+          return
         }
-        await sleep(1500);
+        await sleep(1500)
       }
-    })();
-  };
+    })()
+  }
 
   const handleSendBroadcast = async () => {
-    if (!jobIdRef.current || !broadcastMessage.trim()) return;
-    setBroadcastSending(true);
+    if (!jobIdRef.current || !broadcastMessage.trim()) return
+    setBroadcastSending(true)
     try {
       const data = await apiFetch<{
-        broadcast_id: number;
-        total_recipients: number;
+        broadcast_id: number
+        total_recipients: number
       }>(`/api/bulk-import/jobs/${jobIdRef.current}/whatsapp/broadcast`, {
         method: "POST",
         body: JSON.stringify({
           prompt: lastSearchedPrompt,
           message: broadcastMessage.trim(),
         }),
-      });
+      })
       setBroadcastStatus({
         status: "PENDING",
         total_recipients: data.total_recipients,
         sent_count: 0,
         failed_count: 0,
-      });
-      pollBroadcastStatus(data.broadcast_id);
+      })
+      pollBroadcastStatus(data.broadcast_id)
     } catch (error) {
-      setBroadcastSending(false);
+      setBroadcastSending(false)
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to send messages.",
-      );
+      )
     }
-  };
+  }
 
   return (
     <section className="module-page">
@@ -470,13 +470,13 @@ export default function BulkPatientAiPage({ setNotice }: Props) {
       <div className="journey-steps" role="list" aria-label="AI Mode steps">
         {STEPS.map((s, index) => {
           const isDone =
-            index < stepIndex || (step === "query" && s.key !== "query");
-          const isActive = index === stepIndex;
+            index < stepIndex || (step === "query" && s.key !== "query")
+          const isActive = index === stepIndex
           const state = isActive
             ? "journey-step-active"
             : isDone
               ? "journey-step-completed"
-              : "journey-step-upcoming";
+              : "journey-step-upcoming"
           return (
             <div className="journey-step-wrap" key={s.key}>
               <div className={`journey-step ${state}`}>
@@ -498,7 +498,7 @@ export default function BulkPatientAiPage({ setNotice }: Props) {
                 />
               )}
             </div>
-          );
+          )
         })}
       </div>
 
@@ -624,8 +624,8 @@ export default function BulkPatientAiPage({ setNotice }: Props) {
                 onChange={(event) => setPrompt(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    void handleSearch();
+                    event.preventDefault()
+                    void handleSearch()
                   }
                 }}
               />
@@ -723,8 +723,12 @@ export default function BulkPatientAiPage({ setNotice }: Props) {
                   )}
                   <p className="muted">
                     {jobKind === "document"
-                      ? `Found ${results.length} matching patient${results.length === 1 ? "" : "s"} in this document`
-                      : `${results.length} of ${total} patient${total === 1 ? "" : "s"}`}
+                      ? `Found ${results.length} matching patient${
+                          results.length === 1 ? "" : "s"
+                        } in this document`
+                      : `${results.length} of ${total} patient${
+                          total === 1 ? "" : "s"
+                        }`}
                   </p>
                   {jobKind === "spreadsheet" && total > 0 && (
                     <Button variant="secondary" onClick={openBroadcastModal}>
@@ -804,7 +808,11 @@ export default function BulkPatientAiPage({ setNotice }: Props) {
       <Modal
         open={!!whatsappTarget}
         onClose={() => setWhatsappTarget(null)}
-        title={`Message ${whatsappTarget ? `${whatsappTarget.name || ""} ${whatsappTarget.last_name || ""}`.trim() : ""}`}
+        title={`Message ${
+          whatsappTarget
+            ? `${whatsappTarget.name || ""} ${whatsappTarget.last_name || ""}`.trim()
+            : ""
+        }`}
         description="Edit the message before it opens in WhatsApp -- nothing is sent automatically."
       >
         <Textarea
@@ -921,5 +929,5 @@ export default function BulkPatientAiPage({ setNotice }: Props) {
         )}
       </Modal>
     </section>
-  );
+  )
 }

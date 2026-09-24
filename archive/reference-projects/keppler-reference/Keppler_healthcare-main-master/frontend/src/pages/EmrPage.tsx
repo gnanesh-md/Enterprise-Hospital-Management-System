@@ -1,7 +1,14 @@
-import React, { useState } from "react";
-import { apiFetch, reportError } from "../lib/api";
-import { API_BASE } from "../lib/constants";
-import { Button, Input, Modal, Tabs, TabsTrigger, Textarea } from "../components/ui";
+import React, { useState } from "react"
+import { apiFetch, reportError } from "../lib/api"
+import { API_BASE } from "../lib/constants"
+import {
+  Button,
+  Input,
+  Modal,
+  Tabs,
+  TabsTrigger,
+  Textarea,
+} from "../components/ui"
 import {
   FiSearch as Search,
   FiPrinter as Printer,
@@ -19,8 +26,8 @@ import {
   FiDollarSign,
   FiCircle,
   FiAlertCircle,
-} from "react-icons/fi";
-import type { Notice, Patient } from "../types";
+} from "react-icons/fi"
+import type { Notice, Patient } from "../types"
 
 /* ─── journey timeline stage styling ─── */
 const STAGE_ICON: Record<string, typeof FiCircle> = {
@@ -34,7 +41,7 @@ const STAGE_ICON: Record<string, typeof FiCircle> = {
   billing: FiDollarSign,
   lab: FiActivity,
   er: FiAlertCircle,
-};
+}
 const STAGE_COLOR: Record<string, string> = {
   registration: "#0369a1",
   queue: "#854d0e",
@@ -46,7 +53,7 @@ const STAGE_COLOR: Record<string, string> = {
   billing: "#065f46",
   lab: "#9333ea",
   er: "#dc2626",
-};
+}
 
 /* ─── helpers ─── */
 const fmt = (ts: string) =>
@@ -56,7 +63,7 @@ const fmt = (ts: string) =>
         month: "short",
         year: "numeric",
       })
-    : "—";
+    : "—"
 const fmtDt = (ts: string) =>
   ts
     ? new Date(ts).toLocaleString("en-IN", {
@@ -67,12 +74,12 @@ const fmtDt = (ts: string) =>
         minute: "2-digit",
         hour12: true,
       })
-    : "—";
-const money = (v: any) => `₹${Number(v || 0).toFixed(2)}`;
+    : "—"
+const money = (v: any) => `₹${Number(v || 0).toFixed(2)}`
 
 /* ─── STATUS BADGE ─── */
 const StatusBadge = ({ status }: { status: string }) => {
-  const s = (status || "").toLowerCase();
+  const s = (status || "").toLowerCase()
   const palette: Record<string, string> = {
     completed: "background:#dcfce7;color:#166534;border:1px solid #86efac",
     paid: "background:#dcfce7;color:#166534;border:1px solid #86efac",
@@ -91,8 +98,8 @@ const StatusBadge = ({ status }: { status: string }) => {
     rejected: "background:#fee2e2;color:#991b1b;border:1px solid #fca5a5",
     cancelled: "background:#fee2e2;color:#991b1b;border:1px solid #fca5a5",
     released: "background:#e2e8f0;color:#334155;border:1px solid #cbd5e1",
-  };
-  const key = Object.keys(palette).find((k) => s.includes(k)) || "scheduled";
+  }
+  const key = Object.keys(palette).find((k) => s.includes(k)) || "scheduled"
   return (
     <span
       style={{
@@ -109,16 +116,19 @@ const StatusBadge = ({ status }: { status: string }) => {
     >
       {status || "—"}
     </span>
-  );
-};
+  )
+}
 
-const EmptyRow = ({ colSpan, label }: { colSpan: number; label: string }) => (
+const EmptyRow = ({ colSpan, label }: { colSpan: number label: string }) => (
   <tr>
-    <td colSpan={colSpan} style={{ textAlign: "center", padding: "16px", color: "#94a3b8" }}>
+    <td
+      colSpan={colSpan}
+      style={{ textAlign: "center", padding: "16px", color: "#94a3b8" }}
+    >
       {label}
     </td>
   </tr>
-);
+)
 
 /* ────────────────────────────────────── PRINT STYLES ─── */
 const PRINT_CSS = `
@@ -207,131 +217,125 @@ body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#111;}
 @media screen{
   .rpt-wrap{background:#fff;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,.10);}
 }
-`;
+`
 
-type TabKey =
-  | "overview"
-  | "clinical"
-  | "medications"
-  | "documents"
-  | "billing"
-  | "ai-summary";
+type TabKey = "overview" | "clinical" | "medications" | "documents" | "billing" | "ai-summary"
 
-const TABS: { key: TabKey; label: string }[] = [
+const TABS: { key: TabKey label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "clinical", label: "Clinical" },
   { key: "medications", label: "Medications" },
   { key: "documents", label: "Documents" },
   { key: "billing", label: "Billing" },
   { key: "ai-summary", label: "AI Summary" },
-];
+]
 
 /* ═══════════════════════════════════════ MAIN COMPONENT ═════════════════════════════════ */
 export default function EmrPage({
   setNotice,
 }: {
-  setNotice: (msg: any) => void;
+  setNotice: (msg: any) => void
 }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Patient[]>([]);
-  const [pid, setPid] = useState<string | null>(null);
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<Patient[]>([])
+  const [pid, setPid] = useState<string | null>(null)
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabKey>("overview")
 
-  const [aiSummary, setAiSummary] = useState("");
-  const [aiTitle, setAiTitle] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [sharing, setSharing] = useState(false);
-  const [manualShareOpen, setManualShareOpen] = useState(false);
-  const [manualShareReason, setManualShareReason] = useState("");
+  const [aiSummary, setAiSummary] = useState("")
+  const [aiTitle, setAiTitle] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const [manualShareOpen, setManualShareOpen] = useState(false)
+  const [manualShareReason, setManualShareReason] = useState("")
 
   const handleSearch = async () => {
-    if (!query.trim()) return;
-    setLoading(true);
+    if (!query.trim()) return
+    setLoading(true)
     try {
       const res = await apiFetch<Patient[]>(
         `/api/emr/search?q=${encodeURIComponent(query)}`,
-      );
-      setResults(res);
+      )
+      setResults(res)
     } catch {
-      setNotice({ type: "error", message: "Search failed." });
+      setNotice({ type: "error", message: "Search failed." })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleOpen = async (patientId: string) => {
-    setPid(patientId);
-    setActiveTab("overview");
-    setAiSummary("");
-    setAiTitle("");
-    setLoading(true);
+    setPid(patientId)
+    setActiveTab("overview")
+    setAiSummary("")
+    setAiTitle("")
+    setLoading(true)
     try {
-      const d = await apiFetch<any>(`/api/emr/${patientId}`);
-      setData(d);
+      const d = await apiFetch<any>(`/api/emr/${patientId}`)
+      setData(d)
       // Prefill the AI Summary tab with the most recently generated one, if any.
-      const latestCert = (d.certificates || [])[0];
+      const latestCert = (d.certificates || [])[0]
       if (latestCert) {
-        setAiSummary(latestCert.body || "");
-        setAiTitle(latestCert.title || "AI Clinical Summary");
+        setAiSummary(latestCert.body || "")
+        setAiTitle(latestCert.title || "AI Clinical Summary")
       }
       apiFetch("/api/emr/access-log", {
         method: "POST",
         body: JSON.stringify({ patient_id: patientId, action: "viewed" }),
-      }).catch(() => {});
+      }).catch(() => {})
     } catch {
-      setNotice({ type: "error", message: "Failed to load EMR." });
+      setNotice({ type: "error", message: "Failed to load EMR." })
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleGenerateAiSummary = async () => {
-    if (!pid) return;
-    setAiLoading(true);
+    if (!pid) return
+    setAiLoading(true)
     try {
       const r = await apiFetch<{
-        summary: string;
-        title: string;
-        certificate_id: number;
-      }>(`/api/emr/${pid}/ai-summary`, { method: "POST" });
-      setAiSummary(r.summary);
-      setAiTitle(r.title);
-      setActiveTab("ai-summary");
-      setNotice({ type: "success", message: `${r.title} generated.` });
+        summary: string
+        title: string
+        certificate_id: number
+      }>(`/api/emr/${pid}/ai-summary`, { method: "POST" })
+      setAiSummary(r.summary)
+      setAiTitle(r.title)
+      setActiveTab("ai-summary")
+      setNotice({ type: "success", message: `${r.title} generated.` })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "AI summary generation failed.",
-      );
+      )
     } finally {
-      setAiLoading(false);
+      setAiLoading(false)
     }
-  };
+  }
 
   const buildFallbackShareText = () => {
-    const patient = data?.patient;
+    const patient = data?.patient
     return (
       `Dear ${patient?.name || "Patient"},\n\nYour ${aiTitle || "clinical summary"} from *HospAI Medical Centre* is ready.\n\n` +
       `📋 *Patient ID:* ${patient?.patient_id}\n` +
       `📅 *Date:* ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" })}\n\n` +
       `_Please save the attached PDF from the print dialog and share it manually._`
-    );
-  };
+    )
+  }
 
   const handleShareWhatsapp = async () => {
-    if (!pid) return;
+    if (!pid) return
     if (!aiSummary.trim()) {
-      setActiveTab("ai-summary");
+      setActiveTab("ai-summary")
       setNotice({
         type: "error",
         message: "Generate an AI summary first, then share it.",
-      });
-      return;
+      })
+      return
     }
-    setSharing(true);
+    setSharing(true)
     try {
       await apiFetch(`/api/emr/${pid}/share-whatsapp`, {
         method: "POST",
@@ -339,32 +343,34 @@ export default function EmrPage({
           summary: aiSummary,
           title: aiTitle || "AI Clinical Summary",
         }),
-      });
-      setNotice({ type: "success", message: "Sent via WhatsApp." });
+      })
+      setNotice({ type: "success", message: "Sent via WhatsApp." })
     } catch (error) {
-      const err = error as { message?: string; payload?: { fallback?: string } };
+      const err = error as { message?: string payload?: { fallback?: string } }
       if (err.payload?.fallback === "manual") {
-        setManualShareReason(err.message || "WhatsApp isn't available right now.");
-        setManualShareOpen(true);
+        setManualShareReason(
+          err.message || "WhatsApp isn't available right now.",
+        )
+        setManualShareOpen(true)
       } else {
-        reportError(setNotice, error as any, "Unable to share via WhatsApp.");
+        reportError(setNotice, error as any, "Unable to share via WhatsApp.")
       }
     } finally {
-      setSharing(false);
+      setSharing(false)
     }
-  };
+  }
 
   const handleManualShare = () => {
-    if (!data) return;
-    setManualShareOpen(false);
-    const phone = (data.patient.phone || "").replace(/\D/g, "");
-    window.print();
-    const text = buildFallbackShareText();
+    if (!data) return
+    setManualShareOpen(false)
+    const phone = (data.patient.phone || "").replace(/\D/g, "")
+    window.print()
+    const text = buildFallbackShareText()
     const url = phone
       ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
-    setTimeout(() => window.open(url, "_blank"), 600);
-  };
+      : `https://wa.me/?text=${encodeURIComponent(text)}`
+    setTimeout(() => window.open(url, "_blank"), 600)
+  }
 
   /* ── Render EMR report ── */
   if (pid && data) {
@@ -389,43 +395,45 @@ export default function EmrPage({
       insurance_claims = [],
       certificates = [],
       timeline: rawTimeline = [],
-    } = data;
+    } = data
 
     const currentAdmission =
-      admissions.find((a: any) => !a.discharge_date) || admissions[0] || null;
+      admissions.find((a: any) => !a.discharge_date) || admissions[0] || null
     // Joined by admission_id (not just "any active bed") so a readmission that
     // hasn't been given a bed yet correctly shows "Not currently assigned"
     // instead of picking up an unrelated stay's bed.
     const currentBed =
       bed_history.find(
-        (b: any) => b.status === "active" && b.admission_id === currentAdmission?.id,
-      ) || null;
+        (b: any) =>
+          b.status === "active" && b.admission_id === currentAdmission?.id,
+      ) || null
 
     // Journey timeline — built server-side (see get_patient_journey in
     // database.py) from every real event: registration, appointments,
     // checked-in/consultation start/complete, bed admit/transfer/discharge,
     // prescriptions, treatment plan notes, billing, documents. Oldest first.
     const timeline = [...rawTimeline].sort(
-      (a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
-    );
+      (a: any, b: any) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+    )
 
     const totalFee = appointments.reduce(
       (s: number, a: any) =>
         s + (a.consultation_fee > 0 ? Number(a.consultation_fee) : 0),
       0,
-    );
+    )
     const totalPharm = pharmacy_sales.reduce(
       (s: number, a: any) => s + Number(a.amount || 0),
       0,
-    );
+    )
     const totalInvoiced = invoices.reduce(
       (s: number, i: any) => s + Number(i.total_amount || 0),
       0,
-    );
+    )
     const totalPaidInvoices = invoices.reduce(
       (s: number, i: any) => s + Number(i.paid_amount || 0),
       0,
-    );
+    )
 
     // Every invoice already carries which module it's for (OP/IP/LAB/PHARMACY
     // -- pharmacy is never invoiced here, it's tracked directly in
@@ -435,22 +443,22 @@ export default function EmrPage({
     const billedByModule = (mod: string) =>
       invoices
         .filter((i: any) => i.module === mod)
-        .reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0);
+        .reduce((s: number, i: any) => s + Number(i.total_amount || 0), 0)
     const paidByModule = (mod: string) =>
       invoices
         .filter((i: any) => i.module === mod)
-        .reduce((s: number, i: any) => s + Number(i.paid_amount || 0), 0);
+        .reduce((s: number, i: any) => s + Number(i.paid_amount || 0), 0)
 
-    const opBilled = billedByModule("OP");
-    const opPaid = paidByModule("OP");
-    const ipBilled = billedByModule("IP");
-    const ipPaid = paidByModule("IP");
-    const labBilled = billedByModule("LAB");
-    const labPaid = paidByModule("LAB");
+    const opBilled = billedByModule("OP")
+    const opPaid = paidByModule("OP")
+    const ipBilled = billedByModule("IP")
+    const ipPaid = paidByModule("IP")
+    const labBilled = billedByModule("LAB")
+    const labPaid = paidByModule("LAB")
 
-    const grandTotal = opBilled + ipBilled + labBilled + totalPharm;
-    const grandPaid = opPaid + ipPaid + labPaid + totalPharm;
-    const grandDue = Math.max(grandTotal - grandPaid, 0);
+    const grandTotal = opBilled + ipBilled + labBilled + totalPharm
+    const grandPaid = opPaid + ipPaid + labPaid + totalPharm
+    const grandDue = Math.max(grandTotal - grandPaid, 0)
 
     return (
       <div style={{ padding: "24px 0" }}>
@@ -471,10 +479,10 @@ export default function EmrPage({
         >
           <button
             onClick={() => {
-              setPid(null);
-              setData(null);
-              setAiSummary("");
-              setAiTitle("");
+              setPid(null)
+              setData(null)
+              setAiSummary("")
+              setAiTitle("")
             }}
             style={{
               display: "flex",
@@ -530,7 +538,8 @@ export default function EmrPage({
                 opacity: sharing ? 0.7 : 1,
               }}
             >
-              <Share2 size={16} /> {sharing ? "Sending..." : "Share via WhatsApp"}
+              <Share2 size={16} />{" "}
+              {sharing ? "Sending..." : "Share via WhatsApp"}
             </button>
             <button
               onClick={() => window.print()}
@@ -598,7 +607,9 @@ export default function EmrPage({
           </div>
 
           {/* ══════════════ OVERVIEW ══════════════ */}
-          <div className={`tab-panel ${activeTab === "overview" ? "active" : ""}`}>
+          <div
+            className={`tab-panel ${activeTab === "overview" ? "active" : ""}`}
+          >
             <div className="sec-title">Patient Details</div>
             <table className="info-grid">
               <tbody>
@@ -626,7 +637,9 @@ export default function EmrPage({
                   <td className="lbl">Blood Group</td>
                   <td>{patient.blood_group || "—"}</td>
                   <td className="lbl">Registered On</td>
-                  <td>{patient.created_at ? fmtDt(patient.created_at) : "—"}</td>
+                  <td>
+                    {patient.created_at ? fmtDt(patient.created_at) : "—"}
+                  </td>
                 </tr>
                 <tr>
                   <td className="lbl">Address</td>
@@ -691,14 +704,20 @@ export default function EmrPage({
               Journey Timeline — Registration to Discharge
             </div>
             {timeline.length === 0 ? (
-              <p style={{ color: "#94a3b8", padding: "16px", textAlign: "center" }}>
+              <p
+                style={{
+                  color: "#94a3b8",
+                  padding: "16px",
+                  textAlign: "center",
+                }}
+              >
                 No events found.
               </p>
             ) : (
               <div className="timeline-track">
                 {timeline.map((e: any, i: number) => {
-                  const Icon = STAGE_ICON[e.stage] || FiCircle;
-                  const detail = e.detail as Record<string, any> | undefined;
+                  const Icon = STAGE_ICON[e.stage] || FiCircle
+                  const detail = e.detail as Record<string, any> | undefined
                   return (
                     <div className="timeline-node" key={i}>
                       <div
@@ -718,7 +737,9 @@ export default function EmrPage({
                           <div className="timeline-node-detail">
                             {detail.doctor_name && `Dr. ${detail.doctor_name}`}
                             {detail.department &&
-                              (detail.doctor_name ? ` — ${detail.department}` : detail.department)}
+                              (detail.doctor_name
+                                ? ` — ${detail.department}`
+                                : detail.department)}
                             {detail.note && detail.note}
                             {detail.treatment_plan && (
                               <>
@@ -730,7 +751,7 @@ export default function EmrPage({
                         )}
                       </div>
                     </div>
-                  );
+                  )
                 })}
               </div>
             )}
@@ -751,11 +772,18 @@ export default function EmrPage({
                     {opBilled > 0 && (
                       <tr>
                         <td>Consultation (OP)</td>
-                        <td style={{ textAlign: "right" }}>{money(opBilled)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {money(opBilled)}
+                        </td>
                         <td style={{ textAlign: "right", color: "#065f46" }}>
                           {money(opPaid)}
                         </td>
-                        <td style={{ textAlign: "right", color: opBilled > opPaid ? "#991b1b" : "#94a3b8" }}>
+                        <td
+                          style={{
+                            textAlign: "right",
+                            color: opBilled > opPaid ? "#991b1b" : "#94a3b8",
+                          }}
+                        >
                           {money(Math.max(opBilled - opPaid, 0))}
                         </td>
                       </tr>
@@ -763,11 +791,18 @@ export default function EmrPage({
                     {ipBilled > 0 && (
                       <tr>
                         <td>Bed &amp; Room Charges (IP)</td>
-                        <td style={{ textAlign: "right" }}>{money(ipBilled)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {money(ipBilled)}
+                        </td>
                         <td style={{ textAlign: "right", color: "#065f46" }}>
                           {money(ipPaid)}
                         </td>
-                        <td style={{ textAlign: "right", color: ipBilled > ipPaid ? "#991b1b" : "#94a3b8" }}>
+                        <td
+                          style={{
+                            textAlign: "right",
+                            color: ipBilled > ipPaid ? "#991b1b" : "#94a3b8",
+                          }}
+                        >
                           {money(Math.max(ipBilled - ipPaid, 0))}
                         </td>
                       </tr>
@@ -775,11 +810,18 @@ export default function EmrPage({
                     {labBilled > 0 && (
                       <tr>
                         <td>Lab / Diagnostics</td>
-                        <td style={{ textAlign: "right" }}>{money(labBilled)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {money(labBilled)}
+                        </td>
                         <td style={{ textAlign: "right", color: "#065f46" }}>
                           {money(labPaid)}
                         </td>
-                        <td style={{ textAlign: "right", color: labBilled > labPaid ? "#991b1b" : "#94a3b8" }}>
+                        <td
+                          style={{
+                            textAlign: "right",
+                            color: labBilled > labPaid ? "#991b1b" : "#94a3b8",
+                          }}
+                        >
                           {money(Math.max(labBilled - labPaid, 0))}
                         </td>
                       </tr>
@@ -787,7 +829,9 @@ export default function EmrPage({
                     {totalPharm > 0 && (
                       <tr>
                         <td>Pharmacy</td>
-                        <td style={{ textAlign: "right" }}>{money(totalPharm)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {money(totalPharm)}
+                        </td>
                         <td style={{ textAlign: "right", color: "#065f46" }}>
                           {money(totalPharm)}
                         </td>
@@ -803,10 +847,22 @@ export default function EmrPage({
                       <td style={{ textAlign: "right", fontWeight: 800 }}>
                         {money(grandTotal)}
                       </td>
-                      <td style={{ textAlign: "right", fontWeight: 800, color: "#065f46" }}>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontWeight: 800,
+                          color: "#065f46",
+                        }}
+                      >
                         {money(grandPaid)}
                       </td>
-                      <td style={{ textAlign: "right", fontWeight: 800, color: grandDue > 0 ? "#991b1b" : "#065f46" }}>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontWeight: 800,
+                          color: grandDue > 0 ? "#991b1b" : "#065f46",
+                        }}
+                      >
                         {money(grandDue)}
                       </td>
                     </tr>
@@ -817,7 +873,9 @@ export default function EmrPage({
           </div>
 
           {/* ══════════════ CLINICAL ══════════════ */}
-          <div className={`tab-panel ${activeTab === "clinical" ? "active" : ""}`}>
+          <div
+            className={`tab-panel ${activeTab === "clinical" ? "active" : ""}`}
+          >
             <div className="sec-title">Encounters &amp; Diagnoses</div>
             <table className="data-tbl">
               <thead>
@@ -835,7 +893,9 @@ export default function EmrPage({
                   <EmptyRow colSpan={6} label="No encounters recorded." />
                 ) : (
                   encounters.map((e: any, i: number) => {
-                    const dx = diagnoses.filter((d: any) => d.encounter_id === e.id);
+                    const dx = diagnoses.filter(
+                      (d: any) => d.encounter_id === e.id,
+                    )
                     return (
                       <tr key={i}>
                         <td>{i + 1}</td>
@@ -851,7 +911,7 @@ export default function EmrPage({
                           <StatusBadge status={e.status || "Completed"} />
                         </td>
                       </tr>
-                    );
+                    )
                   })
                 )}
               </tbody>
@@ -877,11 +937,18 @@ export default function EmrPage({
                           {Object.entries(v)
                             .filter(
                               ([k, val]) =>
-                                !["id", "patient_id", "recorded_at", "created_at"].includes(k) &&
+                                ![
+                                  "id",
+                                  "patient_id",
+                                  "recorded_at",
+                                  "created_at",
+                                ].includes(k) &&
                                 val != null &&
                                 val !== "",
                             )
-                            .map(([k, val]) => `${k.replace(/_/g, " ")}: ${val}`)
+                            .map(
+                              ([k, val]) => `${k.replace(/_/g, " ")}: ${val}`,
+                            )
                             .join(" · ") || "—"}
                         </td>
                       </tr>
@@ -924,7 +991,9 @@ export default function EmrPage({
                         <td>{fmtDt(n.created_at)}</td>
                         <td>{n.doctor_name || "Observation"}</td>
                         <td>
-                          {[n.note, n.treatment_plan].filter(Boolean).join(" — ") || "—"}
+                          {[n.note, n.treatment_plan]
+                            .filter(Boolean)
+                            .join(" — ") || "—"}
                         </td>
                       </tr>
                     ))}
@@ -935,7 +1004,11 @@ export default function EmrPage({
           </div>
 
           {/* ══════════════ MEDICATIONS ══════════════ */}
-          <div className={`tab-panel ${activeTab === "medications" ? "active" : ""}`}>
+          <div
+            className={`tab-panel ${
+              activeTab === "medications" ? "active" : ""
+            }`}
+          >
             <div className="sec-title">Prescriptions</div>
             <table className="data-tbl">
               <thead>
@@ -983,7 +1056,10 @@ export default function EmrPage({
               </thead>
               <tbody>
                 {medication_schedules.length === 0 ? (
-                  <EmptyRow colSpan={5} label="No medication schedule recorded." />
+                  <EmptyRow
+                    colSpan={5}
+                    label="No medication schedule recorded."
+                  />
                 ) : (
                   medication_schedules.map((m: any, i: number) => (
                     <tr key={i}>
@@ -992,7 +1068,9 @@ export default function EmrPage({
                       <td>{m.dosage || "—"}</td>
                       <td>{fmtDt(m.schedule_time)}</td>
                       <td style={{ textAlign: "center" }}>
-                        <StatusBadge status={m.administered ? "Completed" : "Pending"} />
+                        <StatusBadge
+                          status={m.administered ? "Completed" : "Pending"}
+                        />
                       </td>
                     </tr>
                   ))
@@ -1013,14 +1091,23 @@ export default function EmrPage({
               </thead>
               <tbody>
                 {pharmacy_sales.length === 0 ? (
-                  <EmptyRow colSpan={5} label="No pharmacy dispensations recorded." />
+                  <EmptyRow
+                    colSpan={5}
+                    label="No pharmacy dispensations recorded."
+                  />
                 ) : (
                   pharmacy_sales.map((s: any, i: number) => (
                     <tr key={i}>
                       <td style={{ color: "#64748b" }}>{i + 1}</td>
                       <td style={{ fontWeight: 600 }}>{s.medicine_name}</td>
                       <td style={{ textAlign: "center" }}>{s.quantity}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: "#065f46" }}>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontWeight: 700,
+                          color: "#065f46",
+                        }}
+                      >
                         {money(s.amount)}
                       </td>
                       <td>{fmt(s.sold_at || s.created_at)}</td>
@@ -1043,7 +1130,9 @@ export default function EmrPage({
           </div>
 
           {/* ══════════════ DOCUMENTS ══════════════ */}
-          <div className={`tab-panel ${activeTab === "documents" ? "active" : ""}`}>
+          <div
+            className={`tab-panel ${activeTab === "documents" ? "active" : ""}`}
+          >
             <div className="sec-title">Uploaded Documents</div>
             <table className="data-tbl">
               <thead>
@@ -1069,7 +1158,9 @@ export default function EmrPage({
                       <td>{d.doc_type || "—"}</td>
                       <td>{fmt(d.created_at)}</td>
                       <td style={{ textAlign: "center" }}>
-                        <StatusBadge status={d.has_ocr_text ? "Completed" : "Pending"} />
+                        <StatusBadge
+                          status={d.has_ocr_text ? "Completed" : "Pending"}
+                        />
                       </td>
                       <td className="no-print" style={{ textAlign: "center" }}>
                         <a
@@ -1096,7 +1187,9 @@ export default function EmrPage({
           </div>
 
           {/* ══════════════ BILLING ══════════════ */}
-          <div className={`tab-panel ${activeTab === "billing" ? "active" : ""}`}>
+          <div
+            className={`tab-panel ${activeTab === "billing" ? "active" : ""}`}
+          >
             {appointments.length > 0 && (
               <>
                 <div className="sec-title">Appointment History</div>
@@ -1114,7 +1207,9 @@ export default function EmrPage({
                   <tbody>
                     {appointments.map((a: any, i: number) => (
                       <tr key={i}>
-                        <td style={{ color: "#64748b", fontWeight: 600 }}>{i + 1}</td>
+                        <td style={{ color: "#64748b", fontWeight: 600 }}>
+                          {i + 1}
+                        </td>
                         <td>{fmtDt(a.appointment_date || a.created_at)}</td>
                         <td>{a.department || "General"}</td>
                         <td>{a.doctor_name ? `Dr. ${a.doctor_name}` : "—"}</td>
@@ -1122,10 +1217,13 @@ export default function EmrPage({
                           style={{
                             textAlign: "right",
                             fontWeight: 700,
-                            color: a.consultation_fee > 0 ? "#065f46" : "#94a3b8",
+                            color:
+                              a.consultation_fee > 0 ? "#065f46" : "#94a3b8",
                           }}
                         >
-                          {a.consultation_fee > 0 ? money(a.consultation_fee) : "—"}
+                          {a.consultation_fee > 0
+                            ? money(a.consultation_fee)
+                            : "—"}
                         </td>
                         <td style={{ textAlign: "center" }}>
                           <StatusBadge status={a.status || "Scheduled"} />
@@ -1139,7 +1237,9 @@ export default function EmrPage({
                         <td colSpan={4} style={{ textAlign: "right" }}>
                           Total Consultation Fees:
                         </td>
-                        <td style={{ textAlign: "right" }}>{money(totalFee)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {money(totalFee)}
+                        </td>
                         <td />
                       </tr>
                     </tfoot>
@@ -1171,9 +1271,15 @@ export default function EmrPage({
                       <td>{i + 1}</td>
                       <td style={{ fontWeight: 600 }}>{inv.invoice_no}</td>
                       <td>{inv.module}</td>
-                      <td style={{ textAlign: "right" }}>{money(inv.total_amount)}</td>
-                      <td style={{ textAlign: "right" }}>{money(inv.paid_amount)}</td>
-                      <td style={{ textAlign: "right" }}>{money(inv.due_amount)}</td>
+                      <td style={{ textAlign: "right" }}>
+                        {money(inv.total_amount)}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        {money(inv.paid_amount)}
+                      </td>
+                      <td style={{ textAlign: "right" }}>
+                        {money(inv.due_amount)}
+                      </td>
                       <td>{fmt(inv.created_at)}</td>
                       <td style={{ textAlign: "center" }}>
                         <StatusBadge status={inv.payment_status} />
@@ -1188,8 +1294,12 @@ export default function EmrPage({
                     <td colSpan={3} style={{ textAlign: "right" }}>
                       Total Invoiced / Paid:
                     </td>
-                    <td style={{ textAlign: "right" }}>{money(totalInvoiced)}</td>
-                    <td style={{ textAlign: "right" }}>{money(totalPaidInvoices)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      {money(totalInvoiced)}
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      {money(totalPaidInvoices)}
+                    </td>
                     <td colSpan={3} />
                   </tr>
                 </tfoot>
@@ -1214,10 +1324,18 @@ export default function EmrPage({
                   invoice_payments.map((p: any, i: number) => (
                     <tr key={i}>
                       <td>{i + 1}</td>
-                      <td style={{ textAlign: "right", fontWeight: 700, color: "#065f46" }}>
+                      <td
+                        style={{
+                          textAlign: "right",
+                          fontWeight: 700,
+                          color: "#065f46",
+                        }}
+                      >
                         {money(p.amount)}
                       </td>
-                      <td style={{ textTransform: "capitalize" }}>{p.payment_mode}</td>
+                      <td style={{ textTransform: "capitalize" }}>
+                        {p.payment_mode}
+                      </td>
                       <td>{p.gateway_ref || "—"}</td>
                       <td>{fmtDt(p.created_at)}</td>
                     </tr>
@@ -1245,8 +1363,12 @@ export default function EmrPage({
                       <tr key={i}>
                         <td>{i + 1}</td>
                         <td style={{ fontWeight: 600 }}>{c.insurer_name}</td>
-                        <td style={{ textAlign: "right" }}>{money(c.claim_amount)}</td>
-                        <td style={{ textAlign: "right" }}>{money(c.approved_amount)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {money(c.claim_amount)}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          {money(c.approved_amount)}
+                        </td>
                         <td>{fmt(c.submitted_at)}</td>
                         <td style={{ textAlign: "center" }}>
                           <StatusBadge status={c.claim_status} />
@@ -1276,7 +1398,9 @@ export default function EmrPage({
                       <tr key={i}>
                         <td style={{ color: "#64748b" }}>{i + 1}</td>
                         <td style={{ fontWeight: 600 }}>{lab.test_name}</td>
-                        <td style={{ textAlign: "right" }}>{money(lab.amount)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {money(lab.amount)}
+                        </td>
                         <td>{fmt(lab.created_at)}</td>
                         <td style={{ textAlign: "center" }}>
                           <StatusBadge status={lab.status || "due"} />
@@ -1290,7 +1414,11 @@ export default function EmrPage({
           </div>
 
           {/* ══════════════ AI SUMMARY ══════════════ */}
-          <div className={`tab-panel ${activeTab === "ai-summary" ? "active" : ""}`}>
+          <div
+            className={`tab-panel ${
+              activeTab === "ai-summary" ? "active" : ""
+            }`}
+          >
             <div className="sec-title">{aiTitle || "AI Clinical Summary"}</div>
             {!aiSummary ? (
               <div
@@ -1312,16 +1440,24 @@ export default function EmrPage({
               </div>
             ) : (
               <>
-                <div className="no-print ai-summary-editor" style={{ marginTop: "8px" }}>
+                <div
+                  className="no-print ai-summary-editor"
+                  style={{ marginTop: "8px" }}
+                >
                   <Textarea
                     value={aiSummary}
                     onChange={(e) => setAiSummary(e.target.value)}
                     rows={14}
                   />
-                  <p className="muted" style={{ marginTop: "6px", fontSize: "12px" }}>
+                  <p
+                    className="muted"
+                    style={{ marginTop: "6px", fontSize: "12px" }}
+                  >
                     You can edit this before sharing or printing.
                   </p>
-                  <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                  <div
+                    style={{ display: "flex", gap: "10px", marginTop: "10px" }}
+                  >
                     <Button
                       variant="ghost"
                       onClick={handleGenerateAiSummary}
@@ -1351,8 +1487,8 @@ export default function EmrPage({
                       key={c.id}
                       className="ai-cert-item"
                       onClick={() => {
-                        setAiSummary(c.body);
-                        setAiTitle(c.title);
+                        setAiSummary(c.body)
+                        setAiTitle(c.title)
                       }}
                     >
                       <strong>{c.title}</strong>
@@ -1388,9 +1524,16 @@ export default function EmrPage({
           description={manualShareReason}
         >
           <div className="wa-modal-body">
-            <p style={{ fontSize: "13.5px", color: "#374151", marginBottom: "16px", lineHeight: 1.6 }}>
-              Clicking below will open the Print / Save PDF dialog so you can save the
-              summary, then open WhatsApp with a message for{" "}
+            <p
+              style={{
+                fontSize: "13.5px",
+                color: "#374151",
+                marginBottom: "16px",
+                lineHeight: 1.6,
+              }}
+            >
+              Clicking below will open the Print / Save PDF dialog so you can
+              save the summary, then open WhatsApp with a message for{" "}
               <strong>{data?.patient?.name}</strong> to attach it to manually.
             </p>
             <button className="wa-big-btn" onClick={handleManualShare}>
@@ -1402,13 +1545,13 @@ export default function EmrPage({
             </button>
             <div className="wa-note">
               ✅ The PDF print dialog opens automatically first.
-              <br />
-              ✅ Save the PDF, then attach it to the WhatsApp chat that opens.
+              <br />✅ Save the PDF, then attach it to the WhatsApp chat that
+              opens.
             </div>
           </div>
         </Modal>
       </div>
-    );
+    )
   }
 
   /* ══════════════ SEARCH VIEW ══════════════ */
@@ -1510,5 +1653,5 @@ export default function EmrPage({
         )}
       </div>
     </section>
-  );
+  )
 }

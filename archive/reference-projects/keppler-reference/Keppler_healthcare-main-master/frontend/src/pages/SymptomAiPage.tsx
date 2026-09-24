@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
-import MarkdownReport from "../components/MarkdownReport";
-import DocumentUploadDropzone from "../components/DocumentUploadDropzone";
+import { useEffect, useMemo, useState } from "react"
+import type { Dispatch, SetStateAction } from "react"
+import MarkdownReport from "../components/MarkdownReport"
+import DocumentUploadDropzone from "../components/DocumentUploadDropzone"
 import {
   Badge,
   Button,
@@ -17,78 +17,78 @@ import {
   TabsContent,
   TabsTrigger,
   Textarea,
-} from "../components/ui";
-import { API_BASE, SYMPTOM_API_BASE } from "../lib/constants";
-import { apiFetch, reportError, withAuthHeaders } from "../lib/api";
-import type { Notice } from "../types";
+} from "../components/ui"
+import { API_BASE, SYMPTOM_API_BASE } from "../lib/constants"
+import { apiFetch, reportError, withAuthHeaders } from "../lib/api"
+import type { Notice } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  onNavigate?: (page: string, extraData?: any) => void;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  onNavigate?: (page: string, extraData?: any) => void
+}
 
 type Doctor = {
-  id: number;
-  doctor_name: string;
-  department: string;
-  consultation_fee: number;
-  status: string;
-};
+  id: number
+  doctor_name: string
+  department: string
+  consultation_fee: number
+  status: string
+}
 
 type Region = {
-  name: string;
-  keywords: string[];
-  color: string;
-  icon: string;
-  svg_id: string;
-};
+  name: string
+  keywords: string[]
+  color: string
+  icon: string
+  svg_id: string
+}
 
 type HistoryEntry = {
-  createdAt: string;
-  description: string;
-  region: string;
-  intensity: number;
-  duration: string;
-  contextTags: string[];
-  response: string;
-};
+  createdAt: string
+  description: string
+  region: string
+  intensity: number
+  duration: string
+  contextTags: string[]
+  response: string
+}
 
 type PatientInfo = {
-  age: string;
-  gender: string;
-  temperature: string;
-  temp_unit: "°F" | "°C";
-  heart_rate: string;
-  systolic: string;
-  diastolic: string;
-};
+  age: string
+  gender: string
+  temperature: string
+  temp_unit: "°F" | "°C"
+  heart_rate: string
+  systolic: string
+  diastolic: string
+}
 
 type SymptomMetaResponse = {
-  context_tags?: string[];
-  duration_options?: string[];
-  regions?: Region[];
-};
+  context_tags?: string[]
+  duration_options?: string[]
+  regions?: Region[]
+}
 
 type SymptomAnalyzeResponse = {
-  response?: string;
-  detected_region?: string | null;
-  used_fallback?: boolean;
-  model_error?: string | null;
-};
+  response?: string
+  detected_region?: string | null
+  used_fallback?: boolean
+  model_error?: string | null
+}
 
 type SymptomDocument = {
-  id: number;
-  filename: string;
-  doc_category: string | null;
-  created_at: string;
-};
+  id: number
+  filename: string
+  doc_category: string | null
+  created_at: string
+}
 
 type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-  session_id?: string;
-  created_at?: string;
-};
+  role: "user" | "assistant"
+  content: string
+  session_id?: string
+  created_at?: string
+}
 
 const FALLBACK_DURATIONS = [
   "Just started (today)",
@@ -99,7 +99,7 @@ const FALLBACK_DURATIONS = [
   "More than a month",
   "Comes and goes",
   "Recurring over time",
-];
+]
 
 const FALLBACK_CONTEXT_TAGS = [
   "Recent stress",
@@ -114,7 +114,7 @@ const FALLBACK_CONTEXT_TAGS = [
   "Emotional changes",
   "Hydration concerns",
   "New environment",
-];
+]
 
 const FALLBACK_REGIONS: Region[] = [
   {
@@ -124,7 +124,7 @@ const FALLBACK_REGIONS: Region[] = [
     icon: "🧍",
     svg_id: "full_body",
   },
-];
+]
 
 const START_PATIENT: PatientInfo = {
   age: "",
@@ -134,45 +134,45 @@ const START_PATIENT: PatientInfo = {
   heart_rate: "",
   systolic: "",
   diastolic: "",
-};
+}
 
 function parseStoredHistory(): HistoryEntry[] {
   try {
-    const raw = window.localStorage.getItem("symptom-ai-history");
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.slice(0, 50) : [];
+    const raw = window.localStorage.getItem("symptom-ai-history")
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.slice(0, 50) : []
   } catch {
-    return [];
+    return []
   }
 }
 
 function buildBodySvg(selectedRegion: Region) {
-  const id = selectedRegion?.svg_id || "";
-  const highlight = selectedRegion?.color || "#6B8E9F";
-  const muted = "#E8F4F8";
+  const id = selectedRegion?.svg_id || ""
+  const highlight = selectedRegion?.color || "#6B8E9F"
+  const muted = "#E8F4F8"
 
   const head = ["head", "eyes", "ears", "nose", "mouth", "full_body"].includes(
     id,
   )
     ? highlight
-    : muted;
-  const neck = ["neck", "full_body"].includes(id) ? highlight : muted;
+    : muted
+  const neck = ["neck", "full_body"].includes(id) ? highlight : muted
   const chest = ["chest", "shoulders", "upper_back", "full_body"].includes(id)
     ? highlight
-    : muted;
-  const abdomen = ["abdomen", "full_body"].includes(id) ? highlight : muted;
+    : muted
+  const abdomen = ["abdomen", "full_body"].includes(id) ? highlight : muted
   const arms = ["arms", "shoulders", "hands", "full_body"].includes(id)
     ? highlight
-    : muted;
+    : muted
   const hips = ["hips", "lower_back", "full_body"].includes(id)
     ? highlight
-    : muted;
+    : muted
   const legs = ["thighs", "knees", "lower_legs", "feet", "full_body"].includes(
     id,
   )
     ? highlight
-    : muted;
+    : muted
 
   return (
     <svg
@@ -241,91 +241,90 @@ function buildBodySvg(selectedRegion: Region) {
         strokeWidth="2"
       />
     </svg>
-  );
+  )
 }
 
 function intensityColor(value: number) {
-  if (value <= 3) return "#4CAF50";
-  if (value <= 6) return "#FF9800";
-  return "#f44336";
+  if (value <= 3) return "#4CAF50"
+  if (value <= 6) return "#FF9800"
+  return "#f44336"
 }
 
 function entryKey(entry: HistoryEntry) {
-  return `${entry.createdAt}-${entry.description.slice(0, 24)}`;
+  return `${entry.createdAt}-${entry.description.slice(0, 24)}`
 }
 
 export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
-  const [activeSection, setActiveSection] = useState<
-    "home" | "documents" | "about" | "safety"
-  >("home");
-  const [historySidebarOpen, setHistorySidebarOpen] = useState(false);
+  const [activeSection, setActiveSection] =
+    useState<"home" | "documents" | "about" | "safety">("home")
+  const [historySidebarOpen, setHistorySidebarOpen] = useState(false)
   const [symptomDocuments, setSymptomDocuments] = useState<SymptomDocument[]>(
     [],
-  );
-  const [docUploadFile, setDocUploadFile] = useState<File | null>(null);
-  const [docUploadLoading, setDocUploadLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
+  )
+  const [docUploadFile, setDocUploadFile] = useState<File | null>(null)
+  const [docUploadLoading, setDocUploadLoading] = useState(false)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState("")
+  const [chatLoading, setChatLoading] = useState(false)
   const [chatSessionId, setChatSessionId] = useState<string | undefined>(
     undefined,
-  );
-  const [documentsLoaded, setDocumentsLoaded] = useState(false);
-  const [description, setDescription] = useState("");
-  const [bodyRegion, setBodyRegion] = useState("General / Full Body");
-  const [intensity, setIntensity] = useState(5);
-  const [duration, setDuration] = useState(FALLBACK_DURATIONS[0]);
-  const [contextTags, setContextTags] = useState<string[]>([]);
-  const [patientInfo, setPatientInfo] = useState<PatientInfo>(START_PATIENT);
-  const [loading, setLoading] = useState(false);
-  const [responseText, setResponseText] = useState("");
-  const [activeHistoryKey, setActiveHistoryKey] = useState<string | null>(null);
-  const [suggestedDoctors, setSuggestedDoctors] = useState<Doctor[]>([]);
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  )
+  const [documentsLoaded, setDocumentsLoaded] = useState(false)
+  const [description, setDescription] = useState("")
+  const [bodyRegion, setBodyRegion] = useState("General / Full Body")
+  const [intensity, setIntensity] = useState(5)
+  const [duration, setDuration] = useState(FALLBACK_DURATIONS[0])
+  const [contextTags, setContextTags] = useState<string[]>([])
+  const [patientInfo, setPatientInfo] = useState<PatientInfo>(START_PATIENT)
+  const [loading, setLoading] = useState(false)
+  const [responseText, setResponseText] = useState("")
+  const [activeHistoryKey, setActiveHistoryKey] = useState<string | null>(null)
+  const [suggestedDoctors, setSuggestedDoctors] = useState<Doctor[]>([])
+  const [history, setHistory] = useState<HistoryEntry[]>([])
   const [contextOptions, setContextOptions] = useState<string[]>(
     FALLBACK_CONTEXT_TAGS,
-  );
+  )
   const [durationOptions, setDurationOptions] =
-    useState<string[]>(FALLBACK_DURATIONS);
-  const [regions, setRegions] = useState<Region[]>(FALLBACK_REGIONS);
+    useState<string[]>(FALLBACK_DURATIONS)
+  const [regions, setRegions] = useState<Region[]>(FALLBACK_REGIONS)
 
   const fetchSuggestedDoctors = async (region: string) => {
     try {
       const data = await apiFetch<{ doctors?: Doctor[] }>(
         `/api/op/doctors/suggest?region=${encodeURIComponent(region)}`,
-      );
-      setSuggestedDoctors(data.doctors || []);
+      )
+      setSuggestedDoctors(data.doctors || [])
     } catch {
-      setSuggestedDoctors([]);
+      setSuggestedDoctors([])
     }
-  };
+  }
 
   useEffect(() => {
-    setHistory(parseStoredHistory());
-    let active = true;
+    setHistory(parseStoredHistory())
+    let active = true
     fetch(`${SYMPTOM_API_BASE}/api/symptom-ai/meta`)
       .then((res) => {
-        if (!res.ok) throw new Error("Unable to load SymptoMap AI metadata.");
-        return res.json() as Promise<SymptomMetaResponse>;
+        if (!res.ok) throw new Error("Unable to load SymptoMap AI metadata.")
+        return res.json() as Promise<SymptomMetaResponse>
       })
       .then((data) => {
-        if (!active) return;
-        if (data.context_tags?.length) setContextOptions(data.context_tags);
+        if (!active) return
+        if (data.context_tags?.length) setContextOptions(data.context_tags)
         if (data.duration_options?.length) {
-          setDurationOptions(data.duration_options);
+          setDurationOptions(data.duration_options)
           setDuration((prev) =>
             data.duration_options?.includes(prev)
               ? prev
               : data.duration_options?.[0] || prev,
-          );
+          )
         }
         if (data.regions?.length) {
-          setRegions(data.regions);
+          setRegions(data.regions)
           setBodyRegion((prev) =>
             data.regions?.some((r) => r.name === prev)
               ? prev
               : data.regions?.[0]?.name || prev,
-          );
+          )
         }
       })
       .catch(() => {
@@ -333,12 +332,12 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
           type: "warning",
           message:
             "SymptoMap AI metadata unavailable. Running with fallback options.",
-        });
-      });
+        })
+      })
     return () => {
-      active = false;
-    };
-  }, [setNotice]);
+      active = false
+    }
+  }, [setNotice])
 
   const selectedRegion = useMemo(
     () =>
@@ -346,20 +345,20 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
       regions[0] ||
       FALLBACK_REGIONS[0],
     [regions, bodyRegion],
-  );
+  )
 
-  const trendItems = useMemo(() => history.slice(0, 10).reverse(), [history]);
+  const trendItems = useMemo(() => history.slice(0, 10).reverse(), [history])
 
   const onToggleTag = (tag: string) => {
     setContextTags((prev) =>
       prev.includes(tag)
         ? prev.filter((value) => value !== tag)
         : [...prev, tag],
-    );
-  };
+    )
+  }
 
   const detectRegion = async () => {
-    if (!description.trim()) return;
+    if (!description.trim()) return
     try {
       const res = await fetch(
         `${SYMPTOM_API_BASE}/api/symptom-ai/detect-region`,
@@ -368,24 +367,24 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ description }),
         },
-      );
-      if (!res.ok) return;
-      const data = (await res.json()) as { region?: string | null };
+      )
+      if (!res.ok) return
+      const data = (await res.json()) as { region?: string | null }
       if (data.region && regions.some((entry) => entry.name === data.region)) {
-        setBodyRegion(data.region);
+        setBodyRegion(data.region)
       }
     } catch {
       // best effort only
     }
-  };
+  }
 
   const analyze = async () => {
     if (description.trim().length < 10) {
       setNotice({
         type: "warning",
         message: "Please describe the sensation with at least 10 characters.",
-      });
-      return;
+      })
+      return
     }
 
     const payload = {
@@ -413,46 +412,46 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
               }
             : null,
       },
-    };
+    }
 
-    setLoading(true);
+    setLoading(true)
     try {
       const res = await fetch(`${SYMPTOM_API_BASE}/api/symptom-ai/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      });
+      })
       const data = (await res.json()) as SymptomAnalyzeResponse & {
-        error?: string;
-      };
+        error?: string
+      }
       if (!res.ok) {
         throw Object.assign(
           new Error(data.error || "Unable to generate wellness insights."),
           { status: res.status },
-        );
+        )
       }
 
-      const nextResponse = data.response || "No insights returned.";
-      const resolvedRegion = data.detected_region || bodyRegion;
-      setResponseText(nextResponse);
-      void fetchSuggestedDoctors(resolvedRegion);
+      const nextResponse = data.response || "No insights returned."
+      const resolvedRegion = data.detected_region || bodyRegion
+      setResponseText(nextResponse)
+      void fetchSuggestedDoctors(resolvedRegion)
       if (
         data.detected_region &&
         regions.some((entry) => entry.name === data.detected_region)
       ) {
-        setBodyRegion(data.detected_region);
+        setBodyRegion(data.detected_region)
       }
 
       if (data.used_fallback) {
         setNotice({
           type: "warning",
           message: "SymptoMap AI returned a safety fallback response.",
-        });
+        })
       } else if (data.model_error) {
         setNotice({
           type: "warning",
           message: "SymptoMap AI response was generated with model warnings.",
-        });
+        })
       }
 
       const entry: HistoryEntry = {
@@ -463,27 +462,27 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
         duration,
         contextTags: [...contextTags],
         response: nextResponse,
-      };
+      }
 
       setHistory((prev) => {
-        const next = [entry, ...prev].slice(0, 50);
-        window.localStorage.setItem("symptom-ai-history", JSON.stringify(next));
-        return next;
-      });
-      setActiveHistoryKey(entryKey(entry));
+        const next = [entry, ...prev].slice(0, 50)
+        window.localStorage.setItem("symptom-ai-history", JSON.stringify(next))
+        return next
+      })
+      setActiveHistoryKey(entryKey(entry))
     } catch (error) {
       reportError(
         setNotice,
-        error as { status?: number; message?: string },
+        error as { status?: number message?: string },
         "Unable to generate wellness insights.",
-      );
+      )
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const exportCurrent = async () => {
-    if (!responseText) return;
+    if (!responseText) return
     try {
       const res = await fetch(`${SYMPTOM_API_BASE}/api/symptom-ai/export/pdf`, {
         method: "POST",
@@ -496,223 +495,223 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
           description,
           response: responseText,
         }),
-      });
+      })
       if (!res.ok) {
-        throw new Error("Unable to generate PDF.");
+        throw new Error("Unable to generate PDF.")
       }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `symptomap_ai_insight_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.pdf`;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = `symptomap_ai_insight_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.pdf`
+      anchor.click()
+      URL.revokeObjectURL(url)
     } catch (error) {
       reportError(
         setNotice,
-        error as { status?: number; message?: string },
+        error as { status?: number message?: string },
         "Unable to export insight as PDF.",
-      );
+      )
     }
-  };
+  }
 
   const exportAll = () => {
-    if (!history.length) return;
+    if (!history.length) return
     const lines = [
       "# SymptoMap AI - Session History",
       "",
       `Exported: ${new Date().toLocaleString()}`,
       "",
-    ];
+    ]
     history.forEach((entry, index) => {
-      lines.push(`## Entry ${index + 1}`);
-      lines.push(`Date: ${new Date(entry.createdAt).toLocaleString()}`);
-      lines.push(`Region: ${entry.region}`);
-      lines.push(`Intensity: ${entry.intensity}/10`);
-      lines.push(`Duration: ${entry.duration}`);
-      lines.push(`Description: ${entry.description}`);
+      lines.push(`## Entry ${index + 1}`)
+      lines.push(`Date: ${new Date(entry.createdAt).toLocaleString()}`)
+      lines.push(`Region: ${entry.region}`)
+      lines.push(`Intensity: ${entry.intensity}/10`)
+      lines.push(`Duration: ${entry.duration}`)
+      lines.push(`Description: ${entry.description}`)
       if (entry.contextTags.length)
-        lines.push(`Context: ${entry.contextTags.join(", ")}`);
-      lines.push("");
-      lines.push(entry.response);
-      lines.push("", "---", "");
-    });
-    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `symptom_ai_history_${new Date().toISOString().slice(0, 10)}.md`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
+        lines.push(`Context: ${entry.contextTags.join(", ")}`)
+      lines.push("")
+      lines.push(entry.response)
+      lines.push("", "---", "")
+    })
+    const blob = new Blob([lines.join("\n")], { type: "text/markdown" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `symptom_ai_history_${new Date().toISOString().slice(0, 10)}.md`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
 
   const clearHistory = () => {
-    setHistory([]);
-    setActiveHistoryKey(null);
-    window.localStorage.removeItem("symptom-ai-history");
-  };
+    setHistory([])
+    setActiveHistoryKey(null)
+    window.localStorage.removeItem("symptom-ai-history")
+  }
 
   const restoreSession = (entry: HistoryEntry) => {
-    setActiveSection("home");
-    setDescription(entry.description);
-    setBodyRegion(entry.region);
-    setIntensity(entry.intensity);
-    setDuration(entry.duration);
-    setContextTags(entry.contextTags);
-    setResponseText(entry.response);
-    setActiveHistoryKey(entryKey(entry));
-    setHistorySidebarOpen(false);
-  };
+    setActiveSection("home")
+    setDescription(entry.description)
+    setBodyRegion(entry.region)
+    setIntensity(entry.intensity)
+    setDuration(entry.duration)
+    setContextTags(entry.contextTags)
+    setResponseText(entry.response)
+    setActiveHistoryKey(entryKey(entry))
+    setHistorySidebarOpen(false)
+  }
 
   const loadSymptomDocuments = async () => {
     try {
       const data = await apiFetch<{ documents?: SymptomDocument[] }>(
         "/api/symptom-ai/documents",
-      );
-      setSymptomDocuments(data.documents || []);
+      )
+      setSymptomDocuments(data.documents || [])
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load your documents.",
-      );
+      )
     }
-  };
+  }
 
   const loadSymptomChatHistory = async () => {
     try {
       const data = await apiFetch<{ messages?: ChatMessage[] }>(
         "/api/symptom-ai/chat/history",
-      );
-      setChatMessages(data.messages || []);
-      const lastSession = (data.messages || []).slice(-1)[0]?.session_id;
-      if (lastSession) setChatSessionId(lastSession);
+      )
+      setChatMessages(data.messages || [])
+      const lastSession = (data.messages || []).slice(-1)[0]?.session_id
+      if (lastSession) setChatSessionId(lastSession)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load chat history.",
-      );
+      )
     }
-  };
+  }
 
   const openDocumentsTab = () => {
-    setActiveSection("documents");
+    setActiveSection("documents")
     if (!documentsLoaded) {
-      setDocumentsLoaded(true);
-      void loadSymptomDocuments();
-      void loadSymptomChatHistory();
+      setDocumentsLoaded(true)
+      void loadSymptomDocuments()
+      void loadSymptomChatHistory()
     }
-  };
+  }
 
   const handleDocUpload = async () => {
     if (!docUploadFile) {
-      setNotice({ type: "warning", message: "Choose a file to upload first." });
-      return;
+      setNotice({ type: "warning", message: "Choose a file to upload first." })
+      return
     }
-    setDocUploadLoading(true);
+    setDocUploadLoading(true)
     try {
-      const formData = new FormData();
-      formData.append("file", docUploadFile);
+      const formData = new FormData()
+      formData.append("file", docUploadFile)
       const response = await fetch(`${API_BASE}/api/symptom-ai/documents`, {
         method: "POST",
         headers: withAuthHeaders({}, "POST"),
         body: formData,
         credentials: "include",
-      });
-      const data = await response.json().catch(() => ({}));
+      })
+      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
         throw Object.assign(
           new Error(data.error || "Unable to upload document."),
           { status: response.status },
-        );
+        )
       }
-      setDocUploadFile(null);
-      await loadSymptomDocuments();
+      setDocUploadFile(null)
+      await loadSymptomDocuments()
       if (data.graph_updated) {
         setNotice({
           type: "success",
           message: `${data.filename} processed and added to your knowledge base.`,
-        });
+        })
       } else {
         setNotice({
           type: "warning",
           message: `${data.filename} was saved, but couldn't be added to your knowledge base yet: ${data.graph_error || "unknown error"}`,
-        });
+        })
       }
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to upload document.",
-      );
+      )
     } finally {
-      setDocUploadLoading(false);
+      setDocUploadLoading(false)
     }
-  };
+  }
 
   const handleDocDelete = async (documentId: number) => {
     try {
       await apiFetch(`/api/symptom-ai/documents/${documentId}`, {
         method: "DELETE",
-      });
-      await loadSymptomDocuments();
-      setNotice({ type: "success", message: "Document removed." });
+      })
+      await loadSymptomDocuments()
+      setNotice({ type: "success", message: "Document removed." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to remove document.",
-      );
+      )
     }
-  };
+  }
 
   const handleChatSend = async () => {
-    const message = chatInput.trim();
-    if (!message) return;
-    setChatMessages((prev) => [...prev, { role: "user", content: message }]);
-    setChatInput("");
-    setChatLoading(true);
+    const message = chatInput.trim()
+    if (!message) return
+    setChatMessages((prev) => [...prev, { role: "user", content: message }])
+    setChatInput("")
+    setChatLoading(true)
     try {
-      const data = await apiFetch<{ session_id: string; answer: string }>(
+      const data = await apiFetch<{ session_id: string answer: string }>(
         "/api/symptom-ai/chat",
         {
           method: "POST",
           body: JSON.stringify({ message, session_id: chatSessionId }),
         },
-      );
-      setChatSessionId(data.session_id);
+      )
+      setChatSessionId(data.session_id)
       setChatMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.answer },
-      ]);
+      ])
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to reach your knowledge base.",
-      );
-      setChatMessages((prev) => prev.slice(0, -1));
-      setChatInput(message);
+      )
+      setChatMessages((prev) => prev.slice(0, -1))
+      setChatInput(message)
     } finally {
-      setChatLoading(false);
+      setChatLoading(false)
     }
-  };
+  }
 
   const handleClearChat = async () => {
     try {
-      await apiFetch("/api/symptom-ai/chat/history", { method: "DELETE" });
-      setChatMessages([]);
-      setChatSessionId(undefined);
-      setNotice({ type: "success", message: "Chat history cleared." });
+      await apiFetch("/api/symptom-ai/chat/history", { method: "DELETE" })
+      setChatMessages([])
+      setChatSessionId(undefined)
+      setNotice({ type: "success", message: "Chat history cleared." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to clear chat history.",
-      );
+      )
     }
-  };
+  }
 
   return (
     <div className="symptom-ai-page">
@@ -916,7 +915,7 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
                     placeholder="Describe what you're feeling in your own words..."
                     onChange={(event) => setDescription(event.target.value)}
                     onBlur={() => {
-                      void detectRegion();
+                      void detectRegion()
                     }}
                   />
                 </Label>
@@ -966,7 +965,7 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
 
                 <div className="symptom-tag-list">
                   {contextOptions.map((tag) => {
-                    const selected = contextTags.includes(tag);
+                    const selected = contextTags.includes(tag)
                     return (
                       <button
                         key={tag}
@@ -978,7 +977,7 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
                       >
                         {tag}
                       </button>
-                    );
+                    )
                   })}
                 </div>
 
@@ -1127,13 +1126,13 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
                               setNotice({
                                 type: "success",
                                 message: `Opening Appointment Desk for ${doc.doctor_name} (${doc.department})`,
-                              });
+                              })
                               onNavigate?.("registration", {
                                 prefillDoctor: {
                                   doctorName: doc.doctor_name,
                                   department: doc.department,
                                 },
-                              });
+                              })
                             }}
                           >
                             Book Appointment with {doc.doctor_name}
@@ -1238,8 +1237,8 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
                     onChange={(event) => setChatInput(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !chatLoading) {
-                        event.preventDefault();
-                        void handleChatSend();
+                        event.preventDefault()
+                        void handleChatSend()
                       }
                     }}
                     disabled={chatLoading}
@@ -1433,5 +1432,5 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
         )}
       </aside>
     </div>
-  );
+  )
 }

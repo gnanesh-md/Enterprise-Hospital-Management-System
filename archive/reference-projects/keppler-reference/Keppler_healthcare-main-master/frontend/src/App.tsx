@@ -1,62 +1,62 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react";
-import { FiSettings, FiMenu } from "react-icons/fi";
-import AuthView from "./components/AuthView";
-import SettingsModal from "./components/SettingsModal";
-import Toast from "./components/ui/Toast";
-import ConfirmDialog from "./components/ui/ConfirmDialog";
-import { Button, Container } from "./components/ui";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react"
+import type { Dispatch, FormEvent, ReactNode, SetStateAction } from "react"
+import { FiSettings, FiMenu } from "react-icons/fi"
+import AuthView from "./components/AuthView"
+import SettingsModal from "./components/SettingsModal"
+import Toast from "./components/ui/Toast"
+import ConfirmDialog from "./components/ui/ConfirmDialog"
+import { Button, Container } from "./components/ui"
 // Page components are code-split via lazy() -- previously all 36 pages were
 // eagerly imported here, so every module's JS (billing, HR, OT, ICU, EMR,
 // pharmacy, etc.) shipped in the initial bundle no matter which page the
 // user actually opened first. Each now loads only when its `page === "..."`
 // branch below is reached.
-const AddPatientPage = lazy(() => import("./pages/AddPatientPage"));
-const OcrPage = lazy(() => import("./pages/OcrPage"));
-const AdminPage = lazy(() => import("./pages/AdminPage"));
-const DoctorSchedulingPage = lazy(() => import("./pages/DoctorSchedulingPage"));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
+const AddPatientPage = lazy(() => import("./pages/AddPatientPage"))
+const OcrPage = lazy(() => import("./pages/OcrPage"))
+const AdminPage = lazy(() => import("./pages/AdminPage"))
+const DoctorSchedulingPage = lazy(() => import("./pages/DoctorSchedulingPage"))
+const DashboardPage = lazy(() => import("./pages/DashboardPage"))
+const EmployeesPage = lazy(() => import("./pages/EmployeesPage"))
 const PatientExperiencePage = lazy(
   () => import("./pages/PatientExperiencePage"),
-);
+)
 const PaymentCollectionPage = lazy(
   () => import("./pages/PaymentCollectionPage"),
-);
-const RevenueReportsPage = lazy(() => import("./pages/RevenueReportsPage"));
+)
+const RevenueReportsPage = lazy(() => import("./pages/RevenueReportsPage"))
 const DailyMonthlyReportsPage = lazy(
   () => import("./pages/DailyMonthlyReportsPage"),
-);
-const PharmacyPage = lazy(() => import("./pages/PharmacyPage"));
-const BedManagementPage = lazy(() => import("./pages/BedManagementPage"));
-const ErPage = lazy(() => import("./pages/ErPage"));
-const HrmsPage = lazy(() => import("./pages/HrmsPage"));
-const PatientsPage = lazy(() => import("./pages/PatientsPage"));
-const ReadmitPage = lazy(() => import("./pages/ReadmitPage"));
-const SettingsPage = lazy(() => import("./pages/SettingsPage"));
-const SymptomAiPage = lazy(() => import("./pages/SymptomAiPage"));
-const PlatformAdminPage = lazy(() => import("./pages/PlatformAdminPage"));
-const QueuePage = lazy(() => import("./pages/QueuePage"));
+)
+const PharmacyPage = lazy(() => import("./pages/PharmacyPage"))
+const BedManagementPage = lazy(() => import("./pages/BedManagementPage"))
+const ErPage = lazy(() => import("./pages/ErPage"))
+const HrmsPage = lazy(() => import("./pages/HrmsPage"))
+const PatientsPage = lazy(() => import("./pages/PatientsPage"))
+const ReadmitPage = lazy(() => import("./pages/ReadmitPage"))
+const SettingsPage = lazy(() => import("./pages/SettingsPage"))
+const SymptomAiPage = lazy(() => import("./pages/SymptomAiPage"))
+const PlatformAdminPage = lazy(() => import("./pages/PlatformAdminPage"))
+const QueuePage = lazy(() => import("./pages/QueuePage"))
 const DoctorPrescriptionPage = lazy(
   () => import("./pages/DoctorPrescriptionPage"),
-);
-const EmrPage = lazy(() => import("./pages/EmrPage"));
-const RegistrationDeskPage = lazy(() => import("./pages/RegistrationDeskPage"));
-const BulkPatientAiPage = lazy(() => import("./pages/BulkPatientAiPage"));
-const OpPage = lazy(() => import("./pages/OpPage"));
+)
+const EmrPage = lazy(() => import("./pages/EmrPage"))
+const RegistrationDeskPage = lazy(() => import("./pages/RegistrationDeskPage"))
+const BulkPatientAiPage = lazy(() => import("./pages/BulkPatientAiPage"))
+const OpPage = lazy(() => import("./pages/OpPage"))
 import {
   API_BASE,
   EMPTY_STATS,
   NAV_ITEMS,
   EMPTY_PATIENT_FORM,
-} from "./lib/constants";
+} from "./lib/constants"
 import {
   apiFetch,
   getHospitalCode,
   reportError,
   setHospitalCode,
-} from "./lib/api";
-import { resolvePermissions } from "./lib/format";
+} from "./lib/api"
+import { resolvePermissions } from "./lib/format"
 import type {
   DashboardAnalytics,
   HospitalSummary,
@@ -64,34 +64,15 @@ import type {
   Patient,
   Stats,
   User,
-} from "./types";
+} from "./types"
 
 function greetingForHour(hour: number) {
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
+  if (hour < 12) return "Good morning"
+  if (hour < 17) return "Good afternoon"
+  return "Good evening"
 }
 
-type SidebarIconName =
-  | "dashboard"
-  | "add"
-  | "patients"
-  | "readmit"
-  | "billing"
-  | "pharmacy"
-  | "hrms"
-  | "symptom"
-  | "employees"
-  | "settings"
-  | "logout"
-  | "profile"
-  | "appointment"
-  | "bed"
-  | "prescription"
-  | "emr"
-  | "feedback"
-  | "schedule"
-  | "emergency";
+type SidebarIconName = "dashboard" | "add" | "patients" | "readmit" | "billing" | "pharmacy" | "hrms" | "symptom" | "employees" | "settings" | "logout" | "profile" | "appointment" | "bed" | "prescription" | "emr" | "feedback" | "schedule" | "emergency"
 
 const NAV_ICON_MAP: Record<string, SidebarIconName> = {
   dashboard: "dashboard",
@@ -129,7 +110,7 @@ const NAV_ICON_MAP: Record<string, SidebarIconName> = {
   "bulk-ai": "symptom",
   employees: "employees",
   settings: "settings",
-};
+}
 
 function SidebarIcon({ name }: { name: SidebarIconName }) {
   const stroke = {
@@ -138,7 +119,7 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
     strokeWidth: 1.8,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-  };
+  }
 
   const paths: Record<SidebarIconName, ReactNode> = {
     dashboard: (
@@ -301,23 +282,23 @@ function SidebarIcon({ name }: { name: SidebarIconName }) {
         <path d="M5.5 19c.9-3 3.2-4.7 6.5-4.7s5.6 1.7 6.5 4.7" {...stroke} />
       </>
     ),
-  };
+  }
 
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
       {paths[name]}
     </svg>
-  );
+  )
 }
 
 type SidebarTabProps = {
-  label: string;
-  icon: SidebarIconName;
-  active: boolean;
-  disabled?: boolean;
-  hint?: string;
-  onClick: () => void;
-};
+  label: string
+  icon: SidebarIconName
+  active: boolean
+  disabled?: boolean
+  hint?: string
+  onClick: () => void
+}
 
 function SidebarTab({
   label,
@@ -341,101 +322,100 @@ function SidebarTab({
       </span>
       <span>{label}</span>
     </button>
-  );
+  )
 }
 
 function App() {
   const isAdminRoutePath =
-    typeof window !== "undefined" && window.location.pathname === "/admin";
+    typeof window !== "undefined" && window.location.pathname === "/admin"
   const isPlatformAdminRoute =
     typeof window !== "undefined" &&
-    window.location.pathname === "/platform-admin";
-  const [user, setUser] = useState<User | null>(null);
-  const [page, setPage] = useState(isAdminRoutePath ? "admin" : "dashboard");
-  const [patientsPageKey, setPatientsPageKey] = useState(0);
-  const [stats, setStats] = useState<Stats>(EMPTY_STATS);
+    window.location.pathname === "/platform-admin"
+  const [user, setUser] = useState<User | null>(null)
+  const [page, setPage] = useState(isAdminRoutePath ? "admin" : "dashboard")
+  const [patientsPageKey, setPatientsPageKey] = useState(0)
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS)
   const [dashboardAnalytics, setDashboardAnalytics] =
-    useState<DashboardAnalytics | null>(null);
+    useState<DashboardAnalytics | null>(null)
   const [hospitalSummary, setHospitalSummary] =
-    useState<HospitalSummary | null>(null);
+    useState<HospitalSummary | null>(null)
   const [dashboardAnalyticsLoading, setDashboardAnalyticsLoading] =
-    useState(false);
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [patientDetailRefreshToken, setPatientDetailRefreshToken] = useState(0);
+    useState(false)
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [patientDetailRefreshToken, setPatientDetailRefreshToken] = useState(0)
   const [languages, setLanguages] = useState<Record<string, string>>({
     en: "English",
-  });
-  const [ocrLanguage, setOcrLanguage] = useState("en");
-  const [notice, setNotice] = useState<Notice | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-  const [profileActionsOpen, setProfileActionsOpen] = useState(false);
-  const profileActionsRef = useRef<HTMLDivElement | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [hospitalCode, setHospitalCodeState] = useState(getHospitalCode());
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  })
+  const [ocrLanguage, setOcrLanguage] = useState("en")
+  const [notice, setNotice] = useState<Notice | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const [profileActionsOpen, setProfileActionsOpen] = useState(false)
+  const profileActionsRef = useRef<HTMLDivElement | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [hospitalCode, setHospitalCodeState] = useState(getHospitalCode())
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [appointmentPrefill, setAppointmentPrefill] = useState<{
-    doctorName?: string;
-    department?: string;
-  } | null>(null);
+    doctorName?: string
+    department?: string
+  } | null>(null)
   // Set when ER's "New" patient mode sends staff to Patient Registration --
   // lets AddPatientPage send them back to ER (with the new patient
   // pre-selected) instead of always defaulting to appointment booking, which
   // is the wrong next step and an extra detour when the patient is actually
   // an ER arrival, not an OP booking.
-  const [patientRegistrationReturnTo, setPatientRegistrationReturnTo] = useState<
-    string | null
-  >(null);
+  const [patientRegistrationReturnTo, setPatientRegistrationReturnTo] =
+    useState<string | null>(null)
   const [erPrefillPatient, setErPrefillPatient] = useState<{
-    patient_id: string;
-    name: string;
-    last_name?: string;
-  } | null>(null);
+    patient_id: string
+    name: string
+    last_name?: string
+  } | null>(null)
   // Which unknown ER visit to merge the newly-registered patient into --
   // set alongside patientRegistrationReturnTo when returnTo is "er-merge"
   // (see MergeUnknownPatient's "Register as New Patient" button).
   const [patientRegistrationMergeVisitId, setPatientRegistrationMergeVisitId] =
-    useState<number | null>(null);
+    useState<number | null>(null)
   const [erMergeTarget, setErMergeTarget] = useState<{
-    visitId: number;
-    patientId: string;
-  } | null>(null);
+    visitId: number
+    patientId: string
+  } | null>(null)
   useEffect(() => {
-    if (!notice) return;
-    const timeoutId = window.setTimeout(() => setNotice(null), 4200);
-    return () => window.clearTimeout(timeoutId);
-  }, [notice]);
+    if (!notice) return
+    const timeoutId = window.setTimeout(() => setNotice(null), 4200)
+    return () => window.clearTimeout(timeoutId)
+  }, [notice])
 
   useEffect(() => {
-    if (!profileActionsOpen) return;
+    if (!profileActionsOpen) return
 
     const handleDocumentClick = (event: MouseEvent) => {
       if (!profileActionsRef.current?.contains(event.target as Node)) {
-        setProfileActionsOpen(false);
+        setProfileActionsOpen(false)
       }
-    };
+    }
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setProfileActionsOpen(false);
-    };
+      if (event.key === "Escape") setProfileActionsOpen(false)
+    }
 
-    document.addEventListener("mousedown", handleDocumentClick);
-    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("mousedown", handleDocumentClick)
+    document.addEventListener("keydown", handleEscape)
 
     return () => {
-      document.removeEventListener("mousedown", handleDocumentClick);
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [profileActionsOpen]);
+      document.removeEventListener("mousedown", handleDocumentClick)
+      document.removeEventListener("keydown", handleEscape)
+    }
+  }, [profileActionsOpen])
 
-  const permissions = useMemo(() => resolvePermissions(user), [user]);
+  const permissions = useMemo(() => resolvePermissions(user), [user])
   const hasPermission = (permission?: string) =>
-    !permission || permissions.includes(permission);
-  const isAdmin = hasPermission("admin.use");
+    !permission || permissions.includes(permission)
+  const isAdmin = hasPermission("admin.use")
   const isClinicianUser =
     user?.access_role === "clinician" ||
-    (user?.job_role || "").toLowerCase() === "doctor";
+    (user?.job_role || "").toLowerCase() === "doctor"
   // Identity-only flag (personalized greeting + default landing page in
   // getDefaultPage below) -- deliberately does NOT narrow nav visibility the
   // way isClinicianUser does, since a pharmacist's module_access already
@@ -443,11 +423,8 @@ function App() {
   // granted modules from them.
   const isPharmacistUser =
     user?.access_role === "pharmacist" ||
-    (user?.job_role || "").toLowerCase() === "pharmacist";
-  const canAccessNavItem = (
-    item: (typeof NAV_ITEMS)[0],
-    permission?: string,
-  ) => {
+    (user?.job_role || "").toLowerCase() === "pharmacist"
+  const canAccessNavItem = (item: typeof NAV_ITEMS[0], permission?: string) => {
     // Clinicians should only see a restricted set of pages WITHIN the patients and symptom_ai modules.
     // If the admin gives them access to other modules (like pharmacy or lab), they will see those pages.
     if (isClinicianUser) {
@@ -463,8 +440,8 @@ function App() {
           "patients",
           "symptom-ai",
           "doctor-prescription",
-        ];
-        if (!allowedForClinician.includes(item.id)) return false;
+        ]
+        if (!allowedForClinician.includes(item.id)) return false
       }
     }
 
@@ -476,7 +453,7 @@ function App() {
     // and admins; everyone else with "patients" module access still correctly
     // sees the other patients-module pages.
     if (item.id === "doctor-prescription" && !isClinicianUser && !isAdmin) {
-      return false;
+      return false
     }
 
     // Normal users must explicitly have the module in their module_access array (if the nav item belongs to a module).
@@ -485,29 +462,29 @@ function App() {
     // a user granted only e.g. "patients.registration" still needs every patients-module
     // nav item to pass this check, since the sub-item implies module visibility.
     if (user?.user_type !== "admin") {
-      const moduleAccess = user?.module_access || [];
+      const moduleAccess = user?.module_access || []
       const hasModuleEntry = moduleAccess.some(
         (entry) => entry === item.module || entry.startsWith(`${item.module}.`),
-      );
+      )
       if (item.module && !hasModuleEntry) {
-        return false;
+        return false
       }
     }
 
-    return hasPermission(permission);
-  };
+    return hasPermission(permission)
+  }
   const sidebarNavItems = useMemo(
     () => NAV_ITEMS.filter((item) => canAccessNavItem(item, item.permission)),
     [permissions],
-  );
+  )
   const sidebarGroups = useMemo(() => {
     // Ordered by how often day-to-day hospital work touches each area: the core patient
     // journey (Overview -> OP Management -> Operations) comes before supporting AI tools,
     // which comes before back-office Finance/Administration.
     const groups: Array<{
-      key: string;
-      label: string;
-      items: typeof sidebarNavItems;
+      key: string
+      label: string
+      items: typeof sidebarNavItems
     }> = [
       { key: "overview", label: "Overview", items: [] },
       { key: "registration", label: "OP Management", items: [] },
@@ -515,17 +492,17 @@ function App() {
       { key: "ai", label: "AI", items: [] },
       { key: "finance", label: "Finance", items: [] },
       { key: "admin", label: "Administration", items: [] },
-    ];
+    ]
     sidebarNavItems.forEach((item) => {
       const target = groups.find(
         (group) => group.key === (item.group || "overview"),
-      );
-      target?.items.push(item);
-    });
+      )
+      target?.items.push(item)
+    })
 
     // Custom sort for doctors: Doctor Prescription before Queue Management
     if (user?.access_role === "clinician") {
-      const opGroup = groups.find((g) => g.key === "registration");
+      const opGroup = groups.find((g) => g.key === "registration")
       if (opGroup) {
         const order = [
           "doctor-prescription",
@@ -533,48 +510,48 @@ function App() {
           "emr",
           "appointment-out",
           "appointment-in",
-        ];
+        ]
         opGroup.items.sort((a, b) => {
-          const indexA = order.indexOf(a.id);
-          const indexB = order.indexOf(b.id);
+          const indexA = order.indexOf(a.id)
+          const indexB = order.indexOf(b.id)
           // If both are in the order array, sort by order array
-          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+          if (indexA !== -1 && indexB !== -1) return indexA - indexB
           // If only A is in the array, A comes first
-          if (indexA !== -1) return -1;
+          if (indexA !== -1) return -1
           // If only B is in the array, B comes first
-          if (indexB !== -1) return 1;
+          if (indexB !== -1) return 1
           // Otherwise maintain original order (mostly)
-          return 0;
-        });
+          return 0
+        })
       }
     }
 
-    return groups.filter((group) => group.items.length > 0);
-  }, [sidebarNavItems]);
+    return groups.filter((group) => group.items.length > 0)
+  }, [sidebarNavItems])
   const groupKeyForPage = (pageId: string) =>
-    NAV_ITEMS.find((item) => item.id === pageId)?.group || "overview";
+    NAV_ITEMS.find((item) => item.id === pageId)?.group || "overview"
   // Accordion behaviour: only the section containing the active page is expanded, so a
   // 13-item "Finance" group and an 8-item "OP Management" group are never both open (and
   // forcing a long scroll) at once -- this is the "sidebar should be systematic" fix.
   const [openSidebarGroup, setOpenSidebarGroup] = useState<string>(
     groupKeyForPage(page),
-  );
+  )
   useEffect(() => {
-    setOpenSidebarGroup(groupKeyForPage(page));
-  }, [page]);
+    setOpenSidebarGroup(groupKeyForPage(page))
+  }, [page])
 
   const getDefaultPage = (currentUser: User | null) => {
     if (
       currentUser?.access_role === "clinician" ||
       (currentUser?.job_role || "").toLowerCase() === "doctor"
     ) {
-      return "queue";
+      return "queue"
     }
     if (
       currentUser?.access_role === "pharmacist" ||
       (currentUser?.job_role || "").toLowerCase() === "pharmacist"
     ) {
-      return "pharmacy";
+      return "pharmacy"
     }
     const candidatePages = [
       "dashboard",
@@ -602,33 +579,34 @@ function App() {
       "hrms",
       "employees",
       "settings",
-    ];
+    ]
     for (const candidate of candidatePages) {
-      const navItem = NAV_ITEMS.find((item) => item.id === candidate);
-      if (!navItem) continue;
+      const navItem = NAV_ITEMS.find((item) => item.id === candidate)
+      if (!navItem) continue
 
       // We must mock canAccessNavItem logic here because canAccessNavItem relies on state (user, permissions)
       // which might be stale during login, so we re-evaluate it with currentUser.
 
-      let hasAccess = false;
-      const moduleAccess = currentUser?.module_access || [];
+      let hasAccess = false
+      const moduleAccess = currentUser?.module_access || []
       const hasModuleEntry = moduleAccess.some(
-        (entry) => entry === navItem.module || entry.startsWith(`${navItem.module}.`),
-      );
+        (entry) =>
+          entry === navItem.module || entry.startsWith(`${navItem.module}.`),
+      )
       if (
         currentUser?.user_type !== "admin" &&
         navItem.module &&
         !hasModuleEntry
       ) {
-        hasAccess = false;
+        hasAccess = false
       } else {
         hasAccess =
           !navItem.permission ||
-          resolvePermissions(currentUser).includes(navItem.permission);
+          resolvePermissions(currentUser).includes(navItem.permission)
       }
 
       if (hasAccess) {
-        return candidate;
+        return candidate
       }
     }
     // "settings" used to be a safe universal fallback because it had no
@@ -638,107 +616,107 @@ function App() {
     // routed to a page it immediately gets bounced back out of. "dashboard"
     // is the first (and most universally granted) candidate above, so
     // falling back to it here is consistent, not a new default.
-    return "dashboard";
-  };
+    return "dashboard"
+  }
 
   const syncUrlForPage = (nextPage: string) => {
-    if (typeof window === "undefined") return;
-    const targetPath = nextPage === "admin" ? "/admin" : "/";
+    if (typeof window === "undefined") return
+    const targetPath = nextPage === "admin" ? "/admin" : "/"
     if (window.location.pathname !== targetPath) {
-      window.history.pushState({}, "", targetPath);
+      window.history.pushState({}, "", targetPath)
     }
-  };
+  }
 
   useEffect(() => {
     fetch(`${API_BASE}/api/languages`)
       .then((res) => res.json())
       .then((data) => setLanguages(data.languages || { en: "English" }))
-      .catch(() => setLanguages({ en: "English" }));
-  }, []);
+      .catch(() => setLanguages({ en: "English" }))
+  }, [])
 
   useEffect(() => {
-    let active = true;
+    let active = true
     apiFetch<{ user?: User }>("/api/auth/session")
       .then((data) => {
-        if (!active) return;
+        if (!active) return
         if (data.user) {
-          setUser(data.user);
+          setUser(data.user)
           if (!isAdminRoutePath) {
-            setPage(getDefaultPage(data.user));
+            setPage(getDefaultPage(data.user))
           }
         }
       })
       .catch(() => {})
       .finally(() => {
-        if (active) setAuthChecked(true);
-      });
+        if (active) setAuthChecked(true)
+      })
     return () => {
-      active = false;
-    };
-  }, []);
+      active = false
+    }
+  }, [])
 
   useEffect(() => {
     const handleUnauthorized = () => {
-      setUser(null);
-      setPage("dashboard");
-      setSelectedPatient(null);
-      setNotice(null);
-    };
-    window.addEventListener("app:unauthorized", handleUnauthorized);
+      setUser(null)
+      setPage("dashboard")
+      setSelectedPatient(null)
+      setNotice(null)
+    }
+    window.addEventListener("app:unauthorized", handleUnauthorized)
     return () => {
-      window.removeEventListener("app:unauthorized", handleUnauthorized);
-    };
-  }, []);
+      window.removeEventListener("app:unauthorized", handleUnauthorized)
+    }
+  }, [])
 
   // Global Polling (Doctor & Staff Notifications)
-  const previousStatusesRef = useRef<Record<number, string>>({});
+  const previousStatusesRef = useRef<Record<number, string>>({})
 
   useEffect(() => {
     // Only poll if user is logged in
-    if (!user) return;
+    if (!user) return
 
-    let active = true;
+    let active = true
     const pollQueue = async () => {
-      if (!active) return;
+      if (!active) return
       try {
-        const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const now = new Date()
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
         const data = await apiFetch<{ appointments?: any[] }>(
           `/api/appointments?date=${today}`,
-        );
-        const appointments = data.appointments || [];
+        )
+        const appointments = data.appointments || []
 
-        const currentStatuses: Record<number, string> = {};
+        const currentStatuses: Record<number, string> = {}
         appointments.forEach((a) => {
-          currentStatuses[a.id] = a.status;
-        });
+          currentStatuses[a.id] = a.status
+        })
 
-        const isClinician = user.access_role === "clinician";
+        const isClinician = user.access_role === "clinician"
         const isStaff =
-          user.access_role === "receptionist" || user.access_role === "admin";
+          user.access_role === "receptionist" || user.access_role === "admin"
 
         const playAlertSound = () => {
           try {
             const AudioContext =
-              window.AudioContext || (window as any).webkitAudioContext;
-            if (!AudioContext) return;
-            const ctx = new AudioContext();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-            osc.frequency.setValueAtTime(1108.73, ctx.currentTime + 0.1); // C#6
-            gain.gain.setValueAtTime(0, ctx.currentTime);
-            gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.3);
+              window.AudioContext || (window as any).webkitAudioContext
+            if (!AudioContext) return
+            const ctx = new AudioContext()
+            const osc = ctx.createOscillator()
+            const gain = ctx.createGain()
+            osc.connect(gain)
+            gain.connect(ctx.destination)
+            osc.type = "sine"
+            osc.frequency.setValueAtTime(880, ctx.currentTime) // A5
+            osc.frequency.setValueAtTime(1108.73, ctx.currentTime + 0.1) // C#6
+            gain.gain.setValueAtTime(0, ctx.currentTime)
+            gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02)
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3)
+            osc.start(ctx.currentTime)
+            osc.stop(ctx.currentTime + 0.3)
           } catch (e) {
             // Audio context failed or blocked
           }
-        };
+        }
 
         if (Object.keys(previousStatusesRef.current).length > 0) {
           if (isClinician) {
@@ -747,39 +725,36 @@ function App() {
               (a) =>
                 (a.status === "checked_in" || a.status === "scheduled") &&
                 !previousStatusesRef.current[a.id],
-            );
+            )
 
             if (newPatients.length > 0) {
-              const newPatient = newPatients[0];
+              const newPatient = newPatients[0]
               // Play sound and show notice
               if (typeof window !== "undefined") {
                 try {
                   const audioCtx = new (
                     window.AudioContext || (window as any).webkitAudioContext
-                  )();
-                  const oscillator = audioCtx.createOscillator();
-                  const gainNode = audioCtx.createGain();
-                  oscillator.type = "sine";
-                  oscillator.frequency.setValueAtTime(
-                    880,
-                    audioCtx.currentTime,
-                  ); // A5
-                  gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                  oscillator.connect(gainNode);
-                  gainNode.connect(audioCtx.destination);
-                  oscillator.start();
-                  oscillator.stop(audioCtx.currentTime + 0.15); // short beep
+                  )()
+                  const oscillator = audioCtx.createOscillator()
+                  const gainNode = audioCtx.createGain()
+                  oscillator.type = "sine"
+                  oscillator.frequency.setValueAtTime(880, audioCtx.currentTime) // A5
+                  gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime)
+                  oscillator.connect(gainNode)
+                  gainNode.connect(audioCtx.destination)
+                  oscillator.start()
+                  oscillator.stop(audioCtx.currentTime + 0.15) // short beep
                   setTimeout(() => {
-                    const osc2 = audioCtx.createOscillator();
-                    const gain2 = audioCtx.createGain();
-                    osc2.type = "sine";
-                    osc2.frequency.setValueAtTime(1046.5, audioCtx.currentTime); // C6
-                    gain2.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                    osc2.connect(gain2);
-                    gain2.connect(audioCtx.destination);
-                    osc2.start();
-                    osc2.stop(audioCtx.currentTime + 0.2);
-                  }, 200);
+                    const osc2 = audioCtx.createOscillator()
+                    const gain2 = audioCtx.createGain()
+                    osc2.type = "sine"
+                    osc2.frequency.setValueAtTime(1046.5, audioCtx.currentTime) // C6
+                    gain2.gain.setValueAtTime(0.1, audioCtx.currentTime)
+                    osc2.connect(gain2)
+                    gain2.connect(audioCtx.destination)
+                    osc2.start()
+                    osc2.stop(audioCtx.currentTime + 0.2)
+                  }, 200)
                 } catch (e) {
                   // fallback if AudioContext fails
                 }
@@ -787,7 +762,7 @@ function App() {
               setNotice({
                 type: "success",
                 message: `New Patient Arrived: ${newPatient.patient_name} (Token #${newPatient.token_no})`,
-              });
+              })
             }
           }
 
@@ -798,199 +773,199 @@ function App() {
                 a.status === "completed" &&
                 previousStatusesRef.current[a.id] &&
                 previousStatusesRef.current[a.id] !== "completed",
-            );
+            )
 
             if (completedPatients.length > 0) {
-              const patient = completedPatients[0];
-              playAlertSound();
+              const patient = completedPatients[0]
+              playAlertSound()
               setNotice({
                 type: "success",
                 message: `Consultation Completed: ${patient.patient_name} with Dr. ${patient.doctor_name || "Unknown"}`,
-              });
+              })
             }
           }
         }
 
-        previousStatusesRef.current = currentStatuses;
+        previousStatusesRef.current = currentStatuses
       } catch (e) {
         // silently fail polling
       }
-    };
+    }
 
     // Poll immediately, then every 15 seconds
-    void pollQueue();
-    const interval = setInterval(pollQueue, 15000);
+    void pollQueue()
+    const interval = setInterval(pollQueue, 15000)
 
     return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [user]);
+      active = false
+      clearInterval(interval)
+    }
+  }, [user])
 
   const loadStats = async () => {
     try {
-      const data = await apiFetch<Stats>("/api/stats");
-      setStats({ ...EMPTY_STATS, ...data });
-      return true;
+      const data = await apiFetch<Stats>("/api/stats")
+      setStats({ ...EMPTY_STATS, ...data })
+      return true
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load dashboard stats.",
-      );
-      return false;
+      )
+      return false
     }
-  };
+  }
 
   const loadPatients = async () => {
     try {
-      const data = await apiFetch<{ patients?: Patient[] }>("/api/patients");
-      setPatients(data.patients || []);
-      return true;
+      const data = await apiFetch<{ patients?: Patient[] }>("/api/patients")
+      setPatients(data.patients || [])
+      return true
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load patient list.",
-      );
-      return false;
+      )
+      return false
     }
-  };
+  }
 
   const loadDashboardAnalytics = async () => {
-    setDashboardAnalyticsLoading(true);
+    setDashboardAnalyticsLoading(true)
     try {
       const data = await apiFetch<DashboardAnalytics>(
         "/api/dashboard/analytics?days=14",
-      );
-      setDashboardAnalytics(data);
-      return true;
+      )
+      setDashboardAnalytics(data)
+      return true
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load dashboard analytics.",
-      );
-      setDashboardAnalytics(null);
-      return false;
+      )
+      setDashboardAnalytics(null)
+      return false
     } finally {
-      setDashboardAnalyticsLoading(false);
+      setDashboardAnalyticsLoading(false)
     }
-  };
+  }
 
   const loadHospitalSummary = async () => {
     try {
       const data = await apiFetch<HospitalSummary>(
         "/api/dashboard/hospital-summary",
-      );
-      setHospitalSummary(data);
-      return true;
+      )
+      setHospitalSummary(data)
+      return true
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load operational hospital summary.",
-      );
-      setHospitalSummary(null);
-      return false;
+      )
+      setHospitalSummary(null)
+      return false
     }
-  };
+  }
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) return
     if (hasPermission("patients.read")) {
-      void loadStats();
-      void loadPatients();
-      void loadDashboardAnalytics();
-      void loadHospitalSummary();
+      void loadStats()
+      void loadPatients()
+      void loadDashboardAnalytics()
+      void loadHospitalSummary()
     } else {
-      setStats(EMPTY_STATS);
-      setDashboardAnalytics(null);
-      setHospitalSummary(null);
-      setPatients([]);
-      setSelectedPatient(null);
+      setStats(EMPTY_STATS)
+      setDashboardAnalytics(null)
+      setHospitalSummary(null)
+      setPatients([])
+      setSelectedPatient(null)
     }
-  }, [user, permissions]);
+  }, [user, permissions])
 
   useEffect(() => {
-    if (!user) return;
-    const activeNav = NAV_ITEMS.find((item) => item.id === page);
+    if (!user) return
+    const activeNav = NAV_ITEMS.find((item) => item.id === page)
     if (activeNav && !canAccessNavItem(activeNav, activeNav.permission)) {
-      setPage(getDefaultPage(user));
+      setPage(getDefaultPage(user))
       setNotice({
         type: "warning",
         message:
           activeNav.deniedHint || "You do not have access to this module.",
-      });
-      return;
+      })
+      return
     }
     if (!isAdminRoutePath && page === "admin" && !isAdmin) {
-      setPage(getDefaultPage(user));
+      setPage(getDefaultPage(user))
       if (typeof window !== "undefined") {
-        window.history.replaceState({}, "", "/");
+        window.history.replaceState({}, "", "/")
       }
       setNotice({
         type: "warning",
         message: "Only admins can access the /admin page.",
-      });
-      return;
+      })
+      return
     }
     if (page === "patients" && hasPermission("patients.read")) {
-      setSelectedPatient(null);
-      void loadPatients();
+      setSelectedPatient(null)
+      void loadPatients()
     }
     if (page === "dashboard" && hasPermission("patients.read")) {
-      void loadStats();
-      void loadPatients();
-      void loadDashboardAnalytics();
-      void loadHospitalSummary();
+      void loadStats()
+      void loadPatients()
+      void loadDashboardAnalytics()
+      void loadHospitalSummary()
     }
-  }, [page, user, permissions]);
+  }, [page, user, permissions])
 
-  const recentPatients = useMemo(() => patients.slice(0, 5), [patients]);
+  const recentPatients = useMemo(() => patients.slice(0, 5), [patients])
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
+    event.preventDefault()
+    const form = event.currentTarget
     const inputHospitalCode = (
       (form.elements.namedItem("hospital_code") as HTMLInputElement).value ||
       "hosp-default"
     )
       .trim()
-      .toLowerCase();
+      .toLowerCase()
     const payload = {
       username: (form.elements.namedItem("username") as HTMLInputElement).value,
       password: (form.elements.namedItem("password") as HTMLInputElement).value,
-    };
+    }
     try {
-      setHospitalCode(inputHospitalCode);
-      setHospitalCodeState(inputHospitalCode);
+      setHospitalCode(inputHospitalCode)
+      setHospitalCodeState(inputHospitalCode)
       const data = await apiFetch<{ user: User }>("/api/auth/login", {
         method: "POST",
         body: JSON.stringify(payload),
         headers: { "X-Hospital-Code": inputHospitalCode },
-      });
-      setUser(data.user);
-      setPage(getDefaultPage(data.user));
-      setNotice(null);
+      })
+      setUser(data.user)
+      setPage(getDefaultPage(data.user))
+      setNotice(null)
       if (resolvePermissions(data.user).includes("patients.read")) {
-        void loadStats();
-        void loadPatients();
-        void loadDashboardAnalytics();
-        void loadHospitalSummary();
+        void loadStats()
+        void loadPatients()
+        void loadDashboardAnalytics()
+        void loadHospitalSummary()
       }
     } catch (error) {
       // Login failures must always be shown -- reportError's blanket 401 suppression exists
       // for background auth checks (e.g. the session-check on page load, which 401s for every
       // logged-out visitor and shouldn't toast an error), but a wrong-password attempt on the
       // login form itself is exactly the case the user needs to see.
-      const typedError = error as { message?: string; status?: number };
+      const typedError = error as { message?: string status?: number }
       setNotice({
         type: "error",
         message: typedError.message || "Unable to sign in. Please try again.",
-      });
+      })
     }
-  };
+  }
 
   const readPlatformAdminCreds = (form: HTMLFormElement) => ({
     username: (
@@ -1000,7 +975,7 @@ function App() {
     password:
       (form.elements.namedItem("platform_admin_password") as HTMLInputElement)
         ?.value || "",
-  });
+  })
 
   const platformHeaders = (
     platformAdminUsername: string,
@@ -1011,22 +986,22 @@ function App() {
     "X-Hospital-Code": hospitalCodeValue.trim().toLowerCase(),
     "X-Platform-Admin-Username": platformAdminUsername,
     "X-Platform-Admin-Password": platformAdminPassword,
-  });
+  })
 
   const handleCreateHospital = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const creds = readPlatformAdminCreds(form);
+    event.preventDefault()
+    const form = event.currentTarget
+    const creds = readPlatformAdminCreds(form)
     const hospitalCodeValue = (
       (form.elements.namedItem("hospital_code") as HTMLInputElement)?.value ||
       ""
     )
       .trim()
-      .toLowerCase();
+      .toLowerCase()
     const hospitalNameValue = (
       (form.elements.namedItem("hospital_name") as HTMLInputElement)?.value ||
       ""
-    ).trim();
+    ).trim()
 
     try {
       const response = await fetch(`${API_BASE}/api/platform/hospitals`, {
@@ -1040,56 +1015,56 @@ function App() {
           hospital_code: hospitalCodeValue,
           name: hospitalNameValue || undefined,
         }),
-      });
-      const payload = await response.json().catch(() => ({}));
+      })
+      const payload = await response.json().catch(() => ({}))
       if (!response.ok)
         throw new Error(
           payload.error || payload.message || "Unable to create hospital.",
-        );
+        )
       setNotice({
         type: "success",
         message: `Hospital ${hospitalCodeValue} is ready.`,
-      });
-      setHospitalCode(hospitalCodeValue);
-      setHospitalCodeState(hospitalCodeValue);
+      })
+      setHospitalCode(hospitalCodeValue)
+      setHospitalCodeState(hospitalCodeValue)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create hospital.",
-      );
+      )
     }
-  };
+  }
 
   const handleSetupHospitalAdmin = async (
     event: FormEvent<HTMLFormElement>,
   ) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const creds = readPlatformAdminCreds(form);
+    event.preventDefault()
+    const form = event.currentTarget
+    const creds = readPlatformAdminCreds(form)
     const hospitalCodeValue = (
       (form.elements.namedItem("hospital_code") as HTMLInputElement)?.value ||
       ""
     )
       .trim()
-      .toLowerCase();
+      .toLowerCase()
     const adminUsername = (
       (form.elements.namedItem("admin_username") as HTMLInputElement)?.value ||
       ""
-    ).trim();
+    ).trim()
     const adminPassword =
       (form.elements.namedItem("admin_password") as HTMLInputElement)?.value ||
-      "";
+      ""
     const adminFullName = (
       (form.elements.namedItem("admin_full_name") as HTMLInputElement)?.value ||
       ""
-    ).trim();
+    ).trim()
     const adminEmail = (
       (form.elements.namedItem("admin_email") as HTMLInputElement)?.value || ""
-    ).trim();
+    ).trim()
     const adminPhone = (
       (form.elements.namedItem("admin_phone") as HTMLInputElement)?.value || ""
-    ).trim();
+    ).trim()
 
     try {
       const response = await fetch(`${API_BASE}/api/auth/setup-admin`, {
@@ -1106,48 +1081,47 @@ function App() {
           email: adminEmail,
           phone: adminPhone,
         }),
-      });
-      const payload = await response.json().catch(() => ({}));
+      })
+      const payload = await response.json().catch(() => ({}))
       if (!response.ok)
         throw new Error(
           payload.error ||
             payload.message ||
             "Unable to onboard hospital admin.",
-        );
+        )
       setNotice({
         type: "success",
         message: `Admin created for ${hospitalCodeValue}.`,
-      });
-      setHospitalCode(hospitalCodeValue);
-      setHospitalCodeState(hospitalCodeValue);
+      })
+      setHospitalCode(hospitalCodeValue)
+      setHospitalCodeState(hospitalCodeValue)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to onboard hospital admin.",
-      );
+      )
     }
-  };
+  }
 
   const handleResetHospitalAdminPassword = async (
     event: FormEvent<HTMLFormElement>,
   ) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const creds = readPlatformAdminCreds(form);
+    event.preventDefault()
+    const form = event.currentTarget
+    const creds = readPlatformAdminCreds(form)
     const hospitalCodeValue = (
       (form.elements.namedItem("hospital_code") as HTMLInputElement)?.value ||
       ""
     )
       .trim()
-      .toLowerCase();
+      .toLowerCase()
     const adminUsername = (
       (form.elements.namedItem("admin_username") as HTMLInputElement)?.value ||
       ""
-    ).trim();
+    ).trim()
     const newPassword =
-      (form.elements.namedItem("new_password") as HTMLInputElement)?.value ||
-      "";
+      (form.elements.namedItem("new_password") as HTMLInputElement)?.value || ""
 
     try {
       const response = await fetch(
@@ -1164,46 +1138,46 @@ function App() {
             new_password: newPassword,
           }),
         },
-      );
-      const payload = await response.json().catch(() => ({}));
+      )
+      const payload = await response.json().catch(() => ({}))
       if (!response.ok)
         throw new Error(
           payload.error || payload.message || "Unable to reset admin password.",
-        );
+        )
       setNotice({
         type: "success",
         message: `Admin password reset for ${hospitalCodeValue}.`,
-      });
+      })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to reset admin password.",
-      );
+      )
     }
-  };
+  }
 
   const handleToggleHospitalAccess = async (
     event: FormEvent<HTMLFormElement>,
   ) => {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const creds = readPlatformAdminCreds(form);
+    event.preventDefault()
+    const form = event.currentTarget
+    const creds = readPlatformAdminCreds(form)
     const hospitalCodeValue = (
       (form.elements.namedItem("hospital_code") as HTMLInputElement)?.value ||
       ""
     )
       .trim()
-      .toLowerCase();
+      .toLowerCase()
     const action = (
       (form.elements.namedItem("action") as HTMLInputElement)?.value || ""
     )
       .trim()
-      .toLowerCase();
+      .toLowerCase()
     const reason = (
       (form.elements.namedItem("reason") as HTMLInputElement)?.value || ""
-    ).trim();
-    const endpoint = action === "enable" ? "enable" : "disable";
+    ).trim()
+    const endpoint = action === "enable" ? "enable" : "disable"
 
     try {
       const response = await fetch(
@@ -1217,152 +1191,154 @@ function App() {
           ),
           body: JSON.stringify(endpoint === "disable" ? { reason } : {}),
         },
-      );
-      const payload = await response.json().catch(() => ({}));
+      )
+      const payload = await response.json().catch(() => ({}))
       if (!response.ok)
         throw new Error(
           payload.error ||
             payload.message ||
             "Unable to update hospital status.",
-        );
+        )
       setNotice({
         type: "success",
-        message: `Hospital ${hospitalCodeValue} is now ${endpoint === "disable" ? "disabled" : "enabled"}.`,
-      });
+        message: `Hospital ${hospitalCodeValue} is now ${
+          endpoint === "disable" ? "disabled" : "enabled"
+        }.`,
+      })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to update hospital status.",
-      );
+      )
     }
-  };
+  }
 
   const handleLogout = () => {
-    void apiFetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    void apiFetch("/api/auth/logout", { method: "POST" }).catch(() => {})
     if (
       typeof window !== "undefined" &&
       window.location.pathname === "/admin"
     ) {
-      window.history.replaceState({}, "", "/");
+      window.history.replaceState({}, "", "/")
     }
-    setUser(null);
-    setPage("dashboard");
-    setSelectedPatient(null);
-  };
+    setUser(null)
+    setPage("dashboard")
+    setSelectedPatient(null)
+  }
 
   const navigateToPage = (targetPage: string, extraData?: any) => {
-    let nextPage = targetPage;
+    let nextPage = targetPage
     if (nextPage === "registration") {
-      nextPage = "appointment-in";
+      nextPage = "appointment-in"
     }
 
     if (nextPage === "patients") {
-      setPatientsPageKey((prev) => prev + 1);
+      setPatientsPageKey((prev) => prev + 1)
     }
     if (nextPage === "appointment-in" && extraData?.prefillDoctor) {
-      setAppointmentPrefill(extraData.prefillDoctor);
+      setAppointmentPrefill(extraData.prefillDoctor)
     } else if (nextPage === "appointment-in") {
-      setAppointmentPrefill(null);
+      setAppointmentPrefill(null)
     }
     if (nextPage === "add") {
       // Only carries across this one navigation -- a later, unrelated visit
       // to "add" (e.g. from the Dashboard's own "Register Patient" button)
       // must not inherit a stale ER return intent from an earlier detour.
-      setPatientRegistrationReturnTo(extraData?.returnTo || null);
-      setPatientRegistrationMergeVisitId(extraData?.mergeVisitId ?? null);
+      setPatientRegistrationReturnTo(extraData?.returnTo || null)
+      setPatientRegistrationMergeVisitId(extraData?.mergeVisitId ?? null)
     }
     if (nextPage === "er" && extraData?.newlyRegisteredPatient) {
-      setErPrefillPatient(extraData.newlyRegisteredPatient);
+      setErPrefillPatient(extraData.newlyRegisteredPatient)
     } else if (nextPage === "er") {
-      setErPrefillPatient(null);
+      setErPrefillPatient(null)
     }
     if (nextPage === "er" && extraData?.mergeIntoVisit) {
-      setErMergeTarget(extraData.mergeIntoVisit);
+      setErMergeTarget(extraData.mergeIntoVisit)
     } else if (nextPage === "er") {
-      setErMergeTarget(null);
+      setErMergeTarget(null)
     }
-    syncUrlForPage(nextPage);
-    setPage(nextPage);
-    setIsMobileMenuOpen(false);
-  };
+    syncUrlForPage(nextPage)
+    setPage(nextPage)
+    setIsMobileMenuOpen(false)
+  }
 
   const refreshPatients = async () => {
-    const data = await apiFetch<{ patients?: Patient[] }>("/api/patients");
-    setPatients(data.patients || []);
-  };
+    const data = await apiFetch<{ patients?: Patient[] }>("/api/patients")
+    setPatients(data.patients || [])
+  }
 
   const handleCreatePatient = async (
     payload: Record<string, unknown>,
     setForm: Dispatch<SetStateAction<any>>,
     setDuplicateInfo?: Dispatch<SetStateAction<any>>,
     refreshPatientId?: () => Promise<void>,
-  ): Promise<{ patient_id: string; admission_id?: string } | null> => {
+  ): Promise<{ patient_id: string admission_id?: string } | null> => {
     try {
       const data = await apiFetch<{
-        patient_id: string;
-        admission_id?: string;
+        patient_id: string
+        admission_id?: string
       }>("/api/patients", {
         method: "POST",
         body: JSON.stringify(payload),
-      });
-      await refreshPatients();
-      await loadStats();
-      await loadHospitalSummary();
+      })
+      await refreshPatients()
+      await loadStats()
+      await loadHospitalSummary()
       setSelectedPatient({
         patient_id: data.patient_id,
         admission_id: data.admission_id,
         name: String(payload.name || ""),
         last_name: String(payload.last_name || ""),
         middle_name: String(payload.middle_name || ""),
-      });
-      setDuplicateInfo?.(null);
+      })
+      setDuplicateInfo?.(null)
       setNotice({
         type: "success",
         message: `Patient ${data.patient_id} registered.`,
-      });
-      setForm(EMPTY_PATIENT_FORM);
-      await refreshPatientId?.();
-      return data;
+      })
+      setForm(EMPTY_PATIENT_FORM)
+      await refreshPatientId?.()
+      return data
     } catch (error) {
       const typedError = error as {
-        status?: number;
-        payload?: any;
-        message?: string;
-      };
+        status?: number
+        payload?: any
+        message?: string
+      }
       if (typedError.status === 409) {
-        setDuplicateInfo?.(typedError.payload?.duplicate || null);
+        setDuplicateInfo?.(typedError.payload?.duplicate || null)
         setNotice({
           type: "warning",
           message: typedError.message || "Possible duplicate",
-        });
-        return null;
+        })
+        return null
       }
-      reportError(setNotice, typedError);
-      return null;
+      reportError(setNotice, typedError)
+      return null
     }
-  };
+  }
 
   const handleDeletePatient = async (patientId: string) => {
     try {
-      await apiFetch(`/api/patients/${patientId}`, { method: "DELETE" });
-      await refreshPatients();
-      await loadStats();
-      await loadHospitalSummary();
+      await apiFetch(`/api/patients/${patientId}`, { method: "DELETE" })
+      await refreshPatients()
+      await loadStats()
+      await loadHospitalSummary()
       if (selectedPatient?.patient_id === patientId) {
-        setSelectedPatient(null);
+        setSelectedPatient(null)
       }
-      setNotice({ type: "success", message: "Patient removed." });
+      setNotice({ type: "success", message: "Patient removed." })
     } catch (error) {
-      reportError(setNotice, error as { message?: string; status?: number });
+      reportError(setNotice, error as { message?: string status?: number })
     }
-  };
+  }
 
   const handleExportPatientsCsv = async (query = "") => {
     try {
       const params = query.trim()
         ? `?q=${encodeURIComponent(query.trim())}`
-        : "";
+        : ""
       const response = await fetch(
         `${API_BASE}/api/export/patients/csv${params}`,
         {
@@ -1370,53 +1346,53 @@ function App() {
           credentials: "include",
           headers: { "X-Hospital-Code": getHospitalCode() },
         },
-      );
+      )
       if (!response.ok) {
-        throw new Error("Unable to export patients CSV.");
+        throw new Error("Unable to export patients CSV.")
       }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `patients_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      setNotice({ type: "success", message: "Patients CSV exported." });
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `patients_${new Date().toISOString().slice(0, 10)}.csv`
+      link.click()
+      window.URL.revokeObjectURL(url)
+      setNotice({ type: "success", message: "Patients CSV exported." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to export patients CSV.",
-      );
+      )
     }
-  };
+  }
 
   const handleSelectPatient = (patient: Patient | null) => {
     if (!patient) {
-      setSelectedPatient(null);
-      return;
+      setSelectedPatient(null)
+      return
     }
     setSelectedPatient({
       patient_id: patient.patient_id,
       name: patient.name,
       middle_name: patient.middle_name,
       last_name: patient.last_name,
-    });
-  };
+    })
+  }
 
   const refreshPatientData = async (patientId?: string) => {
     await Promise.allSettled([
       loadStats(),
       loadPatients(),
       loadHospitalSummary(),
-    ]);
+    ])
     if (patientId) {
       setSelectedPatient((prev) =>
         prev?.patient_id === patientId ? { ...prev } : prev,
-      );
+      )
     }
-    setPatientDetailRefreshToken((prev) => prev + 1);
-  };
+    setPatientDetailRefreshToken((prev) => prev + 1)
+  }
 
   if (isAdminRoutePath) {
     return (
@@ -1434,7 +1410,7 @@ function App() {
         </main>
         {notice && <Toast notice={notice} onClose={() => setNotice(null)} />}
       </div>
-    );
+    )
   }
 
   if (!authChecked) {
@@ -1450,9 +1426,9 @@ function App() {
           />
           {notice && <Toast notice={notice} onClose={() => setNotice(null)} />}
         </>
-      );
+      )
     }
-    return <div className="auth-page">Checking session...</div>;
+    return <div className="auth-page">Checking session...</div>
   }
 
   if (isPlatformAdminRoute) {
@@ -1467,7 +1443,7 @@ function App() {
         />
         {notice && <Toast notice={notice} onClose={() => setNotice(null)} />}
       </>
-    );
+    )
   }
 
   if (!user) {
@@ -1476,7 +1452,7 @@ function App() {
         <AuthView onLogin={handleLogin} initialHospitalCode={hospitalCode} />
         {notice && <Toast notice={notice} onClose={() => setNotice(null)} />}
       </>
-    );
+    )
   }
 
   return (
@@ -1497,7 +1473,7 @@ function App() {
         <div className="sidebar-scroll-region">
           <nav>
             {sidebarGroups.map((group) => {
-              const isOpen = openSidebarGroup === group.key;
+              const isOpen = openSidebarGroup === group.key
               return (
                 <section key={group.key} className="sidebar-nav-group">
                   <button
@@ -1544,8 +1520,8 @@ function App() {
                     <div className="sidebar-nav-items">
                       {group.items.map((item) => {
                         const blocked =
-                          !!item.permission && !hasPermission(item.permission);
-                        const isActive = page === item.id;
+                          !!item.permission && !hasPermission(item.permission)
+                        const isActive = page === item.id
                         return (
                           <SidebarTab
                             key={item.id}
@@ -1559,18 +1535,18 @@ function App() {
                                 setNotice({
                                   type: "warning",
                                   message: item.deniedHint || "Access denied.",
-                                });
-                                return;
+                                })
+                                return
                               }
-                              navigateToPage(item.id);
+                              navigateToPage(item.id)
                             }}
                           />
-                        );
+                        )
                       })}
                     </div>
                   )}
                 </section>
-              );
+              )
             })}
           </nav>
         </div>
@@ -1615,8 +1591,8 @@ function App() {
                   className="settings-footer-btn"
                   variant="ghost"
                   onClick={() => {
-                    setProfileActionsOpen(false);
-                    setSettingsOpen(true);
+                    setProfileActionsOpen(false)
+                    setSettingsOpen(true)
                   }}
                 >
                   Settings
@@ -1626,8 +1602,8 @@ function App() {
                   className="logout-footer-btn"
                   variant="ghost"
                   onClick={() => {
-                    setProfileActionsOpen(false);
-                    setLogoutConfirmOpen(true);
+                    setProfileActionsOpen(false)
+                    setLogoutConfirmOpen(true)
                   }}
                 >
                   Log out
@@ -1758,17 +1734,18 @@ function App() {
                 />
               )}
 
-            {(page === "op-desk" || page === "op") && (hasPermission("op.read") || isAdmin) && (
-              <OpPage
-                setNotice={setNotice}
-                canEdit={
-                  hasPermission("op.schedules.write") ||
-                  hasPermission("op.doctors.write") ||
-                  isAdmin
-                }
-                onNavigate={navigateToPage}
-              />
-            )}
+            {(page === "op-desk" || page === "op") &&
+              (hasPermission("op.read") || isAdmin) && (
+                <OpPage
+                  setNotice={setNotice}
+                  canEdit={
+                    hasPermission("op.schedules.write") ||
+                    hasPermission("op.doctors.write") ||
+                    isAdmin
+                  }
+                  onNavigate={navigateToPage}
+                />
+              )}
 
             {page === "patients" && (
               <PatientsPage
@@ -1890,8 +1867,8 @@ function App() {
         open={logoutConfirmOpen}
         onClose={() => setLogoutConfirmOpen(false)}
         onConfirm={() => {
-          setLogoutConfirmOpen(false);
-          handleLogout();
+          setLogoutConfirmOpen(false)
+          handleLogout()
         }}
         title="Log out?"
         description="You will be signed out of this account."
@@ -1899,7 +1876,7 @@ function App() {
       />
       {notice && <Toast notice={notice} onClose={() => setNotice(null)} />}
     </div>
-  );
+  )
 }
 
-export default App;
+export default App

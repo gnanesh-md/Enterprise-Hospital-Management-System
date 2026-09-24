@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import {
   FiBell,
   FiCheck,
@@ -14,28 +14,30 @@ import {
   FiActivity,
   FiChevronRight,
   FiShield,
-} from "react-icons/fi";
-import { FaBed } from "react-icons/fa";
-import { BedDatabase, type BedTransferNotification } from "../../services/bedDb";
-import { formatDateTimeIST } from "../../lib/format";
-import type { Notice } from "../../types";
+} from "react-icons/fi"
+import { FaBed } from "react-icons/fa"
+import { BedDatabase, type BedTransferNotification } from "../../services/bedDb"
+import { formatDateTimeIST } from "../../lib/format"
+import type { Notice } from "../../types"
 
 interface BedTransferNotificationPanelProps {
-  onAllocateTransfer?: (notif: BedTransferNotification) => void;
-  onViewPatientChart?: (patientId: string) => void;
-  canManageBeds?: boolean;
-  setNotice?: (notice: Notice | null) => void;
+  onAllocateTransfer?: (notif: BedTransferNotification) => void
+  onViewPatientChart?: (patientId: string) => void
+  canManageBeds?: boolean
+  setNotice?: (notice: Notice | null) => void
 }
 
 function timeAgo(dateString: string): string {
   try {
-    const diff = Math.floor((Date.now() - new Date(dateString).getTime()) / 1000);
-    if (diff < 60) return "Just now";
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
+    const diff = Math.floor(
+      (Date.now() - new Date(dateString).getTime()) / 1000,
+    )
+    if (diff < 60) return "Just now"
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+    return `${Math.floor(diff / 86400)}d ago`
   } catch {
-    return "Recent";
+    return "Recent"
   }
 }
 
@@ -45,86 +47,98 @@ export function BedTransferNotificationPanel({
   canManageBeds = true,
   setNotice,
 }: BedTransferNotificationPanelProps) {
-  const [notifications, setNotifications] = useState<BedTransferNotification[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<"all" | "pending" | "in_transit" | "allocated">("all");
-  const [toastNotif, setToastNotif] = useState<BedTransferNotification | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [notifications, setNotifications] = useState<BedTransferNotification[]>(
+    [],
+  )
+  const [isOpen, setIsOpen] = useState(false)
+  const [activeFilter, setActiveFilter] =
+    useState<"all" | "pending" | "in_transit" | "allocated">("all")
+  const [toastNotif, setToastNotif] = useState<BedTransferNotification | null>(
+    null,
+  )
+  const [searchQuery, setSearchQuery] = useState("")
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const loadNotifications = () => {
     try {
-      const list = BedDatabase.getTransferNotifications();
-      setNotifications(list);
+      const list = BedDatabase.getTransferNotifications()
+      setNotifications(list)
     } catch {
-      setNotifications([]);
+      setNotifications([])
     }
-  };
+  }
 
   useEffect(() => {
-    loadNotifications();
+    loadNotifications()
 
     const handleUpdate = (e: any) => {
       if (e.detail?.notifications) {
-        setNotifications(e.detail.notifications);
+        setNotifications(e.detail.notifications)
       } else {
-        loadNotifications();
+        loadNotifications()
       }
-    };
+    }
 
     const handleNewAlert = (e: any) => {
       if (e.detail) {
-        setToastNotif(e.detail);
-        loadNotifications();
+        setToastNotif(e.detail)
+        loadNotifications()
       }
-    };
+    }
 
-    window.addEventListener("bed:transfer_notification_updated", handleUpdate);
-    window.addEventListener("bed:new_transfer_alert", handleNewAlert);
+    window.addEventListener("bed:transfer_notification_updated", handleUpdate)
+    window.addEventListener("bed:new_transfer_alert", handleNewAlert)
 
     // Auto-dismiss toast after 6 seconds
-    let toastTimer: any;
+    let toastTimer: any
     if (toastNotif) {
-      toastTimer = setTimeout(() => setToastNotif(null), 6000);
+      toastTimer = setTimeout(() => setToastNotif(null), 6000)
     }
 
     return () => {
-      window.removeEventListener("bed:transfer_notification_updated", handleUpdate);
-      window.removeEventListener("bed:new_transfer_alert", handleNewAlert);
-      if (toastTimer) clearTimeout(toastTimer);
-    };
-  }, [toastNotif]);
+      window.removeEventListener(
+        "bed:transfer_notification_updated",
+        handleUpdate,
+      )
+      window.removeEventListener("bed:new_transfer_alert", handleNewAlert)
+      if (toastTimer) clearTimeout(toastTimer)
+    }
+  }, [toastNotif])
 
   // Handle outside click to close dropdown
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false)
       }
     }
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside)
     }
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isOpen])
 
   const unreadCount = useMemo(() => {
-    return notifications.filter((n) => !n.is_read && n.status !== "dismissed").length;
-  }, [notifications]);
+    return notifications.filter((n) => !n.is_read && n.status !== "dismissed")
+      .length
+  }, [notifications])
 
   const pendingCount = useMemo(() => {
-    return notifications.filter((n) => n.status === "pending").length;
-  }, [notifications]);
+    return notifications.filter((n) => n.status === "pending").length
+  }, [notifications])
 
   const filteredNotifications = useMemo(() => {
-    let result = notifications.filter((n) => n.status !== "dismissed");
+    let result = notifications.filter((n) => n.status !== "dismissed")
     if (activeFilter !== "all") {
-      result = result.filter((n) => n.status === activeFilter);
+      result = result.filter((n) => n.status === activeFilter)
     }
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
+      const q = searchQuery.toLowerCase().trim()
       result = result.filter(
         (n) =>
           n.patient_name.toLowerCase().includes(q) ||
@@ -133,50 +147,58 @@ export function BedTransferNotificationPanel({
           n.target_destination.toLowerCase().includes(q) ||
           n.source_department.toLowerCase().includes(q) ||
           n.clinical_reason.toLowerCase().includes(q),
-      );
+      )
     }
-    return result;
-  }, [notifications, activeFilter, searchQuery]);
+    return result
+  }, [notifications, activeFilter, searchQuery])
 
   const handleMarkRead = (id: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    BedDatabase.markNotificationRead(id);
-    loadNotifications();
-  };
+    e?.stopPropagation()
+    BedDatabase.markNotificationRead(id)
+    loadNotifications()
+  }
 
   const handleMarkAllRead = () => {
-    BedDatabase.markAllNotificationsRead();
-    loadNotifications();
-    setNotice?.({ type: "success", message: "All transfer alerts marked as read." });
-  };
+    BedDatabase.markAllNotificationsRead()
+    loadNotifications()
+    setNotice?.({
+      type: "success",
+      message: "All transfer alerts marked as read.",
+    })
+  }
 
   const handleDismiss = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    BedDatabase.dismissNotification(id);
-    loadNotifications();
-  };
+    e.stopPropagation()
+    BedDatabase.dismissNotification(id)
+    loadNotifications()
+  }
 
   const handleStatusChange = (
     id: string,
     status: BedTransferNotification["status"],
     e?: React.MouseEvent,
   ) => {
-    e?.stopPropagation();
-    BedDatabase.updateNotificationStatus(id, status);
-    loadNotifications();
+    e?.stopPropagation()
+    BedDatabase.updateNotificationStatus(id, status)
+    loadNotifications()
     setNotice?.({
       type: "success",
-      message: `Transfer status updated to ${status === "in_transit" ? "In-Transit" : status}.`,
-    });
-  };
+      message: `Transfer status updated to ${
+        status === "in_transit" ? "In-Transit" : status
+      }.`,
+    })
+  }
 
-  const handleAllocateClick = (notif: BedTransferNotification, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    BedDatabase.markNotificationRead(notif.id);
-    loadNotifications();
-    setIsOpen(false);
-    onAllocateTransfer?.(notif);
-  };
+  const handleAllocateClick = (
+    notif: BedTransferNotification,
+    e?: React.MouseEvent,
+  ) => {
+    e?.stopPropagation()
+    BedDatabase.markNotificationRead(notif.id)
+    loadNotifications()
+    setIsOpen(false)
+    onAllocateTransfer?.(notif)
+  }
 
   return (
     <div className="relative inline-block" ref={dropdownRef}>
@@ -184,8 +206,8 @@ export function BedTransferNotificationPanel({
       <button
         type="button"
         onClick={() => {
-          setIsOpen(!isOpen);
-          if (toastNotif) setToastNotif(null);
+          setIsOpen(!isOpen)
+          if (toastNotif) setToastNotif(null)
         }}
         aria-label="Transfer & Bed Request Notifications"
         title="Patient Transfer & Bed Notifications"
@@ -221,15 +243,22 @@ export function BedTransferNotificationPanel({
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                   {toastNotif.priority}
                 </span>
-                <span className="text-[11px] text-[#94A3B8]">{timeAgo(toastNotif.sent_at)}</span>
+                <span className="text-[11px] text-[#94A3B8]">
+                  {timeAgo(toastNotif.sent_at)}
+                </span>
               </div>
               <h4 className="text-sm font-bold text-[#0F172A] mt-1 truncate">
-                Incoming Transfer: {toastNotif.patient_name} {toastNotif.patient_last_name || ""}
+                Incoming Transfer: {toastNotif.patient_name}{" "}
+                {toastNotif.patient_last_name || ""}
               </h4>
               <p className="text-xs text-[#64748B] mt-0.5 flex items-center gap-1.5 font-medium">
-                <span className="text-[#475569]">{toastNotif.source_department}</span>
+                <span className="text-[#475569]">
+                  {toastNotif.source_department}
+                </span>
                 <FiArrowRight className="w-3 h-3 text-[#1B4FD8]" />
-                <span className="text-[#1B4FD8] font-bold">{toastNotif.target_destination}</span>
+                <span className="text-[#1B4FD8] font-bold">
+                  {toastNotif.target_destination}
+                </span>
               </p>
 
               <div className="flex items-center gap-2 mt-3">
@@ -271,14 +300,18 @@ export function BedTransferNotificationPanel({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold tracking-tight text-white">Transfer &amp; Bed Notifications</h3>
+                  <h3 className="text-sm font-bold tracking-tight text-white">
+                    Transfer &amp; Bed Notifications
+                  </h3>
                   {unreadCount > 0 && (
                     <span className="px-2 py-0.5 text-[10px] font-extrabold bg-red-600 text-white rounded-full">
                       {unreadCount} new
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-[#94A3B8]">Incoming Ward &amp; ICU Bed Transfers</p>
+                <p className="text-[11px] text-[#94A3B8]">
+                  Incoming Ward &amp; ICU Bed Transfers
+                </p>
               </div>
             </div>
 
@@ -314,7 +347,8 @@ export function BedTransferNotificationPanel({
                   : "bg-white text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
               }`}
             >
-              All ({notifications.filter((n) => n.status !== "dismissed").length})
+              All (
+              {notifications.filter((n) => n.status !== "dismissed").length})
             </button>
             <button
               type="button"
@@ -337,7 +371,8 @@ export function BedTransferNotificationPanel({
                   : "bg-white text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
               }`}
             >
-              In-Transit ({notifications.filter((n) => n.status === "in_transit").length})
+              In-Transit (
+              {notifications.filter((n) => n.status === "in_transit").length})
             </button>
             <button
               type="button"
@@ -348,7 +383,8 @@ export function BedTransferNotificationPanel({
                   : "bg-white text-[#64748B] hover:text-[#0F172A] border border-[#E2E8F0]"
               }`}
             >
-              Allocated ({notifications.filter((n) => n.status === "allocated").length})
+              Allocated (
+              {notifications.filter((n) => n.status === "allocated").length})
             </button>
           </div>
 
@@ -370,20 +406,24 @@ export function BedTransferNotificationPanel({
                 <div className="w-12 h-12 rounded-full bg-[#EFF6FF] text-[#1B4FD8] flex items-center justify-center mx-auto mb-3">
                   <FiCheckCircle className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-bold text-[#0F172A]">No transfers found</p>
+                <p className="text-sm font-bold text-[#0F172A]">
+                  No transfers found
+                </p>
                 <p className="text-xs text-[#64748B] mt-1">
-                  {searchQuery ? "Try refining your search terms." : "All patient transfer alerts are up to date."}
+                  {searchQuery
+                    ? "Try refining your search terms."
+                    : "All patient transfer alerts are up to date."}
                 </p>
               </div>
             ) : (
               filteredNotifications.map((notif) => {
                 const isIcu =
                   notif.target_destination.toLowerCase().includes("icu") ||
-                  notif.target_bed_type === "ICU";
+                  notif.target_bed_type === "ICU"
                 const isStat =
                   notif.priority === "Stat / Emergency" ||
                   notif.priority === "Urgent" ||
-                  notif.priority === "High Priority";
+                  notif.priority === "High Priority"
 
                 return (
                   <div
@@ -466,7 +506,9 @@ export function BedTransferNotificationPanel({
                     {/* Transfer Route Vector */}
                     <div className="mt-2 p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl flex items-center gap-2 text-xs">
                       <div className="flex-1 truncate">
-                        <span className="text-[10px] font-bold uppercase text-[#64748B] block">From</span>
+                        <span className="text-[10px] font-bold uppercase text-[#64748B] block">
+                          From
+                        </span>
                         <span className="font-semibold text-[#0F172A] truncate block">
                           {notif.source_department}
                         </span>
@@ -477,8 +519,14 @@ export function BedTransferNotificationPanel({
                       </div>
 
                       <div className="flex-1 truncate">
-                        <span className="text-[10px] font-bold uppercase text-[#64748B] block">Destination</span>
-                        <span className={`font-bold truncate block ${isIcu ? "text-purple-700" : "text-[#1B4FD8]"}`}>
+                        <span className="text-[10px] font-bold uppercase text-[#64748B] block">
+                          Destination
+                        </span>
+                        <span
+                          className={`font-bold truncate block ${
+                            isIcu ? "text-purple-700" : "text-[#1B4FD8]"
+                          }`}
+                        >
                           {notif.target_destination}
                         </span>
                       </div>
@@ -487,7 +535,10 @@ export function BedTransferNotificationPanel({
                     {/* Footer Info & Handover Doctor */}
                     <div className="mt-2.5 pt-2 border-t border-[#E2E8F0] flex items-center justify-between flex-wrap gap-2 text-[11px] text-[#64748B]">
                       <span>
-                        Sent by: <strong className="text-[#334155]">{notif.sent_by}</strong>
+                        Sent by:{" "}
+                        <strong className="text-[#334155]">
+                          {notif.sent_by}
+                        </strong>
                       </span>
 
                       {notif.assigned_bed_label && (
@@ -513,7 +564,9 @@ export function BedTransferNotificationPanel({
                         {notif.status === "pending" && (
                           <button
                             type="button"
-                            onClick={(e) => handleStatusChange(notif.id, "in_transit", e)}
+                            onClick={(e) =>
+                              handleStatusChange(notif.id, "in_transit", e)
+                            }
                             className="px-2.5 py-1.5 text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg transition-colors cursor-pointer"
                           >
                             Mark In-Transit
@@ -524,9 +577,9 @@ export function BedTransferNotificationPanel({
                           <button
                             type="button"
                             onClick={(e) => {
-                              e.stopPropagation();
-                              setIsOpen(false);
-                              onViewPatientChart(notif.patient_id);
+                              e.stopPropagation()
+                              setIsOpen(false)
+                              onViewPatientChart(notif.patient_id)
                             }}
                             className="px-2.5 py-1.5 text-xs font-medium text-[#475569] hover:text-[#0F172A] bg-white hover:bg-[#F1F5F9] border border-[#CBD5E1] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                           >
@@ -545,7 +598,7 @@ export function BedTransferNotificationPanel({
                       </button>
                     </div>
                   </div>
-                );
+                )
               })
             )}
           </div>
@@ -567,7 +620,7 @@ export function BedTransferNotificationPanel({
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export default BedTransferNotificationPanel;
+export default BedTransferNotificationPanel

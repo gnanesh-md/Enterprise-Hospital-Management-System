@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Dispatch, FormEvent, SetStateAction } from "react";
-import StatCard from "../components/StatCard";
+import { useEffect, useMemo, useState } from "react"
+import type { Dispatch, FormEvent, SetStateAction } from "react"
+import StatCard from "../components/StatCard"
 import {
   Button,
   Input,
@@ -10,75 +10,65 @@ import {
   TableCell,
   TableHead,
   TableRow,
-} from "../components/ui";
-import { apiFetch, reportError } from "../lib/api";
-import { formatDateTime } from "../lib/format";
-import { openRazorpayCheckout } from "../lib/razorpay";
-import type { Notice, PatientWallet, Refund } from "../types";
+} from "../components/ui"
+import { apiFetch, reportError } from "../lib/api"
+import { formatDateTime } from "../lib/format"
+import { openRazorpayCheckout } from "../lib/razorpay"
+import type { Notice, PatientWallet, Refund } from "../types"
 
-export type BillingView =
-  | "aging"
-  | "reconciliation"
-  | "create-invoice"
-  | "record-payment"
-  | "insurance-claims"
-  | "invoices"
-  | "payment-mode-breakdown"
-  | "collections-by-module"
-  | "consolidated-bill"
-  | "wallet-refunds";
+export type BillingView = "aging" | "reconciliation" | "create-invoice" | "record-payment" | "insurance-claims" | "invoices" | "payment-mode-breakdown" | "collections-by-module" | "consolidated-bill" | "wallet-refunds"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  view?: BillingView;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  view?: BillingView
+}
 
 type BillingSummary = {
-  total_billed: number;
-  total_collected: number;
-  total_due: number;
-  total_advance: number;
-  total_refunded: number;
-  payment_mode_breakdown: { label: string; count: number }[];
-  collections_by_module: { label: string; count: number }[];
+  total_billed: number
+  total_collected: number
+  total_due: number
+  total_advance: number
+  total_refunded: number
+  payment_mode_breakdown: { label: string count: number }[]
+  collections_by_module: { label: string count: number }[]
   aging_buckets: {
-    bucket_0_30: number;
-    bucket_31_60: number;
-    bucket_61_90: number;
-    bucket_91_plus: number;
-  };
+    bucket_0_30: number
+    bucket_31_60: number
+    bucket_61_90: number
+    bucket_91_plus: number
+  }
   reconciliation_summary: {
-    gateway_collected: number;
-    converted_total: number;
-  };
-  conversion_breakdown: { label: string; count: number }[];
-};
+    gateway_collected: number
+    converted_total: number
+  }
+  conversion_breakdown: { label: string count: number }[]
+}
 
 type Invoice = {
-  id: number;
-  invoice_no?: string;
-  patient_id?: string;
-  module?: string;
-  total_amount?: number;
-  paid_amount?: number;
-  advance_amount?: number;
-  refunded_amount?: number;
-  due_amount?: number;
-  payment_status?: string;
-  created_at?: string;
-};
+  id: number
+  invoice_no?: string
+  patient_id?: string
+  module?: string
+  total_amount?: number
+  paid_amount?: number
+  advance_amount?: number
+  refunded_amount?: number
+  due_amount?: number
+  payment_status?: string
+  created_at?: string
+}
 
 type InsuranceClaim = {
-  id: number;
-  invoice_id: number;
-  patient_id?: string | null;
-  insurer_name: string;
-  claim_amount?: number;
-  approved_amount?: number;
-  claim_status?: string;
-  external_ref?: string | null;
-  submitted_at?: string;
-};
+  id: number
+  invoice_id: number
+  patient_id?: string | null
+  insurer_name: string
+  claim_amount?: number
+  approved_amount?: number
+  claim_status?: string
+  external_ref?: string | null
+  submitted_at?: string
+}
 
 const EMPTY_SUMMARY: BillingSummary = {
   total_billed: 0,
@@ -99,44 +89,44 @@ const EMPTY_SUMMARY: BillingSummary = {
     converted_total: 0,
   },
   conversion_breakdown: [],
-};
+}
 
 type InvoiceForm = {
-  id: string;
-  patient_id: string;
-  module: string;
-  total_amount: string;
-  paid_amount: string;
-  advance_amount: string;
-  refunded_amount: string;
-  doctor_name: string;
-};
+  id: string
+  patient_id: string
+  module: string
+  total_amount: string
+  paid_amount: string
+  advance_amount: string
+  refunded_amount: string
+  doctor_name: string
+}
 
 type PaymentForm = {
-  invoice_id: string;
-  amount: string;
-  payment_mode: string;
-  gateway_ref: string;
-  converted_from_mode: string;
-  converted_to_mode: string;
-};
+  invoice_id: string
+  amount: string
+  payment_mode: string
+  gateway_ref: string
+  converted_from_mode: string
+  converted_to_mode: string
+}
 
 type BillingFilters = {
-  patient_id: string;
-  module: string;
-  status: string;
-};
+  patient_id: string
+  module: string
+  status: string
+}
 
 type ClaimForm = {
-  id: string;
-  invoice_id: string;
-  patient_id: string;
-  insurer_name: string;
-  claim_amount: string;
-  approved_amount: string;
-  claim_status: string;
-  external_ref: string;
-};
+  id: string
+  invoice_id: string
+  patient_id: string
+  insurer_name: string
+  claim_amount: string
+  approved_amount: string
+  claim_status: string
+  external_ref: string
+}
 
 const DEFAULT_INVOICE_FORM: InvoiceForm = {
   id: "",
@@ -147,7 +137,7 @@ const DEFAULT_INVOICE_FORM: InvoiceForm = {
   advance_amount: "0",
   refunded_amount: "0",
   doctor_name: "",
-};
+}
 
 const DEFAULT_PAYMENT_FORM: PaymentForm = {
   invoice_id: "",
@@ -156,13 +146,13 @@ const DEFAULT_PAYMENT_FORM: PaymentForm = {
   gateway_ref: "",
   converted_from_mode: "",
   converted_to_mode: "",
-};
+}
 
 const DEFAULT_BILLING_FILTERS: BillingFilters = {
   patient_id: "",
   module: "",
   status: "",
-};
+}
 
 const DEFAULT_CLAIM_FORM: ClaimForm = {
   id: "",
@@ -173,12 +163,12 @@ const DEFAULT_CLAIM_FORM: ClaimForm = {
   approved_amount: "0",
   claim_status: "submitted",
   external_ref: "",
-};
+}
 
-const BILLING_VIEW_CONFIG: Record<
-  BillingView,
-  { title: string; subtitle: string }
-> = {
+const BILLING_VIEW_CONFIG: Record<BillingView, {
+  title: string
+  subtitle: string
+}> = {
   aging: {
     title: "Receivable Aging",
     subtitle: "Track due balances across aging buckets.",
@@ -219,101 +209,101 @@ const BILLING_VIEW_CONFIG: Record<
     title: "Patient Wallet & Refunds",
     subtitle: "Manage advance deposits and issue secure refunds.",
   },
-};
+}
 
 function formatCurrency(amount?: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
-  }).format(amount || 0);
+  }).format(amount || 0)
 }
 
 export default function BillingPage({
   setNotice,
   view = "record-payment",
 }: Props) {
-  const [summary, setSummary] = useState<BillingSummary>(EMPTY_SUMMARY);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [claims, setClaims] = useState<InsuranceClaim[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [summary, setSummary] = useState<BillingSummary>(EMPTY_SUMMARY)
+  const [invoices, setInvoices] = useState<Invoice[]>([])
+  const [claims, setClaims] = useState<InsuranceClaim[]>([])
+  const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [invoiceForm, setInvoiceForm] =
-    useState<InvoiceForm>(DEFAULT_INVOICE_FORM);
+    useState<InvoiceForm>(DEFAULT_INVOICE_FORM)
   const [paymentForm, setPaymentForm] =
-    useState<PaymentForm>(DEFAULT_PAYMENT_FORM);
-  const [claimForm, setClaimForm] = useState<ClaimForm>(DEFAULT_CLAIM_FORM);
+    useState<PaymentForm>(DEFAULT_PAYMENT_FORM)
+  const [claimForm, setClaimForm] = useState<ClaimForm>(DEFAULT_CLAIM_FORM)
   const [filters, setFilters] = useState<BillingFilters>(
     DEFAULT_BILLING_FILTERS,
-  );
-  const [savingInvoice, setSavingInvoice] = useState(false);
-  const [savingPayment, setSavingPayment] = useState(false);
-  const [savingClaim, setSavingClaim] = useState(false);
-  const [isRazorpayReady, setIsRazorpayReady] = useState(true);
+  )
+  const [savingInvoice, setSavingInvoice] = useState(false)
+  const [savingPayment, setSavingPayment] = useState(false)
+  const [savingClaim, setSavingClaim] = useState(false)
+  const [isRazorpayReady, setIsRazorpayReady] = useState(true)
   const maxBreakdownValue = Math.max(
     1,
     ...summary.payment_mode_breakdown.map((row) => row.count || 0),
-  );
+  )
   const maxModuleCollectionValue = Math.max(
     1,
     ...summary.collections_by_module.map((row) => row.count || 0),
-  );
+  )
   const needsInvoices =
     view === "create-invoice" ||
     view === "record-payment" ||
     view === "insurance-claims" ||
     view === "invoices" ||
-    view === "consolidated-bill";
-  const needsClaims = view === "insurance-claims";
+    view === "consolidated-bill"
+  const needsClaims = view === "insurance-claims"
 
-  const [walletSearchId, setWalletSearchId] = useState("");
-  const [walletData, setWalletData] = useState<PatientWallet | null>(null);
-  const [refundsList, setRefundsList] = useState<Refund[]>([]);
-  const [walletForm, setWalletForm] = useState({ amount: "", reason: "" });
+  const [walletSearchId, setWalletSearchId] = useState("")
+  const [walletData, setWalletData] = useState<PatientWallet | null>(null)
+  const [refundsList, setRefundsList] = useState<Refund[]>([])
+  const [walletForm, setWalletForm] = useState({ amount: "", reason: "" })
   const [refundForm, setRefundForm] = useState({
     invoice_id: "",
     amount: "",
     reason: "",
-  });
+  })
   const [masterPaymentForm, setMasterPaymentForm] = useState({
     patient_id: "",
     amount: "",
     payment_mode: "cash",
     use_wallet: false,
-  });
+  })
 
   const buildInvoicePath = (nextFilters: BillingFilters) => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams()
     if (nextFilters.patient_id.trim())
-      params.set("patient_id", nextFilters.patient_id.trim());
-    if (nextFilters.module) params.set("module", nextFilters.module);
-    const query = params.toString();
-    return query ? `/api/billing/invoices?${query}` : "/api/billing/invoices";
-  };
+      params.set("patient_id", nextFilters.patient_id.trim())
+    if (nextFilters.module) params.set("module", nextFilters.module)
+    const query = params.toString()
+    return query ? `/api/billing/invoices?${query}` : "/api/billing/invoices"
+  }
 
   const loadBilling = async (nextFilters: BillingFilters = filters) => {
-    setLoading(true);
-    setErrorMessage(null);
+    setLoading(true)
+    setErrorMessage(null)
     try {
       const summaryRequest = apiFetch<BillingSummary>(
         "/api/billing/revenue-summary",
-      );
+      )
       const invoiceRequest = needsInvoices
         ? apiFetch<{ invoices?: Invoice[] }>(buildInvoicePath(nextFilters))
-        : Promise.resolve({ invoices: [] as Invoice[] });
+        : Promise.resolve({ invoices: [] as Invoice[] })
       const claimsRequest = needsClaims
         ? apiFetch<{ claims?: InsuranceClaim[] }>("/api/billing/claims")
-        : Promise.resolve({ claims: [] as InsuranceClaim[] });
+        : Promise.resolve({ claims: [] as InsuranceClaim[] })
 
       const [summaryData, invoiceData, claimsData] = await Promise.all([
         summaryRequest,
         invoiceRequest,
         claimsRequest,
-      ]);
-      const fetchedInvoices = invoiceData.invoices || [];
-      const fetchedClaims = claimsData.claims || [];
-      setInvoices(fetchedInvoices);
-      setClaims(fetchedClaims);
+      ])
+      const fetchedInvoices = invoiceData.invoices || []
+      const fetchedClaims = claimsData.claims || []
+      setInvoices(fetchedInvoices)
+      setClaims(fetchedClaims)
       setSummary({
         ...EMPTY_SUMMARY,
         ...summaryData,
@@ -328,98 +318,98 @@ export default function BillingPage({
           ...EMPTY_SUMMARY.reconciliation_summary,
           ...(summaryData.reconciliation_summary || {}),
         },
-      });
+      })
       setPaymentForm((current) => {
-        if (current.invoice_id) return current;
+        if (current.invoice_id) return current
         return {
           ...current,
           invoice_id: fetchedInvoices[0] ? String(fetchedInvoices[0].id) : "",
-        };
-      });
+        }
+      })
       setClaimForm((current) => {
-        if (current.invoice_id) return current;
+        if (current.invoice_id) return current
         return {
           ...current,
           invoice_id: fetchedInvoices[0] ? String(fetchedInvoices[0].id) : "",
           patient_id: fetchedInvoices[0]?.patient_id || "",
-        };
-      });
+        }
+      })
     } catch (error) {
-      const typedError = error as { message?: string; status?: number };
-      setErrorMessage(typedError.message || "Unable to load billing data.");
-      reportError(setNotice, typedError, "Unable to load billing data.");
+      const typedError = error as { message?: string status?: number }
+      setErrorMessage(typedError.message || "Unable to load billing data.")
+      reportError(setNotice, typedError, "Unable to load billing data.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    void loadBilling();
-  }, [view]);
+    void loadBilling()
+  }, [view])
 
   useEffect(() => {
     apiFetch<{ configured?: boolean }>("/api/payments/razorpay/config")
       .then((data) => setIsRazorpayReady(data.configured !== false))
-      .catch(() => setIsRazorpayReady(true));
-  }, []);
+      .catch(() => setIsRazorpayReady(true))
+  }, [])
 
   const ensureRazorpayConfigured = async () => {
     try {
       const config = await apiFetch<{ configured?: boolean }>(
         "/api/payments/razorpay/config",
-      );
-      const configured = config.configured !== false;
-      setIsRazorpayReady(configured);
+      )
+      const configured = config.configured !== false
+      setIsRazorpayReady(configured)
       if (!configured) {
         setNotice({
           type: "error",
           message: "Razorpay is not configured. Add keys in backend .env.",
-        });
-        return false;
+        })
+        return false
       }
-      return true;
+      return true
     } catch {
-      return true;
+      return true
     }
-  };
+  }
 
   const visibleInvoices = useMemo(() => {
-    if (!filters.status) return invoices;
+    if (!filters.status) return invoices
     return invoices.filter(
       (invoice) => (invoice.payment_status || "due") === filters.status,
-    );
-  }, [invoices, filters.status]);
+    )
+  }, [invoices, filters.status])
 
   const handleFilterSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    await loadBilling(filters);
-  };
+    event.preventDefault()
+    await loadBilling(filters)
+  }
 
   const clearFilters = async () => {
-    setFilters({ ...DEFAULT_BILLING_FILTERS });
-    await loadBilling({ ...DEFAULT_BILLING_FILTERS });
-  };
+    setFilters({ ...DEFAULT_BILLING_FILTERS })
+    await loadBilling({ ...DEFAULT_BILLING_FILTERS })
+  }
 
   const handleCreateInvoice = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const totalAmount = Number(invoiceForm.total_amount) || 0;
-    const paidAmount = Number(invoiceForm.paid_amount) || 0;
-    const advanceAmount = Number(invoiceForm.advance_amount) || 0;
-    const refundedAmount = Number(invoiceForm.refunded_amount) || 0;
+    event.preventDefault()
+    const totalAmount = Number(invoiceForm.total_amount) || 0
+    const paidAmount = Number(invoiceForm.paid_amount) || 0
+    const advanceAmount = Number(invoiceForm.advance_amount) || 0
+    const refundedAmount = Number(invoiceForm.refunded_amount) || 0
     if (totalAmount <= 0) {
       setNotice({
         type: "error",
         message: "Invoice total amount must be greater than zero.",
-      });
-      return;
+      })
+      return
     }
 
-    setSavingInvoice(true);
+    setSavingInvoice(true)
     try {
-      const editingInvoiceId = Number(invoiceForm.id);
+      const editingInvoiceId = Number(invoiceForm.id)
       const path = editingInvoiceId
         ? `/api/billing/invoices/${editingInvoiceId}`
-        : "/api/billing/invoices";
+        : "/api/billing/invoices"
       await apiFetch(path, {
         method: editingInvoiceId ? "PUT" : "POST",
         body: JSON.stringify({
@@ -438,25 +428,25 @@ export default function BillingPage({
                 ? "partial"
                 : "due",
         }),
-      });
-      setInvoiceForm({ ...DEFAULT_INVOICE_FORM });
+      })
+      setInvoiceForm({ ...DEFAULT_INVOICE_FORM })
       setNotice({
         type: "success",
         message: editingInvoiceId
           ? "Invoice updated successfully."
           : "Invoice created successfully.",
-      });
-      await loadBilling(filters);
+      })
+      await loadBilling(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create invoice.",
-      );
+      )
     } finally {
-      setSavingInvoice(false);
+      setSavingInvoice(false)
     }
-  };
+  }
 
   const handleEditInvoice = (invoice: Invoice) => {
     setInvoiceForm({
@@ -468,44 +458,44 @@ export default function BillingPage({
       advance_amount: String(invoice.advance_amount || 0),
       refunded_amount: String(invoice.refunded_amount || 0),
       doctor_name: "",
-    });
-  };
+    })
+  }
 
   const handleDeleteInvoice = async (invoice: Invoice) => {
     if (!window.confirm(`Delete ${invoice.invoice_no || `INV-${invoice.id}`}?`))
-      return;
+      return
     try {
       await apiFetch(`/api/billing/invoices/${invoice.id}`, {
         method: "DELETE",
-      });
-      setNotice({ type: "success", message: "Invoice deleted." });
-      await loadBilling(filters);
+      })
+      setNotice({ type: "success", message: "Invoice deleted." })
+      await loadBilling(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete invoice.",
-      );
+      )
     }
-  };
+  }
 
   const handleRecordPayment = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const invoiceId = Number(paymentForm.invoice_id);
-    const amount = Number(paymentForm.amount) || 0;
+    event.preventDefault()
+    const invoiceId = Number(paymentForm.invoice_id)
+    const amount = Number(paymentForm.amount) || 0
     if (!invoiceId) {
-      setNotice({ type: "error", message: "Select a valid invoice." });
-      return;
+      setNotice({ type: "error", message: "Select a valid invoice." })
+      return
     }
     if (amount <= 0) {
       setNotice({
         type: "error",
         message: "Payment amount must be greater than zero.",
-      });
-      return;
+      })
+      return
     }
 
-    setSavingPayment(true);
+    setSavingPayment(true)
     try {
       await apiFetch(`/api/billing/invoices/${invoiceId}/payments`, {
         method: "POST",
@@ -516,49 +506,49 @@ export default function BillingPage({
           converted_from_mode: paymentForm.converted_from_mode || undefined,
           converted_to_mode: paymentForm.converted_to_mode || undefined,
         }),
-      });
+      })
       setPaymentForm((current) => ({
         ...DEFAULT_PAYMENT_FORM,
         invoice_id: current.invoice_id,
-      }));
-      setNotice({ type: "success", message: "Payment recorded successfully." });
-      await loadBilling(filters);
+      }))
+      setNotice({ type: "success", message: "Payment recorded successfully." })
+      await loadBilling(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to record payment.",
-      );
+      )
     } finally {
-      setSavingPayment(false);
+      setSavingPayment(false)
     }
-  };
+  }
 
   const loadWalletAndRefunds = async (patientId: string) => {
-    if (!patientId.trim()) return;
+    if (!patientId.trim()) return
     try {
       const wData = await apiFetch<{
-        wallet: import("../types").PatientWallet;
-      }>(`/api/billing/wallet/${patientId}`);
-      setWalletData(wData.wallet);
+        wallet: import("../types").PatientWallet
+      }>(`/api/billing/wallet/${patientId}`)
+      setWalletData(wData.wallet)
       const rData = await apiFetch<{ refunds: import("../types").Refund[] }>(
         `/api/billing/refunds`,
-      );
-      setRefundsList(rData.refunds || []);
+      )
+      setRefundsList(rData.refunds || [])
     } catch (e) {
       reportError(
         setNotice,
         e as { message?: string },
         "Failed to load wallet data.",
-      );
+      )
     }
-  };
+  }
 
   const handleAddWallet = async (e: FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!walletSearchId || !walletForm.amount || !walletForm.reason) {
-      setNotice({ type: "error", message: "All fields are required" });
-      return;
+      setNotice({ type: "error", message: "All fields are required" })
+      return
     }
     try {
       await apiFetch("/api/billing/wallet", {
@@ -568,24 +558,24 @@ export default function BillingPage({
           amount: Number(walletForm.amount),
           reason: walletForm.reason,
         }),
-      });
-      setNotice({ type: "success", message: "Wallet updated" });
-      setWalletForm({ amount: "", reason: "" });
-      void loadWalletAndRefunds(walletSearchId);
+      })
+      setNotice({ type: "success", message: "Wallet updated" })
+      setWalletForm({ amount: "", reason: "" })
+      void loadWalletAndRefunds(walletSearchId)
     } catch (e) {
       reportError(
         setNotice,
         e as { message?: string },
         "Failed to add to wallet.",
-      );
+      )
     }
-  };
+  }
 
   const handleCreateRefund = async (e: FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!refundForm.invoice_id || !refundForm.amount || !refundForm.reason) {
-      setNotice({ type: "error", message: "All fields are required" });
-      return;
+      setNotice({ type: "error", message: "All fields are required" })
+      return
     }
     try {
       await apiFetch("/api/billing/refunds", {
@@ -595,38 +585,38 @@ export default function BillingPage({
           amount: Number(refundForm.amount),
           reason: refundForm.reason,
         }),
-      });
-      setNotice({ type: "success", message: "Refund created" });
-      setRefundForm({ invoice_id: "", amount: "", reason: "" });
-      void loadWalletAndRefunds(walletSearchId);
+      })
+      setNotice({ type: "success", message: "Refund created" })
+      setRefundForm({ invoice_id: "", amount: "", reason: "" })
+      void loadWalletAndRefunds(walletSearchId)
     } catch (e) {
       reportError(
         setNotice,
         e as { message?: string },
         "Failed to create refund.",
-      );
+      )
     }
-  };
+  }
 
   const handleMasterPayment = async (e: FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     const patientInvoices = invoices.filter(
       (inv) =>
         inv.patient_id === masterPaymentForm.patient_id &&
         (inv.due_amount || 0) > 0,
-    );
+    )
     if (patientInvoices.length === 0) {
       setNotice({
         type: "error",
         message: "No pending invoices found for this patient",
-      });
-      return;
+      })
+      return
     }
 
     const allocations = patientInvoices.map((inv) => ({
       invoice_id: inv.id,
       amount: inv.due_amount,
-    }));
+    }))
     try {
       await apiFetch("/api/billing/master-payment", {
         method: "POST",
@@ -637,50 +627,50 @@ export default function BillingPage({
           use_wallet: masterPaymentForm.use_wallet,
           allocations,
         }),
-      });
-      setNotice({ type: "success", message: "Master payment applied" });
+      })
+      setNotice({ type: "success", message: "Master payment applied" })
       setMasterPaymentForm({
         patient_id: "",
         amount: "",
         payment_mode: "cash",
         use_wallet: false,
-      });
-      void loadBilling();
+      })
+      void loadBilling()
     } catch (err) {
       reportError(
         setNotice,
         err as { message?: string },
         "Master payment failed.",
-      );
+      )
     }
-  };
+  }
 
   const handleRazorpayBillingPayment = async () => {
     if (!(await ensureRazorpayConfigured())) {
-      return;
+      return
     }
-    const invoiceId = Number(paymentForm.invoice_id);
-    const amount = Number(paymentForm.amount) || 0;
+    const invoiceId = Number(paymentForm.invoice_id)
+    const amount = Number(paymentForm.amount) || 0
     if (!invoiceId) {
-      setNotice({ type: "error", message: "Select a valid invoice." });
-      return;
+      setNotice({ type: "error", message: "Select a valid invoice." })
+      return
     }
     if (amount <= 0) {
       setNotice({
         type: "error",
         message: "Payment amount must be greater than zero.",
-      });
-      return;
+      })
+      return
     }
 
-    const linkedInvoice = invoices.find((invoice) => invoice.id === invoiceId);
-    setSavingPayment(true);
+    const linkedInvoice = invoices.find((invoice) => invoice.id === invoiceId)
+    setSavingPayment(true)
     try {
       const order = await apiFetch<{
-        key_id: string;
-        order_id: string;
-        amount: number;
-        currency: string;
+        key_id: string
+        order_id: string
+        amount: number
+        currency: string
       }>("/api/billing/razorpay/order", {
         method: "POST",
         body: JSON.stringify({
@@ -691,7 +681,7 @@ export default function BillingPage({
             patient_id: linkedInvoice?.patient_id || "",
           },
         }),
-      });
+      })
 
       const paymentResult = await openRazorpayCheckout({
         key: order.key_id,
@@ -709,7 +699,7 @@ export default function BillingPage({
         theme: {
           color: "#0f766e",
         },
-      });
+      })
 
       await apiFetch("/api/billing/razorpay/verify", {
         method: "POST",
@@ -723,46 +713,46 @@ export default function BillingPage({
           razorpay_payment_id: paymentResult.razorpay_payment_id,
           razorpay_signature: paymentResult.razorpay_signature,
         }),
-      });
+      })
 
       setPaymentForm((current) => ({
         ...DEFAULT_PAYMENT_FORM,
         invoice_id: current.invoice_id,
-      }));
+      }))
       setNotice({
         type: "success",
         message: "Razorpay payment recorded successfully.",
-      });
-      await loadBilling(filters);
+      })
+      await loadBilling(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to complete Razorpay payment.",
-      );
+      )
     } finally {
-      setSavingPayment(false);
+      setSavingPayment(false)
     }
-  };
+  }
 
   const handleClaimSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const invoiceId = Number(claimForm.invoice_id);
-    const claimAmount = Number(claimForm.claim_amount) || 0;
+    event.preventDefault()
+    const invoiceId = Number(claimForm.invoice_id)
+    const claimAmount = Number(claimForm.claim_amount) || 0
     if (!invoiceId || !claimForm.insurer_name.trim() || claimAmount <= 0) {
       setNotice({
         type: "error",
         message: "Invoice, insurer, and claim amount are required.",
-      });
-      return;
+      })
+      return
     }
 
-    setSavingClaim(true);
+    setSavingClaim(true)
     try {
-      const claimId = Number(claimForm.id);
+      const claimId = Number(claimForm.id)
       const path = claimId
         ? `/api/billing/claims/${claimId}`
-        : "/api/billing/claims";
+        : "/api/billing/claims"
       await apiFetch(path, {
         method: claimId ? "PUT" : "POST",
         body: JSON.stringify({
@@ -774,29 +764,29 @@ export default function BillingPage({
           claim_status: claimForm.claim_status,
           external_ref: claimForm.external_ref.trim() || undefined,
         }),
-      });
+      })
       setClaimForm((current) => ({
         ...DEFAULT_CLAIM_FORM,
         invoice_id: current.invoice_id,
         patient_id: current.patient_id,
-      }));
+      }))
       setNotice({
         type: "success",
         message: claimId
           ? "Insurance claim updated."
           : "Insurance claim created.",
-      });
-      await loadBilling(filters);
+      })
+      await loadBilling(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to save insurance claim.",
-      );
+      )
     } finally {
-      setSavingClaim(false);
+      setSavingClaim(false)
     }
-  };
+  }
 
   const handleEditClaim = (claim: InsuranceClaim) => {
     setClaimForm({
@@ -808,23 +798,23 @@ export default function BillingPage({
       approved_amount: String(claim.approved_amount || 0),
       claim_status: claim.claim_status || "submitted",
       external_ref: claim.external_ref || "",
-    });
-  };
+    })
+  }
 
   const handleDeleteClaim = async (claim: InsuranceClaim) => {
-    if (!window.confirm(`Delete claim ${claim.id}?`)) return;
+    if (!window.confirm(`Delete claim ${claim.id}?`)) return
     try {
-      await apiFetch(`/api/billing/claims/${claim.id}`, { method: "DELETE" });
-      setNotice({ type: "success", message: "Insurance claim deleted." });
-      await loadBilling(filters);
+      await apiFetch(`/api/billing/claims/${claim.id}`, { method: "DELETE" })
+      setNotice({ type: "success", message: "Insurance claim deleted." })
+      await loadBilling(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete insurance claim.",
-      );
+      )
     }
-  };
+  }
 
   const viewContent = (() => {
     if (view === "aging") {
@@ -882,7 +872,7 @@ export default function BillingPage({
             </div>
           </div>
         </div>
-      );
+      )
     }
 
     if (view === "reconciliation") {
@@ -927,7 +917,7 @@ export default function BillingPage({
             </div>
           )}
         </div>
-      );
+      )
     }
 
     if (view === "create-invoice") {
@@ -1064,7 +1054,7 @@ export default function BillingPage({
             ) : null}
           </form>
         </div>
-      );
+      )
     }
 
     if (view === "record-payment") {
@@ -1216,7 +1206,7 @@ export default function BillingPage({
             </p>
           ) : null}
         </div>
-      );
+      )
     }
 
     if (view === "insurance-claims") {
@@ -1234,15 +1224,15 @@ export default function BillingPage({
               <Select
                 value={claimForm.invoice_id}
                 onChange={(event) => {
-                  const nextInvoiceId = event.target.value;
+                  const nextInvoiceId = event.target.value
                   const linked = invoices.find(
                     (invoice) => String(invoice.id) === nextInvoiceId,
-                  );
+                  )
                   setClaimForm((current) => ({
                     ...current,
                     invoice_id: nextInvoiceId,
                     patient_id: linked?.patient_id || current.patient_id,
-                  }));
+                  }))
                 }}
                 aria-label="Billing claim invoice"
               >
@@ -1412,7 +1402,7 @@ export default function BillingPage({
             </>
           )}
         </div>
-      );
+      )
     }
 
     if (view === "invoices") {
@@ -1615,7 +1605,7 @@ export default function BillingPage({
             </>
           ) : null}
         </div>
-      );
+      )
     }
 
     if (view === "consolidated-bill") {
@@ -1623,7 +1613,7 @@ export default function BillingPage({
         (inv) =>
           inv.patient_id === masterPaymentForm.patient_id &&
           (inv.due_amount || 0) > 0,
-      );
+      )
       return (
         <div className="panel">
           <div className="module-panel-head">
@@ -1632,7 +1622,7 @@ export default function BillingPage({
           <form
             className="module-filters"
             onSubmit={(e) => {
-              e.preventDefault();
+              e.preventDefault()
             }}
           >
             <Label title="Patient ID">
@@ -1740,7 +1730,7 @@ export default function BillingPage({
             </>
           )}
         </div>
-      );
+      )
     }
 
     if (view === "wallet-refunds") {
@@ -1752,8 +1742,8 @@ export default function BillingPage({
           <form
             className="module-filters"
             onSubmit={(e) => {
-              e.preventDefault();
-              void loadWalletAndRefunds(walletSearchId);
+              e.preventDefault()
+              void loadWalletAndRefunds(walletSearchId)
             }}
           >
             <Label title="Patient ID">
@@ -1893,7 +1883,7 @@ export default function BillingPage({
             </Table>
           )}
         </div>
-      );
+      )
     }
 
     if (view === "payment-mode-breakdown") {
@@ -1922,7 +1912,7 @@ export default function BillingPage({
             </div>
           )}
         </div>
-      );
+      )
     }
 
     return (
@@ -1950,10 +1940,10 @@ export default function BillingPage({
           </div>
         )}
       </div>
-    );
-  })();
+    )
+  })()
 
-  const meta = BILLING_VIEW_CONFIG[view];
+  const meta = BILLING_VIEW_CONFIG[view]
 
   return (
     <section className="module-page billing-page">
@@ -1989,5 +1979,5 @@ export default function BillingPage({
 
       {viewContent}
     </section>
-  );
+  )
 }

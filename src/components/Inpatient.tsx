@@ -1,93 +1,119 @@
-import { useEffect, useMemo, useState } from "react";
-import { FiBell, FiClock, FiUsers } from "react-icons/fi";
-import { Btn } from "./shared";
-import { bedGenderVariant, bedOccupantName } from "./bed/BedCard";
-import { WardBedBoard } from "./bed/WardBedBoard";
-import { BedTransferNotificationPanel } from "./bed/BedTransferNotificationPanel";
-import IcuDepartment from "./IcuDepartment";
-import { apiFetch } from "../lib/api";
-import { formatDateTimeIST } from "../lib/format";
+import { useEffect, useMemo, useState } from "react"
+import { FiBell, FiClock, FiUsers } from "react-icons/fi"
+import { Btn } from "./shared"
+import { bedGenderVariant, bedOccupantName } from "./bed/BedCard"
+import { WardBedBoard } from "./bed/WardBedBoard"
+import { BedTransferNotificationPanel } from "./bed/BedTransferNotificationPanel"
+import IcuDepartment from "./IcuDepartment"
+import { apiFetch } from "../lib/api"
+import { formatDateTimeIST } from "../lib/format"
 
-type BedStatus = "Available" | "Occupied" | "Maintenance";
+type BedStatus = "Available" | "Occupied" | "Maintenance"
 
 type Bed = {
-  id: number;
-  ward: string;
-  room_no: string;
-  bed_no: string;
-  bed_type: string;
-  status: BedStatus;
-  admission_date: string | null;
-  expected_discharge_date: string | null;
-  patient_id: string | null;
-  patient_name: string | null;
-  patient_last_name: string | null;
-  patient_phone: string | null;
-  patient_age: number | null;
-  patient_gender: string | null;
-  admission_id: number | null;
-  allocation_id: number | null;
-  allocated_at: string | null;
-};
+  id: number
+  ward: string
+  room_no: string
+  bed_no: string
+  bed_type: string
+  status: BedStatus
+  admission_date: string | null
+  expected_discharge_date: string | null
+  patient_id: string | null
+  patient_name: string | null
+  patient_last_name: string | null
+  patient_phone: string | null
+  patient_age: number | null
+  patient_gender: string | null
+  admission_id: number | null
+  allocation_id: number | null
+  allocated_at: string | null
+}
 
-type Summary = { total: number; available: number; occupied: number; maintenance: number };
+type Summary = {
+  total: number
+  available: number
+  occupied: number
+  maintenance: number
+}
 
 type ErBedRequest = {
-  id: number;
-  visit_no: string;
-  patient_name: string | null;
-  patient_last_name: string | null;
-  is_unknown_patient: boolean;
-  unknown_patient_label: string | null;
-  requested_level_of_care: string;
-  requested_specialty: string | null;
-  requested_at: string;
-};
+  id: number
+  visit_no: string
+  patient_name: string | null
+  patient_last_name: string | null
+  is_unknown_patient: boolean
+  unknown_patient_label: string | null
+  requested_level_of_care: string
+  requested_specialty: string | null
+  requested_at: string
+}
+
+type OtPacuReadyCase = {
+  id: number
+  case_no: string
+  patient_id: string
+  or_room: string | null
+  procedure_name: string
+  surgeon: string | null
+  discharge_status: string
+  updated_at: string
+}
 
 function erRequestPatientLabel(req: ErBedRequest): string {
-  if (req.is_unknown_patient) return req.unknown_patient_label || "Unknown patient";
-  const name = `${req.patient_name || ""} ${req.patient_last_name || ""}`.trim();
-  return name || "Patient";
+  if (req.is_unknown_patient)
+    return req.unknown_patient_label || "Unknown patient"
+  const name = `${req.patient_name || ""} ${req.patient_last_name || ""}`.trim()
+  return name || "Patient"
 }
 
 function isOverdue(bed: Bed): boolean {
-  if (bed.status !== "Occupied" || !bed.expected_discharge_date) return false;
-  return Date.now() > new Date(bed.expected_discharge_date).getTime();
+  if (bed.status !== "Occupied" || !bed.expected_discharge_date) return false
+  return Date.now() > new Date(bed.expected_discharge_date).getTime()
 }
 
 function overdueDays(bed: Bed): number {
-  if (!bed.expected_discharge_date) return 0;
-  return Math.max(0, Math.floor((Date.now() - new Date(bed.expected_discharge_date).getTime()) / 86400000));
+  if (!bed.expected_discharge_date) return 0
+  return Math.max(
+    0,
+    Math.floor(
+      (Date.now() - new Date(bed.expected_discharge_date).getTime()) / 86400000,
+    ),
+  )
 }
 
 // A room where an occupied male bed and an occupied female bed sit together
 // is a real ward-compliance concern (most hospitals segregate rooms by
 // gender) -- this reuses the same gender read as the bed card's color, so
 // the alert and the color coding can never disagree with each other.
-function findMixedGenderRooms(beds: Bed[]): { ward: string; room_no: string; beds: Bed[] }[] {
-  const rooms = new Map<string, Bed[]>();
+function findMixedGenderRooms(
+  beds: Bed[],
+): { ward: string ;room_no: string ;beds: Bed[] }[] {
+  const rooms = new Map<string, Bed[]>()
   for (const bed of beds) {
-    if (bed.status !== "Occupied") continue;
-    const key = `${bed.ward}||${bed.room_no}`;
-    if (!rooms.has(key)) rooms.set(key, []);
-    rooms.get(key)!.push(bed);
+    if (bed.status !== "Occupied") continue
+    const key = `${bed.ward}||${bed.room_no}`
+    if (!rooms.has(key)) rooms.set(key, [])
+    rooms.get(key)!.push(bed)
   }
-  const flagged: { ward: string; room_no: string; beds: Bed[] }[] = [];
+  const flagged: { ward: string ;room_no: string ;beds: Bed[] }[] = []
   for (const [key, roomBeds] of rooms) {
-    const genders = new Set(roomBeds.map((b) => bedGenderVariant(b)).filter((g) => g !== "other"));
+    const genders = new Set(
+      roomBeds.map((b) => bedGenderVariant(b)).filter((g) => g !== "other"),
+    )
     if (genders.size > 1) {
-      const [ward, room_no] = key.split("||");
-      flagged.push({ ward, room_no, beds: roomBeds });
+      const [ward, room_no] = key.split("||")
+      flagged.push({ ward, room_no, beds: roomBeds })
     }
   }
-  return flagged;
+  return flagged
 }
 
 // A patient is "in ICU" if their bed's ward name contains ICU -- covers the
 // umbrella "ICU" ward plus its SICU/IICU rooms, since ward is free text the
 // hospital names however it likes (see Bed Management's ward field).
 function isIcuBed(bed: Bed): boolean {
-  return bed.ward.toUpperCase().includes("ICU");
+  return bed.ward.toUpperCase().includes("ICU")
 }
 
 // Keyed on allocation_id, not admission_id -- a transfer INTO an ICU bed is
@@ -95,96 +121,145 @@ function isIcuBed(bed: Bed): boolean {
 // underlying hospital admission_date doesn't, and a transfer is exactly the
 // kind of event ICU staff need notified about, same as a fresh admission.
 function icuAdmissionKey(bed: Bed): string {
-  return `${bed.id}:${bed.allocation_id ?? bed.admission_id ?? bed.admission_date ?? ""}`;
+  return `${bed.id}:${bed.allocation_id ?? bed.admission_id ?? bed.admission_date ?? ""}`
 }
 
-const ICU_ACK_STORAGE_KEY = "hms_icu_admission_acks";
+const ICU_ACK_STORAGE_KEY = "hms_icu_admission_acks"
 
 function loadAckedIcuAdmissions(): Set<string> {
   try {
-    const raw = window.localStorage.getItem(ICU_ACK_STORAGE_KEY);
-    return new Set(raw ? JSON.parse(raw) : []);
+    const raw = window.localStorage.getItem(ICU_ACK_STORAGE_KEY)
+    return new Set(raw ? JSON.parse(raw) : [])
   } catch {
-    return new Set();
+    return new Set()
   }
 }
 
 function saveAckedIcuAdmissions(keys: Set<string>) {
   try {
     // Cap stored history so this can't grow unbounded over months of use.
-    window.localStorage.setItem(ICU_ACK_STORAGE_KEY, JSON.stringify(Array.from(keys).slice(-500)));
+    window.localStorage.setItem(
+      ICU_ACK_STORAGE_KEY,
+      JSON.stringify(Array.from(keys).slice(-500)),
+    )
   } catch {
     // Best-effort -- a private/blocked storage context just means the same
     // alert may resurface next visit, not a functional failure.
   }
 }
 
-function wardOccupancyLevel(occupied: number, total: number): "low" | "high" | "critical" {
-  if (total === 0) return "low";
-  const pct = (occupied / total) * 100;
-  if (pct >= 90) return "critical";
-  if (pct >= 70) return "high";
-  return "low";
+function wardOccupancyLevel(
+  occupied: number,
+  total: number,
+): "low" | "high" | "critical" {
+  if (total === 0) return "low"
+  const pct = (occupied / total) * 100
+  if (pct >= 90) return "critical"
+  if (pct >= 70) return "high"
+  return "low"
 }
 
 type Props = {
-  navigate?: (page: string, sub?: string) => void;
-  onOpenPatientClinical?: (patientId: string) => void;
-  permissions?: string[];
-};
+  navigate?: (page: string, sub?: string) => void
+  onOpenPatientClinical?: (patientId: string) => void
+  permissions?: string[]
+}
 
-export default function Inpatient({ navigate, onOpenPatientClinical, permissions }: Props) {
-  const [beds, setBeds] = useState<Bed[]>([]);
-  const [summary, setSummary] = useState<Summary>({ total: 0, available: 0, occupied: 0, maintenance: 0 });
-  const [pendingRequests, setPendingRequests] = useState<ErBedRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedWard, setSelectedWard] = useState<string | null>(null);
+export default function Inpatient({
+  navigate,
+  onOpenPatientClinical,
+  permissions,
+}: Props) {
+  const [beds, setBeds] = useState<Bed[]>([])
+  const [summary, setSummary] = useState<Summary>({
+    total: 0,
+    available: 0,
+    occupied: 0,
+    maintenance: 0,
+  })
+  const [pendingRequests, setPendingRequests] = useState<ErBedRequest[]>([])
+  const [pendingOtTransfers, setPendingOtTransfers] = useState<OtPacuReadyCase[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedWard, setSelectedWard] = useState<string | null>(null)
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
+    let cancelled = false
+    const load = async (showSpinner: boolean) => {
+      if (showSpinner) setLoading(true)
       try {
-        const [bedsRes, requestsRes] = await Promise.all([
-          apiFetch<{ beds: Bed[]; summary: Summary }>("/api/beds"),
-          apiFetch<{ bed_requests: ErBedRequest[] }>("/api/er/bed-requests?status=pending").catch(() => ({
+        const [bedsRes, requestsRes, otRes] = await Promise.all([
+          apiFetch<{ beds: Bed[] ;summary: Summary }>("/api/beds"),
+          apiFetch<{ bed_requests: ErBedRequest[] }>(
+            "/api/er/bed-requests?status=pending",
+          ).catch(() => ({
             bed_requests: [] as ErBedRequest[],
           })),
-        ]);
-        setBeds(bedsRes.beds || []);
-        setSummary(bedsRes.summary || { total: 0, available: 0, occupied: 0, maintenance: 0 });
-        setPendingRequests(requestsRes.bed_requests || []);
+          apiFetch<{ cases: OtPacuReadyCase[] }>(
+            "/api/ot/cases/pacu-ready",
+          ).catch(() => ({ cases: [] as OtPacuReadyCase[] })),
+        ])
+        if (cancelled) return
+        setBeds(bedsRes.beds || [])
+        setSummary(
+          bedsRes.summary || {
+            total: 0,
+            available: 0,
+            occupied: 0,
+            maintenance: 0,
+          },
+        )
+        setPendingRequests(requestsRes.bed_requests || [])
+        setPendingOtTransfers(otRes.cases || [])
       } catch {
-        setBeds([]);
+        if (!cancelled) setBeds([])
       } finally {
-        setLoading(false);
+        if (!cancelled && showSpinner) setLoading(false)
       }
-    })();
-  }, []);
+    }
+    load(true)
+    // Live-polled rather than one-shot -- a ward nurse should see a new ER bed
+    // request or a PACU-cleared surgical case without a manual page reload.
+    const interval = setInterval(() => load(false), 20000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [])
 
   const groupedByWard = useMemo(() => {
-    const wards = new Map<string, Map<string, Bed[]>>();
+    const wards = new Map<string, Map<string, Bed[]>>()
     for (const bed of beds) {
-      const ward = bed.ward || "Unassigned Ward";
-      if (!wards.has(ward)) wards.set(ward, new Map());
-      const rooms = wards.get(ward)!;
-      if (!rooms.has(bed.room_no)) rooms.set(bed.room_no, []);
-      rooms.get(bed.room_no)!.push(bed);
+      const ward = bed.ward || "Unassigned Ward"
+      if (!wards.has(ward)) wards.set(ward, new Map())
+      const rooms = wards.get(ward)!
+      if (!rooms.has(bed.room_no)) rooms.set(bed.room_no, [])
+      rooms.get(bed.room_no)!.push(bed)
     }
-    return wards;
-  }, [beds]);
+    return wards
+  }, [beds])
 
-  const wardNames = useMemo(() => Array.from(groupedByWard.keys()).sort(), [groupedByWard]);
-  const activeWard = selectedWard && groupedByWard.has(selectedWard) ? selectedWard : wardNames[0] || null;
-  const activeRooms = activeWard ? groupedByWard.get(activeWard)! : new Map<string, Bed[]>();
+  const wardNames = useMemo(
+    () => Array.from(groupedByWard.keys()).sort(),
+    [groupedByWard],
+  )
+  const activeWard =
+    selectedWard && groupedByWard.has(selectedWard)
+      ? selectedWard
+      : wardNames[0] || null
+  const activeRooms = activeWard
+    ? groupedByWard.get(activeWard)!
+    : new Map<string, Bed[]>()
 
-  const overdueBeds = useMemo(() => beds.filter(isOverdue), [beds]);
-  const mixedGenderRooms = useMemo(() => findMixedGenderRooms(beds), [beds]);
-  const hasAlerts = overdueBeds.length > 0 || mixedGenderRooms.length > 0;
+  const overdueBeds = useMemo(() => beds.filter(isOverdue), [beds])
+  const mixedGenderRooms = useMemo(() => findMixedGenderRooms(beds), [beds])
+  const hasAlerts = overdueBeds.length > 0 || mixedGenderRooms.length > 0
 
-  const [ackedIcuAdmissions, setAckedIcuAdmissions] = useState<Set<string>>(new Set());
+  const [ackedIcuAdmissions, setAckedIcuAdmissions] = useState<Set<string>>(
+    new Set(),
+  )
   useEffect(() => {
-    setAckedIcuAdmissions(loadAckedIcuAdmissions());
-  }, []);
+    setAckedIcuAdmissions(loadAckedIcuAdmissions())
+  }, [])
   const icuAdmissionAlerts = useMemo(
     () =>
       beds.filter(
@@ -195,26 +270,28 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
           !ackedIcuAdmissions.has(icuAdmissionKey(b)),
       ),
     [beds, ackedIcuAdmissions],
-  );
+  )
   const acknowledgeIcuAdmission = (bed: Bed) => {
-    const next = new Set(ackedIcuAdmissions);
-    next.add(icuAdmissionKey(bed));
-    setAckedIcuAdmissions(next);
-    saveAckedIcuAdmissions(next);
-  };
+    const next = new Set(ackedIcuAdmissions)
+    next.add(icuAdmissionKey(bed))
+    setAckedIcuAdmissions(next)
+    saveAckedIcuAdmissions(next)
+  }
 
-  const goToBedManagement = () => navigate?.("beds");
+  const goToBedManagement = () => navigate?.("beds")
   const openWard = (ward: string) => {
-    setSelectedWard(ward);
-    document.getElementById("ward-room-board")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+    setSelectedWard(ward)
+    document
+      .getElementById("ward-room-board")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
 
   const boardStats = [
     { label: "Total beds", value: summary.total, tone: "#0F172A" },
     { label: "Occupied", value: summary.occupied, tone: "#1B4FD8" },
     { label: "Available", value: summary.available, tone: "#16A34A" },
     { label: "Maintenance", value: summary.maintenance, tone: "#D97706" },
-  ];
+  ]
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F0F2F5]">
@@ -224,9 +301,12 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
       <div className="bg-white border-b border-[#DDE2EC]">
         <div className="px-6 pt-4 pb-3 flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0">
-            <h1 className="text-base font-semibold text-gray-900 leading-tight">Inpatient Bed Board</h1>
+            <h1 className="text-base font-semibold text-gray-900 leading-tight">
+              Inpatient Bed Board
+            </h1>
             <p className="text-[11.5px] text-[#64748B] mt-0.5">
-              Hospital-wide occupancy &amp; alerts &middot; read-only &mdash; use Bed Management to allocate, transfer, or discharge
+              Hospital-wide occupancy &amp; alerts &middot; read-only &mdash;
+              use Bed Management to allocate, transfer, or discharge
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -235,7 +315,9 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
               onViewPatientChart={onOpenPatientClinical}
               canManageBeds={!permissions || permissions.includes("beds")}
             />
-            <Btn variant="primary" size="sm" onClick={goToBedManagement}>Open Bed Management →</Btn>
+            <Btn variant="primary" size="sm" onClick={goToBedManagement}>
+              Open Bed Management →
+            </Btn>
           </div>
         </div>
 
@@ -243,19 +325,37 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
           <div className="flex items-stretch divide-x divide-[#E2E8F0] border border-[#E2E8F0] rounded-md overflow-hidden">
             {boardStats.map((stat) => (
               <div key={stat.label} className="px-4 py-2 min-w-[104px]">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">{stat.label}</div>
-                <div className="font-mono text-xl font-bold leading-tight mt-0.5" style={{ color: stat.tone }}>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                  {stat.label}
+                </div>
+                <div
+                  className="font-mono text-xl font-bold leading-tight mt-0.5"
+                  style={{ color: stat.tone }}
+                >
                   {stat.value}
                 </div>
               </div>
             ))}
           </div>
           <div className="flex items-center gap-3 flex-wrap pb-1">
-            <span className="bed-legend-item"><span className="bed-legend-swatch bed-legend-swatch-available" /> Available</span>
-            <span className="bed-legend-item"><span className="bed-legend-swatch bed-legend-swatch-male" /> Male</span>
-            <span className="bed-legend-item"><span className="bed-legend-swatch bed-legend-swatch-female" /> Female</span>
-            <span className="bed-legend-item"><span className="bed-legend-swatch bed-legend-swatch-maintenance" /> Maintenance</span>
-            <span className="bed-legend-item"><span className="bed-legend-swatch bed-legend-swatch-icu" /> ICU</span>
+            <span className="bed-legend-item">
+              <span className="bed-legend-swatch bed-legend-swatch-available" />{" "}
+              Available
+            </span>
+            <span className="bed-legend-item">
+              <span className="bed-legend-swatch bed-legend-swatch-male" /> Male
+            </span>
+            <span className="bed-legend-item">
+              <span className="bed-legend-swatch bed-legend-swatch-female" />{" "}
+              Female
+            </span>
+            <span className="bed-legend-item">
+              <span className="bed-legend-swatch bed-legend-swatch-maintenance" />{" "}
+              Maintenance
+            </span>
+            <span className="bed-legend-item">
+              <span className="bed-legend-swatch bed-legend-swatch-icu" /> ICU
+            </span>
           </div>
         </div>
       </div>
@@ -265,9 +365,20 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
           <p className="text-[12.5px] text-[#64748B]">Loading bed board...</p>
         ) : wardNames.length === 0 ? (
           <div className="bg-white border border-[#DDE2EC] rounded-md p-8 text-center">
-            <p className="text-[13px] font-semibold text-gray-800">No beds set up yet</p>
-            <p className="text-[12px] text-[#64748B] mt-1">Add wards and beds from Bed Management to populate this board.</p>
-            <Btn variant="primary" size="sm" className="mt-3" onClick={goToBedManagement}>Go to Bed Management</Btn>
+            <p className="text-[13px] font-semibold text-gray-800">
+              No beds set up yet
+            </p>
+            <p className="text-[12px] text-[#64748B] mt-1">
+              Add wards and beds from Bed Management to populate this board.
+            </p>
+            <Btn
+              variant="primary"
+              size="sm"
+              className="mt-3"
+              onClick={goToBedManagement}
+            >
+              Go to Bed Management
+            </Btn>
           </div>
         ) : (
           <>
@@ -275,26 +386,51 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
                 instead of clustering at the left of a fixed 6-column grid. */}
             <section className="bg-white border border-[#DDE2EC] rounded-md p-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Ward occupancy</h2>
-                <span className="text-[11px] text-[#94A3B8]">Click a ward to open its beds below</span>
+                <h2 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Ward occupancy
+                </h2>
+                <span className="text-[11px] text-[#94A3B8]">
+                  Click a ward to open its beds below
+                </span>
               </div>
               <div
                 className="grid gap-3"
-                style={{ gridTemplateColumns: "repeat(auto-fit, minmax(212px, 1fr))" }}
+                style={{
+                  gridTemplateColumns: "repeat(auto-fit, minmax(212px, 1fr))",
+                }}
               >
                 {wardNames.map((ward) => {
-                  const wardBeds = Array.from(groupedByWard.get(ward)!.values()).flat();
-                  const occupied = wardBeds.filter((b) => b.status === "Occupied").length;
-                  const total = wardBeds.length;
-                  const pct = total ? Math.round((occupied / total) * 100) : 0;
-                  const level = wardOccupancyLevel(occupied, total);
+                  const wardBeds = Array.from(
+                    groupedByWard.get(ward)!.values(),
+                  ).flat()
+                  const occupied = wardBeds.filter(
+                    (b) => b.status === "Occupied",
+                  ).length
+                  const total = wardBeds.length
+                  const pct = total ? Math.round((occupied / total) * 100) : 0
+                  const level = wardOccupancyLevel(occupied, total)
                   const levelStyle =
                     level === "critical"
-                      ? { bg: "#FEF2F2", border: "#FCA5A5", text: "#B91C1C", bar: "#DC2626" }
+                      ? {
+                          bg: "#FEF2F2",
+                          border: "#FCA5A5",
+                          text: "#B91C1C",
+                          bar: "#DC2626",
+                        }
                       : level === "high"
-                        ? { bg: "#FFFBEB", border: "#FDE68A", text: "#B45309", bar: "#D97706" }
-                        : { bg: "#F0FDF4", border: "#BBF7D0", text: "#15803D", bar: "#16A34A" };
-                  const isActive = ward === activeWard;
+                        ? {
+                            bg: "#FFFBEB",
+                            border: "#FDE68A",
+                            text: "#B45309",
+                            bar: "#D97706",
+                          }
+                        : {
+                            bg: "#F0FDF4",
+                            border: "#BBF7D0",
+                            text: "#15803D",
+                            bar: "#16A34A",
+                          }
+                  const isActive = ward === activeWard
                   return (
                     <button
                       key={ward}
@@ -302,21 +438,41 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
                       className={`text-left rounded-md p-3 border transition-all hover:-translate-y-0.5 hover:shadow-sm${
                         isActive ? " ring-2 ring-[#1B4FD8] ring-offset-1" : ""
                       }`}
-                      style={{ backgroundColor: levelStyle.bg, borderColor: levelStyle.border }}
+                      style={{
+                        backgroundColor: levelStyle.bg,
+                        borderColor: levelStyle.border,
+                      }}
                     >
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-[12px] font-semibold text-gray-800 truncate">{ward}</span>
-                        <span className="text-[10.5px] font-mono text-[#64748B] shrink-0">{occupied}/{total}</span>
+                        <span className="text-[12px] font-semibold text-gray-800 truncate">
+                          {ward}
+                        </span>
+                        <span className="text-[10.5px] font-mono text-[#64748B] shrink-0">
+                          {occupied}/{total}
+                        </span>
                       </div>
                       <div className="flex items-baseline gap-1 mt-1.5">
-                        <span className="text-xl font-mono font-bold leading-none" style={{ color: levelStyle.text }}>{pct}%</span>
-                        <span className="text-[10.5px] text-[#64748B]">occupied</span>
+                        <span
+                          className="text-xl font-mono font-bold leading-none"
+                          style={{ color: levelStyle.text }}
+                        >
+                          {pct}%
+                        </span>
+                        <span className="text-[10.5px] text-[#64748B]">
+                          occupied
+                        </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-white/70 mt-2.5 overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: levelStyle.bar }} />
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: levelStyle.bar,
+                          }}
+                        />
                       </div>
                     </button>
-                  );
+                  )
                 })}
               </div>
             </section>
@@ -331,9 +487,13 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
                 {icuAdmissionAlerts.length > 0 && (
                   <section className="bg-white border border-[#FCA5A5] rounded-md overflow-hidden">
                     <div className="px-4 py-2.5 bg-[#FEF2F2] border-b border-[#FCA5A5] flex items-center gap-2">
-                      <FiBell className="text-[#B91C1C] animate-pulse" aria-hidden />
+                      <FiBell
+                        className="text-[#B91C1C] animate-pulse"
+                        aria-hidden
+                      />
                       <span className="text-xs font-bold text-[#991B1B] uppercase tracking-wider">
-                        ICU admission alert{icuAdmissionAlerts.length > 1 ? "s" : ""}
+                        ICU admission alert
+                        {icuAdmissionAlerts.length > 1 ? "s" : ""}
                       </span>
                       <span className="ml-auto font-mono text-[11px] font-bold text-[#991B1B] bg-white border border-[#FCA5A5] rounded-full px-2 py-0.5">
                         {icuAdmissionAlerts.length}
@@ -341,21 +501,34 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
                     </div>
                     <ul className="divide-y divide-[#F1F5F9]">
                       {icuAdmissionAlerts.map((bed) => (
-                        <li key={icuAdmissionKey(bed)} className="flex items-center gap-3 px-4 py-2.5">
+                        <li
+                          key={icuAdmissionKey(bed)}
+                          className="flex items-center gap-3 px-4 py-2.5"
+                        >
                           <div className="flex-1 min-w-0">
                             <div className="text-[12.5px] font-semibold text-gray-900 truncate">
                               {bedOccupantName(bed)}
                             </div>
                             <div className="text-[11px] text-[#64748B] truncate">
-                              {bed.ward} &middot; Room {bed.room_no} &middot; Bed {bed.bed_no}
+                              {bed.ward} &middot; Room {bed.room_no} &middot;
+                              Bed {bed.bed_no}
                               {bed.patient_age ? ` · ${bed.patient_age}y` : ""}
-                              {bed.patient_gender ? ` · ${bed.patient_gender}` : ""}
+                              {bed.patient_gender
+                                ? ` · ${bed.patient_gender}`
+                                : ""}
                             </div>
                             <div className="text-[10.5px] text-[#94A3B8] mt-0.5">
-                              Allocated {formatDateTimeIST(bed.allocated_at || bed.admission_date!)}
+                              Allocated{" "}
+                              {formatDateTimeIST(
+                                bed.allocated_at || bed.admission_date!,
+                              )}
                             </div>
                           </div>
-                          <Btn variant="outline" size="xs" onClick={() => acknowledgeIcuAdmission(bed)}>
+                          <Btn
+                            variant="outline"
+                            size="xs"
+                            onClick={() => acknowledgeIcuAdmission(bed)}
+                          >
                             Acknowledge
                           </Btn>
                         </li>
@@ -367,21 +540,30 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
                 {hasAlerts && (
                   <section className="bg-white border border-[#DDE2EC] rounded-md overflow-hidden">
                     <div className="px-4 py-2.5 border-b border-[#DDE2EC] flex items-center gap-2">
-                      <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Ward alerts</span>
+                      <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Ward alerts
+                      </span>
                       <span className="ml-auto font-mono text-[11px] font-bold text-[#64748B] bg-[#F1F5F9] rounded-full px-2 py-0.5">
                         {overdueBeds.length + mixedGenderRooms.length}
                       </span>
                     </div>
                     <ul className="divide-y divide-[#F1F5F9]">
                       {overdueBeds.map((bed) => (
-                        <li key={`overdue-${bed.id}`} className="flex items-start gap-3 px-4 py-2.5">
-                          <FiClock className="text-[#B91C1C] shrink-0 mt-0.5" aria-hidden />
+                        <li
+                          key={`overdue-${bed.id}`}
+                          className="flex items-start gap-3 px-4 py-2.5"
+                        >
+                          <FiClock
+                            className="text-[#B91C1C] shrink-0 mt-0.5"
+                            aria-hidden
+                          />
                           <div className="flex-1 min-w-0">
                             <div className="text-[12.5px] font-semibold text-gray-800 truncate">
                               {bedOccupantName(bed)} &mdash; extended stay
                             </div>
                             <div className="text-[11px] text-[#64748B] truncate">
-                              {bed.ward} &middot; Room {bed.room_no} &middot; Bed {bed.bed_no}
+                              {bed.ward} &middot; Room {bed.room_no} &middot;
+                              Bed {bed.bed_no}
                             </div>
                           </div>
                           <span className="shrink-0 text-[10.5px] font-bold text-[#B91C1C] bg-[#FEF2F2] border border-[#FCA5A5] rounded px-1.5 py-0.5">
@@ -389,20 +571,33 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
                           </span>
                         </li>
                       ))}
-                      {mixedGenderRooms.map(({ ward, room_no, beds: roomBeds }) => (
-                        <li key={`mixed-${ward}-${room_no}`} className="flex items-start gap-3 px-4 py-2.5">
-                          <FiUsers className="text-[#B45309] shrink-0 mt-0.5" aria-hidden />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-[12.5px] font-semibold text-gray-800">Mixed-gender room</div>
-                            <div className="text-[11px] text-[#64748B] truncate">
-                              {ward} &middot; Room {room_no} &middot; {roomBeds.map((b) => bedOccupantName(b)).join(", ")}
+                      {mixedGenderRooms.map(
+                        ({ ward, room_no, beds: roomBeds }) => (
+                          <li
+                            key={`mixed-${ward}-${room_no}`}
+                            className="flex items-start gap-3 px-4 py-2.5"
+                          >
+                            <FiUsers
+                              className="text-[#B45309] shrink-0 mt-0.5"
+                              aria-hidden
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[12.5px] font-semibold text-gray-800">
+                                Mixed-gender room
+                              </div>
+                              <div className="text-[11px] text-[#64748B] truncate">
+                                {ward} &middot; Room {room_no} &middot;{" "}
+                                {roomBeds
+                                  .map((b) => bedOccupantName(b))
+                                  .join(", ")}
+                              </div>
                             </div>
-                          </div>
-                          <span className="shrink-0 text-[10.5px] font-bold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded px-1.5 py-0.5">
-                            Review
-                          </span>
-                        </li>
-                      ))}
+                            <span className="shrink-0 text-[10.5px] font-bold text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded px-1.5 py-0.5">
+                              Review
+                            </span>
+                          </li>
+                        ),
+                      )}
                     </ul>
                   </section>
                 )}
@@ -410,10 +605,15 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
             )}
 
             {/* Ward board -- pick a ward, then a room within it */}
-            <section className="bg-white border border-[#DDE2EC] rounded-md" id="ward-room-board">
+            <section
+              className="bg-white border border-[#DDE2EC] rounded-md"
+              id="ward-room-board"
+            >
               <div className="px-4 py-3 border-b border-[#DDE2EC] flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Ward</span>
+                  <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Ward
+                  </span>
                   <select
                     className="ui-input bed-ward-select"
                     aria-label="Select ward"
@@ -421,7 +621,9 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
                     onChange={(e) => setSelectedWard(e.target.value)}
                   >
                     {wardNames.map((ward) => (
-                      <option key={ward} value={ward}>{ward}</option>
+                      <option key={ward} value={ward}>
+                        {ward}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -430,14 +632,22 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
                     <span className="flex items-center gap-1.5 text-[#64748B]">
                       <span className="w-2 h-2 rounded-full bg-[#1B4FD8]" />
                       <span className="font-mono font-bold text-gray-800">
-                        {Array.from(activeRooms.values()).flat().filter((b) => b.status === "Occupied").length}
+                        {
+                          Array.from(activeRooms.values())
+                            .flat()
+                            .filter((b) => b.status === "Occupied").length
+                        }
                       </span>
                       occupied
                     </span>
                     <span className="flex items-center gap-1.5 text-[#64748B]">
                       <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
                       <span className="font-mono font-bold text-gray-800">
-                        {Array.from(activeRooms.values()).flat().filter((b) => b.status === "Available").length}
+                        {
+                          Array.from(activeRooms.values())
+                            .flat()
+                            .filter((b) => b.status === "Available").length
+                        }
                       </span>
                       available
                     </span>
@@ -446,14 +656,21 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
               </div>
               <div className="p-4">
                 {activeWard === "ICU" ? (
-                  <IcuDepartment embedded navigate={navigate} onOpenPatientClinical={onOpenPatientClinical} permissions={permissions} />
+                  <IcuDepartment
+                    embedded
+                    navigate={navigate}
+                    onOpenPatientClinical={onOpenPatientClinical}
+                    permissions={permissions}
+                  />
                 ) : (
                   <WardBedBoard
                     rooms={activeRooms}
                     readOnly
                     onPatientClick={
                       onOpenPatientClinical
-                        ? (bed) => bed.patient_id && onOpenPatientClinical(bed.patient_id)
+                        ? (bed) =>
+                            bed.patient_id &&
+                            onOpenPatientClinical(bed.patient_id)
                         : undefined
                     }
                   />
@@ -463,29 +680,84 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
           </>
         )}
 
-      {/* Pending Bed Assignments -- real ER bed requests awaiting allocation */}
+        {/* Pending Bed Assignments -- real ER bed requests awaiting allocation */}
         <section className="bg-white border border-[#DDE2EC] rounded-md overflow-hidden">
           <div className="px-4 py-2.5 border-b border-[#DDE2EC] flex items-center justify-between gap-3">
-            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Pending bed assignments</span>
+            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Pending bed assignments
+            </span>
             <span className="bg-[#FEF3C7] text-[#B45309] text-[11px] font-semibold px-2 py-0.5 rounded-full">
               {pendingRequests.length} awaiting
             </span>
           </div>
           {pendingRequests.length === 0 ? (
-            <p className="text-[12px] text-[#94A3B8] px-4 py-4">No ER visits are currently awaiting a bed.</p>
+            <p className="text-[12px] text-[#94A3B8] px-4 py-4">
+              No ER visits are currently awaiting a bed.
+            </p>
           ) : (
             <ul className="divide-y divide-[#F1F5F9]">
               {pendingRequests.map((req) => (
-                <li key={req.id} className="flex items-center gap-3 px-4 py-2.5">
+                <li
+                  key={req.id}
+                  className="flex items-center gap-3 px-4 py-2.5"
+                >
                   <div className="flex-1 min-w-0">
-                    <div className="text-[12.5px] font-semibold text-gray-800 truncate">{erRequestPatientLabel(req)}</div>
+                    <div className="text-[12.5px] font-semibold text-gray-800 truncate">
+                      {erRequestPatientLabel(req)}
+                    </div>
                     <div className="text-[11px] text-[#64748B] truncate">
-                      {req.visit_no} &middot; {req.requested_level_of_care.toUpperCase()}
-                      {req.requested_specialty ? ` · ${req.requested_specialty}` : ""}
+                      {req.visit_no} &middot;{" "}
+                      {req.requested_level_of_care.toUpperCase()}
+                      {req.requested_specialty
+                        ? ` · ${req.requested_specialty}`
+                        : ""}
                     </div>
                   </div>
-                  <span className="shrink-0 font-mono text-[10.5px] text-[#94A3B8]">{formatDateTimeIST(req.requested_at)}</span>
-                  <Btn variant="primary" size="xs" onClick={goToBedManagement}>Assign Bed</Btn>
+                  <span className="shrink-0 font-mono text-[10.5px] text-[#94A3B8]">
+                    {formatDateTimeIST(req.requested_at)}
+                  </span>
+                  <Btn variant="primary" size="xs" onClick={goToBedManagement}>
+                    Assign Bed
+                  </Btn>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Pending OT transfers -- cases cleared out of PACU awaiting a ward bed */}
+        <section className="bg-white border border-[#DDE2EC] rounded-md overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-[#DDE2EC] flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+              Cleared from PACU
+            </span>
+            <span className="bg-[#DBEAFE] text-[#1D4ED8] text-[11px] font-semibold px-2 py-0.5 rounded-full">
+              {pendingOtTransfers.length} awaiting
+            </span>
+          </div>
+          {pendingOtTransfers.length === 0 ? (
+            <p className="text-[12px] text-[#94A3B8] px-4 py-4">
+              No surgical cases are currently awaiting a ward bed.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[#F1F5F9]">
+              {pendingOtTransfers.map((c) => (
+                <li key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12.5px] font-semibold text-gray-800 truncate">
+                      {c.procedure_name}
+                    </div>
+                    <div className="text-[11px] text-[#64748B] truncate">
+                      {c.case_no} &middot; {c.patient_id}
+                      {c.surgeon ? ` · ${c.surgeon}` : ""} · {c.discharge_status}
+                    </div>
+                  </div>
+                  <span className="shrink-0 font-mono text-[10.5px] text-[#94A3B8]">
+                    {formatDateTimeIST(c.updated_at)}
+                  </span>
+                  <Btn variant="primary" size="xs" onClick={goToBedManagement}>
+                    Assign Bed
+                  </Btn>
                 </li>
               ))}
             </ul>
@@ -493,5 +765,5 @@ export default function Inpatient({ navigate, onOpenPatientClinical, permissions
         </section>
       </div>
     </div>
-  );
+  )
 }

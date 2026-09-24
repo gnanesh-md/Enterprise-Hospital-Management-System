@@ -1,26 +1,26 @@
-import React, { useState, useMemo } from "react";
-import { formatINR } from "../../lib/format";
+import React, { useState, useMemo } from "react"
+import { formatINR } from "../../lib/format"
 
 export interface DischargedPatientRecord {
-  id: string; // "DISC-1001"
-  patientId: string;
-  patientName: string;
-  mrn: string;
-  ward: string;
-  roomNo: string;
-  bedNo: string;
-  admissionDate: string;
-  dischargeDate: string;
-  lengthOfStayDays: number;
-  dischargeReason: string;
-  roomChargesTotal: number;
-  attendingDoctor: string;
+  id: string // "DISC-1001"
+  patientId: string
+  patientName: string
+  mrn: string
+  ward: string
+  roomNo: string
+  bedNo: string
+  admissionDate: string
+  dischargeDate: string
+  lengthOfStayDays: number
+  dischargeReason: string
+  roomChargesTotal: number
+  attendingDoctor: string
 }
 
 interface Props {
-  dischargedPatients: DischargedPatientRecord[];
-  loading: boolean;
-  onRefresh: () => void;
+  dischargedPatients: DischargedPatientRecord[]
+  loading: boolean
+  onRefresh: () => void
 }
 
 export default function DischargedDirectoryView({
@@ -28,102 +28,122 @@ export default function DischargedDirectoryView({
   loading,
   onRefresh,
 }: Props) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [wardFilter, setWardFilter] = useState("all");
-  const [doctorFilter, setDoctorFilter] = useState("all");
-  const [timeFilter, setTimeFilter] = useState<"all" | "today" | "7days" | "30days">("all");
-  const [selectedRecord, setSelectedRecord] = useState<DischargedPatientRecord | null>(null);
+  const [searchQuery, setSearchQuery] = useState("")
+  const [wardFilter, setWardFilter] = useState("all")
+  const [doctorFilter, setDoctorFilter] = useState("all")
+  const [timeFilter, setTimeFilter] =
+    useState<"all" | "today" | "7days" | "30days">("all")
+  const [selectedRecord, setSelectedRecord] =
+    useState<DischargedPatientRecord | null>(null)
 
   // Extract unique wards and doctors from real data
   const availableWards = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>()
     dischargedPatients.forEach((p) => {
-      if (p.ward) set.add(p.ward);
-    });
-    return Array.from(set);
-  }, [dischargedPatients]);
+      if (p.ward) set.add(p.ward)
+    })
+    return Array.from(set)
+  }, [dischargedPatients])
 
   const availableDoctors = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>()
     dischargedPatients.forEach((p) => {
-      if (p.attendingDoctor) set.add(p.attendingDoctor);
-    });
-    return Array.from(set);
-  }, [dischargedPatients]);
+      if (p.attendingDoctor) set.add(p.attendingDoctor)
+    })
+    return Array.from(set)
+  }, [dischargedPatients])
 
   // Derived Operational Metrics (Derived from 100% real database records)
   const metrics = useMemo(() => {
-    const total = dischargedPatients.length;
-    const now = new Date();
-    const todayStr = now.toDateString();
+    const total = dischargedPatients.length
+    const now = new Date()
+    const todayStr = now.toDateString()
 
     const todayCount = dischargedPatients.filter((p) => {
       try {
-        return new Date(p.dischargeDate).toDateString() === todayStr;
+        return new Date(p.dischargeDate).toDateString() === todayStr
       } catch {
-        return false;
+        return false
       }
-    }).length;
+    }).length
 
-    const totalLos = dischargedPatients.reduce((sum, p) => sum + (p.lengthOfStayDays || 1), 0);
-    const avgLos = total > 0 ? (totalLos / total).toFixed(1) : "0.0";
+    const totalLos = dischargedPatients.reduce(
+      (sum, p) => sum + (p.lengthOfStayDays || 1),
+      0,
+    )
+    const avgLos = total > 0 ? (totalLos / total).toFixed(1) : "0.0"
 
-    const totalCharges = dischargedPatients.reduce((sum, p) => sum + (p.roomChargesTotal || 0), 0);
+    const totalCharges = dischargedPatients.reduce(
+      (sum, p) => sum + (p.roomChargesTotal || 0),
+      0,
+    )
 
     return {
       total,
       todayCount,
       avgLos: `${avgLos} Days`,
       totalCharges: formatINR(totalCharges),
-    };
-  }, [dischargedPatients]);
+    }
+  }, [dischargedPatients])
 
   // Filtered Records
   const filteredRecords = useMemo(() => {
     return dischargedPatients.filter((p) => {
-      const q = searchQuery.toLowerCase().trim();
+      const q = searchQuery.toLowerCase().trim()
       if (q) {
-        const matchesName = (p.patientName || "").toLowerCase().includes(q);
-        const matchesMrn = (p.mrn || "").toLowerCase().includes(q);
-        const matchesId = (p.id || "").toLowerCase().includes(q);
-        const matchesBed = (p.bedNo || "").toLowerCase().includes(q);
-        const matchesReason = (p.dischargeReason || "").toLowerCase().includes(q);
-        if (!matchesName && !matchesMrn && !matchesId && !matchesBed && !matchesReason) {
-          return false;
+        const matchesName = (p.patientName || "").toLowerCase().includes(q)
+        const matchesMrn = (p.mrn || "").toLowerCase().includes(q)
+        const matchesId = (p.id || "").toLowerCase().includes(q)
+        const matchesBed = (p.bedNo || "").toLowerCase().includes(q)
+        const matchesReason = (p.dischargeReason || "")
+          .toLowerCase()
+          .includes(q)
+        if (
+          !matchesName &&
+          !matchesMrn &&
+          !matchesId &&
+          !matchesBed &&
+          !matchesReason
+        ) {
+          return false
         }
       }
 
       if (wardFilter !== "all" && p.ward !== wardFilter) {
-        return false;
+        return false
       }
 
       if (doctorFilter !== "all" && p.attendingDoctor !== doctorFilter) {
-        return false;
+        return false
       }
 
       if (timeFilter !== "all") {
         try {
-          const discDate = new Date(p.dischargeDate).getTime();
-          const now = Date.now();
+          const discDate = new Date(p.dischargeDate).getTime()
+          const now = Date.now()
           if (timeFilter === "today") {
-            if (new Date(p.dischargeDate).toDateString() !== new Date().toDateString()) return false;
+            if (
+              new Date(p.dischargeDate).toDateString() !==
+              new Date().toDateString()
+            )
+              return false
           } else if (timeFilter === "7days") {
-            if (now - discDate > 7 * 86400000) return false;
+            if (now - discDate > 7 * 86400000) return false
           } else if (timeFilter === "30days") {
-            if (now - discDate > 30 * 86400000) return false;
+            if (now - discDate > 30 * 86400000) return false
           }
         } catch {
           // ignore date parse error
         }
       }
 
-      return true;
-    });
-  }, [dischargedPatients, searchQuery, wardFilter, doctorFilter, timeFilter]);
+      return true
+    })
+  }, [dischargedPatients, searchQuery, wardFilter, doctorFilter, timeFilter])
 
   // Export to CSV
   const handleExportCsv = () => {
-    if (filteredRecords.length === 0) return;
+    if (filteredRecords.length === 0) return
     const headers = [
       "Discharge ID",
       "Patient Name",
@@ -137,7 +157,7 @@ export default function DischargedDirectoryView({
       "Room Charges (INR)",
       "Attending Doctor",
       "Discharge Reason",
-    ];
+    ]
 
     const rows = filteredRecords.map((r) => [
       r.id,
@@ -152,38 +172,42 @@ export default function DischargedDirectoryView({
       r.roomChargesTotal,
       `"${r.attendingDoctor}"`,
       `"${(r.dischargeReason || "").replace(/"/g, '""')}"`,
-    ]);
+    ])
 
     const csvContent =
-      "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `discharged_patients_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute(
+      "download",
+      `discharged_patients_${new Date().toISOString().slice(0, 10)}.csv`,
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   const handleResetFilters = () => {
-    setSearchQuery("");
-    setWardFilter("all");
-    setDoctorFilter("all");
-    setTimeFilter("all");
-  };
+    setSearchQuery("")
+    setWardFilter("all")
+    setDoctorFilter("all")
+    setTimeFilter("all")
+  }
 
   const formatDateDisplay = (dateStr: string) => {
     try {
-      const d = new Date(dateStr);
+      const d = new Date(dateStr)
       return d.toLocaleDateString("en-US", {
         day: "numeric",
         month: "short",
         year: "numeric",
-      });
+      })
     } catch {
-      return dateStr;
+      return dateStr
     }
-  };
+  }
 
   return (
     <div className="w-full bg-[#F8FAFC] min-h-full text-[#0F172A] font-sans pb-24">
@@ -194,7 +218,8 @@ export default function DischargedDirectoryView({
             Discharged Patients Directory
           </h1>
           <p className="text-[11.5px] text-[#64748B] mt-0.5 mb-0 max-w-3xl font-normal">
-            Review completed inpatient stays, medical discharge clearance summaries, length of stay (LOS), and settled room charges.
+            Review completed inpatient stays, medical discharge clearance
+            summaries, length of stay (LOS), and settled room charges.
           </p>
         </div>
 
@@ -235,7 +260,9 @@ export default function DischargedDirectoryView({
                 Archived Stays
               </span>
             </div>
-            <div className="text-xs text-[#64748B]">All recorded patient releases</div>
+            <div className="text-xs text-[#64748B]">
+              All recorded patient releases
+            </div>
           </div>
 
           {/* Card 2 */}
@@ -251,7 +278,9 @@ export default function DischargedDirectoryView({
                 Cleared Today
               </span>
             </div>
-            <div className="text-xs text-[#64748B]">Cleared during active shifts</div>
+            <div className="text-xs text-[#64748B]">
+              Cleared during active shifts
+            </div>
           </div>
 
           {/* Card 3 */}
@@ -267,7 +296,9 @@ export default function DischargedDirectoryView({
                 Inpatient Mean
               </span>
             </div>
-            <div className="text-xs text-[#64748B]">Average stay duration per patient</div>
+            <div className="text-xs text-[#64748B]">
+              Average stay duration per patient
+            </div>
           </div>
 
           {/* Card 4 */}
@@ -283,7 +314,9 @@ export default function DischargedDirectoryView({
                 Billed & Settled
               </span>
             </div>
-            <div className="text-xs text-[#64748B]">Inpatient room & telemetry fees</div>
+            <div className="text-xs text-[#64748B]">
+              Inpatient room & telemetry fees
+            </div>
           </div>
         </div>
 
@@ -297,7 +330,11 @@ export default function DischargedDirectoryView({
                   Discharge Records Directory
                 </h2>
                 <p className="text-xs text-[#64748B] m-0 mt-0.5">
-                  Showing <strong className="text-[#0F172A]">{filteredRecords.length}</strong> of {dischargedPatients.length} completed patient stays
+                  Showing{" "}
+                  <strong className="text-[#0F172A]">
+                    {filteredRecords.length}
+                  </strong>{" "}
+                  of {dischargedPatients.length} completed patient stays
                 </p>
               </div>
 
@@ -363,7 +400,9 @@ export default function DischargedDirectoryView({
 
               {/* Time Range Filter */}
               <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-[#64748B]">Discharge Date:</span>
+                <span className="font-semibold text-[#64748B]">
+                  Discharge Date:
+                </span>
                 <select
                   value={timeFilter}
                   onChange={(e) => setTimeFilter(e.target.value as any)}
@@ -377,7 +416,10 @@ export default function DischargedDirectoryView({
               </div>
 
               {/* Reset Filter Button */}
-              {(searchQuery || wardFilter !== "all" || doctorFilter !== "all" || timeFilter !== "all") && (
+              {(searchQuery ||
+                wardFilter !== "all" ||
+                doctorFilter !== "all" ||
+                timeFilter !== "all") && (
                 <button
                   type="button"
                   onClick={handleResetFilters}
@@ -393,7 +435,9 @@ export default function DischargedDirectoryView({
           {loading ? (
             <div className="p-16 text-center text-[#64748B]">
               <div className="animate-spin text-2xl mb-2">⟳</div>
-              <p className="text-sm font-medium">Loading discharged patients directory...</p>
+              <p className="text-sm font-medium">
+                Loading discharged patients directory...
+              </p>
             </div>
           ) : filteredRecords.length === 0 ? (
             <div className="py-20 px-4 text-center text-[#64748B]">
@@ -402,9 +446,14 @@ export default function DischargedDirectoryView({
                 No Discharged Patients Found
               </h3>
               <p className="text-xs text-[#64748B] max-w-md mx-auto mb-4">
-                No completed inpatient stay matches the selected filters. When an active bed is released, the patient admission is permanently archived here.
+                No completed inpatient stay matches the selected filters. When
+                an active bed is released, the patient admission is permanently
+                archived here.
               </p>
-              {(searchQuery || wardFilter !== "all" || doctorFilter !== "all" || timeFilter !== "all") && (
+              {(searchQuery ||
+                wardFilter !== "all" ||
+                doctorFilter !== "all" ||
+                timeFilter !== "all") && (
                 <button
                   type="button"
                   onClick={handleResetFilters}
@@ -426,7 +475,9 @@ export default function DischargedDirectoryView({
                     <th className="py-3 px-4 w-44">Attending Doctor</th>
                     <th className="py-3 px-4 w-32">Admitted</th>
                     <th className="py-3 px-4 w-32">Discharged</th>
-                    <th className="py-3 px-4 w-28 text-center">Length of Stay</th>
+                    <th className="py-3 px-4 w-28 text-center">
+                      Length of Stay
+                    </th>
                     <th className="py-3 px-4 w-32 text-right">Room Charges</th>
                     <th className="py-3 px-4 w-32 text-center">Status</th>
                     <th className="py-3 px-4 w-28 text-center">Action</th>
@@ -461,7 +512,9 @@ export default function DischargedDirectoryView({
                         <div className="font-mono font-semibold text-[#1E293B] text-[11.5px]">
                           IP-{rec.mrn}
                         </div>
-                        <div className="text-[11px] text-[#64748B]">Inpatient Stay</div>
+                        <div className="text-[11px] text-[#64748B]">
+                          Inpatient Stay
+                        </div>
                       </td>
 
                       {/* Ward / Bed */}
@@ -480,7 +533,9 @@ export default function DischargedDirectoryView({
                           {rec.attendingDoctor || "Dr. M. Anderson"}
                         </div>
                         <div className="text-[11px] text-[#64748B]">
-                          {rec.ward.includes("ICU") ? "Critical Care" : "Internal Medicine"}
+                          {rec.ward.includes("ICU")
+                            ? "Critical Care"
+                            : "Internal Medicine"}
                         </div>
                       </td>
 
@@ -497,7 +552,8 @@ export default function DischargedDirectoryView({
                       {/* Length of Stay */}
                       <td className="py-4 px-4 text-center">
                         <span className="inline-block px-2.5 py-1 rounded bg-[#EFF6FF] text-[#1B4FD8] font-bold text-[11.5px] border border-[#DBEAFE]">
-                          {rec.lengthOfStayDays} Day{rec.lengthOfStayDays > 1 ? "s" : ""}
+                          {rec.lengthOfStayDays} Day
+                          {rec.lengthOfStayDays > 1 ? "s" : ""}
                         </span>
                       </td>
 
@@ -518,8 +574,8 @@ export default function DischargedDirectoryView({
                         <button
                           type="button"
                           onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedRecord(rec);
+                            e.stopPropagation()
+                            setSelectedRecord(rec)
                           }}
                           className="px-2.5 py-1 text-[11px] font-bold text-[#1B4FD8] hover:text-white bg-[#EFF6FF] hover:bg-[#1B4FD8] border border-[#BFDBFE] rounded transition-all"
                         >
@@ -554,7 +610,8 @@ export default function DischargedDirectoryView({
                   {selectedRecord.patientName}
                 </h2>
                 <div className="text-xs text-[#94A3B8] font-mono mt-0.5">
-                  MRN: #{selectedRecord.mrn} · Inpatient Admission IP-{selectedRecord.mrn}
+                  MRN: #{selectedRecord.mrn} · Inpatient Admission IP-
+                  {selectedRecord.mrn}
                 </div>
               </div>
               <button
@@ -588,7 +645,9 @@ export default function DischargedDirectoryView({
                     </div>
                   </div>
                   <div className="bg-white p-2.5 rounded border border-[#E2E8F0]">
-                    <div className="text-[11px] text-[#64748B]">Length of Stay</div>
+                    <div className="text-[11px] text-[#64748B]">
+                      Length of Stay
+                    </div>
                     <div className="text-xs font-extrabold text-[#1B4FD8] mt-0.5">
                       {selectedRecord.lengthOfStayDays} Days
                     </div>
@@ -603,12 +662,20 @@ export default function DischargedDirectoryView({
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 bg-[#F8FAFC] rounded-md border border-[#E2E8F0]">
-                    <span className="text-[11px] text-[#64748B] block">Ward / Floor</span>
-                    <strong className="text-sm text-[#0F172A]">{selectedRecord.ward}</strong>
+                    <span className="text-[11px] text-[#64748B] block">
+                      Ward / Floor
+                    </span>
+                    <strong className="text-sm text-[#0F172A]">
+                      {selectedRecord.ward}
+                    </strong>
                   </div>
                   <div className="p-3 bg-[#F8FAFC] rounded-md border border-[#E2E8F0]">
-                    <span className="text-[11px] text-[#64748B] block">Room & Bed</span>
-                    <strong className="text-sm text-[#0F172A]">Room {selectedRecord.roomNo} · Bed {selectedRecord.bedNo}</strong>
+                    <span className="text-[11px] text-[#64748B] block">
+                      Room & Bed
+                    </span>
+                    <strong className="text-sm text-[#0F172A]">
+                      Room {selectedRecord.roomNo} · Bed {selectedRecord.bedNo}
+                    </strong>
                   </div>
                 </div>
               </div>
@@ -620,11 +687,17 @@ export default function DischargedDirectoryView({
                 </div>
                 <div className="p-3.5 bg-[#F8FAFC] rounded-md border border-[#E2E8F0] flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] text-[#64748B] block">Attending Consultant</span>
-                    <strong className="text-sm text-[#0F172A]">{selectedRecord.attendingDoctor || "Dr. M. Anderson"}</strong>
+                    <span className="text-[11px] text-[#64748B] block">
+                      Attending Consultant
+                    </span>
+                    <strong className="text-sm text-[#0F172A]">
+                      {selectedRecord.attendingDoctor || "Dr. M. Anderson"}
+                    </strong>
                   </div>
                   <span className="text-xs font-semibold text-[#1B4FD8] bg-[#EFF6FF] px-2.5 py-1 rounded">
-                    {selectedRecord.ward.includes("ICU") ? "Critical Care Specialist" : "Attending Physician"}
+                    {selectedRecord.ward.includes("ICU")
+                      ? "Critical Care Specialist"
+                      : "Attending Physician"}
                   </span>
                 </div>
               </div>
@@ -639,7 +712,8 @@ export default function DischargedDirectoryView({
                     Physician Discharge Disposition:
                   </p>
                   <p className="m-0 text-[#334155] whitespace-pre-wrap">
-                    {selectedRecord.dischargeReason || "Patient clinically stabilized, all vital parameters within normal baseline. Cleared for discharge home with oral maintenance regimen."}
+                    {selectedRecord.dischargeReason ||
+                      "Patient clinically stabilized, all vital parameters within normal baseline. Cleared for discharge home with oral maintenance regimen."}
                   </p>
                 </div>
               </div>
@@ -651,7 +725,8 @@ export default function DischargedDirectoryView({
                     Total Inpatient Room Charges
                   </div>
                   <div className="text-xs text-[#15803D] mt-0.5">
-                    {selectedRecord.lengthOfStayDays} days room accommodation fee
+                    {selectedRecord.lengthOfStayDays} days room accommodation
+                    fee
                   </div>
                 </div>
                 <div className="text-xl font-mono font-extrabold text-[#14532D]">
@@ -681,5 +756,5 @@ export default function DischargedDirectoryView({
         </div>
       )}
     </div>
-  );
+  )
 }

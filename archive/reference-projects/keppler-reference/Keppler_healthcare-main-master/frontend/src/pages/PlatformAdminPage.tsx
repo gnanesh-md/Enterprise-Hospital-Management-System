@@ -1,24 +1,23 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { Button, Input, Label, Tabs, TabsTrigger } from "../components/ui";
+import { useState } from "react"
+import type { FormEvent } from "react"
+import { Button, Input, Label, Tabs, TabsTrigger } from "../components/ui"
 
 type Props = {
-  initialHospitalCode: string;
-  onCreateHospital: (event: FormEvent<HTMLFormElement>) => void;
-  onSetupHospitalAdmin: (event: FormEvent<HTMLFormElement>) => void;
-  onResetHospitalAdminPassword: (event: FormEvent<HTMLFormElement>) => void;
-  onToggleHospitalAccess: (event: FormEvent<HTMLFormElement>) => void;
-};
+  initialHospitalCode: string
+  onCreateHospital: (event: FormEvent<HTMLFormElement>) => void
+  onSetupHospitalAdmin: (event: FormEvent<HTMLFormElement>) => void
+  onResetHospitalAdminPassword: (event: FormEvent<HTMLFormElement>) => void
+  onToggleHospitalAccess: (event: FormEvent<HTMLFormElement>) => void
+}
 
-type AdminAction =
-  "create-hospital" | "onboard-admin" | "reset-password" | "toggle-access";
+type AdminAction = "create-hospital" | "onboard-admin" | "reset-password" | "toggle-access"
 
-const ACTIONS: { id: AdminAction; label: string }[] = [
+const ACTIONS: { id: AdminAction label: string }[] = [
   { id: "create-hospital", label: "Add Hospital" },
   { id: "onboard-admin", label: "Onboard Admin" },
   { id: "reset-password", label: "Reset Password" },
   { id: "toggle-access", label: "Enable / Disable" },
-];
+]
 
 export default function PlatformAdminPage({
   initialHospitalCode,
@@ -28,7 +27,7 @@ export default function PlatformAdminPage({
   onToggleHospitalAccess,
 }: Props) {
   const [activeAction, setActiveAction] =
-    useState<AdminAction>("create-hospital");
+    useState<AdminAction>("create-hospital")
 
   return (
     <div className="auth-page">
@@ -224,5 +223,5 @@ export default function PlatformAdminPage({
         </p>
       </div>
     </div>
-  );
+  )
 }

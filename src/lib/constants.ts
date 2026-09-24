@@ -16,9 +16,9 @@
 // Same-origin settles all three. VITE_API_BASE still overrides it at build time
 // (see .env.production, for the Cloudflare Pages deploy, where the backend is a
 // Cloudflare Tunnel URL rather than something this server can proxy).
-const API_BASE_OVERRIDE = import.meta.env.VITE_API_BASE as string | undefined;
-export const API_BASE = API_BASE_OVERRIDE || "/hms-api";
-export const SYMPTOM_API_BASE = API_BASE_OVERRIDE || "/hms-api";
+const API_BASE_OVERRIDE = import.meta.env.VITE_API_BASE as string | undefined
+export const API_BASE = API_BASE_OVERRIDE || "/hms-api"
+export const SYMPTOM_API_BASE = API_BASE_OVERRIDE || "/hms-api"
 
 export const SUPPORTED_DOCUMENT_EXTENSIONS = [
   "pdf",
@@ -32,16 +32,16 @@ export const SUPPORTED_DOCUMENT_EXTENSIONS = [
   "gif",
   "heic",
   "heif",
-];
+]
 
-const SUPPORTED_DOCUMENT_EXTENSION_SET = new Set(SUPPORTED_DOCUMENT_EXTENSIONS);
+const SUPPORTED_DOCUMENT_EXTENSION_SET = new Set(SUPPORTED_DOCUMENT_EXTENSIONS)
 
 export const SUPPORTED_DOCUMENT_ACCEPT = SUPPORTED_DOCUMENT_EXTENSIONS.map(
   (ext) => `.${ext}`,
-).join(",");
+).join(",")
 
 export const isSupportedDocumentFile = (file: File) => {
-  const parts = file.name.toLowerCase().split(".");
-  const ext = parts.length > 1 ? parts[parts.length - 1] : "";
-  return SUPPORTED_DOCUMENT_EXTENSION_SET.has(ext);
-};
+  const parts = file.name.toLowerCase().split(".")
+  const ext = parts.length > 1 ? parts[parts.length - 1] : ""
+  return SUPPORTED_DOCUMENT_EXTENSION_SET.has(ext)
+}

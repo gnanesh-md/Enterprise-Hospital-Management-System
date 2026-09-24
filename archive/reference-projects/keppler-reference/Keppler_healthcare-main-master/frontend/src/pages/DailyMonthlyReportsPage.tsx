@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useState, useEffect, useMemo } from "react"
+import type { Dispatch, SetStateAction } from "react"
 import {
   Button,
   Card,
@@ -12,37 +12,37 @@ import {
   Table,
   TableRow,
   TableCell,
-} from "../components/ui";
-import { apiFetch, reportError } from "../lib/api";
-import type { Notice } from "../types";
+} from "../components/ui"
+import { apiFetch, reportError } from "../lib/api"
+import type { Notice } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  onNavigate?: (page: string) => void;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  onNavigate?: (page: string) => void
+}
 
 type DailyRecord = {
-  id: string;
-  patientName: string;
-  patientId: string;
-  paymentMethod: string;
-  module: string;
-  amount: number;
-  date: string;
-};
+  id: string
+  patientName: string
+  patientId: string
+  paymentMethod: string
+  module: string
+  amount: number
+  date: string
+}
 
 const PAYMENT_METHODS = [
   { name: "Cash", icon: "💵", color: "#10b981" },
   { name: "Card", icon: "💳", color: "#3b82f6" },
   { name: "UPI", icon: "📱", color: "#8b5cf6" },
   { name: "Bank Transfer", icon: "🏦", color: "#0ea5e9" },
-];
+]
 
 const MODULES = [
   { label: "OP / Billing", color: "#2563eb" },
   { label: "IP / Bed Charges", color: "#f59e0b" },
   { label: "Pharmacy", color: "#0ea5e9" },
-];
+]
 
 export default function DailyMonthlyReportsPage({
   setNotice,
@@ -50,12 +50,12 @@ export default function DailyMonthlyReportsPage({
 }: Props) {
   const [selectDate, setSelectDate] = useState(
     new Date().toISOString().split("T")[0],
-  );
-  const [period, setPeriod] = useState<"Daily" | "Monthly">("Daily");
-  const [records, setRecords] = useState<DailyRecord[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState("");
-  const [filterType, setFilterType] = useState<"method" | "module">("method");
+  )
+  const [period, setPeriod] = useState<"Daily" | "Monthly">("Daily")
+  const [records, setRecords] = useState<DailyRecord[]>([])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedFilter, setSelectedFilter] = useState("")
+  const [filterType, setFilterType] = useState<"method" | "module">("method")
 
   const normalizeModeDisplay = (mode: string): string => {
     const map: Record<string, string> = {
@@ -63,29 +63,29 @@ export default function DailyMonthlyReportsPage({
       card: "Card",
       upi: "UPI",
       bank: "Bank Transfer",
-    };
-    return map[mode?.toLowerCase()] || mode || "Cash";
-  };
+    }
+    return map[mode?.toLowerCase()] || mode || "Cash"
+  }
 
   const fetchRecords = async () => {
     // Fetched independently -- a permission/hospital-scope error on one
     // (previously silently swallowed by an unchecked `.ok` check, which just
     // rendered ₹0 with no indication why) must not blank out the other.
-    let paymentRecords: DailyRecord[] = [];
+    let paymentRecords: DailyRecord[] = []
     try {
-      const data = await apiFetch<{ payments: any[] }>("/api/billing/payments");
+      const data = await apiFetch<{ payments: any[] }>("/api/billing/payments")
       paymentRecords = (data.payments || [])
         .filter((p) => {
-          const paymentFor = p.payment_for || p.paymentFor || "";
+          const paymentFor = p.payment_for || p.paymentFor || ""
           // Only OP/IP payments exist here -- pharmacy revenue is tracked
           // entirely in pharmacy_sales (merged in below), never as a billed
           // invoice payment, and lab/diagnostics is no longer a module in
           // this app, so both are excluded here rather than silently
           // counted under an unlabeled bucket.
-          return paymentFor === "OP" || paymentFor === "IP";
+          return paymentFor === "OP" || paymentFor === "IP"
         })
         .map((p) => {
-          const paymentFor = p.payment_for || p.paymentFor || "";
+          const paymentFor = p.payment_for || p.paymentFor || ""
           return {
             id: String(p.id),
             patientName: p.patient_name || p.patientName || "Unknown",
@@ -94,15 +94,15 @@ export default function DailyMonthlyReportsPage({
             module: paymentFor === "IP" ? "IP / Bed Charges" : "OP / Billing",
             amount: parseFloat(p.amount) || 0,
             date: p.date || "",
-          };
-        });
+          }
+        })
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to load recorded payments.");
+      reportError(setNotice, error, "Failed to load recorded payments.")
     }
 
-    let pharmacyRecords: DailyRecord[] = [];
+    let pharmacyRecords: DailyRecord[] = []
     try {
-      const data = await apiFetch<{ sales: any[] }>("/api/pharmacy/sales");
+      const data = await apiFetch<{ sales: any[] }>("/api/pharmacy/sales")
       pharmacyRecords = (data.sales || []).map((sale) => ({
         id: `pharmacy-${sale.id}`,
         patientName: sale.patient_name || sale.patient_id || "Walk-in",
@@ -118,76 +118,77 @@ export default function DailyMonthlyReportsPage({
           (sale.sold_at || "").split("T")[0] ||
           (sale.sold_at || "").split(" ")[0] ||
           "",
-      }));
+      }))
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to load pharmacy sales.");
+      reportError(setNotice, error, "Failed to load pharmacy sales.")
     }
 
-    setRecords([...paymentRecords, ...pharmacyRecords]);
-  };
+    setRecords([...paymentRecords, ...pharmacyRecords])
+  }
 
   useEffect(() => {
-    fetchRecords();
-  }, []);
+    fetchRecords()
+  }, [])
 
   // The Daily/Monthly toggle + date picker previously didn't filter
   // anything -- every total on this page was all-time regardless of what
   // was selected, silently. This is what makes the picker actually mean
   // something.
   const periodRecords = useMemo(() => {
-    if (!selectDate) return records;
-    const bucketKey = period === "Monthly" ? selectDate.slice(0, 7) : selectDate;
+    if (!selectDate) return records
+    const bucketKey = period === "Monthly" ? selectDate.slice(0, 7) : selectDate
     return records.filter((r) => {
-      if (!r.date) return false;
-      const parsed = new Date(r.date);
-      if (Number.isNaN(parsed.getTime())) return false;
-      const key = period === "Monthly"
-        ? parsed.toISOString().slice(0, 7)
-        : parsed.toISOString().slice(0, 10);
-      return key === bucketKey;
-    });
-  }, [records, selectDate, period]);
+      if (!r.date) return false
+      const parsed = new Date(r.date)
+      if (Number.isNaN(parsed.getTime())) return false
+      const key =
+        period === "Monthly"
+          ? parsed.toISOString().slice(0, 7)
+          : parsed.toISOString().slice(0, 10)
+      return key === bucketKey
+    })
+  }, [records, selectDate, period])
 
-  const formatCurrency = (val: number) => `₹${val.toLocaleString("en-IN")}`;
+  const formatCurrency = (val: number) => `₹${val.toLocaleString("en-IN")}`
 
   const getRecordsForMethod = (method: string) =>
-    periodRecords.filter((r) => r.paymentMethod === method);
+    periodRecords.filter((r) => r.paymentMethod === method)
 
   const getAmountForMethod = (method: string) =>
-    getRecordsForMethod(method).reduce((s, r) => s + r.amount, 0);
+    getRecordsForMethod(method).reduce((s, r) => s + r.amount, 0)
 
   const getRecordsForModule = (module: string) =>
-    periodRecords.filter((r) => r.module === module);
+    periodRecords.filter((r) => r.module === module)
 
   const getAmountForModule = (module: string) =>
-    getRecordsForModule(module).reduce((s, r) => s + r.amount, 0);
+    getRecordsForModule(module).reduce((s, r) => s + r.amount, 0)
 
-  const totalCollected = periodRecords.reduce((s, r) => s + r.amount, 0);
+  const totalCollected = periodRecords.reduce((s, r) => s + r.amount, 0)
   const maxModuleVal = Math.max(
     ...MODULES.map((m) => getAmountForModule(m.label)),
     1,
-  );
+  )
   const maxMethodVal = Math.max(
     ...PAYMENT_METHODS.map((m) => getAmountForMethod(m.name)),
     1,
-  );
+  )
 
   const openMethodModal = (method: string) => {
-    setSelectedFilter(method);
-    setFilterType("method");
-    setIsModalOpen(true);
-  };
+    setSelectedFilter(method)
+    setFilterType("method")
+    setIsModalOpen(true)
+  }
 
   const openModuleModal = (module: string) => {
-    setSelectedFilter(module);
-    setFilterType("module");
-    setIsModalOpen(true);
-  };
+    setSelectedFilter(module)
+    setFilterType("module")
+    setIsModalOpen(true)
+  }
 
   const filteredRecords =
     filterType === "method"
       ? getRecordsForMethod(selectedFilter)
-      : getRecordsForModule(selectedFilter);
+      : getRecordsForModule(selectedFilter)
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -462,8 +463,8 @@ export default function DailyMonthlyReportsPage({
               }}
             >
               {MODULES.map((mod, idx) => {
-                const total = getAmountForModule(mod.label);
-                const pct = Math.round((total / maxModuleVal) * 100);
+                const total = getAmountForModule(mod.label)
+                const pct = Math.round((total / maxModuleVal) * 100)
                 return (
                   <div
                     key={mod.label}
@@ -536,7 +537,7 @@ export default function DailyMonthlyReportsPage({
                       ›
                     </span>
                   </div>
-                );
+                )
               })}
             </div>
           </div>
@@ -601,8 +602,8 @@ export default function DailyMonthlyReportsPage({
               }}
             >
               {PAYMENT_METHODS.map((method, idx) => {
-                const total = getAmountForMethod(method.name);
-                const txCount = getRecordsForMethod(method.name).length;
+                const total = getAmountForMethod(method.name)
+                const txCount = getRecordsForMethod(method.name).length
                 return (
                   <div
                     key={method.name}
@@ -692,7 +693,7 @@ export default function DailyMonthlyReportsPage({
                       </span>
                     </div>
                   </div>
-                );
+                )
               })}
             </div>
 
@@ -791,12 +792,12 @@ export default function DailyMonthlyReportsPage({
               {Object.values(
                 filteredRecords.reduce(
                   (acc, r) => {
-                    const key = r.patientId || r.patientName;
-                    if (!acc[key]) acc[key] = { ...r, amount: 0 };
-                    acc[key].amount += Number(r.amount);
-                    return acc;
+                    const key = r.patientId || r.patientName
+                    if (!acc[key]) acc[key] = { ...r, amount: 0 }
+                    acc[key].amount += Number(r.amount)
+                    return acc
                   },
-                  {} as Record<string, (typeof filteredRecords)[0]>,
+                  {} as Record<string, typeof filteredRecords[0]>,
                 ),
               ).map((r, i) => (
                 <TableRow key={r.id}>
@@ -823,5 +824,5 @@ export default function DailyMonthlyReportsPage({
         )}
       </Modal>
     </div>
-  );
+  )
 }

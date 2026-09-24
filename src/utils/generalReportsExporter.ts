@@ -5,79 +5,79 @@
  */
 
 export interface ExportColumn {
-  header: string;
-  key: string;
-  render?: (val: any, row: any) => string;
+  header: string
+  key: string
+  render?: (val: any, row: any) => string
 }
 
 export interface GenericReportExportData {
-  reportTitle: string;
-  dateRangeLabel: string;
-  generatedBy?: string;
-  departmentFilter?: string;
-  doctorFilter?: string;
-  statusFilter?: string;
-  kpis: { label: string; value: string | number; change?: string }[];
-  columns: ExportColumn[];
-  records: any[];
+  reportTitle: string
+  dateRangeLabel: string
+  generatedBy?: string
+  departmentFilter?: string
+  doctorFilter?: string
+  statusFilter?: string
+  kpis: { label: string ;value: string | number ;change?: string }[]
+  columns: ExportColumn[]
+  records: any[]
 }
 
 /**
  * Clean CSV export with hospital branding, metadata header, KPI block, and table
  */
 export function exportGenericReportCsv(data: GenericReportExportData): void {
-  const lines: string[] = [];
+  const lines: string[] = []
 
-  lines.push(`"IMPERIAL HOSPITALS - ENTERPRISE MANAGEMENT SYSTEM"`);
-  lines.push(`"A UNIT OF MUKUNDA HEALTHCARE PRIVATE LIMITED - BHIMAVARAM"`);
-  lines.push(`"Report:","${data.reportTitle}"`);
-  lines.push(`"Generated At:","${new Date().toLocaleString()}"`);
-  lines.push(`"Date Range:","${data.dateRangeLabel}"`);
-  lines.push(`"Department Filter:","${data.departmentFilter || "All"}"`);
-  if (data.doctorFilter) lines.push(`"Doctor Filter:","${data.doctorFilter}"`);
-  if (data.statusFilter) lines.push(`"Status Filter:","${data.statusFilter}"`);
-  lines.push(``);
+  lines.push(`"IMPERIAL HOSPITALS - ENTERPRISE MANAGEMENT SYSTEM"`)
+  lines.push(`"A UNIT OF MUKUNDA HEALTHCARE PRIVATE LIMITED - BHIMAVARAM"`)
+  lines.push(`"Report:","${data.reportTitle}"`)
+  lines.push(`"Generated At:","${new Date().toLocaleString()}"`)
+  lines.push(`"Date Range:","${data.dateRangeLabel}"`)
+  lines.push(`"Department Filter:","${data.departmentFilter || "All"}"`)
+  if (data.doctorFilter) lines.push(`"Doctor Filter:","${data.doctorFilter}"`)
+  if (data.statusFilter) lines.push(`"Status Filter:","${data.statusFilter}"`)
+  lines.push(``)
 
-  lines.push(`"--- EXECUTIVE KPI SUMMARY ---"`);
+  lines.push(`"--- EXECUTIVE KPI SUMMARY ---"`)
   data.kpis.forEach((kpi) => {
     lines.push(
       `"${kpi.label}","${kpi.value}","${
         kpi.change ? kpi.change + " vs last period" : ""
       }"`,
-    );
-  });
-  lines.push(``);
+    )
+  })
+  lines.push(``)
 
-  lines.push(`"--- ITEMIZED REPORT RECORDS ---"`);
+  lines.push(`"--- ITEMIZED REPORT RECORDS ---"`)
   const headerRow = data.columns
     .map((c) => `"${c.header.replace(/"/g, '""')}"`)
-    .join(",");
-  lines.push(headerRow);
+    .join(",")
+  lines.push(headerRow)
 
   data.records.forEach((row) => {
     const rowValues = data.columns.map((col) => {
-      let val = row[col.key];
+      let val = row[col.key]
       if (col.render) {
-        val = col.render(val, row);
+        val = col.render(val, row)
       } else if (val === null || val === undefined) {
-        val = "";
+        val = ""
       }
-      return `"${String(val).replace(/"/g, '""')}"`;
-    });
-    lines.push(rowValues.join(","));
-  });
+      return `"${String(val).replace(/"/g, '""')}"`
+    })
+    lines.push(rowValues.join(","))
+  })
 
-  const csvContent = "\uFEFF" + lines.join("\r\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  const filename = `${data.reportTitle.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${new Date().toISOString().split("T")[0]}.csv`;
-  link.setAttribute("download", filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  const csvContent = "\uFEFF" + lines.join("\r\n")
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.setAttribute("href", url)
+  const filename = `${data.reportTitle.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${new Date().toISOString().split("T")[0]}.csv`
+  link.setAttribute("download", filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 /**
@@ -98,7 +98,7 @@ export function exportGenericReportExcel(data: GenericReportExportData): void {
     </td>
   `,
     )
-    .join("");
+    .join("")
 
   const tableHeaders = data.columns
     .map(
@@ -108,25 +108,25 @@ export function exportGenericReportExcel(data: GenericReportExportData): void {
     </th>
   `,
     )
-    .join("");
+    .join("")
 
   const tableRows = data.records
     .map((row, idx) => {
-      const bg = idx % 2 === 0 ? "#FFFFFF" : "#F8FAFC";
+      const bg = idx % 2 === 0 ? "#FFFFFF" : "#F8FAFC"
       const cells = data.columns
         .map((col) => {
-          let val = row[col.key];
+          let val = row[col.key]
           if (col.render) {
-            val = col.render(val, row);
+            val = col.render(val, row)
           } else if (val === null || val === undefined) {
-            val = "-";
+            val = "-"
           }
-          return `<td style="padding: 8px 10px; font-size: 11px; color: #334155; border: 1px solid #E2E8F0; background-color: ${bg};">${String(val)}</td>`;
+          return `<td style="padding: 8px 10px; font-size: 11px; color: #334155; border: 1px solid #E2E8F0; background-color: ${bg};">${String(val)}</td>`
         })
-        .join("");
-      return `<tr>${cells}</tr>`;
+        .join("")
+      return `<tr>${cells}</tr>`
     })
-    .join("");
+    .join("")
 
   const excelHtml = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -158,37 +158,37 @@ export function exportGenericReportExcel(data: GenericReportExportData): void {
         </table>
       </body>
     </html>
-  `;
+  `
 
   const blob = new Blob([excelHtml], {
     type: "application/vnd.ms-excel;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  const filename = `${data.reportTitle.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${new Date().toISOString().split("T")[0]}.xls`;
-  link.setAttribute("download", filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.setAttribute("href", url)
+  const filename = `${data.reportTitle.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${new Date().toISOString().split("T")[0]}.xls`
+  link.setAttribute("download", filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 /**
  * Clean isolated iframe printing ensuring zero background clipping
  */
 export function printGenericReport(data: GenericReportExportData): void {
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-  document.body.appendChild(iframe);
+  const iframe = document.createElement("iframe")
+  iframe.style.position = "fixed"
+  iframe.style.right = "0"
+  iframe.style.bottom = "0"
+  iframe.style.width = "0"
+  iframe.style.height = "0"
+  iframe.style.border = "0"
+  document.body.appendChild(iframe)
 
-  const doc = iframe.contentWindow?.document;
-  if (!doc) return;
+  const doc = iframe.contentWindow?.document
+  if (!doc) return
 
   const kpisHtml = data.kpis
     .map(
@@ -204,7 +204,7 @@ export function printGenericReport(data: GenericReportExportData): void {
     </div>
   `,
     )
-    .join("");
+    .join("")
 
   const headersHtml = data.columns
     .map(
@@ -212,27 +212,27 @@ export function printGenericReport(data: GenericReportExportData): void {
     <th style="background: #0F172A; color: white; padding: 6px 8px; font-size: 10px; text-align: left;">${c.header}</th>
   `,
     )
-    .join("");
+    .join("")
 
   const rowsHtml = data.records
     .map((r, i) => {
-      const bg = i % 2 === 0 ? "#FFFFFF" : "#F8FAFC";
+      const bg = i % 2 === 0 ? "#FFFFFF" : "#F8FAFC"
       const cells = data.columns
         .map((col) => {
-          let val = r[col.key];
+          let val = r[col.key]
           if (col.render) {
-            val = col.render(val, r);
+            val = col.render(val, r)
           } else if (val === null || val === undefined) {
-            val = "-";
+            val = "-"
           }
-          return `<td style="padding: 6px 8px; font-size: 9.5px; border-bottom: 1px solid #E2E8F0; background: ${bg}; color: #334155;">${String(val)}</td>`;
+          return `<td style="padding: 6px 8px; font-size: 9.5px; border-bottom: 1px solid #E2E8F0; background: ${bg}; color: #334155;">${String(val)}</td>`
         })
-        .join("");
-      return `<tr>${cells}</tr>`;
+        .join("")
+      return `<tr>${cells}</tr>`
     })
-    .join("");
+    .join("")
 
-  doc.open();
+  doc.open()
   doc.write(`
     <!DOCTYPE html>
     <html>
@@ -273,90 +273,90 @@ export function printGenericReport(data: GenericReportExportData): void {
         </table>
       </body>
     </html>
-  `);
-  doc.close();
+  `)
+  doc.close()
 
   setTimeout(() => {
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
+    iframe.contentWindow?.focus()
+    iframe.contentWindow?.print()
     setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1000);
-  }, 300);
+      document.body.removeChild(iframe)
+    }, 1000)
+  }, 300)
 }
 
 /**
  * Open print-ready PDF preview window
  */
 export function exportGenericReportPdf(data: GenericReportExportData): void {
-  printGenericReport(data);
+  printGenericReport(data)
 }
 
 export interface PatientClinicalReportData {
   item: {
-    id: string;
-    patientName: string;
-    umr: string;
-    department: string;
-    visitType: string;
-    doctor: string;
-    status: string;
-    dateTime: string;
-  };
-  age: number | string;
-  sex: string;
-  phone: string;
-  bloodGroup: string;
-  address: string;
+    id: string
+    patientName: string
+    umr: string
+    department: string
+    visitType: string
+    doctor: string
+    status: string
+    dateTime: string
+  }
+  age: number | string
+  sex: string
+  phone: string
+  bloodGroup: string
+  address: string
   vitals: {
-    bp: string;
-    pulse: string;
-    temp: string;
-    spo2: string;
-    respiratoryRate: string;
-    weight: string;
-  };
-  chiefComplaint: string;
-  symptoms: string[];
-  diagnosis: string;
-  icd10: string;
-  assessment?: string;
-  advice?: string;
+    bp: string
+    pulse: string
+    temp: string
+    spo2: string
+    respiratoryRate: string
+    weight: string
+  }
+  chiefComplaint: string
+  symptoms: string[]
+  diagnosis: string
+  icd10: string
+  assessment?: string
+  advice?: string
   medications: Array<{
-    medicine: string;
-    dosage: string;
-    frequency: string;
-    duration: string;
-    instructions: string;
-  }>;
+    medicine: string
+    dosage: string
+    frequency: string
+    duration: string
+    instructions: string
+  }>
   investigations: Array<{
-    name: string;
-    category: string;
-    status: string;
-    priority: string;
-  }>;
+    name: string
+    category: string
+    status: string
+    priority: string
+  }>
   bedDetails?: {
-    ward: string;
-    roomNo: string;
-    bedNo: string;
-    bedType: string;
-    admissionDate: string;
-    dischargeDate?: string;
-    los?: number;
-    charges?: number;
-  } | null;
+    ward: string
+    roomNo: string
+    bedNo: string
+    bedType: string
+    admissionDate: string
+    dischargeDate?: string
+    los?: number
+    charges?: number
+  } | null
   erDetails?: {
-    triageCategory: string;
-    bedLabel: string;
-    disposition: string;
-  } | null;
+    triageCategory: string
+    bedLabel: string
+    disposition: string
+  } | null
   billing?: {
-    consultationFee: number;
-    labFee: number;
-    total: number;
-    status: string;
-    mode: string;
-  } | null;
+    consultationFee: number
+    labFee: number
+    total: number
+    status: string
+    mode: string
+  } | null
 }
 
 /**
@@ -379,7 +379,7 @@ export function generatePatientClinicalHtml(
     </tr>
   `,
     )
-    .join("");
+    .join("")
 
   const labRows = data.investigations
     .map(
@@ -394,7 +394,7 @@ export function generatePatientClinicalHtml(
     </tr>
   `,
     )
-    .join("");
+    .join("")
 
   const bedInfo = data.bedDetails
     ? `
@@ -408,7 +408,7 @@ export function generatePatientClinicalHtml(
       </div>
     </div>
   `
-    : "";
+    : ""
 
   const erInfo = data.erDetails
     ? `
@@ -421,7 +421,7 @@ export function generatePatientClinicalHtml(
       </div>
     </div>
   `
-    : "";
+    : ""
 
   return `
     <!DOCTYPE html>
@@ -807,7 +807,7 @@ export function generatePatientClinicalHtml(
         </div>
       </body>
     </html>
-  `;
+  `
 }
 
 /**
@@ -816,30 +816,30 @@ export function generatePatientClinicalHtml(
 export function printPatientClinicalReport(
   data: PatientClinicalReportData,
 ): void {
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-  document.body.appendChild(iframe);
+  const iframe = document.createElement("iframe")
+  iframe.style.position = "fixed"
+  iframe.style.right = "0"
+  iframe.style.bottom = "0"
+  iframe.style.width = "0"
+  iframe.style.height = "0"
+  iframe.style.border = "0"
+  document.body.appendChild(iframe)
 
-  const doc = iframe.contentWindow?.document;
-  if (!doc) return;
+  const doc = iframe.contentWindow?.document
+  if (!doc) return
 
-  const html = generatePatientClinicalHtml(data);
-  doc.open();
-  doc.write(html);
-  doc.close();
+  const html = generatePatientClinicalHtml(data)
+  doc.open()
+  doc.write(html)
+  doc.close()
 
   setTimeout(() => {
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
+    iframe.contentWindow?.focus()
+    iframe.contentWindow?.print()
     setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1500);
-  }, 350);
+      document.body.removeChild(iframe)
+    }, 1500)
+  }, 350)
 }
 
 /**
@@ -848,14 +848,14 @@ export function printPatientClinicalReport(
 export function downloadPatientClinicalPdf(
   data: PatientClinicalReportData,
 ): void {
-  const win = window.open("", "_blank");
+  const win = window.open("", "_blank")
   if (!win) {
     // Fallback to iframe print
-    printPatientClinicalReport(data);
-    return;
+    printPatientClinicalReport(data)
+    return
   }
-  const html = generatePatientClinicalHtml(data);
-  win.document.open();
+  const html = generatePatientClinicalHtml(data)
+  win.document.open()
   win.document.write(`
     ${html}
     <script>
@@ -865,31 +865,31 @@ export function downloadPatientClinicalPdf(
         }, 400);
       };
     </script>
-  `);
-  win.document.close();
+  `)
+  win.document.close()
 }
 
 export interface DoctorReportData {
-  id: string;
-  doctor: string;
-  department: string;
-  qualification: string;
-  room?: string;
-  staffId?: string;
-  status: string;
-  dateRangeLabel: string;
-  opVisits: number;
-  erCases: number;
-  ipPatients: number;
-  totalConsultations: number;
+  id: string
+  doctor: string
+  department: string
+  qualification: string
+  room?: string
+  staffId?: string
+  status: string
+  dateRangeLabel: string
+  opVisits: number
+  erCases: number
+  ipPatients: number
+  totalConsultations: number
   recentCases: Array<{
-    date: string;
-    patientName: string;
-    umr: string;
-    careStream: string;
-    diagnosis: string;
-    status: string;
-  }>;
+    date: string
+    patientName: string
+    umr: string
+    careStream: string
+    diagnosis: string
+    status: string
+  }>
 }
 
 /**
@@ -914,27 +914,27 @@ export function resolveDoctorReportData(
       ipPatients: 0,
       totalConsultations: 0,
       recentCases: [],
-    };
+    }
   }
 
   const doctorName =
-    raw.doctor || raw.name || raw.doctorName || "Dr. Medical Specialist";
+    raw.doctor || raw.name || raw.doctorName || "Dr. Medical Specialist"
   const department =
-    raw.department || raw.specialty || raw.dept || "General Medicine";
-  const qualification = raw.qualification || "MD, MBBS";
-  const room = raw.room || "Room 101";
-  const staffId = raw.staffId || raw.id || "STF-DOC-01";
-  const status = raw.status || "Active";
-  const opVisits = Number(raw.opVisits ?? raw.opCount ?? 0);
-  const erCases = Number(raw.erCases ?? raw.erCount ?? 0);
-  const ipPatients = Number(raw.ipPatients ?? raw.ipCount ?? 0);
+    raw.department || raw.specialty || raw.dept || "General Medicine"
+  const qualification = raw.qualification || "MD, MBBS"
+  const room = raw.room || "Room 101"
+  const staffId = raw.staffId || raw.id || "STF-DOC-01"
+  const status = raw.status || "Active"
+  const opVisits = Number(raw.opVisits ?? raw.opCount ?? 0)
+  const erCases = Number(raw.erCases ?? raw.erCount ?? 0)
+  const ipPatients = Number(raw.ipPatients ?? raw.ipCount ?? 0)
   const totalConsultations = Number(
     raw.totalConsultations ??
       raw.totalEncounters ??
       raw.totalPatients ??
       opVisits + erCases + ipPatients,
-  );
-  const recentCases = Array.isArray(raw.recentCases) ? raw.recentCases : [];
+  )
+  const recentCases = Array.isArray(raw.recentCases) ? raw.recentCases : []
 
   return {
     id: String(raw.id || staffId),
@@ -950,7 +950,7 @@ export function resolveDoctorReportData(
     ipPatients,
     totalConsultations,
     recentCases,
-  };
+  }
 }
 
 /**
@@ -981,7 +981,7 @@ export function generateDoctorReportHtml(data: DoctorReportData): string {
       `,
           )
           .join("")
-      : `<tr><td colspan="6" style="text-align: center; padding: 12px; color: #94A3B8;">No consultation cases logged in this selected date range.</td></tr>`;
+      : `<tr><td colspan="6" style="text-align: center; padding: 12px; color: #94A3B8;">No consultation cases logged in this selected date range.</td></tr>`
 
   return `
     <!DOCTYPE html>
@@ -1233,50 +1233,50 @@ export function generateDoctorReportHtml(data: DoctorReportData): string {
         </div>
       </body>
     </html>
-  `;
+  `
 }
 
 /**
  * Isolated iframe printing for Physician Clinical Report
  */
 export function printDoctorReport(data: DoctorReportData): void {
-  const iframe = document.createElement("iframe");
-  iframe.style.position = "fixed";
-  iframe.style.right = "0";
-  iframe.style.bottom = "0";
-  iframe.style.width = "0";
-  iframe.style.height = "0";
-  iframe.style.border = "0";
-  document.body.appendChild(iframe);
+  const iframe = document.createElement("iframe")
+  iframe.style.position = "fixed"
+  iframe.style.right = "0"
+  iframe.style.bottom = "0"
+  iframe.style.width = "0"
+  iframe.style.height = "0"
+  iframe.style.border = "0"
+  document.body.appendChild(iframe)
 
-  const doc = iframe.contentWindow?.document;
-  if (!doc) return;
+  const doc = iframe.contentWindow?.document
+  if (!doc) return
 
-  const html = generateDoctorReportHtml(data);
-  doc.open();
-  doc.write(html);
-  doc.close();
+  const html = generateDoctorReportHtml(data)
+  doc.open()
+  doc.write(html)
+  doc.close()
 
   setTimeout(() => {
-    iframe.contentWindow?.focus();
-    iframe.contentWindow?.print();
+    iframe.contentWindow?.focus()
+    iframe.contentWindow?.print()
     setTimeout(() => {
-      document.body.removeChild(iframe);
-    }, 1500);
-  }, 350);
+      document.body.removeChild(iframe)
+    }, 1500)
+  }, 350)
 }
 
 /**
  * Open print-ready PDF window for Physician Clinical Report
  */
 export function downloadDoctorReportPdf(data: DoctorReportData): void {
-  const win = window.open("", "_blank");
+  const win = window.open("", "_blank")
   if (!win) {
-    printDoctorReport(data);
-    return;
+    printDoctorReport(data)
+    return
   }
-  const html = generateDoctorReportHtml(data);
-  win.document.open();
+  const html = generateDoctorReportHtml(data)
+  win.document.open()
   win.document.write(`
     ${html}
     <script>
@@ -1286,6 +1286,6 @@ export function downloadDoctorReportPdf(data: DoctorReportData): void {
         }, 400);
       };
     </script>
-  `);
-  win.document.close();
+  `)
+  win.document.close()
 }

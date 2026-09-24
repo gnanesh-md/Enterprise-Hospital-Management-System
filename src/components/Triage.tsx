@@ -1,91 +1,92 @@
-import React, { useState, useEffect } from "react";
-import { FiArrowLeft, FiRefreshCw, FiUser, FiChevronDown } from "react-icons/fi";
-import { apiFetch, reportError } from "../lib/api";
-import type { Notice } from "../types";
+import React, { useState, useEffect } from "react"
+import { FiArrowLeft } from "react-icons/fi"
+import { apiFetch } from "../lib/api"
+import type { Notice } from "../types"
 import {
   VisitDetailPanel,
   ErErrorBoundary,
   type ErVisitDetail,
   type TriageCategory,
   type ErVisit,
-} from "../pages/ErPage";
-import PrescriptionUploadModal from "./PrescriptionUploadModal";
+} from "../pages/ErPage"
+import PrescriptionUploadModal from "./PrescriptionUploadModal"
 
+// The patient queue/list lives in one place -- the ED Track Board
+// (ErPage.tsx). Triage is reached by clicking "Open" there (App.tsx's
+// onOpenTriage sets selectedTriageVisitId + module="triage") and shows only
+// that one patient's triage content: vitals, the AI Triage Assistant, and
+// doctor assignment, via the same VisitDetailPanel the Track Board itself
+// uses. It does not re-list patients.
 export default function Triage({
   initialVisitId,
   setNotice,
   onNavigate,
 }: {
-  initialVisitId?: number | null;
-  setNotice?: (notice: Notice | null) => void;
-  onNavigate?: (module: string) => void;
+  initialVisitId?: number | null
+  setNotice?: (notice: Notice | null) => void
+  onNavigate?: (module: string) => void
 }) {
-  const [visits, setVisits] = useState<ErVisit[]>([]);
-  const [selectedVisitId, setSelectedVisitId] = useState<number | null>(initialVisitId || null);
-  const [detail, setDetail] = useState<ErVisitDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [categories, setCategories] = useState<TriageCategory[]>([]);
+  const [visits, setVisits] = useState<ErVisit[]>([])
+  const [selectedVisitId, setSelectedVisitId] = useState<number | null>(
+    initialVisitId || null,
+  )
+  const [detail, setDetail] = useState<ErVisitDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [categories, setCategories] = useState<TriageCategory[]>([])
   const [prescriptionTarget, setPrescriptionTarget] = useState<{
-    id: string;
-    name: string;
-    doctorName?: string;
-  } | null>(null);
+    id: string
+    name: string
+    doctorName?: string
+  } | null>(null)
 
   const loadVisitsAndConfig = async () => {
     try {
       const [visitsRes, catsRes] = await Promise.all([
         apiFetch<{ visits: ErVisit[] }>("/api/er/visits?active_only=true"),
         apiFetch<{ categories: TriageCategory[] }>("/api/er/triage-config"),
-      ]);
-      const list = visitsRes?.visits || [];
-      setVisits(list);
-      setCategories(catsRes?.categories || []);
+      ])
+      const list = visitsRes?.visits || []
+      setVisits(list)
+      setCategories(catsRes?.categories || [])
 
       if (initialVisitId && list.some((v) => v.id === initialVisitId)) {
-        setSelectedVisitId(initialVisitId);
-      } else if (!selectedVisitId && list.length > 0) {
-        setSelectedVisitId(list[0].id);
+        setSelectedVisitId(initialVisitId)
       }
     } catch {
       // Standalone mode / offline fallback already handled
     }
-  };
+  }
 
   const loadDetail = async (visitId: number) => {
-    setDetailLoading(true);
+    setDetailLoading(true)
     try {
-      const data = await apiFetch<ErVisitDetail>(`/api/er/visits/${visitId}`);
-      setDetail(data || null);
+      const data = await apiFetch<ErVisitDetail>(`/api/er/visits/${visitId}`)
+      setDetail(data || null)
     } catch {
-      setDetail(null);
+      setDetail(null)
     } finally {
-      setDetailLoading(false);
+      setDetailLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    loadVisitsAndConfig();
-  }, [initialVisitId]);
+    loadVisitsAndConfig()
+  }, [initialVisitId])
 
   useEffect(() => {
     if (selectedVisitId) {
-      loadDetail(selectedVisitId);
+      loadDetail(selectedVisitId)
     }
-  }, [selectedVisitId]);
+  }, [selectedVisitId])
 
   const refreshAfterAction = async () => {
-    await loadVisitsAndConfig();
+    await loadVisitsAndConfig()
     if (selectedVisitId) {
-      await loadDetail(selectedVisitId);
+      await loadDetail(selectedVisitId)
     }
-  };
+  }
 
-  const getPatientDisplayName = (v: ErVisit) => {
-    if (v.is_unknown_patient) return v.unknown_patient_label || "Unidentified Patient";
-    return [v.patient_name, v.patient_last_name].filter(Boolean).join(" ") || v.patient_id || v.visit_no;
-  };
-
-  if (!selectedVisitId && visits.length === 0 && !detailLoading) {
+  if (!selectedVisitId) {
     return (
       <div className="flex-1 bg-[#F0F2F5] p-5 sm:p-6 min-h-full">
         <div className="bg-white border border-[#DDE2EC] rounded p-12 text-center text-[#64748B] shadow-2xs space-y-3">
@@ -93,9 +94,9 @@ export default function Triage({
             🛡️
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">No Active ER Patients</h2>
+            <h2 className="text-base font-bold text-gray-900">No Patient Selected</h2>
             <p className="text-[12.5px] text-[#64748B] mt-1">
-              There are currently no active patients in the emergency triage queue.
+              Open a patient from the ED Track Board to triage them.
             </p>
           </div>
           <button
@@ -103,16 +104,15 @@ export default function Triage({
             onClick={() => onNavigate?.("emergency")}
             className="px-4 py-2 bg-[#1B4FD8] hover:bg-[#1E40AF] text-white font-semibold rounded text-[12px] transition-colors cursor-pointer inline-flex items-center gap-1.5"
           >
-            <FiArrowLeft /> Return to ED Track Board
+            <FiArrowLeft /> Go to ED Track Board
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <div className="flex-1 bg-[#F0F2F5] p-5 sm:p-6 min-h-full space-y-3">
-      {/* Patient Clinical Chart / Visit Detail Panel */}
       {detail ? (
         <ErErrorBoundary onReset={refreshAfterAction}>
           <VisitDetailPanel
@@ -143,7 +143,6 @@ export default function Triage({
         </div>
       )}
 
-      {/* Prescription Upload Modal */}
       {prescriptionTarget && (
         <PrescriptionUploadModal
           patientId={prescriptionTarget.id}
@@ -155,5 +154,5 @@ export default function Triage({
         />
       )}
     </div>
-  );
+  )
 }

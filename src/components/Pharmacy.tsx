@@ -1,4 +1,4 @@
-import PharmacyApp from "./PharmacyModule/PharmacyApp";
+import PharmacyApp from "./PharmacyModule/PharmacyApp"
 
 // The pharmacy screens are reached from the main HMS sidebar, which lists every
 // one of them as a child of "Pharmacy" (see the NAV array in App.tsx). This maps
@@ -27,31 +27,31 @@ const MODULE_TO_PAGE: Record<string, string> = {
   pharmacy_users: "users",
   pharmacy_audit: "audit-log",
   pharmacy_settings: "settings",
-};
+}
 
 const PAGE_TO_MODULE: Record<string, string> = Object.fromEntries(
   Object.entries(MODULE_TO_PAGE).map(([module, page]) => [page, module]),
-);
+)
 
 interface PharmacyProps {
-  activeModule?: string;
-  onNavigate?: (module: string) => void;
+  activeModule?: string
+  onNavigate?: (module: string) => void
 }
 
 export default function Pharmacy({ activeModule, onNavigate }: PharmacyProps) {
-  const page = MODULE_TO_PAGE[activeModule ?? "pharmacy"] ?? "dashboard";
+  const page = MODULE_TO_PAGE[activeModule ?? "pharmacy"] ?? "dashboard"
 
   // In-page navigation (a dashboard tile, a "View all" link, the Ctrl+K search)
   // is reported back as a module key, so the main sidebar highlight follows
   // along instead of drifting out of sync with what is on screen.
   const handleNavigate = (nextPage: string) => {
-    const nextModule = PAGE_TO_MODULE[nextPage];
-    if (nextModule && onNavigate) onNavigate(nextModule);
-  };
+    const nextModule = PAGE_TO_MODULE[nextPage]
+    if (nextModule && onNavigate) onNavigate(nextModule)
+  }
 
   return (
     <div className="w-full h-full overflow-hidden bg-[#F4F6F9]">
       <PharmacyApp page={page} onNavigate={handleNavigate} />
     </div>
-  );
+  )
 }

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Dispatch, FormEvent, SetStateAction } from "react";
-import StatCard from "../components/StatCard";
+import { useEffect, useMemo, useState } from "react"
+import type { Dispatch, FormEvent, SetStateAction } from "react"
+import StatCard from "../components/StatCard"
 import {
   Button,
   Input,
@@ -12,102 +12,102 @@ import {
   Tabs,
   TabsContent,
   TabsTrigger,
-} from "../components/ui";
-import { apiFetch, reportError } from "../lib/api";
-import { formatDate } from "../lib/format";
-import type { Notice } from "../types";
+} from "../components/ui"
+import { apiFetch, reportError } from "../lib/api"
+import { formatDate } from "../lib/format"
+import type { Notice } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+}
 
 type Department = {
-  id: number;
-  department_name?: string;
-  mapped_head_employee_id?: string;
-};
+  id: number
+  department_name?: string
+  mapped_head_employee_id?: string
+}
 
 type Attendance = {
-  id: number;
-  employee_id?: string;
-  attendance_date?: string;
-  status?: string;
-  in_time?: string;
-  out_time?: string;
-};
+  id: number
+  employee_id?: string
+  attendance_date?: string
+  status?: string
+  in_time?: string
+  out_time?: string
+}
 
 type Payroll = {
-  id: number;
-  employee_id?: string;
-  payroll_month?: string;
-  net_salary?: number;
-  paid_status?: string;
-  paid_date?: string;
-};
+  id: number
+  employee_id?: string
+  payroll_month?: string
+  net_salary?: number
+  paid_status?: string
+  paid_date?: string
+}
 
 type LeaveRequest = {
-  id: number;
-  employee_id?: string;
-  leave_type?: string;
-  start_date?: string;
-  end_date?: string;
-  status?: string;
-  decided_by?: string;
-};
+  id: number
+  employee_id?: string
+  leave_type?: string
+  start_date?: string
+  end_date?: string
+  status?: string
+  decided_by?: string
+}
 
 type HrmsData = {
-  departments: Department[];
-  attendance: Attendance[];
-  payroll: Payroll[];
-  leaves: LeaveRequest[];
-};
+  departments: Department[]
+  attendance: Attendance[]
+  payroll: Payroll[]
+  leaves: LeaveRequest[]
+}
 
 const EMPTY_DATA: HrmsData = {
   departments: [],
   attendance: [],
   payroll: [],
   leaves: [],
-};
+}
 
 type AttendanceForm = {
-  id: string;
-  employee_id: string;
-  attendance_date: string;
-  status: "present" | "absent" | "leave";
-  in_time: string;
-  out_time: string;
-};
+  id: string
+  employee_id: string
+  attendance_date: string
+  status: "present" | "absent" | "leave"
+  in_time: string
+  out_time: string
+}
 
 type PayrollForm = {
-  id: string;
-  employee_id: string;
-  payroll_month: string;
-  basic_salary: string;
-  allowances: string;
-  deductions: string;
-  paid_status: "pending" | "paid";
-  paid_date: string;
-};
+  id: string
+  employee_id: string
+  payroll_month: string
+  basic_salary: string
+  allowances: string
+  deductions: string
+  paid_status: "pending" | "paid"
+  paid_date: string
+}
 
 type LeaveForm = {
-  id: string;
-  employee_id: string;
-  leave_type: string;
-  start_date: string;
-  end_date: string;
-  reason: string;
-};
+  id: string
+  employee_id: string
+  leave_type: string
+  start_date: string
+  end_date: string
+  reason: string
+}
 
 type DepartmentForm = {
-  id: string;
-  department_name: string;
-  mapped_head_employee_id: string;
-};
+  id: string
+  department_name: string
+  mapped_head_employee_id: string
+}
 
 type HrmsFilters = {
-  employee_id: string;
-  leave_status: string;
-};
+  employee_id: string
+  leave_status: string
+}
 
 const DEFAULT_ATTENDANCE_FORM: AttendanceForm = {
   id: "",
@@ -116,7 +116,7 @@ const DEFAULT_ATTENDANCE_FORM: AttendanceForm = {
   status: "present",
   in_time: "",
   out_time: "",
-};
+}
 
 const DEFAULT_PAYROLL_FORM: PayrollForm = {
   id: "",
@@ -127,7 +127,7 @@ const DEFAULT_PAYROLL_FORM: PayrollForm = {
   deductions: "0",
   paid_status: "pending",
   paid_date: "",
-};
+}
 
 const DEFAULT_LEAVE_FORM: LeaveForm = {
   id: "",
@@ -136,58 +136,58 @@ const DEFAULT_LEAVE_FORM: LeaveForm = {
   start_date: "",
   end_date: "",
   reason: "",
-};
+}
 
 const DEFAULT_DEPARTMENT_FORM: DepartmentForm = {
   id: "",
   department_name: "",
   mapped_head_employee_id: "",
-};
+}
 
 const DEFAULT_HRMS_FILTERS: HrmsFilters = {
   employee_id: "",
   leave_status: "",
-};
+}
 
 function formatCurrency(amount?: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
-  }).format(amount || 0);
+  }).format(amount || 0)
 }
 
 export default function HrmsPage({ setNotice }: Props) {
-  const [data, setData] = useState<HrmsData>(EMPTY_DATA);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [tab, setTab] = useState("attendance");
+  const [data, setData] = useState<HrmsData>(EMPTY_DATA)
+  const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [tab, setTab] = useState("attendance")
   const [attendanceForm, setAttendanceForm] = useState<AttendanceForm>(
     DEFAULT_ATTENDANCE_FORM,
-  );
+  )
   const [payrollForm, setPayrollForm] =
-    useState<PayrollForm>(DEFAULT_PAYROLL_FORM);
-  const [leaveForm, setLeaveForm] = useState<LeaveForm>(DEFAULT_LEAVE_FORM);
+    useState<PayrollForm>(DEFAULT_PAYROLL_FORM)
+  const [leaveForm, setLeaveForm] = useState<LeaveForm>(DEFAULT_LEAVE_FORM)
   const [departmentForm, setDepartmentForm] = useState<DepartmentForm>(
     DEFAULT_DEPARTMENT_FORM,
-  );
-  const [filters, setFilters] = useState<HrmsFilters>(DEFAULT_HRMS_FILTERS);
-  const [savingAttendance, setSavingAttendance] = useState(false);
-  const [savingPayroll, setSavingPayroll] = useState(false);
-  const [savingLeave, setSavingLeave] = useState(false);
-  const [savingDepartment, setSavingDepartment] = useState(false);
-  const [updatingLeaveId, setUpdatingLeaveId] = useState<number | null>(null);
+  )
+  const [filters, setFilters] = useState<HrmsFilters>(DEFAULT_HRMS_FILTERS)
+  const [savingAttendance, setSavingAttendance] = useState(false)
+  const [savingPayroll, setSavingPayroll] = useState(false)
+  const [savingLeave, setSavingLeave] = useState(false)
+  const [savingDepartment, setSavingDepartment] = useState(false)
+  const [updatingLeaveId, setUpdatingLeaveId] = useState<number | null>(null)
 
   const buildEmployeePath = (path: string, employeeId: string) => {
-    const value = employeeId.trim();
-    if (!value) return path;
-    const params = new URLSearchParams({ employee_id: value });
-    return `${path}?${params.toString()}`;
-  };
+    const value = employeeId.trim()
+    if (!value) return path
+    const params = new URLSearchParams({ employee_id: value })
+    return `${path}?${params.toString()}`
+  }
 
   const loadHrms = async (nextFilters: HrmsFilters = filters) => {
-    setLoading(true);
-    setErrorMessage(null);
+    setLoading(true)
+    setErrorMessage(null)
     try {
       const [departmentsRes, attendanceRes, payrollRes, leavesRes] =
         await Promise.all([
@@ -201,59 +201,59 @@ export default function HrmsPage({ setNotice }: Props) {
           apiFetch<{ leaves?: LeaveRequest[] }>(
             buildEmployeePath("/api/hr/leaves", nextFilters.employee_id),
           ),
-        ]);
+        ])
 
       setData({
         departments: departmentsRes.departments || [],
         attendance: attendanceRes.attendance || [],
         payroll: payrollRes.payroll || [],
         leaves: leavesRes.leaves || [],
-      });
+      })
     } catch (error) {
-      const typedError = error as { message?: string; status?: number };
-      setErrorMessage(typedError.message || "Unable to load HRMS data.");
-      reportError(setNotice, typedError, "Unable to load HRMS data.");
+      const typedError = error as { message?: string status?: number }
+      setErrorMessage(typedError.message || "Unable to load HRMS data.")
+      reportError(setNotice, typedError, "Unable to load HRMS data.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    void loadHrms();
-  }, []);
+    void loadHrms()
+  }, [])
 
   const visibleLeaves = useMemo(() => {
-    if (!filters.leave_status) return data.leaves;
+    if (!filters.leave_status) return data.leaves
     return data.leaves.filter(
       (leave) => (leave.status || "pending") === filters.leave_status,
-    );
-  }, [data.leaves, filters.leave_status]);
+    )
+  }, [data.leaves, filters.leave_status])
 
   const handleFilterSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    await loadHrms(filters);
-  };
+    event.preventDefault()
+    await loadHrms(filters)
+  }
 
   const clearFilters = async () => {
-    setFilters({ ...DEFAULT_HRMS_FILTERS });
-    await loadHrms({ ...DEFAULT_HRMS_FILTERS });
-  };
+    setFilters({ ...DEFAULT_HRMS_FILTERS })
+    await loadHrms({ ...DEFAULT_HRMS_FILTERS })
+  }
 
   const handleAttendanceSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+    event.preventDefault()
     if (!attendanceForm.employee_id.trim() || !attendanceForm.attendance_date) {
       setNotice({
         type: "error",
         message: "Employee ID and attendance date are required.",
-      });
-      return;
+      })
+      return
     }
-    setSavingAttendance(true);
+    setSavingAttendance(true)
     try {
-      const attendanceId = Number(attendanceForm.id);
+      const attendanceId = Number(attendanceForm.id)
       const path = attendanceId
         ? `/api/hr/attendance/${attendanceId}`
-        : "/api/hr/attendance";
+        : "/api/hr/attendance"
       await apiFetch(path, {
         method: attendanceId ? "PUT" : "POST",
         body: JSON.stringify({
@@ -263,29 +263,29 @@ export default function HrmsPage({ setNotice }: Props) {
           in_time: attendanceForm.in_time || undefined,
           out_time: attendanceForm.out_time || undefined,
         }),
-      });
-      setAttendanceForm({ ...DEFAULT_ATTENDANCE_FORM });
+      })
+      setAttendanceForm({ ...DEFAULT_ATTENDANCE_FORM })
       setNotice({
         type: "success",
         message: attendanceId
           ? "Attendance record updated."
           : "Attendance record created.",
-      });
-      await loadHrms(filters);
+      })
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create attendance record.",
-      );
+      )
     } finally {
-      setSavingAttendance(false);
+      setSavingAttendance(false)
     }
-  };
+  }
 
   const handlePayrollSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const basicSalary = Number(payrollForm.basic_salary) || 0;
+    event.preventDefault()
+    const basicSalary = Number(payrollForm.basic_salary) || 0
     if (
       !payrollForm.employee_id.trim() ||
       !payrollForm.payroll_month ||
@@ -294,15 +294,15 @@ export default function HrmsPage({ setNotice }: Props) {
       setNotice({
         type: "error",
         message: "Employee ID, payroll month, and basic salary are required.",
-      });
-      return;
+      })
+      return
     }
-    setSavingPayroll(true);
+    setSavingPayroll(true)
     try {
-      const payrollId = Number(payrollForm.id);
+      const payrollId = Number(payrollForm.id)
       const path = payrollId
         ? `/api/hr/payroll/${payrollId}`
-        : "/api/hr/payroll";
+        : "/api/hr/payroll"
       await apiFetch(path, {
         method: payrollId ? "PUT" : "POST",
         body: JSON.stringify({
@@ -314,28 +314,28 @@ export default function HrmsPage({ setNotice }: Props) {
           paid_status: payrollForm.paid_status,
           paid_date: payrollForm.paid_date || undefined,
         }),
-      });
-      setPayrollForm({ ...DEFAULT_PAYROLL_FORM });
+      })
+      setPayrollForm({ ...DEFAULT_PAYROLL_FORM })
       setNotice({
         type: "success",
         message: payrollId
           ? "Payroll record updated."
           : "Payroll record created.",
-      });
-      await loadHrms(filters);
+      })
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create payroll record.",
-      );
+      )
     } finally {
-      setSavingPayroll(false);
+      setSavingPayroll(false)
     }
-  };
+  }
 
   const handleLeaveSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+    event.preventDefault()
     if (
       !leaveForm.employee_id.trim() ||
       !leaveForm.start_date ||
@@ -344,15 +344,15 @@ export default function HrmsPage({ setNotice }: Props) {
       setNotice({
         type: "error",
         message: "Employee ID, start date, and end date are required.",
-      });
-      return;
+      })
+      return
     }
-    setSavingLeave(true);
+    setSavingLeave(true)
     try {
-      const leaveId = Number(leaveForm.id);
+      const leaveId = Number(leaveForm.id)
       const path = leaveId
         ? `/api/hr/leaves/${leaveId}/status`
-        : "/api/hr/leaves";
+        : "/api/hr/leaves"
       const body = leaveId
         ? {
             status:
@@ -364,43 +364,43 @@ export default function HrmsPage({ setNotice }: Props) {
             start_date: leaveForm.start_date,
             end_date: leaveForm.end_date,
             reason: leaveForm.reason.trim() || undefined,
-          };
+          }
       await apiFetch(path, {
         method: "POST",
         body: JSON.stringify(body),
-      });
+      })
       if (leaveId) {
-        setLeaveForm({ ...DEFAULT_LEAVE_FORM });
-        setNotice({ type: "success", message: "Leave request updated." });
+        setLeaveForm({ ...DEFAULT_LEAVE_FORM })
+        setNotice({ type: "success", message: "Leave request updated." })
       } else {
-        setLeaveForm({ ...DEFAULT_LEAVE_FORM });
-        setNotice({ type: "success", message: "Leave request submitted." });
+        setLeaveForm({ ...DEFAULT_LEAVE_FORM })
+        setNotice({ type: "success", message: "Leave request submitted." })
       }
-      await loadHrms(filters);
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create leave request.",
-      );
+      )
     } finally {
-      setSavingLeave(false);
+      setSavingLeave(false)
     }
-  };
+  }
 
   const handleDepartmentSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const departmentName = departmentForm.department_name.trim();
+    event.preventDefault()
+    const departmentName = departmentForm.department_name.trim()
     if (!departmentName) {
-      setNotice({ type: "error", message: "Department name is required." });
-      return;
+      setNotice({ type: "error", message: "Department name is required." })
+      return
     }
-    setSavingDepartment(true);
+    setSavingDepartment(true)
     try {
-      const departmentId = Number(departmentForm.id);
+      const departmentId = Number(departmentForm.id)
       const path = departmentId
         ? `/api/hr/departments/${departmentId}`
-        : "/api/hr/departments";
+        : "/api/hr/departments"
       await apiFetch(path, {
         method: departmentId ? "PUT" : "POST",
         body: JSON.stringify({
@@ -408,49 +408,49 @@ export default function HrmsPage({ setNotice }: Props) {
           mapped_head_employee_id:
             departmentForm.mapped_head_employee_id.trim() || undefined,
         }),
-      });
-      setDepartmentForm({ ...DEFAULT_DEPARTMENT_FORM });
+      })
+      setDepartmentForm({ ...DEFAULT_DEPARTMENT_FORM })
       setNotice({
         type: "success",
         message: departmentId ? "Department updated." : "Department created.",
-      });
-      await loadHrms(filters);
+      })
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create department.",
-      );
+      )
     } finally {
-      setSavingDepartment(false);
+      setSavingDepartment(false)
     }
-  };
+  }
 
   const handleEditAttendance = (record: Attendance) => {
     setAttendanceForm({
       id: String(record.id),
       employee_id: record.employee_id || "",
       attendance_date: record.attendance_date || "",
-      status: (record.status as "present" | "absent" | "leave") || "present",
+      status: record.status as "present" | "absent" | "leave" || "present",
       in_time: record.in_time || "",
       out_time: record.out_time || "",
-    });
-  };
+    })
+  }
 
   const handleDeleteAttendance = async (record: Attendance) => {
-    if (!window.confirm(`Delete attendance record #${record.id}?`)) return;
+    if (!window.confirm(`Delete attendance record #${record.id}?`)) return
     try {
-      await apiFetch(`/api/hr/attendance/${record.id}`, { method: "DELETE" });
-      setNotice({ type: "success", message: "Attendance record deleted." });
-      await loadHrms(filters);
+      await apiFetch(`/api/hr/attendance/${record.id}`, { method: "DELETE" })
+      setNotice({ type: "success", message: "Attendance record deleted." })
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete attendance record.",
-      );
+      )
     }
-  };
+  }
 
   const handleEditPayroll = (record: Payroll) => {
     setPayrollForm({
@@ -460,25 +460,25 @@ export default function HrmsPage({ setNotice }: Props) {
       basic_salary: String(record.net_salary || 0),
       allowances: "0",
       deductions: "0",
-      paid_status: (record.paid_status as "pending" | "paid") || "pending",
+      paid_status: record.paid_status as "pending" | "paid" || "pending",
       paid_date: record.paid_date || "",
-    });
-  };
+    })
+  }
 
   const handleDeletePayroll = async (record: Payroll) => {
-    if (!window.confirm(`Delete payroll record #${record.id}?`)) return;
+    if (!window.confirm(`Delete payroll record #${record.id}?`)) return
     try {
-      await apiFetch(`/api/hr/payroll/${record.id}`, { method: "DELETE" });
-      setNotice({ type: "success", message: "Payroll record deleted." });
-      await loadHrms(filters);
+      await apiFetch(`/api/hr/payroll/${record.id}`, { method: "DELETE" })
+      setNotice({ type: "success", message: "Payroll record deleted." })
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete payroll record.",
-      );
+      )
     }
-  };
+  }
 
   const handleEditLeave = (record: LeaveRequest) => {
     setLeaveForm({
@@ -488,31 +488,31 @@ export default function HrmsPage({ setNotice }: Props) {
       start_date: record.start_date || "",
       end_date: record.end_date || "",
       reason: record.status || "approved",
-    });
-  };
+    })
+  }
 
   const handleDeleteLeave = async (record: LeaveRequest) => {
-    if (!window.confirm(`Delete leave request #${record.id}?`)) return;
+    if (!window.confirm(`Delete leave request #${record.id}?`)) return
     try {
-      await apiFetch(`/api/hr/leaves/${record.id}`, { method: "DELETE" });
-      setNotice({ type: "success", message: "Leave request deleted." });
-      await loadHrms(filters);
+      await apiFetch(`/api/hr/leaves/${record.id}`, { method: "DELETE" })
+      setNotice({ type: "success", message: "Leave request deleted." })
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete leave request.",
-      );
+      )
     }
-  };
+  }
 
   const handleEditDepartment = (record: Department) => {
     setDepartmentForm({
       id: String(record.id),
       department_name: record.department_name || "",
       mapped_head_employee_id: record.mapped_head_employee_id || "",
-    });
-  };
+    })
+  }
 
   const handleDeleteDepartment = async (record: Department) => {
     if (
@@ -520,54 +520,54 @@ export default function HrmsPage({ setNotice }: Props) {
         `Delete department ${record.department_name || record.id}?`,
       )
     )
-      return;
+      return
     try {
-      await apiFetch(`/api/hr/departments/${record.id}`, { method: "DELETE" });
-      setNotice({ type: "success", message: "Department deleted." });
-      await loadHrms(filters);
+      await apiFetch(`/api/hr/departments/${record.id}`, { method: "DELETE" })
+      setNotice({ type: "success", message: "Department deleted." })
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete department.",
-      );
+      )
     }
-  };
+  }
 
   const handleLeaveStatusUpdate = async (
     leaveId: number,
     status: "approved" | "rejected",
   ) => {
-    setUpdatingLeaveId(leaveId);
+    setUpdatingLeaveId(leaveId)
     try {
       await apiFetch(`/api/hr/leaves/${leaveId}/status`, {
         method: "POST",
         body: JSON.stringify({ status }),
-      });
-      setNotice({ type: "success", message: `Leave request ${status}.` });
-      await loadHrms(filters);
+      })
+      setNotice({ type: "success", message: `Leave request ${status}.` })
+      await loadHrms(filters)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to update leave status.",
-      );
+      )
     } finally {
-      setUpdatingLeaveId(null);
+      setUpdatingLeaveId(null)
     }
-  };
+  }
 
   const stats = useMemo(() => {
     const pendingLeaves = data.leaves.filter(
       (leave) => (leave.status || "pending") === "pending",
-    ).length;
+    ).length
     return {
       departments: data.departments.length,
       attendance: data.attendance.length,
       payrollRuns: data.payroll.length,
       pendingLeaves,
-    };
-  }, [data]);
+    }
+  }, [data])
 
   return (
     <section className="module-page">
@@ -691,8 +691,8 @@ export default function HrmsPage({ setNotice }: Props) {
                       onChange={(event) =>
                         setAttendanceForm((current) => ({
                           ...current,
-                          status: event.target.value as
-                            "present" | "absent" | "leave",
+                          status: event.target
+                            .value as "present" | "absent" | "leave",
                         }))
                       }
                       aria-label="HR attendance status"
@@ -1444,5 +1444,5 @@ export default function HrmsPage({ setNotice }: Props) {
         ) : null}
       </div>
     </section>
-  );
+  )
 }

@@ -1562,7 +1562,8 @@ export class BedDatabase {
 
         roomChargesTotal:
           roomChargesTotal ||
-          bed.room_charges_so_far || bed.daily_rate * diffDays,
+          bed.room_charges_so_far ||
+          bed.daily_rate * diffDays,
 
         attendingDoctor: "Dr. M. Anderson",
       }

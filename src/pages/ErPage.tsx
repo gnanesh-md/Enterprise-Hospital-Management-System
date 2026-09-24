@@ -1,6 +1,6 @@
-import React, { Component, useEffect, useMemo, useRef, useState } from "react";
+import React, { Component, useEffect, useMemo, useRef, useState } from "react"
 
-import type { ReactNode, ErrorInfo } from "react";
+import type { ReactNode, ErrorInfo } from "react"
 
 import {
   FiArrowLeft,
@@ -34,7 +34,7 @@ import {
   FiDollarSign,
   FiLogOut,
   FiLayers,
-} from "react-icons/fi";
+} from "react-icons/fi"
 
 import {
   Button,
@@ -49,24 +49,24 @@ import {
   Tabs,
   TabsTrigger,
   Textarea,
-} from "../components/ui";
+} from "../components/ui"
 
-import PrescriptionUploadModal from "../components/PrescriptionUploadModal";
+import PrescriptionUploadModal from "../components/PrescriptionUploadModal"
 
-import HospitalReceiptModal from "../components/HospitalReceiptModal";
+import HospitalReceiptModal from "../components/HospitalReceiptModal"
 
 import {
   printErHandoverSheet,
   printErDischargeSummary,
-} from "../utils/erReportsExporter";
+} from "../utils/erReportsExporter"
 
-import { apiFetch, reportError, getHospitalCode } from "../lib/api";
+import { apiFetch, reportError, getHospitalCode } from "../lib/api"
 
-import { API_BASE } from "../lib/constants";
+import { API_BASE } from "../lib/constants"
 
-import { formatDateTimeIST } from "../lib/format";
+import { formatDateTimeIST } from "../lib/format"
 
-import type { Notice, Patient } from "../types";
+import type { Notice, Patient } from "../types"
 
 import {
   ErDatabase,
@@ -75,18 +75,18 @@ import {
   type ErTimelineEventType,
   type ErVisitRecord,
   type ErPatientMedicalProfile,
-} from "../services/erDb";
+} from "../services/erDb"
 
-import { BedDatabase } from "../services/bedDb";
+import { BedDatabase } from "../services/bedDb"
 
 import {
   BillingDatabase,
   resolveErItemPrice,
   type ClaimRecord,
   type PaymentRecord,
-} from "../services/billingDb";
+} from "../services/billingDb"
 
-import { db, type DBOPEncounter } from "../services/db";
+import { db, type DBOPEncounter } from "../services/db"
 
 // apiFetch always sends Content-Type: application/json, which breaks a
 
@@ -98,9 +98,9 @@ async function uploadConsentDocument(
   consentId: number,
   file: File,
 ): Promise<void> {
-  const formData = new FormData();
+  const formData = new FormData()
 
-  formData.append("file", file);
+  formData.append("file", file)
 
   const response = await fetch(
     `${API_BASE}/api/er/consents/${consentId}/document`,
@@ -113,21 +113,21 @@ async function uploadConsentDocument(
 
       body: formData,
     },
-  );
+  )
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
+    const payload = await response.json().catch(() => ({}))
 
-    throw new Error(payload.error || "Failed to upload the signed document.");
+    throw new Error(payload.error || "Failed to upload the signed document.")
   }
 }
 
 // ── On-Duty Emergency Physicians & Specialists Roster ────────────────────────
 
 export const ER_ON_DUTY_PHYSICIANS: {
-  name: string;
-  specialty: string;
-  department: string;
+  name: string
+  specialty: string
+  department: string
 }[] = [
   {
     name: "Dr. Anita Roy",
@@ -182,22 +182,22 @@ export const ER_ON_DUTY_PHYSICIANS: {
     specialty: "Trauma Orthopedics",
     department: "Orthopedics",
   },
-];
+]
 
 export function getSuggestedDoctorForPatient(detail?: {
-  complaints?: { complaint: string }[];
+  complaints?: { complaint: string }[]
 
-  condition_at_arrival?: string | null;
+  condition_at_arrival?: string | null
 
-  triage_category?: string | null;
+  triage_category?: string | null
 
-  assigned_specialty?: string | null;
+  assigned_specialty?: string | null
 
-  assigned_doctor_name?: string | null;
+  assigned_doctor_name?: string | null
 }): string {
-  if (detail?.assigned_doctor_name) return detail.assigned_doctor_name;
+  if (detail?.assigned_doctor_name) return detail.assigned_doctor_name
 
-  if (!detail) return "Dr. Anita Roy";
+  if (!detail) return "Dr. Anita Roy"
 
   const complaintStr = [
     ...(detail.complaints || []).map((c) => c.complaint),
@@ -207,7 +207,7 @@ export function getSuggestedDoctorForPatient(detail?: {
     detail.assigned_specialty || "",
   ]
     .join(" ")
-    .toLowerCase();
+    .toLowerCase()
 
   if (
     complaintStr.includes("heart") ||
@@ -217,7 +217,7 @@ export function getSuggestedDoctorForPatient(detail?: {
     complaintStr.includes("ecg") ||
     complaintStr.includes("angina")
   ) {
-    return "Dr. Vikram Seth";
+    return "Dr. Vikram Seth"
   }
 
   if (
@@ -228,7 +228,7 @@ export function getSuggestedDoctorForPatient(detail?: {
     complaintStr.includes("fall") ||
     complaintStr.includes("bone")
   ) {
-    return "Dr. Sanjay Gupta";
+    return "Dr. Sanjay Gupta"
   }
 
   if (
@@ -239,7 +239,7 @@ export function getSuggestedDoctorForPatient(detail?: {
     complaintStr.includes("paralysis") ||
     complaintStr.includes("neuro")
   ) {
-    return "Dr. Meenakshi Rao";
+    return "Dr. Meenakshi Rao"
   }
 
   if (
@@ -250,7 +250,7 @@ export function getSuggestedDoctorForPatient(detail?: {
     complaintStr.includes("laceration") ||
     complaintStr.includes("surgery")
   ) {
-    return "Dr. Priya Deshmukh";
+    return "Dr. Priya Deshmukh"
   }
 
   if (
@@ -262,49 +262,46 @@ export function getSuggestedDoctorForPatient(detail?: {
     complaintStr.includes("poisoning") ||
     complaintStr.includes("general")
   ) {
-    return "Dr. Rajesh Sharma";
+    return "Dr. Rajesh Sharma"
   }
 
-  return "Dr. Anita Roy";
+  return "Dr. Anita Roy"
 }
 
 export function getSuggestedSpecialtyForPatient(detail?: {
-  complaints?: { complaint: string }[];
+  complaints?: { complaint: string }[]
 
-  condition_at_arrival?: string | null;
+  condition_at_arrival?: string | null
 
-  triage_category?: string | null;
+  triage_category?: string | null
 
-  assigned_specialty?: string | null;
+  assigned_specialty?: string | null
 
-  assigned_doctor_name?: string | null;
+  assigned_doctor_name?: string | null
 }): string {
-  const doc = getSuggestedDoctorForPatient(detail);
+  const doc = getSuggestedDoctorForPatient(detail)
 
-  const found = ER_ON_DUTY_PHYSICIANS.find((d) => d.name === doc);
+  const found = ER_ON_DUTY_PHYSICIANS.find((d) => d.name === doc)
 
-  return found ? found.specialty : "Emergency Medicine";
+  return found ? found.specialty : "Emergency Medicine"
 }
 
-export class ErErrorBoundary extends Component<
-  {
-    children: ReactNode;
-    onReset?: () => void;
-  },
-  { hasError: boolean; error: Error | null }
-> {
-  constructor(props: { children: ReactNode; onReset?: () => void }) {
-    super(props);
+export class ErErrorBoundary extends Component<{
+  children: ReactNode
+  onReset?: () => void
+}, { hasError: boolean ;error: Error | null }> {
+  constructor(props: { children: ReactNode ;onReset?: () => void }) {
+    super(props)
 
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
+    return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("ErErrorBoundary caught error:", error, errorInfo);
+    console.error("ErErrorBoundary caught error:", error, errorInfo)
   }
 
   render() {
@@ -322,9 +319,9 @@ export class ErErrorBoundary extends Component<
           <div className="flex gap-2 pt-2">
             <button
               onClick={() => {
-                this.setState({ hasError: false, error: null });
+                this.setState({ hasError: false, error: null })
 
-                this.props.onReset?.();
+                this.props.onReset?.()
               }}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded text-xs transition cursor-pointer"
             >
@@ -332,19 +329,19 @@ export class ErErrorBoundary extends Component<
             </button>
           </div>
         </div>
-      );
+      )
     }
 
-    return this.props.children;
+    return this.props.children
   }
 }
 
 type Props = {
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onNavigate?: (page: string, extraData?: any) => void;
+  onNavigate?: (page: string, extraData?: any) => void
 
-  onOpenTriage?: (visitId: number) => void;
+  onOpenTriage?: (visitId: number) => void
 
   // Handed back by AddPatientPage after a patient registered via the "New"
 
@@ -355,10 +352,10 @@ type Props = {
   // search for the patient they just registered.
 
   prefillPatient?: {
-    patient_id: string;
-    name: string;
-    last_name?: string;
-  } | null;
+    patient_id: string
+    name: string
+    last_name?: string
+  } | null
 
   // Handed back after a patient registered via an unknown visit's "Register
 
@@ -368,242 +365,242 @@ type Props = {
 
   // to redo the merge by hand after being bounced back to the ER queue.
 
-  mergeTarget?: { visitId: number; patientId: string } | null;
-};
+  mergeTarget?: { visitId: number ;patientId: string } | null
+}
 
 export type ErVisit = {
-  id: number;
+  id: number
 
-  visit_no: string;
+  visit_no: string
 
-  patient_id: string | null;
+  patient_id: string | null
 
-  is_unknown_patient: boolean;
+  is_unknown_patient: boolean
 
-  unknown_patient_label: string | null;
+  unknown_patient_label: string | null
 
-  arrival_mode: string | null;
+  arrival_mode: string | null
 
-  condition_at_arrival: string | null;
+  condition_at_arrival: string | null
 
-  arrival_at: string | null;
+  arrival_at: string | null
 
-  status: string;
+  status: string
 
-  assigned_doctor_name: string | null;
+  assigned_doctor_name: string | null
 
-  assigned_specialty: string | null;
+  assigned_specialty: string | null
 
-  doctor_assigned_at: string | null;
+  doctor_assigned_at: string | null
 
-  doctor_accepted_at: string | null;
+  doctor_accepted_at: string | null
 
-  triage_category: string | null;
+  triage_category: string | null
 
-  triage_bed_label: string | null;
+  triage_bed_label: string | null
 
-  closed_at: string | null;
+  closed_at: string | null
 
-  patient_name?: string | null;
+  patient_name?: string | null
 
-  patient_last_name?: string | null;
+  patient_last_name?: string | null
 
-  patient_gender?: string | null;
+  patient_gender?: string | null
 
-  patient_age?: number | null;
+  patient_age?: number | null
 
-  patient_phone?: string | null;
+  patient_phone?: string | null
 
-  patient_emergency_contact?: string | null;
+  patient_emergency_contact?: string | null
 
-  patient?: Patient | null;
-};
+  patient?: Patient | null
+}
 
 export type ErComplaint = {
-  id: number;
+  id: number
 
-  complaint: string;
+  complaint: string
 
-  severity: string | null;
+  severity: string | null
 
-  case_category: string | null;
+  case_category: string | null
 
-  duration: string | null;
+  duration: string | null
 
-  reported_by: string | null;
+  reported_by: string | null
 
-  created_at: string;
-};
+  created_at: string
+}
 
 export type ErVitals = {
-  id: number;
+  id: number
 
-  recorded_at: string;
+  recorded_at: string
 
-  recorded_by: string | null;
+  recorded_by: string | null
 
-  heart_rate: number | null;
+  heart_rate: number | null
 
-  bp_systolic: number | null;
+  bp_systolic: number | null
 
-  bp_diastolic: number | null;
+  bp_diastolic: number | null
 
-  respiratory_rate: number | null;
+  respiratory_rate: number | null
 
-  spo2: number | null;
+  spo2: number | null
 
-  temperature: number | null;
+  temperature: number | null
 
-  consciousness_level: string | null;
+  consciousness_level: string | null
 
-  blood_glucose: number | null;
+  blood_glucose: number | null
 
-  pain_score: number | null;
+  pain_score: number | null
 
-  gcs: number | null;
+  gcs: number | null
 
-  notes: string | null;
-};
+  notes: string | null
+}
 
 export type ErTriage = {
-  category: string;
+  category: string
 
-  triage_bed_label: string | null;
+  triage_bed_label: string | null
 
-  reason: string | null;
+  reason: string | null
 
-  triaged_at: string;
+  triaged_at: string
 
-  assigned_by: string | null;
-} | null;
+  assigned_by: string | null
+} | null
 
 export type ErTreatment = {
-  id: number;
+  id: number
 
-  intervention_type: string;
+  intervention_type: string
 
-  description: string | null;
+  description: string | null
 
-  performed_at: string;
+  performed_at: string
 
-  administered_by: string | null;
-};
+  administered_by: string | null
+}
 
 export type ErClinicalNote = {
-  id: number;
+  id: number
 
-  note_type: string;
+  note_type: string
 
-  author: string | null;
+  author: string | null
 
-  content: string;
+  content: string
 
-  created_at: string;
-};
+  created_at: string
+}
 
 export type ErDisposition = {
-  outcome: string;
+  outcome: string
 
-  required_specialty: string | null;
+  required_specialty: string | null
 
-  clinical_reason: string;
+  clinical_reason: string
 
-  decided_by: string | null;
+  decided_by: string | null
 
-  decided_at: string;
+  decided_at: string
 
-  priority: string | null;
-} | null;
+  priority: string | null
+} | null
 
 export type ErBedRequest = {
-  id: number;
+  id: number
 
-  status: string;
+  status: string
 
-  requested_level_of_care: string;
+  requested_level_of_care: string
 
-  requested_specialty: string | null;
+  requested_specialty: string | null
 
-  requested_at: string;
+  requested_at: string
 
-  allocated_bed_id: number | null;
+  allocated_bed_id: number | null
 
-  allocated_admission_id: number | null;
+  allocated_admission_id: number | null
 
-  allocated_at: string | null;
-};
+  allocated_at: string | null
+}
 
 export type ErConsent = {
-  id: number;
+  id: number
 
-  hospital_id?: number;
+  hospital_id?: number
 
-  patient_id?: string;
+  patient_id?: string
 
-  patient_name: string;
+  patient_name: string
 
-  consent_type: string;
+  consent_type: string
 
-  signed_by: string;
+  signed_by: string
 
-  relation_to_patient?: string;
+  relation_to_patient?: string
 
-  status: string;
+  status: string
 
-  witness_doctor?: string;
+  witness_doctor?: string
 
-  signed_by_phone?: string;
+  signed_by_phone?: string
 
-  refusal_reason?: string;
+  refusal_reason?: string
 
-  legal_waiver_acknowledged: boolean;
+  legal_waiver_acknowledged: boolean
 
-  er_visit_id?: number;
+  er_visit_id?: number
 
-  notes?: string;
+  notes?: string
 
-  signed_at?: string;
+  signed_at?: string
 
-  document_filename?: string | null;
+  document_filename?: string | null
 
-  document_mime_type?: string | null;
-};
+  document_mime_type?: string | null
+}
 
 export type ErVisitDetail = ErVisit & {
-  complaints: ErComplaint[];
+  complaints: ErComplaint[]
 
-  vitals: ErVitals[];
+  vitals: ErVitals[]
 
-  triage: ErTriage;
+  triage: ErTriage
 
-  treatments: ErTreatment[];
+  treatments: ErTreatment[]
 
-  clinical_notes: ErClinicalNote[];
+  clinical_notes: ErClinicalNote[]
 
-  disposition: ErDisposition;
+  disposition: ErDisposition
 
-  bed_requests: ErBedRequest[];
+  bed_requests: ErBedRequest[]
 
-  consents?: ErConsent[];
+  consents?: ErConsent[]
 
-  investigations?: ErInvestigationItem[];
+  investigations?: ErInvestigationItem[]
 
-  timeline_events?: ErTimelineEventItem[];
-};
+  timeline_events?: ErTimelineEventItem[]
+}
 
 export type TriageCategory = {
-  id: number;
+  id: number
 
-  category_code: string;
+  category_code: string
 
-  category_label: string;
+  category_label: string
 
-  description: string | null;
+  description: string | null
 
-  color: string | null;
+  color: string | null
 
-  sort_order: number;
-};
+  sort_order: number
+}
 
 // Real clinical emergency triage presentation conditions based on standard medical emergency data
 
@@ -637,7 +634,7 @@ const ARRIVAL_CONDITION_OPTIONS = [
   "Cardiac Arrest / Pulseless (CPR in Progress)",
 
   "Brought Dead / Dead on Arrival (DOA)",
-];
+]
 
 // Real clinical emergency arrival / transport modes
 
@@ -665,7 +662,7 @@ const ARRIVAL_MODE_OPTIONS = [
   { value: "air_ambulance", label: "Air Ambulance / Emergency Helivac" },
 
   { value: "other", label: "Other Mode of Transport" },
-];
+]
 
 // Certain presentations (RTA, assault, burns, poisoning, hanging) are MLC
 
@@ -677,44 +674,43 @@ const ARRIVAL_MODE_OPTIONS = [
 
 // their own catch-all "Other" entry.
 
-const CASE_CATEGORY_OPTIONS: { value: string; label: string; mlc: boolean }[] =
-  [
-    { value: "general_illness", label: "Fever / General Illness", mlc: false },
+const CASE_CATEGORY_OPTIONS: { value: string ;label: string ;mlc: boolean }[] = [
+  { value: "general_illness", label: "Fever / General Illness", mlc: false },
 
-    { value: "cardiac", label: "Cardiac", mlc: false },
+  { value: "cardiac", label: "Cardiac", mlc: false },
 
-    { value: "pregnancy", label: "Pregnancy-related", mlc: false },
+  { value: "pregnancy", label: "Pregnancy-related", mlc: false },
 
-    { value: "seizure", label: "Seizure", mlc: false },
+  { value: "seizure", label: "Seizure", mlc: false },
 
-    { value: "neurological", label: "Neurological", mlc: false },
+  { value: "neurological", label: "Neurological", mlc: false },
 
-    { value: "drowning", label: "Drowning", mlc: false },
+  { value: "drowning", label: "Drowning", mlc: false },
 
-    { value: "farm_injury", label: "Farm / Agricultural Injury", mlc: false },
+  { value: "farm_injury", label: "Farm / Agricultural Injury", mlc: false },
 
-    {
-      value: "trauma",
-      label: "Trauma / Accidental Injury (non-RTA)",
-      mlc: false,
-    },
+  {
+    value: "trauma",
+    label: "Trauma / Accidental Injury (non-RTA)",
+    mlc: false,
+  },
 
-    { value: "other", label: "Other", mlc: false },
+  { value: "other", label: "Other", mlc: false },
 
-    { value: "rta", label: "Road Traffic Accident", mlc: true },
+  { value: "rta", label: "Road Traffic Accident", mlc: true },
 
-    { value: "assault", label: "Assault / Stabbing / Violence", mlc: true },
+  { value: "assault", label: "Assault / Stabbing / Violence", mlc: true },
 
-    { value: "burns", label: "Burns", mlc: true },
+  { value: "burns", label: "Burns", mlc: true },
 
-    { value: "poisoning", label: "Poisoning", mlc: true },
+  { value: "poisoning", label: "Poisoning", mlc: true },
 
-    { value: "hanging", label: "Hanging / Strangulation", mlc: true },
+  { value: "hanging", label: "Hanging / Strangulation", mlc: true },
 
-    { value: "other_mlc", label: "Other Medico-Legal Case", mlc: true },
-  ];
+  { value: "other_mlc", label: "Other Medico-Legal Case", mlc: true },
+]
 
-const OUTCOMES_REQUIRING_BED = new Set(["ward", "icu", "ot", "observation"]);
+const OUTCOMES_REQUIRING_BED = new Set(["ward", "icu", "ot", "observation"])
 
 const OUTCOME_OPTIONS = [
   { value: "discharge", label: "Discharge (Routine / Recovered)" },
@@ -738,7 +734,7 @@ const OUTCOME_OPTIONS = [
   { value: "death", label: "Death / Brought Dead" },
 
   { value: "other", label: "Other Disposition" },
-];
+]
 
 const STATUS_LABELS: Record<string, string> = {
   registered: "Registered",
@@ -762,7 +758,7 @@ const STATUS_LABELS: Record<string, string> = {
   transferred: "Transferred",
 
   closed: "Closed",
-};
+}
 
 // Five semantic groups a status falls into, for the badge color -- see
 
@@ -792,7 +788,7 @@ const STATUS_GROUP: Record<string, string> = {
   transferred: "resolved",
 
   closed: "closed",
-};
+}
 
 const CORE_STEPS = [
   { key: "registered", label: "Registered", hint: "Intake" },
@@ -804,70 +800,72 @@ const CORE_STEPS = [
   { key: "doctor_assigned", label: "Doctor", hint: "Assessment" },
 
   { key: "awaiting_disposition", label: "Disposition", hint: "Next step" },
-];
+]
 
 function coreStepIndex(status: string): number {
   switch (status) {
     case "registered":
-      return 0;
+      return 0
 
     case "triaged":
-      return 1;
+      return 1
 
     case "under_treatment":
 
     case "under_investigation":
 
     case "stabilized":
-      return 2;
+      return 2
 
     case "doctor_assigned":
-      return 3;
+      return 3
 
     default:
       // awaiting_disposition, bed_requested, bed_allocated, transferred, closed
 
-      return 4;
+      return 4
   }
 }
 
 function elapsedSince(iso: string | null): string {
-  if (!iso) return "-";
+  if (!iso) return "-"
 
-  const ms = Date.now() - new Date(iso).getTime();
+  const ms = Date.now() - new Date(iso).getTime()
 
-  if (!Number.isFinite(ms) || ms < 0) return "just now";
+  if (!Number.isFinite(ms) || ms < 0) return "just now"
 
-  const mins = Math.floor(ms / 60000);
+  const mins = Math.floor(ms / 60000)
 
-  if (mins < 1) return "just now";
+  if (mins < 1) return "just now"
 
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return `${mins}m ago`
 
-  const hrs = Math.floor(mins / 60);
+  const hrs = Math.floor(mins / 60)
 
-  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`;
+  if (hrs < 24) return `${hrs}h ${mins % 60}m ago`
 
-  return `${Math.floor(hrs / 24)}d ago`;
+  return `${Math.floor(hrs / 24)}d ago`
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const group = STATUS_GROUP[status] || "closed";
+  const group = STATUS_GROUP[status] || "closed"
 
   return (
     <span className={`er-status-badge er-status-${group}`}>
       {STATUS_LABELS[status] || status}
     </span>
-  );
+  )
 }
 
-function getArrivalTimeDisplay(iso: string | null): {
-  elapsed: string;
-  clock: string;
+export function getArrivalTimeDisplay(
+  iso: string | null,
+): {
+  elapsed: string
+  clock: string
 } {
-  if (!iso) return { elapsed: "—", clock: "" };
+  if (!iso) return { elapsed: "—", clock: "" }
 
-  const d = new Date(iso);
+  const d = new Date(iso)
 
   const clock = isNaN(d.getTime())
     ? ""
@@ -875,295 +873,292 @@ function getArrivalTimeDisplay(iso: string | null): {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
-      });
+      })
 
-  const ms = Date.now() - d.getTime();
+  const ms = Date.now() - d.getTime()
 
-  if (!Number.isFinite(ms) || ms < 0) return { elapsed: "just now", clock };
+  if (!Number.isFinite(ms) || ms < 0) return { elapsed: "just now", clock }
 
-  const mins = Math.floor(ms / 60000);
+  const mins = Math.floor(ms / 60000)
 
-  if (mins < 1) return { elapsed: "just now", clock };
+  if (mins < 1) return { elapsed: "just now", clock }
 
-  if (mins < 60) return { elapsed: `${mins} min ago`, clock };
+  if (mins < 60) return { elapsed: `${mins} min ago`, clock }
 
-  const hrs = Math.floor(mins / 60);
+  const hrs = Math.floor(mins / 60)
 
-  if (hrs < 24) return { elapsed: `${hrs} hr${hrs > 1 ? "s" : ""} ago`, clock };
+  if (hrs < 24) return { elapsed: `${hrs} hr${hrs > 1 ? "s" : ""} ago`, clock }
 
-  return { elapsed: `${Math.floor(hrs / 24)}d ago`, clock };
+  return { elapsed: `${Math.floor(hrs / 24)}d ago`, clock }
 }
 
 function getDestination(v: ErVisit): string | null {
-  if ((v as any).destination) return (v as any).destination;
+  if ((v as any).destination) return (v as any).destination
 
-  const dispOutcome = (v as any).disposition?.outcome || "";
+  const dispOutcome = (v as any).disposition?.outcome || ""
 
   if (dispOutcome === "admit_icu" || dispOutcome.includes("icu"))
-    return "• ICU Requested";
+    return "• ICU Requested"
 
   if (dispOutcome === "admit_ward" || dispOutcome.includes("ward"))
-    return "• Ward Requested";
+    return "• Ward Requested"
 
   if (dispOutcome === "observation" || dispOutcome.includes("obs"))
-    return "Observation";
+    return "Observation"
 
-  const bedReqs = (v as any).bed_requests || [];
+  const bedReqs = (v as any).bed_requests || []
 
   if (bedReqs.length > 0) {
-    const care = (bedReqs[0].requested_level_of_care || "").toLowerCase();
+    const care = (bedReqs[0].requested_level_of_care || "").toLowerCase()
 
-    if (care.includes("icu") || care.includes("ccu")) return "• ICU Requested";
+    if (care.includes("icu") || care.includes("ccu")) return "• ICU Requested"
 
     if (care.includes("ward") || care.includes("isolation"))
-      return "• Ward Requested";
+      return "• Ward Requested"
   }
 
-  return null;
+  return null
 }
 
 function getBedLabel(v: ErVisit): string | null {
   if (v.triage_bed_label) {
-    const match = v.triage_bed_label.match(/(ER-[A-Z0-9-]+|ER Bed \d+)/i);
+    const match = v.triage_bed_label.match(/(ER-[A-Z0-9-]+|ER Bed \d+)/i)
 
-    return match ? match[0] : v.triage_bed_label;
+    return match ? match[0] : v.triage_bed_label
   }
 
-  if ((v as any).bed_label) return (v as any).bed_label;
+  if ((v as any).bed_label) return (v as any).bed_label
 
-  return null;
+  return null
 }
 
-function renderTriagePill(category: string | null | undefined) {
+export function renderTriagePill(category: string | null | undefined) {
   if (!category)
     return (
-      <span className="text-gray-400 font-medium text-[11px]">Not triaged</span>
-    );
+      <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1">
+        <span>⚪</span> Not triaged
+      </span>
+    )
 
-  const cat = category.toUpperCase();
+  const cat = category.toUpperCase()
 
   if (cat === "B1" || cat === "RED") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-black bg-red-600 text-white shadow-xs border border-red-700 tracking-wide">
-        <span className="w-2 h-2 rounded-full bg-white ring-1 ring-red-300"></span>{" "}
-        B1
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-red-600 text-white shadow-2xs border border-red-700 tracking-wider">
+        <span>🚨</span> B1 - Resuscitation
       </span>
-    );
+    )
   }
 
   if (cat === "B2" || cat === "YELLOW" || cat === "ORANGE") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-black bg-amber-500 text-white shadow-xs border border-amber-600 tracking-wide">
-        <span className="w-2 h-2 rounded-full bg-white ring-1 ring-amber-300"></span>{" "}
-        B2
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-amber-500 text-white shadow-2xs border border-amber-600 tracking-wider">
+        <span>⚠️</span> B2 - Emergent
       </span>
-    );
+    )
   }
 
   if (cat === "B3" || cat === "GREEN") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-black bg-emerald-600 text-white shadow-xs border border-emerald-700 tracking-wide">
-        <span className="w-2 h-2 rounded-full bg-white ring-1 ring-emerald-300"></span>{" "}
-        B3
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-emerald-600 text-white shadow-2xs border border-emerald-700 tracking-wider">
+        <span>🟢</span> B3 - Urgent
       </span>
-    );
+    )
   }
 
   if (cat === "B4") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-black bg-teal-600 text-white shadow-xs border border-teal-700 tracking-wide">
-        <span className="w-2 h-2 rounded-full bg-white ring-1 ring-teal-300"></span>{" "}
-        B4
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-teal-600 text-white shadow-2xs border border-teal-700 tracking-wider">
+        <span>🟡</span> B4 - Semi-Urgent
       </span>
-    );
+    )
   }
 
   if (cat === "BLACK" || cat === "EXPECTANT") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-black bg-slate-950 text-white shadow-xs border border-slate-800 tracking-wide">
-        <span className="w-2 h-2 rounded-full bg-slate-300"></span> Black
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-slate-950 text-white shadow-2xs border border-slate-800 tracking-wider">
+        <span>🖤</span> Black - Expectant
       </span>
-    );
+    )
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-black bg-blue-600 text-white shadow-xs border border-blue-700 tracking-wide">
-      <span className="w-2 h-2 rounded-full bg-white"></span> {cat}
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-blue-600 text-white shadow-2xs border border-blue-700 tracking-wider">
+      <span>🔵</span> {cat} - Non-Urgent
     </span>
-  );
+  )
 }
 
 function renderStatusPill(status: string) {
-  const s = status.toLowerCase();
+  const s = status.toLowerCase()
 
   if (s === "under_treatment" || s === "treatment") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#FEF3C7] text-[#B45309] border border-amber-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#B45309]"></span> Under
-        Treatment
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+        <span>🩺</span> Under Treatment
       </span>
-    );
+    )
   }
 
   if (s === "doctor_assigned") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#EFF6FF] text-[#1D4ED8] border border-blue-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#1D4ED8]"></span> Doctor
-        Assigned
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-300">
+        <span>👨‍⚕️</span> Doctor Assigned
       </span>
-    );
+    )
   }
 
   if (s === "triaged") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#F0FDF4] text-[#15803D] border border-green-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span> Triaged
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300">
+        <span>📌</span> Triaged
       </span>
-    );
+    )
   }
 
   if (s === "registered") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#F1F5F9] text-[#475569] border border-slate-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#475569]"></span>{" "}
-        Registered
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+        <span>📋</span> Registered
       </span>
-    );
+    )
   }
 
   if (s === "discharged") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#F8FAFC] text-[#64748B] border border-slate-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#64748B]"></span>{" "}
-        Discharged
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-300">
+        <span>✅</span> Discharged
       </span>
-    );
+    )
   }
 
   if (s === "under_investigation") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#E0F2FE] text-[#0284C7] border border-sky-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#0284C7]"></span> Under
-        Investigation
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-300">
+        <span>🔬</span> Under Investigation
       </span>
-    );
+    )
   }
 
   if (s === "stabilizing" || s === "stabilized") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#DCFCE7] text-[#16A34A] border border-green-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]"></span>{" "}
-        Stabilizing
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300">
+        <span>💚</span> Stabilizing
       </span>
-    );
+    )
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-gray-100 text-gray-700 border border-gray-200">
-      <span className="w-1.5 h-1.5 rounded-full bg-gray-500"></span> {status}
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+      <span>📍</span> {status}
     </span>
-  );
+  )
 }
 
 function renderBillingPill(v: ErVisit) {
+  const patientFullName = v.patient
+    ? [v.patient.name, v.patient.last_name].filter(Boolean).join(" ")
+    : v.patient_name
+      ? [v.patient_name, v.patient_last_name].filter(Boolean).join(" ")
+      : undefined;
+
   const clearance = BillingDatabase.getErFinancialClearance(
     v.visit_no || v.patient_id || String(v.id),
-    v.patient_name || undefined,
+    patientFullName || v.patient_name || undefined,
   );
 
   if (clearance.status === "paid") {
     return (
       <span
-        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-[#DCFCE7] text-[#15803D] border border-emerald-300 whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 whitespace-nowrap"
         title={`Receipt: ${clearance.receiptNo || "Paid & Cleared"}`}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-[#15803D]"></span> Paid
+        <span>✅</span> Paid
       </span>
-    );
+    )
   }
 
   if (clearance.status === "due") {
     return (
       <span
-        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-[#FEF3C7] text-[#B45309] border border-amber-300 whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 whitespace-nowrap"
         title={`Pending at Billing Dept: ₹${clearance.balanceDue.toLocaleString("en-IN")}`}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-[#B45309] animate-pulse"></span>{" "}
-        Pending
+        <span>⏳</span> Pending
       </span>
-    );
+    )
   }
+
+  const unbilledTotal = clearance.unbilledAmount || 0;
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-[#F1F5F9] text-[#475569] border border-slate-200 whitespace-nowrap"
-      title="Active ER treatment. Bill not yet sent to Billing Department."
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-300 whitespace-nowrap"
+      title={
+        unbilledTotal > 0
+          ? `Unbilled ER charges: ₹${unbilledTotal.toLocaleString("en-IN")}. Bill not yet sent to Billing Department.`
+          : "Active ER care. Bill not yet sent to Central Billing Department."
+      }
     >
-      <span className="w-1.5 h-1.5 rounded-full bg-[#94A3B8]"></span> In
-      Treatment
+      <span className="w-1.5 h-1.5 rounded-full bg-[#94A3B8]"></span>{" "}
+      {unbilledTotal > 0
+        ? `Unbilled (₹${unbilledTotal.toLocaleString("en-IN")})`
+        : "Unbilled"}
     </span>
-  );
+  )
 }
 
 function renderDestinationPill(dest: string | null | undefined) {
-  if (!dest) return <span className="text-gray-400 font-bold">—</span>;
+  if (!dest) return <span className="text-slate-400 font-bold">—</span>
 
-  const isIcu = dest.includes("ICU");
-
-  const isOt = dest.includes("OT");
-
-  const isDischarge = dest.includes("Discharge");
+  const isIcu = dest.includes("ICU")
+  const isOt = dest.includes("OT")
+  const isDischarge = dest.includes("Discharge")
 
   if (isIcu) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-[#F3E8FF] text-[#7E22CE] border border-purple-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#7E22CE]"></span>{" "}
-        {dest.replace(/^•\s*/, "")}
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-300">
+        <span>🚨</span> {dest.replace(/^•\s*/, "")}
       </span>
-    );
+    )
   }
 
   if (dest.includes("Ward")) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#DBEAFE] text-[#1D4ED8] border border-blue-200">
-        <span className="w-1.5 h-1.5 rounded-full bg-[#1D4ED8]"></span>{" "}
-        {dest.replace(/^•\s*/, "")}
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-300">
+        <span>🏥</span> {dest.replace(/^•\s*/, "")}
       </span>
-    );
+    )
   }
 
   if (dest.includes("Observation")) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-[#CCFBF1] text-[#0F766E] border border-teal-200">
-        {dest.replace(/^•\s*/, "")}
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-300">
+        <span>👁️</span> {dest.replace(/^•\s*/, "")}
       </span>
-    );
+    )
   }
 
   if (isOt) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-        ⚡ {dest.replace(/^•\s*/, "")}
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+        <span>⚡</span> {dest.replace(/^•\s*/, "")}
       </span>
-    );
+    )
   }
 
   if (isDischarge) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
-        ✅ {dest.replace(/^•\s*/, "")}
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300">
+        <span>✅</span> {dest.replace(/^•\s*/, "")}
       </span>
-    );
+    )
   }
 
-  return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-      {dest.replace(/^•\s*/, "")}
-    </span>
-  );
+  return <span className="text-slate-600 font-medium text-xs">{dest}</span>
 }
 
-const getDestinationBadge = renderDestinationPill;
+const getDestinationBadge = renderDestinationPill
 
 export const DISPOSITION_DESTINATION_OPTIONS = [
   {
@@ -1245,45 +1240,45 @@ export const DISPOSITION_DESTINATION_OPTIONS = [
 
     defaultPriority: "High Priority",
   },
-];
+]
 
 function formatOutcomeLabel(outcome: string | null | undefined): string {
-  if (!outcome) return "Under Assessment";
+  if (!outcome) return "Under Assessment"
 
   const matched = DISPOSITION_DESTINATION_OPTIONS.find(
     (o) => o.value === outcome,
-  );
+  )
 
-  if (matched) return matched.title;
+  if (matched) return matched.title
 
   if (outcome === "ward")
-    return "Admit to Inpatient General Ward (for recovery)";
+    return "Admit to Inpatient General Ward (for recovery)"
 
-  if (outcome === "icu") return "Transfer to ICU / CCU (for critical care)";
+  if (outcome === "icu") return "Transfer to ICU / CCU (for critical care)"
 
   if (outcome === "ot")
-    return "Transfer to Emergency OT / Cath Lab (for urgent surgery)";
+    return "Transfer to Emergency OT / Cath Lab (for urgent surgery)"
 
-  if (outcome === "referral") return "Transfer to Higher Tertiary Center";
+  if (outcome === "referral") return "Transfer to Higher Tertiary Center"
 
-  if (outcome === "observation") return "ER Short Stay Observation";
+  if (outcome === "observation") return "ER Short Stay Observation"
 
-  if (outcome === "lama") return "LAMA (Left Against Medical Advice)";
+  if (outcome === "lama") return "LAMA (Left Against Medical Advice)"
 
-  if (outcome === "dama") return "DAMA (Discharge Against Medical Advice)";
+  if (outcome === "dama") return "DAMA (Discharge Against Medical Advice)"
 
-  return outcome.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return outcome.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function triageColorFor(
   category: string | null | undefined,
   categories: TriageCategory[],
 ): string {
-  if (!category) return "#c3cbd6";
+  if (!category) return "#c3cbd6"
 
   return (
     categories.find((c) => c.category_code === category)?.color || "#6b7280"
-  );
+  )
 }
 
 function TriageChip({
@@ -1295,15 +1290,15 @@ function TriageChip({
 
   compact,
 }: {
-  category: string;
+  category: string
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
-  bedLabel?: string | null;
+  bedLabel?: string | null
 
-  compact?: boolean;
+  compact?: boolean
 }) {
-  const cat = categories.find((c) => c.category_code === category);
+  const cat = categories.find((c) => c.category_code === category)
 
   const color =
     cat?.color ||
@@ -1315,7 +1310,7 @@ function TriageChip({
           ? "#10B981"
           : category === "Black"
             ? "#0F172A"
-            : "#2563EB");
+            : "#2563EB")
 
   return (
     <span
@@ -1330,47 +1325,47 @@ function TriageChip({
           : category}
       {!compact && bedLabel ? ` · ${bedLabel}` : ""}
     </span>
-  );
+  )
 }
 
 function isAbnormal(field: string, value: number | null): boolean {
-  if (value == null) return false;
+  if (value == null) return false
 
   switch (field) {
     case "heart_rate":
-      return value < 60 || value > 100;
+      return value < 60 || value > 100
 
     case "spo2":
-      return value < 95;
+      return value < 95
 
     case "bp_systolic":
-      return value < 90 || value > 140;
+      return value < 90 || value > 140
 
     case "bp_diastolic":
-      return value < 60 || value > 90;
+      return value < 60 || value > 90
 
     case "respiratory_rate":
-      return value < 12 || value > 20;
+      return value < 12 || value > 20
 
     case "temperature":
       if (value > 45) {
         // Temperature recorded in Fahrenheit (e.g. 98.6°F)
 
-        return value < 96.0 || value > 100.4;
+        return value < 96.0 || value > 100.4
       }
 
       // Temperature recorded in Celsius (e.g. 37.0°C)
 
-      return value < 36.0 || value > 38.0;
+      return value < 36.0 || value > 38.0
 
     case "blood_glucose":
-      return value < 70 || value > 180;
+      return value < 70 || value > 180
 
     case "pain_score":
-      return value >= 5;
+      return value >= 5
 
     default:
-      return false;
+      return false
   }
 }
 
@@ -1394,64 +1389,64 @@ function mapUrgencyToTriageCategory(
   urgency: string,
   categories: TriageCategory[],
 ): string {
-  const lower = (urgency || "").toLowerCase();
+  const lower = (urgency || "").toLowerCase()
 
-  let labelKeyword = "";
+  let labelKeyword = ""
 
-  let fallbackCode = "";
+  let fallbackCode = ""
 
   if (
     lower.includes("critical") ||
     lower.includes("immediate") ||
     lower.includes("resuscitation")
   ) {
-    labelKeyword = "immediate";
+    labelKeyword = "immediate"
 
-    fallbackCode = "B1";
+    fallbackCode = "B1"
   } else if (
     lower.includes("high") ||
     lower.includes("severe") ||
     lower.includes("emergent")
   ) {
-    labelKeyword = "high";
+    labelKeyword = "high"
 
-    fallbackCode = "B2";
+    fallbackCode = "B2"
   } else if (
     lower.includes("moderate") ||
     lower.includes("medium") ||
     lower.includes("urgent")
   ) {
-    labelKeyword = "moderate";
+    labelKeyword = "moderate"
 
-    fallbackCode = "B3";
+    fallbackCode = "B3"
   } else if (
     lower.includes("low") ||
     lower.includes("minor") ||
     lower.includes("less urgent")
   ) {
-    labelKeyword = "low";
+    labelKeyword = "low"
 
-    fallbackCode = "B4";
+    fallbackCode = "B4"
   }
 
-  if (!labelKeyword) return "";
+  if (!labelKeyword) return ""
 
   const byLabel = categories.find((c) =>
     c.category_label.toLowerCase().includes(labelKeyword),
-  );
+  )
 
-  if (byLabel) return byLabel.category_code;
+  if (byLabel) return byLabel.category_code
 
-  const byCode = categories.find((c) => c.category_code === fallbackCode);
+  const byCode = categories.find((c) => c.category_code === fallbackCode)
 
-  return byCode ? byCode.category_code : "";
+  return byCode ? byCode.category_code : ""
 }
 
 type BedNeedSuggestion = {
-  levelOfCare: string;
-  specialty: string | null;
-  reason: string;
-} | null;
+  levelOfCare: string
+  specialty: string | null
+  reason: string
+} | null
 
 // Suggests which ward/level-of-care a visit will likely need at disposition
 
@@ -1470,38 +1465,38 @@ function suggestBedNeed(
 
   categories: TriageCategory[],
 ): BedNeedSuggestion {
-  const cat = categories.find((c) => c.category_code === triageCategory);
+  const cat = categories.find((c) => c.category_code === triageCategory)
 
-  const label = (cat?.category_label || "").toLowerCase();
+  const label = (cat?.category_label || "").toLowerCase()
 
-  let levelOfCare = "";
+  let levelOfCare = ""
 
   if (
     label.includes("immediate") ||
     label.includes("critical") ||
     label.includes("resuscitation")
   ) {
-    levelOfCare = "icu";
+    levelOfCare = "icu"
   } else if (
     label.includes("high") ||
     label.includes("severe") ||
     label.includes("emergent")
   ) {
-    levelOfCare = "icu";
+    levelOfCare = "icu"
   } else if (label.includes("moderate") || label.includes("urgent")) {
-    levelOfCare = "ward";
+    levelOfCare = "ward"
   } else if (label.includes("low") || label.includes("minor")) {
-    levelOfCare = "observation";
+    levelOfCare = "observation"
   }
 
-  if (!levelOfCare && !assignedSpecialty) return null;
+  if (!levelOfCare && !assignedSpecialty) return null
 
-  const reasonParts: string[] = [];
+  const reasonParts: string[] = []
 
   if (cat)
-    reasonParts.push(`triage ${cat.category_code} — ${cat.category_label}`);
+    reasonParts.push(`triage ${cat.category_code} — ${cat.category_label}`)
 
-  if (assignedSpecialty) reasonParts.push(`assigned to ${assignedSpecialty}`);
+  if (assignedSpecialty) reasonParts.push(`assigned to ${assignedSpecialty}`)
 
   return {
     levelOfCare: levelOfCare || "ward",
@@ -1509,7 +1504,7 @@ function suggestBedNeed(
     specialty: assignedSpecialty || null,
 
     reason: reasonParts.join(", ") || "ER assessment",
-  };
+  }
 }
 
 // Turns a visit's recorded complaints + most recent vitals into the free-text
@@ -1526,47 +1521,47 @@ function buildSymptomsSummary(
   complaints: ErComplaint[],
   vitals: ErVitals[],
 ): string {
-  const complaintText = complaints.map((c) => c.complaint).join(", ");
+  const complaintText = complaints.map((c) => c.complaint).join(", ")
 
-  const vitalsParts: string[] = [];
+  const vitalsParts: string[] = []
 
-  const latest = vitals[vitals.length - 1];
+  const latest = vitals[vitals.length - 1]
 
   if (latest) {
-    if (latest.heart_rate) vitalsParts.push(`HR: ${latest.heart_rate} bpm`);
+    if (latest.heart_rate) vitalsParts.push(`HR: ${latest.heart_rate} bpm`)
 
     if (latest.bp_systolic && latest.bp_diastolic)
-      vitalsParts.push(`BP: ${latest.bp_systolic}/${latest.bp_diastolic} mmHg`);
+      vitalsParts.push(`BP: ${latest.bp_systolic}/${latest.bp_diastolic} mmHg`)
 
-    if (latest.spo2 != null) vitalsParts.push(`SpO2: ${latest.spo2}%`);
+    if (latest.spo2 != null) vitalsParts.push(`SpO2: ${latest.spo2}%`)
 
     if (latest.respiratory_rate != null)
-      vitalsParts.push(`RR: ${latest.respiratory_rate} /min`);
+      vitalsParts.push(`RR: ${latest.respiratory_rate} /min`)
 
     if (latest.temperature != null) {
-      const tempVal = Number(latest.temperature);
+      const tempVal = Number(latest.temperature)
 
-      const tempUnit = tempVal > 45 ? "°F" : "°C";
+      const tempUnit = tempVal > 45 ? "°F" : "°C"
 
-      vitalsParts.push(`Temp: ${latest.temperature}${tempUnit}`);
+      vitalsParts.push(`Temp: ${latest.temperature}${tempUnit}`)
     }
 
     if (latest.blood_glucose != null)
-      vitalsParts.push(`GRBS: ${latest.blood_glucose} mg/dL`);
+      vitalsParts.push(`GRBS: ${latest.blood_glucose} mg/dL`)
 
     if (latest.pain_score != null)
-      vitalsParts.push(`Pain: ${latest.pain_score}/10`);
+      vitalsParts.push(`Pain: ${latest.pain_score}/10`)
 
     if (latest.consciousness_level)
-      vitalsParts.push(`Consciousness: ${latest.consciousness_level}`);
+      vitalsParts.push(`Consciousness: ${latest.consciousness_level}`)
   }
 
   const vitalsText =
     vitalsParts.length > 0
       ? `Vitals: ${vitalsParts.join(", ")}`
-      : "No vitals recorded.";
+      : "No vitals recorded."
 
-  return `Complaints: ${complaintText || "None"}. ${vitalsText}`;
+  return `Complaints: ${complaintText || "None"}. ${vitalsText}`
 }
 
 // Single source of truth for "ask the AI which department/doctor fits this
@@ -1582,36 +1577,38 @@ function buildSymptomsSummary(
 // and Doctor Assignment's AI suggestion so all three reason from identical data.
 
 type AiTriageSuggestion = {
-  department: string;
+  department: string
 
-  urgency: string;
+  urgency: string
 
-  reasoning: string;
+  reasoning: string
 
-  doctor: string;
+  doctor: string
 
   suggested_treatment?: {
-    intervention_type: string;
-    description: string;
-  } | null;
+    intervention_type: string
+    description: string
+  } | null
 
-  suggested_treatments?: { intervention_type: string; description: string }[];
-};
+  suggested_treatments?: { intervention_type: string ;description: string }[]
+
+  recommended_level_of_care?: string
+}
 
 async function fetchAiTriageSuggestion(
   symptoms: string,
 ): Promise<AiTriageSuggestion> {
   const deptsRes = await apiFetch<{
-    departments: { department_name: string }[];
-  }>("/api/registration/departments");
+    departments: { department_name: string }[]
+  }>("/api/registration/departments")
 
   const docsRes = await apiFetch<{
-    doctors: { doctor_name: string; department: string }[];
-  }>("/api/op/doctors");
+    doctors: { doctor_name: string ;department: string }[]
+  }>("/api/op/doctors")
 
   const available_departments = deptsRes.departments.map(
     (d) => d.department_name,
-  );
+  )
 
   // "Name (Department)" -- required by the shared doctor-matching backstop
 
@@ -1623,7 +1620,7 @@ async function fetchAiTriageSuggestion(
 
   const available_doctors = docsRes.doctors.map(
     (d) => `${d.doctor_name} (${d.department || "General"})`,
-  );
+  )
 
   return apiFetch<AiTriageSuggestion>(
     "/api/symptom-ai/triage",
@@ -1636,7 +1633,7 @@ async function fetchAiTriageSuggestion(
         available_doctors,
       }),
     },
-  );
+  )
 }
 
 export default function ErPage({
@@ -1646,35 +1643,34 @@ export default function ErPage({
   prefillPatient,
   mergeTarget,
 }: Props) {
-  const [visits, setVisits] = useState<ErVisit[]>([]);
+  const [visits, setVisits] = useState<ErVisit[]>([])
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true)
 
-  const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null);
+  const [selectedVisitId, setSelectedVisitId] = useState<number | null>(null)
 
-  const [detail, setDetail] = useState<ErVisitDetail | null>(null);
+  const [detail, setDetail] = useState<ErVisitDetail | null>(null)
 
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false)
 
-  const [intakeModalType, setIntakeModalType] = useState<
-    "new" | "unknown" | "existing" | null
-  >(null);
+  const [intakeModalType, setIntakeModalType] =
+    useState<"new" | "unknown" | "existing" | null>(null)
 
-  const [isRegMenuOpen, setIsRegMenuOpen] = useState(false);
+  const [isRegMenuOpen, setIsRegMenuOpen] = useState(false)
 
-  const regMenuRef = useRef<HTMLDivElement>(null);
+  const regMenuRef = useRef<HTMLDivElement>(null)
 
-  const [trackboardSearch, setTrackboardSearch] = useState("");
+  const [trackboardSearch, setTrackboardSearch] = useState("")
 
-  const [categories, setCategories] = useState<TriageCategory[]>([]);
+  const [categories, setCategories] = useState<TriageCategory[]>([])
 
   const [prescriptionTarget, setPrescriptionTarget] = useState<{
-    id: string;
+    id: string
 
-    name: string;
+    name: string
 
-    doctorName?: string;
-  } | null>(null);
+    doctorName?: string
+  } | null>(null)
 
   // Close registration dropdown menu when clicking outside
 
@@ -1684,18 +1680,18 @@ export default function ErPage({
         regMenuRef.current &&
         !regMenuRef.current.contains(event.target as Node)
       ) {
-        setIsRegMenuOpen(false);
+        setIsRegMenuOpen(false)
       }
-    };
+    }
 
     if (isRegMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside)
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isRegMenuOpen]);
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isRegMenuOpen])
 
   // Backend already supports both ?active_only=true and ?status=closed (see
 
@@ -1707,10 +1703,10 @@ export default function ErPage({
 
   const [queueFilter, setQueueFilter] = useState<"active" | "closed" | "all">(
     "active",
-  );
+  )
 
   const loadVisits = async () => {
-    setLoading(true);
+    setLoading(true)
 
     try {
       const qs =
@@ -1718,146 +1714,145 @@ export default function ErPage({
           ? "?active_only=true"
           : queueFilter === "closed"
             ? "?status=closed"
-            : "";
+            : ""
 
-      const data = await apiFetch<{ visits: ErVisit[] }>(`/api/er/visits${qs}`);
+      const data = await apiFetch<{ visits: ErVisit[] }>(`/api/er/visits${qs}`)
 
-      setVisits(data?.visits || []);
+      setVisits(data?.visits || [])
     } catch {
       // Standalone mode / offline fallback already handled
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const loadCategories = async () => {
     try {
       const data = await apiFetch<{ categories: TriageCategory[] }>(
         "/api/er/triage-config",
-      );
+      )
 
-      setCategories(data?.categories || []);
+      setCategories(data?.categories || [])
     } catch {
       // Standalone mode fallback
     }
-  };
+  }
 
   const loadDetail = async (visitId: number) => {
-    setDetailLoading(true);
+    setDetailLoading(true)
 
     try {
-      const data = await apiFetch<ErVisitDetail>(`/api/er/visits/${visitId}`);
+      const data = await apiFetch<ErVisitDetail>(`/api/er/visits/${visitId}`)
 
       if (data) {
-        setDetail(data);
+        setDetail(data)
       } else {
-        setDetail(null);
+        setDetail(null)
       }
     } catch {
-      setDetail(null);
+      setDetail(null)
     } finally {
-      setDetailLoading(false);
+      setDetailLoading(false)
     }
-  };
+  }
 
-  const [billingVersion, setBillingVersion] = useState(0);
+  const [billingVersion, setBillingVersion] = useState(0)
 
   useEffect(() => {
     return BillingDatabase.onUpdate(() => {
-      setBillingVersion((v) => v + 1);
-    });
-  }, []);
+      setBillingVersion((v) => v + 1)
+    })
+  }, [])
 
   useEffect(() => {
-    loadVisits();
-  }, [queueFilter]);
+    loadVisits()
+  }, [queueFilter])
 
   useEffect(() => {
-    loadCategories();
-  }, []);
+    loadCategories()
+  }, [])
 
   useEffect(() => {
-    if (selectedVisitId) loadDetail(selectedVisitId);
-  }, [selectedVisitId]);
+    if (selectedVisitId) loadDetail(selectedVisitId)
+  }, [selectedVisitId])
 
   useEffect(() => {
-    if (!mergeTarget) return;
-
-    (async () => {
+    if (!mergeTarget) return
+    ;(async () => {
       try {
         await apiFetch(`/api/er/visits/${mergeTarget.visitId}/merge-unknown`, {
           method: "POST",
 
           body: JSON.stringify({ patient_id: mergeTarget.patientId }),
-        });
+        })
 
         setNotice({
           type: "success",
           message: "New patient registered and merged into the visit.",
-        });
+        })
 
-        setSelectedVisitId(mergeTarget.visitId);
+        setSelectedVisitId(mergeTarget.visitId)
       } catch (error: any) {
         reportError(
           setNotice,
           error,
           "Patient was registered, but merging into the visit failed -- merge manually from the visit's Identity panel.",
-        );
+        )
 
-        setSelectedVisitId(mergeTarget.visitId);
+        setSelectedVisitId(mergeTarget.visitId)
       }
-    })();
+    })()
 
     // Runs once per distinct mergeTarget object -- App.tsx clears it on any
 
     // other navigation to "er", so this won't re-fire on a later unrelated visit.
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mergeTarget]);
+  }, [mergeTarget])
 
   const summary = useMemo(() => {
-    const byStatus: Record<string, number> = {};
+    const byStatus: Record<string, number> = {}
 
     for (const v of visits) {
       if (v.status !== "closed")
-        byStatus[v.status] = (byStatus[v.status] || 0) + 1;
+        byStatus[v.status] = (byStatus[v.status] || 0) + 1
     }
 
-    return byStatus;
-  }, [visits]);
+    return byStatus
+  }, [visits])
 
   const filteredVisits = useMemo(() => {
-    if (!trackboardSearch.trim()) return visits;
+    if (!trackboardSearch.trim()) return visits
 
-    const q = trackboardSearch.trim().toLowerCase();
+    const q = trackboardSearch.trim().toLowerCase()
 
     return visits.filter((v) => {
       const fullName =
-        `${v.patient_name || ""} ${v.patient_last_name || ""}`.toLowerCase();
+        `${v.patient_name || ""} ${v.patient_last_name || ""}`.toLowerCase()
 
-      const patientId = (v.patient_id || "").toLowerCase();
+      const patientId = (v.patient_id || "").toLowerCase()
 
-      const visitNo = (v.visit_no || "").toLowerCase();
+      const visitNo = (v.visit_no || "").toLowerCase()
 
-      const unknownLabel = (v.unknown_patient_label || "").toLowerCase();
+      const unknownLabel = (v.unknown_patient_label || "").toLowerCase()
 
-      const phone = (v.patient_phone || "").toLowerCase();
+      const phone = (v.patient_phone || "").toLowerCase()
 
-      const doc = (v.assigned_doctor_name || "").toLowerCase();
+      const doc = (v.assigned_doctor_name || "").toLowerCase()
 
-      const specialty = (v.assigned_specialty || "").toLowerCase();
+      const specialty = (v.assigned_specialty || "").toLowerCase()
 
       const complaint = (
         (v as any).complaints?.[0]?.complaint ||
         (v as any).condition_at_arrival ||
         ""
-      ).toLowerCase();
+      ).toLowerCase()
 
-      const bed = (v.triage_bed_label || "").toLowerCase();
+      const bed = (v.triage_bed_label || "").toLowerCase()
 
-      const category = (v.triage_category || "").toLowerCase();
+      const category = (v.triage_category || "").toLowerCase()
 
-      const visitStatus = (v.status || "").toLowerCase();
+      const visitStatus = (v.status || "").toLowerCase()
 
       return (
         fullName.includes(q) ||
@@ -1871,15 +1866,15 @@ export default function ErPage({
         bed.includes(q) ||
         category.includes(q) ||
         visitStatus.includes(q)
-      );
-    });
-  }, [visits, trackboardSearch]);
+      )
+    })
+  }, [visits, trackboardSearch])
 
   const refreshAfterAction = async () => {
-    await loadVisits();
+    await loadVisits()
 
-    if (selectedVisitId) await loadDetail(selectedVisitId);
-  };
+    if (selectedVisitId) await loadDetail(selectedVisitId)
+  }
 
   // A patient handed back from the registration-redirect flow (see
 
@@ -1890,8 +1885,8 @@ export default function ErPage({
   // modal is open, unlike the old always-visible sidebar.
 
   useEffect(() => {
-    if (prefillPatient) setIntakeModalType("existing");
-  }, [prefillPatient]);
+    if (prefillPatient) setIntakeModalType("existing")
+  }, [prefillPatient])
 
   if (selectedVisitId && detail) {
     return (
@@ -1905,11 +1900,11 @@ export default function ErPage({
             setNotice={setNotice}
             onNavigate={onNavigate}
             onBack={() => {
-              setSelectedVisitId(null);
+              setSelectedVisitId(null)
 
-              setDetail(null);
+              setDetail(null)
 
-              loadVisits();
+              loadVisits()
             }}
             onRefresh={refreshAfterAction}
             onOrderMedication={() =>
@@ -1925,9 +1920,9 @@ export default function ErPage({
             }
             visits={visits}
             onSelectVisit={(id) => {
-              setSelectedVisitId(id);
+              setSelectedVisitId(id)
 
-              loadDetail(id);
+              loadDetail(id)
             }}
           />
         </ErErrorBoundary>
@@ -1946,10 +1941,10 @@ export default function ErPage({
           />
         )}
       </div>
-    );
+    )
   }
 
-  const activeCount = visits.filter((v) => v.status !== "closed").length;
+  const activeCount = visits.filter((v) => v.status !== "closed").length
 
   const awaitingDoctorCount = visits.filter(
     (v) =>
@@ -1957,7 +1952,7 @@ export default function ErPage({
       (v.status === "registered" ||
         v.status === "triaged" ||
         !v.assigned_doctor_name),
-  ).length;
+  ).length
 
   const highPriorityAwaitingCount = visits.filter(
     (v) =>
@@ -1966,47 +1961,47 @@ export default function ErPage({
         v.status === "triaged" ||
         !v.assigned_doctor_name) &&
       (v.triage_category === "B1" || v.triage_category === "B2"),
-  ).length;
+  ).length
 
   const bedRequestedVisits = visits.filter((v) => {
-    if (v.status === "closed") return false;
+    if (v.status === "closed") return false
 
-    const dest = getDestination(v);
+    const dest = getDestination(v)
 
-    const bed = getBedLabel(v);
+    const bed = getBedLabel(v)
 
     return Boolean(
       dest &&
-      !bed &&
-      (dest.includes("Requested") ||
-        dest.includes("ICU") ||
-        dest.includes("Ward")),
-    );
-  });
+        !bed &&
+        (dest.includes("Requested") ||
+          dest.includes("ICU") ||
+          dest.includes("Ward")),
+    )
+  })
 
-  const bedRequestedCount = bedRequestedVisits.length;
+  const bedRequestedCount = bedRequestedVisits.length
 
   const icuReqCount = bedRequestedVisits.filter((v) =>
     getDestination(v)?.includes("ICU"),
-  ).length;
+  ).length
 
   const wardReqCount = bedRequestedVisits.filter((v) =>
     getDestination(v)?.includes("Ward"),
-  ).length;
+  ).length
 
   const bedAllocatedVisits = visits.filter((v) => {
-    if (v.status === "closed") return false;
+    if (v.status === "closed") return false
 
-    const bed = getBedLabel(v);
+    const bed = getBedLabel(v)
 
     const bedReqAllocated = (v as any).bed_requests?.some(
       (b: any) => b.status === "allocated",
-    );
+    )
 
-    return Boolean(bed || bedReqAllocated);
-  });
+    return Boolean(bed || bedReqAllocated)
+  })
 
-  const bedAllocatedCount = bedAllocatedVisits.length;
+  const bedAllocatedCount = bedAllocatedVisits.length
 
   const icuAllocatedCount = bedAllocatedVisits.filter(
     (v) =>
@@ -2014,33 +2009,33 @@ export default function ErPage({
       (v as any).bed_requests?.some((b: any) =>
         (b.requested_level_of_care || "").includes("ICU"),
       ),
-  ).length;
+  ).length
 
-  const wardAllocatedCount = Math.max(0, bedAllocatedCount - icuAllocatedCount);
+  const wardAllocatedCount = Math.max(0, bedAllocatedCount - icuAllocatedCount)
 
   return (
-    <div className="flex-1 bg-[#F0F2F5] p-5 sm:p-6 space-y-4 min-h-full">
+    <div className="flex-1 bg-[#F0F2F5] p-3 sm:p-4 space-y-3 min-h-full font-sans text-xs">
       {/* Top Header: Search Bar & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         {/* Search Option in place of the subtitle */}
-        <div className="relative flex-1 max-w-2xl">
+        <div className="relative flex-1 max-w-xl">
           <div className="relative flex items-center">
-            <FiSearch className="absolute left-3.5 text-gray-400 text-[15px] pointer-events-none" />
+            <FiSearch className="absolute left-3 text-slate-400 text-[13px] pointer-events-none" />
             <input
               type="text"
               value={trackboardSearch}
               onChange={(e) => setTrackboardSearch(e.target.value)}
               placeholder="Search ED Track Board by patient name, ID, phone, triage, complaint, doctor, bed..."
-              className="w-full pl-10 pr-10 py-2 bg-white border border-[#DDE2EC] rounded text-[13px] text-gray-900 placeholder:text-gray-400 shadow-2xs focus:outline-none focus:border-[#1B4FD8] transition-all"
+              className="w-full pl-8.5 pr-8 py-1.5 bg-white border border-slate-300 rounded-none text-xs text-slate-900 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:border-[#1B4FD8] focus:ring-1 focus:ring-[#1B4FD8]/20 transition-all font-medium"
             />
             {trackboardSearch && (
               <button
                 type="button"
                 onClick={() => setTrackboardSearch("")}
-                className="absolute right-3 text-gray-400 hover:text-gray-600 p-0.5 rounded hover:bg-gray-100 transition-colors cursor-pointer"
+                className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-none hover:bg-slate-100 transition-colors cursor-pointer"
                 title="Clear search"
               >
-                <FiX className="text-[14px]" />
+                <FiX className="text-[13px]" />
               </button>
             )}
           </div>
@@ -2051,10 +2046,10 @@ export default function ErPage({
           <button
             type="button"
             onClick={loadVisits}
-            className="px-3.5 py-2 bg-white border border-[#DDE2EC] hover:bg-slate-50 text-gray-700 text-[12.5px] font-semibold rounded shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-none shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
             title="Refresh ED visits"
           >
-            <FiRefreshCw className="text-[13px]" /> Refresh
+            <FiRefreshCw className="text-[12px]" /> Refresh
           </button>
 
           {/* New Registration Dropdown */}
@@ -2062,22 +2057,22 @@ export default function ErPage({
             <button
               type="button"
               onClick={() => setIsRegMenuOpen((prev) => !prev)}
-              className="px-4 py-2 bg-[#1B4FD8] hover:bg-[#1E40AF] text-white text-[13px] font-bold rounded shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+              className="px-3.5 py-1.5 bg-[#1B4FD8] hover:bg-[#1541B5] text-white text-xs font-bold rounded-none shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
               aria-expanded={isRegMenuOpen}
               aria-haspopup="true"
             >
-              <FiPlus className="text-[16px]" />
+              <FiPlus className="text-[14px]" />
               <span>New Registration</span>
               <FiChevronDown
-                className={`text-[14px] transition-transform duration-200 ${
+                className={`text-[13px] transition-transform duration-200 ${
                   isRegMenuOpen ? "rotate-180" : ""
                 }`}
               />
             </button>
 
             {isRegMenuOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white border border-[#DDE2EC] rounded shadow-lg z-50 py-1.5 overflow-hidden">
-                <div className="px-3.5 py-1.5 text-[10.5px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+              <div className="absolute right-0 mt-1.5 w-64 bg-white border border-slate-300 rounded-none shadow-lg z-50 py-1 overflow-hidden">
+                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                   Select Registration Type
                 </div>
 
@@ -2085,20 +2080,19 @@ export default function ErPage({
                 <button
                   type="button"
                   onClick={() => {
-                    setIntakeModalType("new");
-
-                    setIsRegMenuOpen(false);
+                    setIntakeModalType("new")
+                    setIsRegMenuOpen(false)
                   }}
-                  className="w-full text-left px-3.5 py-2.5 hover:bg-blue-50/70 text-gray-800 hover:text-[#1B4FD8] transition-colors flex items-start gap-3 group cursor-pointer"
+                  className="w-full text-left px-3 py-2 hover:bg-blue-50/70 text-slate-800 hover:text-[#1B4FD8] transition-colors flex items-start gap-2.5 group cursor-pointer"
                 >
-                  <div className="w-8 h-8 rounded bg-blue-100 text-[#1B4FD8] flex items-center justify-center text-[15px] shrink-0 mt-0.5 group-hover:bg-[#1B4FD8] group-hover:text-white transition-colors">
+                  <div className="w-7 h-7 rounded-none bg-blue-100 text-[#1B4FD8] flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#1B4FD8] group-hover:text-white transition-colors">
                     <FiUserPlus />
                   </div>
                   <div>
-                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-[#1B4FD8]">
+                    <div className="text-xs font-bold text-slate-900 group-hover:text-[#1B4FD8]">
                       New Patient
                     </div>
-                    <div className="text-[11.5px] text-gray-500 font-normal">
+                    <div className="text-[11px] text-slate-500 font-normal">
                       Register brand new patient with demographics
                     </div>
                   </div>
@@ -2108,20 +2102,19 @@ export default function ErPage({
                 <button
                   type="button"
                   onClick={() => {
-                    setIntakeModalType("existing");
-
-                    setIsRegMenuOpen(false);
+                    setIntakeModalType("existing")
+                    setIsRegMenuOpen(false)
                   }}
-                  className="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 text-gray-800 hover:text-[#1B4FD8] transition-colors flex items-start gap-3 group cursor-pointer border-t border-gray-100"
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-800 hover:text-[#1B4FD8] transition-colors flex items-start gap-2.5 group cursor-pointer border-t border-slate-100"
                 >
-                  <div className="w-8 h-8 rounded bg-slate-100 text-slate-700 flex items-center justify-center text-[15px] shrink-0 mt-0.5 group-hover:bg-[#1B4FD8] group-hover:text-white transition-colors">
+                  <div className="w-7 h-7 rounded-none bg-slate-100 text-slate-700 flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#1B4FD8] group-hover:text-white transition-colors">
                     <FiSearch />
                   </div>
                   <div>
-                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-[#1B4FD8]">
+                    <div className="text-xs font-bold text-slate-900 group-hover:text-[#1B4FD8]">
                       Existing Patient
                     </div>
-                    <div className="text-[11.5px] text-gray-500 font-normal">
+                    <div className="text-[11px] text-slate-500 font-normal">
                       Search hospital records by UHID or phone
                     </div>
                   </div>
@@ -2131,23 +2124,22 @@ export default function ErPage({
                 <button
                   type="button"
                   onClick={() => {
-                    setIntakeModalType("unknown");
-
-                    setIsRegMenuOpen(false);
+                    setIntakeModalType("unknown")
+                    setIsRegMenuOpen(false)
                   }}
-                  className="w-full text-left px-3.5 py-2.5 hover:bg-red-50/70 text-gray-800 hover:text-[#DC2626] transition-colors flex items-start gap-3 group cursor-pointer border-t border-gray-100"
+                  className="w-full text-left px-3 py-2 hover:bg-red-50/70 text-slate-800 hover:text-[#DC2626] transition-colors flex items-start gap-2.5 group cursor-pointer border-t border-slate-100"
                 >
-                  <div className="w-8 h-8 rounded bg-red-100 text-[#DC2626] flex items-center justify-center text-[15px] shrink-0 mt-0.5 group-hover:bg-[#DC2626] group-hover:text-white transition-colors">
+                  <div className="w-7 h-7 rounded-none bg-red-100 text-[#DC2626] flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#DC2626] group-hover:text-white transition-colors">
                     <FiAlertCircle />
                   </div>
                   <div>
-                    <div className="text-[13px] font-bold text-gray-900 group-hover:text-[#DC2626] flex items-center gap-1.5">
+                    <div className="text-xs font-bold text-slate-900 group-hover:text-[#DC2626] flex items-center gap-1">
                       Unidentified Patient
-                      <span className="px-1.5 py-0.2 bg-red-100 text-red-700 text-[10px] font-bold rounded">
+                      <span className="px-1 py-0.1 bg-red-100 text-red-700 text-[9.5px] font-bold rounded-none border border-red-200">
                         Emergency
                       </span>
                     </div>
-                    <div className="text-[11.5px] text-gray-500 font-normal">
+                    <div className="text-[11px] text-slate-500 font-normal">
                       Unconscious / unknown patient with emergency label
                     </div>
                   </div>
@@ -2159,142 +2151,144 @@ export default function ErPage({
       </div>
 
       {/* 4 Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {/* Card 1: ACTIVE VISITS */}
-        <div className="bg-white border border-[#DDE2EC] rounded p-3.5 shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded bg-blue-50 text-[#1B4FD8] flex items-center justify-center text-xl shrink-0">
+        <div className="bg-white border border-slate-200 border-l-4 border-l-blue-600 rounded-none p-2.5 shadow-2xs flex items-center gap-2.5 hover:border-slate-300 transition-all">
+          <div className="w-8 h-8 rounded-none bg-blue-50/80 border border-blue-100 text-[#1B4FD8] flex items-center justify-center text-sm shrink-0">
             <FiUsers />
           </div>
           <div>
-            <span className="text-[10.5px] font-bold text-[#64748B] uppercase tracking-wider block">
-              ACTIVE VISITS
+            <span className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
+              👥 ACTIVE VISITS
             </span>
-            <div className="text-2xl font-bold text-gray-900 leading-tight">
+            <div className="text-xl font-black text-slate-900 leading-none mb-0.5">
               {activeCount}
             </div>
-            <span className="text-[11.5px] font-semibold text-[#16A34A]">
-              {visits.length} total recorded
+            <span className="text-[10.5px] font-semibold text-emerald-600 flex items-center gap-1">
+              <span>🟢</span> {visits.length} total recorded
             </span>
           </div>
         </div>
 
         {/* Card 2: AWAITING DOCTOR */}
-        <div className="bg-white border border-[#DDE2EC] rounded p-3.5 shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded bg-amber-50 text-[#D97706] flex items-center justify-center text-xl shrink-0">
+        <div className="bg-white border border-slate-200 border-l-4 border-l-amber-500 rounded-none p-2.5 shadow-2xs flex items-center gap-2.5 hover:border-slate-300 transition-all">
+          <div className="w-8 h-8 rounded-none bg-amber-50/80 border border-amber-100 text-amber-600 flex items-center justify-center text-sm shrink-0">
             <FiWatch />
           </div>
           <div>
-            <span className="text-[10.5px] font-bold text-[#64748B] uppercase tracking-wider block">
-              AWAITING DOCTOR
+            <span className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
+              ⏱️ AWAITING DOCTOR
             </span>
-            <div className="text-2xl font-bold text-gray-900 leading-tight">
+            <div className="text-xl font-black text-slate-900 leading-none mb-0.5">
               {awaitingDoctorCount}
             </div>
-            <span className="text-[11.5px] font-medium text-[#D97706]">
-              {highPriorityAwaitingCount} High Priority
+            <span className="text-[10.5px] font-semibold text-amber-600 flex items-center gap-1">
+              <span>🔥</span> {highPriorityAwaitingCount} High Priority
             </span>
           </div>
         </div>
 
         {/* Card 3: BED REQUESTED */}
-        <div className="bg-white border border-[#DDE2EC] rounded p-3.5 shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded bg-red-50 text-[#DC2626] flex items-center justify-center text-xl shrink-0">
+        <div className="bg-white border border-slate-200 border-l-4 border-l-rose-600 rounded-none p-2.5 shadow-2xs flex items-center gap-2.5 hover:border-slate-300 transition-all">
+          <div className="w-8 h-8 rounded-none bg-rose-50/80 border border-rose-100 text-rose-600 flex items-center justify-center text-sm shrink-0">
             <FiBell />
           </div>
           <div>
-            <span className="text-[10.5px] font-bold text-[#64748B] uppercase tracking-wider block">
-              BED REQUESTED
+            <span className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
+              🛏️ BED REQUESTED
             </span>
-            <div className="text-2xl font-bold text-gray-900 leading-tight">
+            <div className="text-xl font-black text-slate-900 leading-none mb-0.5">
               {bedRequestedCount}
             </div>
-            <span className="text-[11.5px] font-medium text-[#64748B]">
-              {icuReqCount} ICU • {wardReqCount} Ward
+            <span className="text-[10.5px] font-medium text-slate-500">
+              🚨 {icuReqCount} ICU • 🏥 {wardReqCount} Ward
             </span>
           </div>
         </div>
 
         {/* Card 4: BED ALLOCATED */}
-        <div className="bg-white border border-[#DDE2EC] rounded p-3.5 shadow-2xs flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded bg-green-50 text-[#16A34A] flex items-center justify-center text-xl shrink-0">
+        <div className="bg-white border border-slate-200 border-l-4 border-l-emerald-600 rounded-none p-2.5 shadow-2xs flex items-center gap-2.5 hover:border-slate-300 transition-all">
+          <div className="w-8 h-8 rounded-none bg-emerald-50/80 border border-emerald-100 text-emerald-600 flex items-center justify-center text-sm shrink-0">
             <FiHome />
           </div>
           <div>
-            <span className="text-[10.5px] font-bold text-[#64748B] uppercase tracking-wider block">
-              BED ALLOCATED
+            <span className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
+              🏨 BED ALLOCATED
             </span>
-            <div className="text-2xl font-bold text-gray-900 leading-tight">
+            <div className="text-xl font-black text-slate-900 leading-none mb-0.5">
               {bedAllocatedCount}
             </div>
-            <span className="text-[11.5px] font-medium text-[#64748B]">
-              {icuAllocatedCount} ICU • {wardAllocatedCount} Ward
+            <span className="text-[10.5px] font-medium text-slate-500">
+              ✅ {icuAllocatedCount} ICU • 📌 {wardAllocatedCount} Ward
             </span>
           </div>
         </div>
       </div>
 
       {/* Main Track Board Panel */}
-      <div className="bg-white border border-[#DDE2EC] rounded shadow-2xs overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-none shadow-2xs overflow-hidden">
         {/* Track Board Header & Filter */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#DDE2EC] px-5 py-2.5 bg-white gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 px-3.5 py-2 bg-slate-50/50 gap-2">
           <div className="flex items-center gap-2">
-            <span className="text-[13px] font-bold text-gray-900">
-              Emergency Queue
+            <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1">
+              <span>🚨</span> Emergency Queue
             </span>
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-[#1B4FD8] border border-blue-100">
+            <span className="px-2 py-0.5 rounded-none text-[10.5px] font-bold bg-blue-50 text-[#1B4FD8] border border-blue-200 flex items-center gap-1">
+              <span>👥</span>
               {filteredVisits.length}{" "}
               {filteredVisits.length === 1 ? "Patient" : "Patients"}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
+            <span className="text-[10.5px] font-semibold text-slate-500">🔍 Filter:</span>
             <select
               value={queueFilter}
               onChange={(e) =>
                 setQueueFilter(e.target.value as "active" | "closed" | "all")
               }
-              className="bg-white border border-[#CBD5E1] rounded px-3 py-1 text-[12px] font-semibold text-gray-800 shadow-2xs focus:outline-none focus:border-[#1B4FD8] cursor-pointer"
+              className="bg-white border border-slate-300 rounded-none px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#1B4FD8] cursor-pointer"
               aria-label="Filter ER visits"
             >
-              <option value="active">Active visits</option>
-              <option value="closed">Closed visits</option>
-              <option value="all">All visits</option>
+              <option value="active">🟢 Active visits</option>
+              <option value="closed">🔒 Closed visits</option>
+              <option value="all">📂 All visits</option>
             </select>
           </div>
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-[#64748B] text-[13px]">
+          <div className="p-8 text-center text-slate-500 text-xs font-medium">
             Loading ER visits...
           </div>
         ) : visits.length === 0 ? (
-          <div className="p-12 text-center text-[#64748B]">
-            <p className="font-bold text-gray-800 text-[14px]">
+          <div className="p-12 text-center text-slate-500">
+            <p className="font-bold text-slate-800 text-sm">
               {queueFilter === "closed"
                 ? "No closed ER visits"
                 : queueFilter === "all"
                   ? "No ER visits yet"
                   : "No active ER visits"}
             </p>
-            <p className="text-[12px] text-[#64748B] mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               {queueFilter === "active"
                 ? "Register a new ER visit to get started."
                 : "Switch the filter above to see other visits."}
             </p>
           </div>
         ) : filteredVisits.length === 0 ? (
-          <div className="p-12 text-center text-[#64748B]">
-            <p className="font-bold text-gray-800 text-[14px]">
+          <div className="p-12 text-center text-slate-500">
+            <p className="font-bold text-slate-800 text-sm">
               No visits matching "{trackboardSearch}"
             </p>
-            <p className="text-[12px] text-[#64748B] mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Try searching by patient name, ID, phone, doctor, bed, triage or
               complaint.
             </p>
             <button
               type="button"
               onClick={() => setTrackboardSearch("")}
-              className="mt-3 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded cursor-pointer transition-colors"
+              className="mt-3 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-none cursor-pointer transition-colors border border-slate-300"
             >
               Clear Search Filter
             </button>
@@ -2303,76 +2297,72 @@ export default function ErPage({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-[#E2E8F0] bg-[#FAFCFF] text-[11px] font-bold text-[#64748B] uppercase tracking-wider">
-                  <th className="pl-6 py-3.5">VISIT</th>
-                  <th className="px-4 py-3.5">TRIAGE</th>
-                  <th className="px-4 py-3.5">PATIENT</th>
-                  <th className="px-4 py-3.5">ARRIVED</th>
-                  <th className="px-4 py-3.5">STATUS</th>
-                  <th className="px-4 py-3.5">BILLING</th>
-                  <th className="px-4 py-3.5">DOCTOR</th>
-                  <th className="px-4 py-3.5">DESTINATION</th>
-                  <th className="px-4 py-3.5">BED</th>
-                  <th className="pr-6 py-3.5 text-right"></th>
+                <tr className="border-b border-slate-200 bg-slate-100/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="pl-3.5 py-2">📋 VISIT</th>
+                  <th className="px-3 py-2">🚦 TRIAGE</th>
+                  <th className="px-3 py-2">👤 PATIENT</th>
+                  <th className="px-3 py-2">⏱️ ARRIVED</th>
+                  <th className="px-3 py-2">📌 STATUS</th>
+                  <th className="px-3 py-2">💳 BILLING</th>
+                  <th className="px-3 py-2">👨‍⚕️ DOCTOR</th>
+                  <th className="px-3 py-2">📍 DESTINATION</th>
+                  <th className="px-3 py-2">🛏️ BED</th>
+                  <th className="pr-3.5 py-2 text-right">⚡ ACTION</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F1F5F9] text-[12.5px]">
+              <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredVisits.map((v) => {
-                  const arrivalInfo = getArrivalTimeDisplay(v.arrival_at);
-
-                  const dest = getDestination(v);
-
-                  const bed = getBedLabel(v);
-
-                  const isB1 = v.triage_category === "B1";
-
-                  const isB2 = v.triage_category === "B2";
+                  const arrivalInfo = getArrivalTimeDisplay(v.arrival_at)
+                  const dest = getDestination(v)
+                  const bed = getBedLabel(v)
+                  const isB1 = v.triage_category === "B1"
+                  const isB2 = v.triage_category === "B2"
 
                   return (
                     <tr
                       key={v.id}
-                      className="hover:bg-[#F8FAFC] transition-colors"
+                      className="hover:bg-slate-50/90 transition-colors"
                       style={{
                         borderLeft: isB1
-                          ? "4px solid #DC2626"
+                          ? "3px solid #DC2626"
                           : isB2
-                            ? "4px solid #EA580C"
-                            : "4px solid transparent",
+                            ? "3px solid #EA580C"
+                            : "3px solid transparent",
                       }}
                     >
                       {/* 1. VISIT */}
-                      <td className="pl-5 py-3.5 font-bold text-gray-900 whitespace-nowrap">
+                      <td className="pl-3.5 py-2 font-bold text-slate-900 whitespace-nowrap">
                         {v.visit_no}
                       </td>
 
                       {/* 2. TRIAGE */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         {renderTriagePill(v.triage_category)}
                       </td>
 
                       {/* 3. PATIENT */}
-                      <td className="px-4 py-3.5">
+                      <td className="px-3 py-2">
                         {v.is_unknown_patient ? (
                           <div>
-                            <div className="font-bold text-gray-900 text-[13px] flex items-center gap-1.5">
+                            <div className="font-bold text-slate-900 text-xs flex items-center gap-1">
                               <span>🚨</span>
                               <span>
                                 {v.unknown_patient_label || "Unknown Male"}
                               </span>
                             </div>
-                            <div className="text-[11.5px] text-[#64748B] font-medium">
+                            <div className="text-[11px] text-slate-500 font-medium">
                               Temp Tag{" "}
                               {v.patient_age ? `• ~${v.patient_age}y` : ""}
                             </div>
                           </div>
                         ) : (
                           <div>
-                            <div className="font-semibold text-gray-900 text-[13px]">
+                            <div className="font-bold text-slate-900 text-xs">
                               {[v.patient_name, v.patient_last_name]
                                 .filter(Boolean)
                                 .join(" ") || v.patient_id}
                             </div>
-                            <div className="text-[11.5px] text-[#64748B] font-medium">
+                            <div className="text-[11px] text-slate-500 font-medium">
                               {v.patient_id}
                               {v.patient_gender ? ` • ${v.patient_gender}` : ""}
                               {v.patient_age ? ` • ${v.patient_age}y` : ""}
@@ -2382,35 +2372,35 @@ export default function ErPage({
                       </td>
 
                       {/* 4. ARRIVED */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
-                        <div className="font-medium text-gray-800 text-[12px]">
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="font-semibold text-slate-800 text-[11.5px]">
                           {arrivalInfo.elapsed}
                         </div>
                         {arrivalInfo.clock && (
-                          <div className="text-[11px] text-[#64748B]">
+                          <div className="text-[10.5px] text-slate-500">
                             {arrivalInfo.clock}
                           </div>
                         )}
                       </td>
 
                       {/* 5. STATUS */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         {renderStatusPill(v.status)}
                       </td>
 
                       {/* 6. BILLING */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      <td className="px-3 py-2 whitespace-nowrap">
                         {renderBillingPill(v)}
                       </td>
 
-                      {/* 6. DOCTOR */}
-                      <td className="px-4 py-3.5">
+                      {/* 7. DOCTOR */}
+                      <td className="px-3 py-2">
                         {v.assigned_doctor_name ? (
                           <div>
-                            <div className="font-semibold text-gray-900 text-[12.5px]">
+                            <div className="font-semibold text-slate-900 text-[11.5px]">
                               {v.assigned_doctor_name.replace(/\s*\(.*\)/, "")}
                             </div>
-                            <div className="text-[11px] text-[#64748B]">
+                            <div className="text-[10.5px] text-slate-500">
                               (
                               {v.assigned_specialty ||
                                 v.assigned_doctor_name.match(/\((.*)\)/)?.[1] ||
@@ -2419,44 +2409,54 @@ export default function ErPage({
                             </div>
                           </div>
                         ) : (
-                          <span className="text-gray-400 font-bold">—</span>
+                          <span className="text-slate-400 font-bold">—</span>
                         )}
                       </td>
 
-                      {/* 7. DESTINATION */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      {/* 8. DESTINATION */}
+                      <td className="px-3 py-2 whitespace-nowrap">
                         {renderDestinationPill(dest)}
                       </td>
 
-                      {/* 8. BED */}
-                      <td className="px-4 py-3.5 whitespace-nowrap">
+                      {/* 9. BED */}
+                      <td className="px-3 py-2 whitespace-nowrap">
                         {bed ? (
-                          <span className="font-mono text-[12px] font-semibold text-gray-800">
+                          <span className="font-mono text-[11.5px] font-semibold text-slate-800">
                             {bed}
                           </span>
                         ) : (
-                          <span className="text-gray-400 font-bold">—</span>
+                          <span className="text-slate-400 font-bold">—</span>
                         )}
                       </td>
 
-                      {/* 9. ACTION */}
-                      <td className="pr-6 py-3.5 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (onOpenTriage) {
-                              onOpenTriage(v.id);
-                            } else {
-                              setSelectedVisitId(v.id);
-                            }
-                          }}
-                          className="px-3.5 py-1 text-[12px] font-semibold text-[#1B4FD8] bg-white border border-[#CBD5E1] rounded hover:bg-blue-50 hover:border-[#1B4FD8] transition-all cursor-pointer shadow-2xs"
-                        >
-                          Open
-                        </button>
+                      {/* 10. ACTION */}
+                      <td className="pr-3.5 py-2 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {v.status !== "closed" && !v.assigned_doctor_name && (
+                            <span
+                              title="No doctor assigned yet -- open to run AI Triage"
+                              className="px-2 py-0.5 text-[10.5px] font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded-none whitespace-nowrap"
+                            >
+                              🤖 AI Triage
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onOpenTriage) {
+                                onOpenTriage(v.id)
+                              } else {
+                                setSelectedVisitId(v.id)
+                              }
+                            }}
+                            className="px-3 py-1 text-[12px] font-semibold text-[#1B4FD8] bg-white border border-slate-300 rounded-none hover:bg-[#1B4FD8] hover:text-white transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                          >
+                            <span>👁️</span> Open
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  );
+                  )
                 })}
               </tbody>
             </table>
@@ -2489,11 +2489,11 @@ export default function ErPage({
             categories={categories}
             onClose={() => setIntakeModalType(null)}
             onCreated={(visitId) => {
-              setIntakeModalType(null);
+              setIntakeModalType(null)
 
-              loadVisits();
+              loadVisits()
 
-              setSelectedVisitId(visitId);
+              setSelectedVisitId(visitId)
             }}
             onNavigate={onNavigate}
           />
@@ -2514,11 +2514,11 @@ export default function ErPage({
             categories={categories}
             onClose={() => setIntakeModalType(null)}
             onCreated={(visitId) => {
-              setIntakeModalType(null);
+              setIntakeModalType(null)
 
-              loadVisits();
+              loadVisits()
 
-              setSelectedVisitId(visitId);
+              setSelectedVisitId(visitId)
             }}
             onNavigate={onNavigate}
           />
@@ -2540,18 +2540,18 @@ export default function ErPage({
             prefillPatient={prefillPatient}
             onClose={() => setIntakeModalType(null)}
             onCreated={(visitId) => {
-              setIntakeModalType(null);
+              setIntakeModalType(null)
 
-              loadVisits();
+              loadVisits()
 
-              setSelectedVisitId(visitId);
+              setSelectedVisitId(visitId)
             }}
             onNavigate={onNavigate}
           />
         </Modal>
       )}
     </div>
-  );
+  )
 }
 
 // ==================== 1. Dedicated New Patient Intake ====================
@@ -2567,218 +2567,218 @@ function NewPatientIntakePanel({
 
   onNavigate,
 }: {
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
-  onClose?: () => void;
+  onClose?: () => void
 
-  onCreated: (visitId: number) => void;
+  onCreated: (visitId: number) => void
 
-  onNavigate?: (page: string, extraData?: any) => void;
+  onNavigate?: (page: string, extraData?: any) => void
 }) {
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0]
 
-  const now = new Date();
+  const now = new Date()
 
-  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
 
   // 1. Demographics
 
-  const [newName, setNewName] = useState("");
+  const [newName, setNewName] = useState("")
 
-  const [newLastName, setNewLastName] = useState("");
+  const [newLastName, setNewLastName] = useState("")
 
-  const [newDob, setNewDob] = useState("");
+  const [newDob, setNewDob] = useState("")
 
-  const [newAge, setNewAge] = useState("");
+  const [newAge, setNewAge] = useState("")
 
-  const [newGender, setNewGender] = useState("Male");
+  const [newGender, setNewGender] = useState("Male")
 
-  const [newBloodGroup, setNewBloodGroup] = useState("O+");
+  const [newBloodGroup, setNewBloodGroup] = useState("O+")
 
-  const [newAllergies, setNewAllergies] = useState("");
+  const [newAllergies, setNewAllergies] = useState("")
 
-  const [newPhone, setNewPhone] = useState("");
+  const [newPhone, setNewPhone] = useState("")
 
-  const [newAddress, setNewAddress] = useState("");
+  const [newAddress, setNewAddress] = useState("")
 
   // 2. Emergency Contact
 
-  const [newEmergencyContactName, setNewEmergencyContactName] = useState("");
+  const [newEmergencyContactName, setNewEmergencyContactName] = useState("")
 
   const [newEmergencyContactRelation, setNewEmergencyContactRelation] =
-    useState("Wife");
+    useState("Wife")
 
-  const [newEmergencyContact, setNewEmergencyContact] = useState("");
+  const [newEmergencyContact, setNewEmergencyContact] = useState("")
 
   // 3. Arrival
 
-  const [arrivalDate, setArrivalDate] = useState(todayStr);
+  const [arrivalDate, setArrivalDate] = useState(todayStr)
 
-  const [arrivalTime, setArrivalTime] = useState(timeStr);
+  const [arrivalTime, setArrivalTime] = useState(timeStr)
 
-  const [arrivalMode, setArrivalMode] = useState("Relative");
+  const [arrivalMode, setArrivalMode] = useState("Relative")
 
-  const [broughtBy, setBroughtBy] = useState("Family");
+  const [broughtBy, setBroughtBy] = useState("Family")
 
-  const [attendantName, setAttendantName] = useState("");
+  const [attendantName, setAttendantName] = useState("")
 
-  const [attendantRelation, setAttendantRelation] = useState("Wife");
+  const [attendantRelation, setAttendantRelation] = useState("Wife")
 
   // 4. Condition & Complaint
 
-  const [conditionAtArrival, setConditionAtArrival] = useState("Critical");
+  const [conditionAtArrival, setConditionAtArrival] = useState("Critical")
 
-  const [consciousnessLevel, setConsciousnessLevel] = useState("Conscious");
+  const [consciousnessLevel, setConsciousnessLevel] = useState("Conscious")
 
-  const [complaint, setComplaint] = useState("");
+  const [complaint, setComplaint] = useState("")
 
-  const [caseCategory, setCaseCategory] = useState("Cardiac");
+  const [caseCategory, setCaseCategory] = useState("Cardiac")
 
-  const [infoProvidedBy, setInfoProvidedBy] = useState("Relative");
+  const [infoProvidedBy, setInfoProvidedBy] = useState("Relative")
 
   // 5. Emergency Triage & Bed Color Allocation
 
-  const [triageCategory, setTriageCategory] = useState("B2");
+  const [triageCategory, setTriageCategory] = useState("B2")
 
   const [triageBedLabel, setTriageBedLabel] = useState(
     "ER Bed 03 (Yellow Zone - High Care)",
-  );
+  )
 
   // 6. MLC
 
-  const [newMlc, setNewMlc] = useState<"No" | "Yes">("No");
+  const [newMlc, setNewMlc] = useState<"No" | "Yes">("No")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   const handleDobChange = (dobVal: string) => {
-    setNewDob(dobVal);
+    setNewDob(dobVal)
 
     if (dobVal) {
-      const birthDate = new Date(dobVal);
+      const birthDate = new Date(dobVal)
 
-      const diffMs = Date.now() - birthDate.getTime();
+      const diffMs = Date.now() - birthDate.getTime()
 
-      const ageDate = new Date(diffMs);
+      const ageDate = new Date(diffMs)
 
-      const calculatedAge = Math.abs(ageDate.getUTCFullYear() - 1970);
+      const calculatedAge = Math.abs(ageDate.getUTCFullYear() - 1970)
 
       if (!isNaN(calculatedAge) && calculatedAge >= 0 && calculatedAge <= 125) {
-        setNewAge(String(calculatedAge));
+        setNewAge(String(calculatedAge))
       }
     }
-  };
+  }
 
   const handleAgeChange = (ageVal: string) => {
-    setNewAge(ageVal);
+    setNewAge(ageVal)
 
-    const parsedAge = parseInt(ageVal, 10);
+    const parsedAge = parseInt(ageVal, 10)
 
     if (!isNaN(parsedAge) && parsedAge >= 0 && parsedAge <= 125) {
-      const birthYear = new Date().getFullYear() - parsedAge;
+      const birthYear = new Date().getFullYear() - parsedAge
 
-      setNewDob(`${birthYear}-01-01`);
+      setNewDob(`${birthYear}-01-01`)
     }
-  };
+  }
 
   // Detect if patient was previously registered in the ER department
 
   const detectedExistingPatient = useMemo(() => {
-    const cleanP = newPhone.replace(/\D/g, "");
+    const cleanP = newPhone.replace(/\D/g, "")
 
     if (cleanP.length === 10) {
       const matchByPhone = ErDatabase.getPatients().find(
         (p) => (p.phone || "").replace(/\D/g, "") === cleanP,
-      );
+      )
 
       if (matchByPhone) {
         const priorVisits = ErDatabase.getVisitsByPatient(
           matchByPhone.patient_id,
           matchByPhone.name,
           matchByPhone.phone,
-        );
+        )
 
-        return { patient: matchByPhone, priorVisitsCount: priorVisits.length };
+        return { patient: matchByPhone, priorVisitsCount: priorVisits.length }
       }
     }
 
-    const cleanFn = newName.trim().toLowerCase();
+    const cleanFn = newName.trim().toLowerCase()
 
-    const cleanLn = newLastName.trim().toLowerCase();
+    const cleanLn = newLastName.trim().toLowerCase()
 
     if (cleanFn.length >= 2 && cleanLn.length >= 2) {
       const matchByName = ErDatabase.getPatients().find(
         (p) =>
           (p.name || "").trim().toLowerCase() === cleanFn &&
           (p.last_name || "").trim().toLowerCase() === cleanLn,
-      );
+      )
 
       if (matchByName) {
         const priorVisits = ErDatabase.getVisitsByPatient(
           matchByName.patient_id,
           matchByName.name,
           matchByName.phone,
-        );
+        )
 
-        return { patient: matchByName, priorVisitsCount: priorVisits.length };
+        return { patient: matchByName, priorVisitsCount: priorVisits.length }
       }
     }
 
-    return null;
-  }, [newPhone, newName, newLastName]);
+    return null
+  }, [newPhone, newName, newLastName])
 
   const submit = async () => {
-    const missing: string[] = [];
+    const missing: string[] = []
 
-    if (!newName.trim()) missing.push("First Name");
+    if (!newName.trim()) missing.push("First Name")
 
-    if (!newLastName.trim()) missing.push("Last Name");
+    if (!newLastName.trim()) missing.push("Last Name")
 
-    if (!newGender) missing.push("Sex");
+    if (!newGender) missing.push("Sex")
 
-    if (!newEmergencyContactName.trim()) missing.push("Emergency Contact Name");
+    if (!newEmergencyContactName.trim()) missing.push("Emergency Contact Name")
 
-    if (!newEmergencyContact.trim()) missing.push("Emergency Contact Mobile");
+    if (!newEmergencyContact.trim()) missing.push("Emergency Contact Mobile")
 
-    if (!complaint.trim()) missing.push("Chief Complaint");
+    if (!complaint.trim()) missing.push("Chief Complaint")
 
     if (missing.length) {
       setNotice({
         type: "error",
         message: `Please fill required fields: ${missing.join(", ")}.`,
-      });
+      })
 
-      return;
+      return
     }
 
     if (newPhone.trim() && !/^\d{10}$/.test(newPhone.trim())) {
       setNotice({
         type: "warning",
         message: "Mobile number must be 10 digits.",
-      });
+      })
 
-      return;
+      return
     }
 
     if (!/^\d{10}$/.test(newEmergencyContact.trim())) {
       setNotice({
         type: "warning",
         message: "Emergency contact mobile number must be 10 digits.",
-      });
+      })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       const regRes = await apiFetch<{
-        patient_id: string;
+        patient_id: string
 
-        patient: Patient;
+        patient: Patient
 
-        visit: { id: number; visit_no: string };
+        visit: { id: number ;visit_no: string }
       }>("/api/er/register-patient", {
         method: "POST",
 
@@ -2844,11 +2844,11 @@ function NewPatientIntakePanel({
             },
           ],
         }),
-      });
+      })
 
-      const visitId = regRes.visit.id;
+      const visitId = regRes.visit.id
 
-      const visitNo = regRes.visit.visit_no;
+      const visitNo = regRes.visit.visit_no
 
       // Manual Triage & Bed Allocation Assignment
 
@@ -2865,24 +2865,24 @@ function NewPatientIntakePanel({
 
             reason: `Intake Bed Allocation — Zone: ${triageCategory}, Location: ${triageBedLabel}`,
           }),
-        });
+        })
       } catch (tErr) {
-        console.warn("Triage save:", tErr);
+        console.warn("Triage save:", tErr)
       }
 
       setNotice({
         type: "success",
 
         message: `Emergency Encounter created for ${newName} ${newLastName} (${visitNo}).`,
-      });
+      })
 
-      onCreated(visitId);
+      onCreated(visitId)
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to create ER encounter.");
+      reportError(setNotice, error, "Failed to create ER encounter.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-6 text-slate-800">
@@ -3070,15 +3070,15 @@ function NewPatientIntakePanel({
                   type="button"
                   onClick={() => {
                     if (tag.val === "No Known Allergies") {
-                      setNewAllergies("No Known Allergies");
+                      setNewAllergies("No Known Allergies")
                     } else {
                       if (
                         !newAllergies ||
                         newAllergies === "No Known Allergies"
                       ) {
-                        setNewAllergies(tag.val);
+                        setNewAllergies(tag.val)
                       } else if (!newAllergies.includes(tag.val)) {
-                        setNewAllergies(`${newAllergies}, ${tag.val}`);
+                        setNewAllergies(`${newAllergies}, ${tag.val}`)
                       }
                     }
                   }}
@@ -3125,9 +3125,9 @@ function NewPatientIntakePanel({
                 placeholder="Emergency Contact Name"
                 value={newEmergencyContactName}
                 onChange={(e) => {
-                  setNewEmergencyContactName(e.target.value);
+                  setNewEmergencyContactName(e.target.value)
 
-                  if (!attendantName) setAttendantName(e.target.value);
+                  if (!attendantName) setAttendantName(e.target.value)
                 }}
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 placeholder-slate-400 shadow-2xs focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                 required
@@ -3140,9 +3140,9 @@ function NewPatientIntakePanel({
               <select
                 value={newEmergencyContactRelation}
                 onChange={(e) => {
-                  setNewEmergencyContactRelation(e.target.value);
+                  setNewEmergencyContactRelation(e.target.value)
 
-                  setAttendantRelation(e.target.value);
+                  setAttendantRelation(e.target.value)
                 }}
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-2xs focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none cursor-pointer"
               >
@@ -3451,9 +3451,9 @@ function NewPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B1");
+                  setTriageCategory("B1")
 
-                  setTriageBedLabel("ER Bed 01 (Red Zone - Resuscitation)");
+                  setTriageBedLabel("ER Bed 01 (Red Zone - Resuscitation)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B1"
@@ -3479,9 +3479,9 @@ function NewPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B2");
+                  setTriageCategory("B2")
 
-                  setTriageBedLabel("ER Bed 03 (Yellow Zone - High Care)");
+                  setTriageBedLabel("ER Bed 03 (Yellow Zone - High Care)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B2"
@@ -3507,9 +3507,9 @@ function NewPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B3");
+                  setTriageCategory("B3")
 
-                  setTriageBedLabel("ER Bed 05 (Green Zone - Fast Track)");
+                  setTriageBedLabel("ER Bed 05 (Green Zone - Fast Track)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B3"
@@ -3535,9 +3535,9 @@ function NewPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("Black");
+                  setTriageCategory("Black")
 
-                  setTriageBedLabel("ER Comfort / Palliative Bay");
+                  setTriageBedLabel("ER Comfort / Palliative Bay")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "Black"
@@ -3622,14 +3622,13 @@ function NewPatientIntakePanel({
                     key={b.val}
                     type="button"
                     onClick={() => {
-                      setTriageBedLabel(b.val);
+                      setTriageBedLabel(b.val)
 
-                      if (b.val.includes("Red")) setTriageCategory("B1");
-                      else if (b.val.includes("Yellow"))
-                        setTriageCategory("B2");
-                      else if (b.val.includes("Green")) setTriageCategory("B3");
+                      if (b.val.includes("Red")) setTriageCategory("B1")
+                      else if (b.val.includes("Yellow")) setTriageCategory("B2")
+                      else if (b.val.includes("Green")) setTriageCategory("B3")
                       else if (b.val.includes("Comfort"))
-                        setTriageCategory("Black");
+                        setTriageCategory("Black")
                     }}
                     className="px-2 py-1 rounded text-[10.5px] font-medium bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 transition-colors cursor-pointer"
                   >
@@ -3691,7 +3690,7 @@ function NewPatientIntakePanel({
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 // ==================== 2. Dedicated Unidentified Patient Intake ====================
@@ -3707,88 +3706,88 @@ function UnidentifiedPatientIntakePanel({
 
   onNavigate,
 }: {
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
-  onClose?: () => void;
+  onClose?: () => void
 
-  onCreated: (visitId: number) => void;
+  onCreated: (visitId: number) => void
 
-  onNavigate?: (page: string, extraData?: any) => void;
+  onNavigate?: (page: string, extraData?: any) => void
 }) {
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0]
 
-  const now = new Date();
+  const now = new Date()
 
-  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
 
   const [unknownLabel, setUnknownLabel] = useState(
     "Unidentified Trauma Patient",
-  );
+  )
 
-  const [apparentGender, setApparentGender] = useState("Male");
+  const [apparentGender, setApparentGender] = useState("Male")
 
-  const [estimatedAge, setEstimatedAge] = useState("Approx 30-35 years");
+  const [estimatedAge, setEstimatedAge] = useState("Approx 30-35 years")
 
-  const [physicalDescription, setPhysicalDescription] = useState("");
+  const [physicalDescription, setPhysicalDescription] = useState("")
 
-  const [arrivalDate, setArrivalDate] = useState(todayStr);
+  const [arrivalDate, setArrivalDate] = useState(todayStr)
 
-  const [arrivalTime, setArrivalTime] = useState(timeStr);
+  const [arrivalTime, setArrivalTime] = useState(timeStr)
 
-  const [arrivalMode, setArrivalMode] = useState("Ambulance (108)");
+  const [arrivalMode, setArrivalMode] = useState("Ambulance (108)")
 
-  const [broughtBy, setBroughtBy] = useState("108 Emergency Crew");
+  const [broughtBy, setBroughtBy] = useState("108 Emergency Crew")
 
-  const [emsOfficer, setEmsOfficer] = useState("");
+  const [emsOfficer, setEmsOfficer] = useState("")
 
-  const [conditionAtArrival, setConditionAtArrival] = useState("Critical");
+  const [conditionAtArrival, setConditionAtArrival] = useState("Critical")
 
-  const [consciousnessLevel, setConsciousnessLevel] = useState("Unconscious");
+  const [consciousnessLevel, setConsciousnessLevel] = useState("Unconscious")
 
   const [complaint, setComplaint] = useState(
     "Unidentified trauma victim, altered sensorium",
-  );
+  )
 
   const [caseCategory, setCaseCategory] = useState(
     "Road Traffic Accident (RTA)",
-  );
+  )
 
-  const [triageCategory, setTriageCategory] = useState("B1");
+  const [triageCategory, setTriageCategory] = useState("B1")
 
   const [triageBedLabel, setTriageBedLabel] = useState(
     "ER Bed 01 (Red Zone - Resuscitation)",
-  );
+  )
 
-  const [assignedDoctorName, setAssignedDoctorName] = useState("");
+  const [assignedDoctorName, setAssignedDoctorName] = useState("")
 
-  const [assignedSpecialty, setAssignedSpecialty] = useState("");
+  const [assignedSpecialty, setAssignedSpecialty] = useState("")
 
-  const [newMlc, setNewMlc] = useState<"No" | "Yes">("Yes");
+  const [newMlc, setNewMlc] = useState<"No" | "Yes">("Yes")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   const submit = async () => {
     if (!unknownLabel.trim()) {
       setNotice({
         type: "error",
         message: "Please enter an unidentified patient label or emergency tag.",
-      });
+      })
 
-      return;
+      return
     }
 
     if (!complaint.trim()) {
       setNotice({
         type: "error",
         message: "Please provide clinical presentation / trauma details.",
-      });
+      })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       const fullDescription = [
@@ -3799,15 +3798,15 @@ function UnidentifiedPatientIntakePanel({
         apparentGender ? `Sex: ${apparentGender}` : "",
       ]
         .filter(Boolean)
-        .join(" | ");
+        .join(" | ")
 
       const complaintText =
         complaint.trim() +
-        (fullDescription ? ` [Features: ${fullDescription}]` : "");
+        (fullDescription ? ` [Features: ${fullDescription}]` : "")
 
-      let finalDoctor = assignedDoctorName;
+      let finalDoctor = assignedDoctorName
 
-      let finalSpecialty = assignedSpecialty;
+      let finalSpecialty = assignedSpecialty
 
       if (!finalDoctor) {
         finalDoctor = getSuggestedDoctorForPatient({
@@ -3816,13 +3815,13 @@ function UnidentifiedPatientIntakePanel({
           condition_at_arrival: conditionAtArrival,
 
           triage_category: triageCategory,
-        });
+        })
 
         finalSpecialty = getSuggestedSpecialtyForPatient({
           complaints: [{ complaint: complaintText }],
 
           condition_at_arrival: conditionAtArrival,
-        });
+        })
       }
 
       const payload: Record<string, unknown> = {
@@ -3853,17 +3852,17 @@ function UnidentifiedPatientIntakePanel({
         assigned_doctor_name: finalDoctor,
 
         assigned_specialty: finalSpecialty,
-      };
+      }
 
-      const visitRes = await apiFetch<{ id: number; visit_no: string }>(
+      const visitRes = await apiFetch<{ id: number ;visit_no: string }>(
         "/api/er/visits",
 
         { method: "POST", body: JSON.stringify(payload) },
-      );
+      )
 
-      const visitId = visitRes.id;
+      const visitId = visitRes.id
 
-      const visitNo = visitRes.visit_no;
+      const visitNo = visitRes.visit_no
 
       await apiFetch(`/api/er/visits/${visitId}/complaints`, {
         method: "POST",
@@ -3873,7 +3872,7 @@ function UnidentifiedPatientIntakePanel({
 
           case_category: caseCategory || undefined,
         }),
-      });
+      })
 
       // Set STAT Triage & Bed Allocation immediately
 
@@ -3890,7 +3889,7 @@ function UnidentifiedPatientIntakePanel({
 
             reason: `STAT Unidentified Trauma Intake — Acuity: ${conditionAtArrival}, Bed: ${triageBedLabel}`,
           }),
-        });
+        })
       }
 
       // Assign Doctor
@@ -3905,9 +3904,9 @@ function UnidentifiedPatientIntakePanel({
 
               specialty: finalSpecialty,
             }),
-          });
+          })
         } catch (dErr) {
-          console.warn("Doctor assign:", dErr);
+          console.warn("Doctor assign:", dErr)
         }
       }
 
@@ -3915,19 +3914,19 @@ function UnidentifiedPatientIntakePanel({
         type: "success",
 
         message: `Emergency Encounter created for ${unknownLabel} (${visitNo}) — Assigned ${finalDoctor}.`,
-      });
+      })
 
-      onCreated(visitId);
+      onCreated(visitId)
     } catch (error: any) {
       reportError(
         setNotice,
         error,
         "Failed to create unidentified ER encounter.",
-      );
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-5 text-slate-800">
@@ -4194,9 +4193,9 @@ function UnidentifiedPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B1");
+                  setTriageCategory("B1")
 
-                  setTriageBedLabel("ER Bed 01 (Red Zone - Resuscitation)");
+                  setTriageBedLabel("ER Bed 01 (Red Zone - Resuscitation)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B1"
@@ -4222,9 +4221,9 @@ function UnidentifiedPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B2");
+                  setTriageCategory("B2")
 
-                  setTriageBedLabel("ER Bed 03 (Yellow Zone - High Care)");
+                  setTriageBedLabel("ER Bed 03 (Yellow Zone - High Care)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B2"
@@ -4250,9 +4249,9 @@ function UnidentifiedPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B3");
+                  setTriageCategory("B3")
 
-                  setTriageBedLabel("ER Bed 05 (Green Zone - Fast Track)");
+                  setTriageBedLabel("ER Bed 05 (Green Zone - Fast Track)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B3"
@@ -4278,9 +4277,9 @@ function UnidentifiedPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("Black");
+                  setTriageCategory("Black")
 
-                  setTriageBedLabel("ER Comfort / Palliative Bay");
+                  setTriageBedLabel("ER Comfort / Palliative Bay")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "Black"
@@ -4365,14 +4364,13 @@ function UnidentifiedPatientIntakePanel({
                     key={b.val}
                     type="button"
                     onClick={() => {
-                      setTriageBedLabel(b.val);
+                      setTriageBedLabel(b.val)
 
-                      if (b.val.includes("Red")) setTriageCategory("B1");
-                      else if (b.val.includes("Yellow"))
-                        setTriageCategory("B2");
-                      else if (b.val.includes("Green")) setTriageCategory("B3");
+                      if (b.val.includes("Red")) setTriageCategory("B1")
+                      else if (b.val.includes("Yellow")) setTriageCategory("B2")
+                      else if (b.val.includes("Green")) setTriageCategory("B3")
                       else if (b.val.includes("Comfort"))
-                        setTriageCategory("Black");
+                        setTriageCategory("Black")
                     }}
                     className="px-2 py-1 rounded text-[10.5px] font-medium bg-slate-50 hover:bg-red-50 text-slate-700 hover:text-red-700 border border-slate-200 transition-colors cursor-pointer"
                   >
@@ -4406,11 +4404,11 @@ function UnidentifiedPatientIntakePanel({
               onChange={(e) => {
                 const doc = ER_ON_DUTY_PHYSICIANS.find(
                   (d) => d.name === e.target.value,
-                );
+                )
 
-                setAssignedDoctorName(e.target.value);
+                setAssignedDoctorName(e.target.value)
 
-                if (doc) setAssignedSpecialty(doc.specialty);
+                if (doc) setAssignedSpecialty(doc.specialty)
               }}
               className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-2xs focus:border-red-600 focus:ring-1 focus:ring-red-600 focus:outline-none cursor-pointer"
             >
@@ -4495,7 +4493,7 @@ function UnidentifiedPatientIntakePanel({
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 // ==================== 3. Dedicated Existing Patient Intake ====================
@@ -4513,93 +4511,93 @@ function ExistingPatientIntakePanel({
 
   onNavigate,
 }: {
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
   prefillPatient?: {
-    patient_id: string;
-    name: string;
-    last_name?: string;
-  } | null;
+    patient_id: string
+    name: string
+    last_name?: string
+  } | null
 
-  onClose?: () => void;
+  onClose?: () => void
 
-  onCreated: (visitId: number) => void;
+  onCreated: (visitId: number) => void
 
-  onNavigate?: (page: string, extraData?: any) => void;
+  onNavigate?: (page: string, extraData?: any) => void
 }) {
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = new Date().toISOString().split("T")[0]
 
-  const now = new Date();
+  const now = new Date()
 
-  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("")
 
-  const [searchResults, setSearchResults] = useState<Patient[]>([]);
+  const [searchResults, setSearchResults] = useState<Patient[]>([])
 
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(
-    (prefillPatient as Patient) || null,
-  );
+    prefillPatient as Patient || null,
+  )
 
-  const [arrivalDate, setArrivalDate] = useState(todayStr);
+  const [arrivalDate, setArrivalDate] = useState(todayStr)
 
-  const [arrivalTime, setArrivalTime] = useState(timeStr);
+  const [arrivalTime, setArrivalTime] = useState(timeStr)
 
-  const [arrivalMode, setArrivalMode] = useState("Relative");
+  const [arrivalMode, setArrivalMode] = useState("Relative")
 
-  const [broughtBy, setBroughtBy] = useState("Family");
+  const [broughtBy, setBroughtBy] = useState("Family")
 
-  const [attendantName, setAttendantName] = useState("");
+  const [attendantName, setAttendantName] = useState("")
 
-  const [attendantRelation, setAttendantRelation] = useState("Relative");
+  const [attendantRelation, setAttendantRelation] = useState("Relative")
 
-  const [conditionAtArrival, setConditionAtArrival] = useState("Emergent");
+  const [conditionAtArrival, setConditionAtArrival] = useState("Emergent")
 
-  const [consciousnessLevel, setConsciousnessLevel] = useState("Conscious");
+  const [consciousnessLevel, setConsciousnessLevel] = useState("Conscious")
 
-  const [complaint, setComplaint] = useState("");
+  const [complaint, setComplaint] = useState("")
 
-  const [caseCategory, setCaseCategory] = useState("General Illness / Fever");
+  const [caseCategory, setCaseCategory] = useState("General Illness / Fever")
 
-  const [infoProvidedBy, setInfoProvidedBy] = useState("Relative");
+  const [infoProvidedBy, setInfoProvidedBy] = useState("Relative")
 
   // Emergency Triage & Bed Color Allocation
 
-  const [triageCategory, setTriageCategory] = useState("B2");
+  const [triageCategory, setTriageCategory] = useState("B2")
 
   const [triageBedLabel, setTriageBedLabel] = useState(
     "ER Bed 03 (Yellow Zone - High Care)",
-  );
+  )
 
-  const [assignedDoctorName, setAssignedDoctorName] = useState("");
+  const [assignedDoctorName, setAssignedDoctorName] = useState("")
 
-  const [assignedSpecialty, setAssignedSpecialty] = useState("");
+  const [assignedSpecialty, setAssignedSpecialty] = useState("")
 
-  const [newMlc, setNewMlc] = useState<"No" | "Yes">("No");
+  const [newMlc, setNewMlc] = useState<"No" | "Yes">("No")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   // Historical data for selected existing patient (kept strictly separate from active form)
 
   const [patientHistory, setPatientHistory] = useState<{
-    erVisits: ErVisitRecord[];
+    erVisits: ErVisitRecord[]
 
-    opEncounters: DBOPEncounter[];
+    opEncounters: DBOPEncounter[]
 
-    medicalProfile?: ErPatientMedicalProfile | null;
-  }>({ erVisits: [], opEncounters: [] });
+    medicalProfile?: ErPatientMedicalProfile | null
+  }>({ erVisits: [], opEncounters: [] })
 
-  const [showHistoryDetail, setShowHistoryDetail] = useState(true);
+  const [showHistoryDetail, setShowHistoryDetail] = useState(true)
 
-  const [showFullArchiveModal, setShowFullArchiveModal] = useState(false);
+  const [showFullArchiveModal, setShowFullArchiveModal] = useState(false)
 
   useEffect(() => {
-    if (!prefillPatient) return;
+    if (!prefillPatient) return
 
-    setSelectedPatient(prefillPatient as Patient);
-  }, [prefillPatient]);
+    setSelectedPatient(prefillPatient as Patient)
+  }, [prefillPatient])
 
   useEffect(() => {
     if (!selectedPatient?.patient_id) {
@@ -4607,83 +4605,83 @@ function ExistingPatientIntakePanel({
         erVisits: [],
         opEncounters: [],
         medicalProfile: null,
-      });
+      })
 
-      return;
+      return
     }
 
     try {
       const pName = [selectedPatient.name, selectedPatient.last_name]
         .filter(Boolean)
-        .join(" ");
+        .join(" ")
 
       const er = ErDatabase.getVisitsByPatient(
         selectedPatient.patient_id,
         pName,
         selectedPatient.phone,
-      );
+      )
 
-      const op = db.getEncountersForPatient(selectedPatient.patient_id, pName);
+      const op = db.getEncountersForPatient(selectedPatient.patient_id, pName)
 
       const profile = ErDatabase.getPatientMedicalProfile(
         selectedPatient.patient_id,
         pName,
-      );
+      )
 
       setPatientHistory({
         erVisits: er,
         opEncounters: op,
         medicalProfile: profile,
-      });
+      })
     } catch (e) {
-      console.warn("Could not query patient history:", e);
+      console.warn("Could not query patient history:", e)
     }
-  }, [selectedPatient]);
+  }, [selectedPatient])
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) {
-      setSearchResults([]);
+      setSearchResults([])
 
-      return;
+      return
     }
 
     const handle = setTimeout(async () => {
       try {
         const data = await apiFetch<{ patients: Patient[] }>(
           `/api/patients?q=${encodeURIComponent(searchQuery.trim())}`,
-        );
+        )
 
-        setSearchResults((data.patients || []).slice(0, 8));
+        setSearchResults((data.patients || []).slice(0, 8))
       } catch (error) {
-        console.error(error);
+        console.error(error)
       }
-    }, 400);
+    }, 400)
 
-    return () => clearTimeout(handle);
-  }, [searchQuery]);
+    return () => clearTimeout(handle)
+  }, [searchQuery])
 
   const submit = async () => {
     if (!selectedPatient) {
       setNotice({
         type: "error",
         message: "Please search and select an existing patient first.",
-      });
+      })
 
-      return;
+      return
     }
 
     if (!complaint.trim()) {
-      setNotice({ type: "error", message: "Please enter chief complaint." });
+      setNotice({ type: "error", message: "Please enter chief complaint." })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
-      let finalDoctor = assignedDoctorName;
+      let finalDoctor = assignedDoctorName
 
-      let finalSpecialty = assignedSpecialty;
+      let finalSpecialty = assignedSpecialty
 
       if (!finalDoctor) {
         finalDoctor = getSuggestedDoctorForPatient({
@@ -4692,13 +4690,13 @@ function ExistingPatientIntakePanel({
           condition_at_arrival: conditionAtArrival,
 
           triage_category: triageCategory,
-        });
+        })
 
         finalSpecialty = getSuggestedSpecialtyForPatient({
           complaints: [{ complaint }],
 
           condition_at_arrival: conditionAtArrival,
-        });
+        })
       }
 
       const payload: Record<string, unknown> = {
@@ -4750,17 +4748,17 @@ function ExistingPatientIntakePanel({
         assigned_doctor_name: finalDoctor,
 
         assigned_specialty: finalSpecialty,
-      };
+      }
 
-      const visitRes = await apiFetch<{ id: number; visit_no: string }>(
+      const visitRes = await apiFetch<{ id: number ;visit_no: string }>(
         "/api/er/visits",
 
         { method: "POST", body: JSON.stringify(payload) },
-      );
+      )
 
-      const visitId = visitRes.id;
+      const visitId = visitRes.id
 
-      const visitNo = visitRes.visit_no;
+      const visitNo = visitRes.visit_no
 
       await apiFetch(`/api/er/visits/${visitId}/complaints`, {
         method: "POST",
@@ -4770,7 +4768,7 @@ function ExistingPatientIntakePanel({
 
           case_category: caseCategory || undefined,
         }),
-      });
+      })
 
       // Manual Triage & Bed Allocation Assignment
 
@@ -4787,9 +4785,9 @@ function ExistingPatientIntakePanel({
 
             reason: `Intake Bed Allocation — Zone: ${triageCategory}, Location: ${triageBedLabel}`,
           }),
-        });
+        })
       } catch (tErr) {
-        console.warn("Triage save:", tErr);
+        console.warn("Triage save:", tErr)
       }
 
       // Assign Doctor
@@ -4804,9 +4802,9 @@ function ExistingPatientIntakePanel({
 
               specialty: finalSpecialty,
             }),
-          });
+          })
         } catch (dErr) {
-          console.warn("Doctor assign:", dErr);
+          console.warn("Doctor assign:", dErr)
         }
       }
 
@@ -4814,15 +4812,15 @@ function ExistingPatientIntakePanel({
         type: "success",
 
         message: `Fresh Emergency Encounter created for ${selectedPatient.name} ${selectedPatient.last_name || ""} (${visitNo}) — Assigned ${finalDoctor}.`,
-      });
+      })
 
-      onCreated(visitId);
+      onCreated(visitId)
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to create ER encounter.");
+      reportError(setNotice, error, "Failed to create ER encounter.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-6 text-slate-800">
@@ -4852,11 +4850,11 @@ function ExistingPatientIntakePanel({
             <button
               type="button"
               onClick={() => {
-                setSelectedPatient(null);
+                setSelectedPatient(null)
 
-                setSearchQuery("");
+                setSearchQuery("")
 
-                setPatientHistory({ erVisits: [], opEncounters: [] });
+                setPatientHistory({ erVisits: [], opEncounters: [] })
               }}
               className="px-3.5 py-1.5 bg-white border border-slate-300 text-xs font-semibold text-slate-700 rounded-lg hover:bg-slate-50 cursor-pointer shadow-2xs transition-colors"
             >
@@ -5311,9 +5309,9 @@ function ExistingPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B1");
+                  setTriageCategory("B1")
 
-                  setTriageBedLabel("ER Bed 01 (Red Zone - Resuscitation)");
+                  setTriageBedLabel("ER Bed 01 (Red Zone - Resuscitation)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B1"
@@ -5339,9 +5337,9 @@ function ExistingPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B2");
+                  setTriageCategory("B2")
 
-                  setTriageBedLabel("ER Bed 03 (Yellow Zone - High Care)");
+                  setTriageBedLabel("ER Bed 03 (Yellow Zone - High Care)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B2"
@@ -5367,9 +5365,9 @@ function ExistingPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("B3");
+                  setTriageCategory("B3")
 
-                  setTriageBedLabel("ER Bed 05 (Green Zone - Fast Track)");
+                  setTriageBedLabel("ER Bed 05 (Green Zone - Fast Track)")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "B3"
@@ -5395,9 +5393,9 @@ function ExistingPatientIntakePanel({
               <button
                 type="button"
                 onClick={() => {
-                  setTriageCategory("Black");
+                  setTriageCategory("Black")
 
-                  setTriageBedLabel("ER Comfort / Palliative Bay");
+                  setTriageBedLabel("ER Comfort / Palliative Bay")
                 }}
                 className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between ${
                   triageCategory === "Black"
@@ -5482,14 +5480,13 @@ function ExistingPatientIntakePanel({
                     key={b.val}
                     type="button"
                     onClick={() => {
-                      setTriageBedLabel(b.val);
+                      setTriageBedLabel(b.val)
 
-                      if (b.val.includes("Red")) setTriageCategory("B1");
-                      else if (b.val.includes("Yellow"))
-                        setTriageCategory("B2");
-                      else if (b.val.includes("Green")) setTriageCategory("B3");
+                      if (b.val.includes("Red")) setTriageCategory("B1")
+                      else if (b.val.includes("Yellow")) setTriageCategory("B2")
+                      else if (b.val.includes("Green")) setTriageCategory("B3")
                       else if (b.val.includes("Comfort"))
-                        setTriageCategory("Black");
+                        setTriageCategory("Black")
                     }}
                     className="px-2 py-1 rounded text-[10.5px] font-medium bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 transition-colors cursor-pointer"
                   >
@@ -5523,11 +5520,11 @@ function ExistingPatientIntakePanel({
               onChange={(e) => {
                 const doc = ER_ON_DUTY_PHYSICIANS.find(
                   (d) => d.name === e.target.value,
-                );
+                )
 
-                setAssignedDoctorName(e.target.value);
+                setAssignedDoctorName(e.target.value)
 
-                if (doc) setAssignedSpecialty(doc.specialty);
+                if (doc) setAssignedSpecialty(doc.specialty)
               }}
               className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-2xs focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none cursor-pointer"
             >
@@ -5637,7 +5634,7 @@ function ExistingPatientIntakePanel({
         />
       )}
     </div>
-  );
+  )
 }
 
 // ==================== Visit Detail ====================
@@ -5647,9 +5644,9 @@ function SectionHead({
   title,
   action,
 }: {
-  icon: ReactNode;
-  title: string;
-  action?: ReactNode;
+  icon: ReactNode
+  title: string
+  action?: ReactNode
 }) {
   return (
     <div className="er-section-head">
@@ -5657,56 +5654,48 @@ function SectionHead({
       <h3>{title}</h3>
       {action && <div className="er-section-head-actions">{action}</div>}
     </div>
-  );
+  )
 }
 
 function formatTimeStr(iso?: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "—"
 
   try {
-    const d = new Date(iso);
+    const d = new Date(iso)
 
     return d.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
-    });
+    })
   } catch {
-    return "—";
+    return "—"
   }
 }
 
 function formatArrivalModeLabel(mode?: string | null): string {
-  if (!mode) return "Walk-in";
+  if (!mode) return "Walk-in"
 
-  const found = ARRIVAL_MODE_OPTIONS.find((m) => m.value === mode);
+  const found = ARRIVAL_MODE_OPTIONS.find((m) => m.value === mode)
 
-  return found ? found.label : mode.replace(/_/g, " ");
+  return found ? found.label : mode.replace(/_/g, " ")
 }
 
-const TIMELINE_EVENT_DEFINITIONS: Record<
-  ErTimelineEventType,
-  {
-    label: string;
+const TIMELINE_EVENT_DEFINITIONS: Record<ErTimelineEventType, {
+  label: string
 
-    category:
-      | "Intake & Triage"
-      | "Vitals"
-      | "Medications & Procedures"
-      | "Physician"
-      | "Disposition & Transfer";
+  category: "Intake & Triage" | "Vitals" | "Medications & Procedures" | "Physician" | "Disposition & Transfer"
 
-    icon: string;
+  icon: string
 
-    badgeBg: string;
+  badgeBg: string
 
-    badgeText: string;
+  badgeText: string
 
-    dotColor: string;
+  dotColor: string
 
-    description: string;
-  }
-> = {
+  description: string
+}> = {
   patient_arrived: {
     label: "Patient Arrived / Registered",
 
@@ -5934,7 +5923,7 @@ const TIMELINE_EVENT_DEFINITIONS: Record<
 
     description: "Handover completed and patient physically relocated from ER",
   },
-};
+}
 
 function formatTimelineEventSummary(ev: ErTimelineEventItem): string {
   if (
@@ -5942,107 +5931,105 @@ function formatTimelineEventSummary(ev: ErTimelineEventItem): string {
     ev.event_type === "followup_vitals"
   ) {
     if (ev.vitals_data) {
-      const parts: string[] = [];
+      const parts: string[] = []
 
       if (ev.vitals_data.bp_systolic && ev.vitals_data.bp_diastolic)
         parts.push(
           `BP ${ev.vitals_data.bp_systolic}/${ev.vitals_data.bp_diastolic} mmHg`,
-        );
+        )
 
       if (ev.vitals_data.heart_rate)
-        parts.push(`HR ${ev.vitals_data.heart_rate} bpm`);
+        parts.push(`HR ${ev.vitals_data.heart_rate} bpm`)
 
-      if (ev.vitals_data.spo2) parts.push(`SpO₂ ${ev.vitals_data.spo2}%`);
+      if (ev.vitals_data.spo2) parts.push(`SpO₂ ${ev.vitals_data.spo2}%`)
 
       if (ev.vitals_data.respiratory_rate)
-        parts.push(`RR ${ev.vitals_data.respiratory_rate}/min`);
+        parts.push(`RR ${ev.vitals_data.respiratory_rate}/min`)
 
       if (ev.vitals_data.temperature)
-        parts.push(`Temp ${ev.vitals_data.temperature}°F`);
+        parts.push(`Temp ${ev.vitals_data.temperature}°F`)
 
       if (ev.vitals_data.pain_score != null)
-        parts.push(`Pain ${ev.vitals_data.pain_score}/10`);
+        parts.push(`Pain ${ev.vitals_data.pain_score}/10`)
 
-      return parts.join(" • ") || ev.notes || "Vital signs recorded";
+      return parts.join(" • ") || ev.notes || "Vital signs recorded"
     }
   } else if (ev.event_type === "medication_given" && ev.medication_data) {
-    return `${ev.medication_data.drug_name} ${ev.medication_data.dosage || ""} via ${ev.medication_data.route || "IV"} • Response: ${ev.medication_data.response || "Tolerated"}`;
+    return `${ev.medication_data.drug_name} ${ev.medication_data.dosage || ""} via ${ev.medication_data.route || "IV"} • Response: ${ev.medication_data.response || "Tolerated"}`
   } else if (
     ev.event_type === "investigation_ordered" &&
     ev.investigation_data
   ) {
     return `Diagnostic Test: ${ev.investigation_data.test_name} (${ev.investigation_data.priority || "STAT"})${
       ev.investigation_data.notes ? ` • ${ev.investigation_data.notes}` : ""
-    }`;
+    }`
   } else if (ev.event_type === "intervention_given" && ev.intervention_data) {
     const details = ev.intervention_data.details
       ? ` • ${ev.intervention_data.details}`
-      : "";
+      : ""
 
     const resp = ev.intervention_data.patient_response
       ? ` • (Response: ${ev.intervention_data.patient_response})`
-      : "";
+      : ""
 
-    return `${ev.intervention_data.intervention_type}${details}${resp}`;
+    return `${ev.intervention_data.intervention_type}${details}${resp}`
   } else if (ev.event_type === "patient_stabilized" && ev.stabilization_data) {
-    return `Status: ${ev.stabilization_data.status} • ${ev.stabilization_data.clinical_notes || "Vital signs stabilizing"}`;
+    return `Status: ${ev.stabilization_data.status} • ${ev.stabilization_data.clinical_notes || "Vital signs stabilizing"}`
   } else if (ev.event_type === "doctor_assigned" && ev.doctor_data) {
-    const doc = ev.doctor_data.doctor_name || "Doctor";
+    const doc = ev.doctor_data.doctor_name || "Doctor"
 
     const spec =
       ev.doctor_data.specialty &&
       !doc.toLowerCase().includes(ev.doctor_data.specialty.toLowerCase())
         ? ` (${ev.doctor_data.specialty})`
-        : "";
+        : ""
 
     const method = ev.doctor_data.assignment_method
       ? ` • ${ev.doctor_data.assignment_method}`
-      : "";
+      : ""
 
-    return `${doc}${spec}${method}`;
+    return `${doc}${spec}${method}`
   } else if (ev.event_type === "doctor_arrived" && ev.assessment_data) {
-    return `Doctor: ${ev.assessment_data.doctor_name} • Presentation: ${ev.assessment_data.acute_condition || "Bedside examination started"}`;
+    return `Doctor: ${ev.assessment_data.doctor_name} • Presentation: ${ev.assessment_data.acute_condition || "Bedside examination started"}`
   } else if (
     ev.event_type === "doctor_assessment_completed" &&
     ev.assessment_data
   ) {
-    return `Impression: ${ev.assessment_data.clinical_impression || "Assessment completed"} • Plan: ${ev.assessment_data.care_plan || "Treatment in progress"}`;
+    return `Impression: ${ev.assessment_data.clinical_impression || "Assessment completed"} • Plan: ${ev.assessment_data.care_plan || "Treatment in progress"}`
   } else if (ev.event_type === "destination_assigned" && ev.destination_data) {
-    return `Assigned to: ${ev.destination_data.destination} • Indication: ${ev.destination_data.clinical_reason || "Inpatient admission"}`;
+    return `Assigned to: ${ev.destination_data.destination} • Indication: ${ev.destination_data.clinical_reason || "Inpatient admission"}`
   } else if (
     ev.event_type === "destination_bed_assigned" &&
     ev.destination_bed_data
   ) {
-    return `Unit: ${ev.destination_bed_data.department} • Bed: ${ev.destination_bed_data.bed_id_or_label}`;
+    return `Unit: ${ev.destination_bed_data.department} • Bed: ${ev.destination_bed_data.bed_id_or_label}`
   } else if (ev.event_type === "patient_transferred" && ev.transfer_data) {
-    return `Transferred to: ${ev.transfer_data.target_destination} (${ev.transfer_data.target_bed}) • Escort: ${ev.transfer_data.escorting_staff || "Staff RN"}`;
+    return `Transferred to: ${ev.transfer_data.target_destination} (${ev.transfer_data.target_bed}) • Escort: ${ev.transfer_data.escorting_staff || "Staff RN"}`
   } else if (ev.event_type === "bed_assigned") {
-    const loc = ev.location || "ER Red Zone";
+    const loc = ev.location || "ER Red Zone"
 
-    const bed = ev.bed && ev.bed !== loc ? ` (Bed ${ev.bed})` : "";
+    const bed = ev.bed && ev.bed !== loc ? ` (Bed ${ev.bed})` : ""
 
-    return `Assigned to ${loc}${bed} for emergency care`;
+    return `Assigned to ${loc}${bed} for emergency care`
   } else if (ev.event_type === "patient_arrived") {
-    return ev.notes || "Emergency registration completed";
+    return ev.notes || "Emergency registration completed"
   }
 
-  return ev.notes || "Clinical event logged";
+  return ev.notes || "Clinical event logged"
 }
 
 function getSynthesizedTimeline(detail: ErVisitDetail): ErTimelineEventItem[] {
-  const events: ErTimelineEventItem[] = [];
+  const events: ErTimelineEventItem[] = []
 
-  const existingEvents = detail.timeline_events || [];
+  const existingEvents = detail.timeline_events || []
 
   // 1. Add all recorded timeline events
 
-  events.push(...existingEvents);
+  events.push(...existingEvents)
 
   // 2. Automatically ensure "Patient Arrived / Registered" is always present from detail.arrival_at
 
-  const hasArrivalEvent = events.some(
-    (e) => e.event_type === "patient_arrived",
-  );
+  const hasArrivalEvent = events.some((e) => e.event_type === "patient_arrived")
 
   if (!hasArrivalEvent && detail.arrival_at) {
     events.push({
@@ -6067,12 +6054,12 @@ function getSynthesizedTimeline(detail: ErVisitDetail): ErTimelineEventItem[] {
       bed: detail.triage_bed_label || "ER Bay",
 
       notes: `Arrived via ${formatArrivalModeLabel(detail.arrival_mode)} • Condition: ${detail.condition_at_arrival || "Emergency Arrival"}`,
-    });
+    })
   }
 
   // 3. Automatically ensure vitals on the visit are represented
 
-  (detail.vitals || []).forEach((v, idx) => {
+  ;(detail.vitals || []).forEach((v, idx) => {
     const hasThisVital = events.some(
       (e) =>
         (e.event_type === "initial_vitals" ||
@@ -6082,7 +6069,7 @@ function getSynthesizedTimeline(detail: ErVisitDetail): ErTimelineEventItem[] {
         ) < 3000 ||
           (e.vitals_data?.bp_systolic === v.bp_systolic &&
             e.vitals_data?.heart_rate === v.heart_rate)),
-    );
+    )
 
     if (!hasThisVital) {
       events.push({
@@ -6128,13 +6115,12 @@ function getSynthesizedTimeline(detail: ErVisitDetail): ErTimelineEventItem[] {
 
           notes: v.notes,
         },
-      });
+      })
     }
-  });
+  })
 
   // 4. Automatically ensure investigations on the visit are represented
-
-  (detail.investigations || []).forEach((inv, idx) => {
+  ;(detail.investigations || []).forEach((inv, idx) => {
     const hasThisInv = events.some(
       (e) =>
         e.event_type === "investigation_ordered" &&
@@ -6143,7 +6129,7 @@ function getSynthesizedTimeline(detail: ErVisitDetail): ErTimelineEventItem[] {
             new Date(e.timestamp).getTime() -
               new Date(inv.ordered_at).getTime(),
           ) < 3000),
-    );
+    )
 
     if (!hasThisInv) {
       events.push({
@@ -6178,13 +6164,13 @@ function getSynthesizedTimeline(detail: ErVisitDetail): ErTimelineEventItem[] {
             ? `Status: ${inv.status} • Result: ${inv.result || "In Progress"}`
             : undefined,
         },
-      });
+      })
     }
-  });
+  })
 
   // 5. Automatically ensure ER Bed assignment is represented if triage bed exists
 
-  const hasBedEvent = events.some((e) => e.event_type === "bed_assigned");
+  const hasBedEvent = events.some((e) => e.event_type === "bed_assigned")
 
   if (!hasBedEvent && detail.triage_bed_label) {
     events.push({
@@ -6209,18 +6195,18 @@ function getSynthesizedTimeline(detail: ErVisitDetail): ErTimelineEventItem[] {
       bed: detail.triage_bed_label,
 
       notes: `Assigned to ${detail.triage_bed_label} (${detail.triage_category || "Emergency"})`,
-    });
+    })
   }
 
   // 6. Return sorted chronologically by newest event on top
 
   return events.slice().sort((a, b) => {
-    const timeA = a.timestamp ? new Date(a.timestamp).getTime() || 0 : 0;
+    const timeA = a.timestamp ? new Date(a.timestamp).getTime() || 0 : 0
 
-    const timeB = b.timestamp ? new Date(b.timestamp).getTime() || 0 : 0;
+    const timeB = b.timestamp ? new Date(b.timestamp).getTime() || 0 : 0
 
-    return timeB - timeA;
-  });
+    return timeB - timeA
+  })
 }
 
 function AddTimelineEventModal({
@@ -6234,29 +6220,29 @@ function AddTimelineEventModal({
 
   setNotice,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  initialEventType?: ErTimelineEventType;
+  initialEventType?: ErTimelineEventType
 
-  onClose: () => void;
+  onClose: () => void
 
-  onSaved: () => void;
+  onSaved: () => void
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 }) {
   const [selectedType, setSelectedType] = useState<ErTimelineEventType>(
     initialEventType || "initial_vitals",
-  );
+  )
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   // Auto-captured metadata
 
-  const loggedBy = "Staff Nurse Jessica Carter, RN";
+  const loggedBy = "Staff Nurse Jessica Carter, RN"
 
-  const currentTimestamp = new Date().toISOString();
+  const currentTimestamp = new Date().toISOString()
 
-  const currentBed = detail.triage_bed_label || "ER Red Zone (Bay 01)";
+  const currentBed = detail.triage_bed_label || "ER Red Zone (Bay 01)"
 
   // 0. Patient Arrived form state
 
@@ -6268,7 +6254,7 @@ function AddTimelineEventModal({
     accompanying: "Family / Relative",
 
     notes: "Patient arrived at ER, emergency triage initiated.",
-  });
+  })
 
   // 00. ER Bed Assigned form state
 
@@ -6279,14 +6265,14 @@ function AddTimelineEventModal({
 
     notes:
       "Allocated to emergency bay for continuous monitoring and intervention.",
-  });
+  })
 
   // 1. Vitals form state
 
   const latestV =
     detail.vitals && detail.vitals.length > 0
       ? detail.vitals[detail.vitals.length - 1]
-      : null;
+      : null
 
   const [vitalsForm, setVitalsForm] = useState({
     bpSys: latestV?.bp_systolic ? String(latestV.bp_systolic) : "",
@@ -6308,7 +6294,7 @@ function AddTimelineEventModal({
     gcs: latestV?.gcs ? String(latestV.gcs) : "15",
 
     notes: "",
-  });
+  })
 
   // 2. Medication form state
 
@@ -6322,7 +6308,7 @@ function AddTimelineEventModal({
     response: "Tolerated well, no acute distress",
 
     notes: "STAT loading dose per emergency chest pain protocol",
-  });
+  })
 
   // 2b. Diagnostic Investigation form state
 
@@ -6332,7 +6318,7 @@ function AddTimelineEventModal({
     priority: "STAT",
 
     notes: "STAT emergency diagnostic workup",
-  });
+  })
 
   // 3. Intervention form state
 
@@ -6345,7 +6331,7 @@ function AddTimelineEventModal({
     response: "Procedure tolerated well without extravasation",
 
     notes: "",
-  });
+  })
 
   // 4. Stabilization form state
 
@@ -6354,24 +6340,24 @@ function AddTimelineEventModal({
 
     notes:
       "BP and heart rate stabilized post-analgesia and oxygen therapy. Patient resting comfortably.",
-  });
+  })
 
   // 5. Doctor Assigned form state
 
-  const suggestedDoc = getSuggestedDoctorForPatient(detail);
+  const suggestedDoc = getSuggestedDoctorForPatient(detail)
 
-  const suggestedSpec = getSuggestedSpecialtyForPatient(detail);
+  const suggestedSpec = getSuggestedSpecialtyForPatient(detail)
 
   const [doctorAssignedForm, setDoctorAssignedForm] = useState({
     doctorName: detail.assigned_doctor_name || suggestedDoc,
 
     specialty: detail.assigned_specialty || suggestedSpec,
 
-    method: "AI Recommended & Nurse Confirmed" as
-      "Manual by Nurse" | "AI Recommended & Nurse Confirmed",
+    method:
+      "AI Recommended & Nurse Confirmed" as "Manual by Nurse" | "AI Recommended & Nurse Confirmed",
 
     notes: "Assigned per acute triage symptom match.",
-  });
+  })
 
   // 6. Doctor Arrived form state
 
@@ -6381,7 +6367,7 @@ function AddTimelineEventModal({
     acuteCondition: "Conscious, diaphoretic, acute substernal pain 7/10",
 
     notes: "Attending doctor arrived at bedside for physical examination.",
-  });
+  })
 
   // 7. Doctor Assessment form state
 
@@ -6391,19 +6377,13 @@ function AddTimelineEventModal({
     impression: "Acute Anterior Wall STEMI / Coronary Syndrome",
 
     plan: "Initiate dual antiplatelets, STAT coronary angiography & Cath Lab activation",
-  });
+  })
 
   // 8. Destination Assigned form state
 
   const [destinationForm, setDestinationForm] = useState({
-    destination: "ICU" as
-      | "Ward"
-      | "ICU"
-      | "HDU"
-      | "Specialty Ward"
-      | "Observation"
-      | "Operating Theatre"
-      | "Discharge",
+    destination:
+      "ICU" as "Ward" | "ICU" | "HDU" | "Specialty Ward" | "Observation" | "Operating Theatre" | "Discharge",
 
     reason:
       "Requires continuous 24/7 telemetry monitoring and post-angioplasty care",
@@ -6411,29 +6391,29 @@ function AddTimelineEventModal({
     doctorName: detail.assigned_doctor_name || suggestedDoc,
 
     aiNotes: "AI Recommendation: Intensive Care Unit (CCU / Cardiac ICU)",
-  });
+  })
 
   // Synchronize doctor forms when detail changes
 
   useEffect(() => {
     const doc =
-      detail.assigned_doctor_name || getSuggestedDoctorForPatient(detail);
+      detail.assigned_doctor_name || getSuggestedDoctorForPatient(detail)
 
     const spec =
-      detail.assigned_specialty || getSuggestedSpecialtyForPatient(detail);
+      detail.assigned_specialty || getSuggestedSpecialtyForPatient(detail)
 
     setDoctorAssignedForm((prev) => ({
       ...prev,
       doctorName: doc,
       specialty: spec,
-    }));
+    }))
 
-    setDoctorArrivedForm((prev) => ({ ...prev, doctorName: doc }));
+    setDoctorArrivedForm((prev) => ({ ...prev, doctorName: doc }))
 
-    setDoctorAssessmentForm((prev) => ({ ...prev, doctorName: doc }));
+    setDoctorAssessmentForm((prev) => ({ ...prev, doctorName: doc }))
 
-    setDestinationForm((prev) => ({ ...prev, doctorName: doc }));
-  }, [detail.id, detail.assigned_doctor_name, detail.assigned_specialty]);
+    setDestinationForm((prev) => ({ ...prev, doctorName: doc }))
+  }, [detail.id, detail.assigned_doctor_name, detail.assigned_specialty])
 
   // 9. Destination Bed Assigned form state
 
@@ -6443,7 +6423,7 @@ function AddTimelineEventModal({
     bedId: "ICU-BED-04",
 
     allocatedBy: "Bed Management & Triage Coordinator",
-  });
+  })
 
   // 10. Patient Transferred form state
 
@@ -6460,11 +6440,11 @@ function AddTimelineEventModal({
 
     notes:
       "Handover completed with receiving ICU Staff Nurse. Monitors and IV lines transferred successfully.",
-  });
+  })
 
   // 11. Generic Notes form state
 
-  const [genericNotes, setGenericNotes] = useState("");
+  const [genericNotes, setGenericNotes] = useState("")
 
   // 12. Central Billing Financial Clearance Gate
 
@@ -6472,9 +6452,9 @@ function AddTimelineEventModal({
     detail.visit_no || detail.patient_id || String(detail.id),
 
     detail.patient_name || detail.patient?.name,
-  );
+  )
 
-  const [emergencyOverride, setEmergencyOverride] = useState(false);
+  const [emergencyOverride, setEmergencyOverride] = useState(false)
 
   const handleSave = async () => {
     if (
@@ -6487,17 +6467,17 @@ function AddTimelineEventModal({
         type: "error",
 
         message: `Financial Clearance Required: Patient has an unpaid ER bill of ₹${erClearance.balanceDue.toLocaleString("en-IN")}. Must be cleared at Central Billing Cashier prior to transfer (or authorize Emergency Override).`,
-      });
+      })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       const def =
         TIMELINE_EVENT_DEFINITIONS[selectedType] ||
-        TIMELINE_EVENT_DEFINITIONS.initial_vitals;
+        TIMELINE_EVENT_DEFINITIONS.initial_vitals
 
       const eventPayload: Partial<ErTimelineEventItem> = {
         event_type: selectedType,
@@ -6519,24 +6499,24 @@ function AddTimelineEventModal({
         bed: currentBed,
 
         notes: genericNotes || undefined,
-      };
+      }
 
-      let chargeNotice = "";
+      let chargeNotice = ""
 
       if (selectedType === "patient_arrived") {
-        eventPayload.location = "ER Reception / Triage";
+        eventPayload.location = "ER Reception / Triage"
 
         eventPayload.notes = `Arrived via ${formatArrivalModeLabel(arrivalForm.arrivalMode)} • Condition: ${arrivalForm.condition} • Accompanying: ${arrivalForm.accompanying}${
           arrivalForm.notes ? ` • ${arrivalForm.notes}` : ""
-        }`;
+        }`
       } else if (selectedType === "bed_assigned") {
-        eventPayload.location = `${bedAssignedForm.zone} - ${bedAssignedForm.bedLabel}`;
+        eventPayload.location = `${bedAssignedForm.zone} - ${bedAssignedForm.bedLabel}`
 
-        eventPayload.bed = bedAssignedForm.bedLabel;
+        eventPayload.bed = bedAssignedForm.bedLabel
 
         eventPayload.notes = `Allocated ${bedAssignedForm.bedLabel} (${bedAssignedForm.zone})${
           bedAssignedForm.notes ? ` • ${bedAssignedForm.notes}` : ""
-        }`;
+        }`
       } else if (
         selectedType === "initial_vitals" ||
         selectedType === "followup_vitals"
@@ -6561,7 +6541,7 @@ function AddTimelineEventModal({
           gcs: vitalsForm.gcs ? Number(vitalsForm.gcs) : 15,
 
           notes: vitalsForm.notes || undefined,
-        };
+        }
       } else if (selectedType === "medication_given") {
         eventPayload.medication_data = {
           drug_name: medForm.drugName,
@@ -6573,9 +6553,9 @@ function AddTimelineEventModal({
           response: medForm.response,
 
           notes: medForm.notes,
-        };
+        }
 
-        const priced = resolveErItemPrice(medForm.drugName, "medication");
+        const priced = resolveErItemPrice(medForm.drugName, "medication")
 
         const chargeRes = BillingDatabase.addErClinicalCharge(
           detail.visit_no || detail.patient_id || String(detail.id),
@@ -6610,9 +6590,9 @@ function AddTimelineEventModal({
 
             quantity: 1,
           },
-        );
+        )
 
-        chargeNotice = ` • ₹${priced.unitPrice.toLocaleString("en-IN")} added to ER Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")})`;
+        chargeNotice = ` • ₹${priced.unitPrice.toLocaleString("en-IN")} added to ER Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")})`
       } else if (selectedType === "investigation_ordered") {
         eventPayload.investigation_data = {
           test_name: investigationForm.testName,
@@ -6620,18 +6600,18 @@ function AddTimelineEventModal({
           priority: investigationForm.priority,
 
           notes: investigationForm.notes,
-        };
+        }
 
         ErDatabase.addInvestigation(detail.id, {
           name: investigationForm.testName,
 
           priority: investigationForm.priority,
-        });
+        })
 
         const priced = resolveErItemPrice(
           investigationForm.testName,
           "investigation",
-        );
+        )
 
         const chargeRes = BillingDatabase.addErClinicalCharge(
           detail.visit_no || detail.patient_id || String(detail.id),
@@ -6666,9 +6646,9 @@ function AddTimelineEventModal({
 
             quantity: 1,
           },
-        );
+        )
 
-        chargeNotice = ` • ₹${priced.unitPrice.toLocaleString("en-IN")} added to ER Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")})`;
+        chargeNotice = ` • ₹${priced.unitPrice.toLocaleString("en-IN")} added to ER Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")})`
       } else if (selectedType === "intervention_given") {
         eventPayload.intervention_data = {
           intervention_type: interventionForm.type,
@@ -6678,12 +6658,9 @@ function AddTimelineEventModal({
           patient_response: interventionForm.response,
 
           notes: interventionForm.notes,
-        };
+        }
 
-        const priced = resolveErItemPrice(
-          interventionForm.type,
-          "intervention",
-        );
+        const priced = resolveErItemPrice(interventionForm.type, "intervention")
 
         const chargeRes = BillingDatabase.addErClinicalCharge(
           detail.visit_no || detail.patient_id || String(detail.id),
@@ -6718,15 +6695,15 @@ function AddTimelineEventModal({
 
             quantity: 1,
           },
-        );
+        )
 
-        chargeNotice = ` • ₹${priced.unitPrice.toLocaleString("en-IN")} added to ER Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")})`;
+        chargeNotice = ` • ₹${priced.unitPrice.toLocaleString("en-IN")} added to ER Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")})`
       } else if (selectedType === "patient_stabilized") {
         eventPayload.stabilization_data = {
           status: stabilizationForm.status,
 
           clinical_notes: stabilizationForm.notes,
-        };
+        }
       } else if (selectedType === "doctor_assigned") {
         eventPayload.doctor_data = {
           doctor_name: doctorAssignedForm.doctorName,
@@ -6736,15 +6713,15 @@ function AddTimelineEventModal({
           assignment_method: doctorAssignedForm.method,
 
           notes: doctorAssignedForm.notes,
-        };
+        }
       } else if (selectedType === "doctor_arrived") {
         eventPayload.assessment_data = {
           doctor_name: doctorArrivedForm.doctorName,
 
           acute_condition: doctorArrivedForm.acuteCondition,
-        };
+        }
 
-        eventPayload.notes = doctorArrivedForm.notes;
+        eventPayload.notes = doctorArrivedForm.notes
       } else if (selectedType === "doctor_assessment_completed") {
         eventPayload.assessment_data = {
           doctor_name: doctorAssessmentForm.doctorName,
@@ -6752,7 +6729,7 @@ function AddTimelineEventModal({
           clinical_impression: doctorAssessmentForm.impression,
 
           care_plan: doctorAssessmentForm.plan,
-        };
+        }
       } else if (selectedType === "destination_assigned") {
         eventPayload.destination_data = {
           destination: destinationForm.destination,
@@ -6762,7 +6739,7 @@ function AddTimelineEventModal({
           doctor_name: destinationForm.doctorName,
 
           ai_recommendation_notes: destinationForm.aiNotes,
-        };
+        }
       } else if (selectedType === "destination_bed_assigned") {
         eventPayload.destination_bed_data = {
           department: destinationBedForm.department,
@@ -6770,7 +6747,7 @@ function AddTimelineEventModal({
           bed_id_or_label: destinationBedForm.bedId,
 
           allocated_by: destinationBedForm.allocatedBy,
-        };
+        }
       } else if (selectedType === "patient_transferred") {
         eventPayload.transfer_data = {
           source_location: transferForm.sourceLocation,
@@ -6784,33 +6761,33 @@ function AddTimelineEventModal({
           escorting_staff: transferForm.escortingStaff,
 
           handover_notes: transferForm.notes,
-        };
+        }
       }
 
-      ErDatabase.addTimelineEvent(detail.id, eventPayload);
+      ErDatabase.addTimelineEvent(detail.id, eventPayload)
 
       setNotice({
         type: "success",
 
         message: `Timeline Event recorded: "${def.label}" by ${loggedBy}${chargeNotice}.`,
-      });
+      })
 
-      onSaved();
+      onSaved()
 
-      onClose();
+      onClose()
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to record timeline event.",
-      });
+      })
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const currentDef =
     TIMELINE_EVENT_DEFINITIONS[selectedType] ||
-    TIMELINE_EVENT_DEFINITIONS.initial_vitals;
+    TIMELINE_EVENT_DEFINITIONS.initial_vitals
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in overflow-y-auto">
@@ -7672,11 +7649,11 @@ function AddTimelineEventModal({
                   <select
                     value={doctorAssignedForm.doctorName}
                     onChange={(e) => {
-                      const selectedName = e.target.value;
+                      const selectedName = e.target.value
 
                       const matched = ER_ON_DUTY_PHYSICIANS.find(
                         (d) => d.name === selectedName,
-                      );
+                      )
 
                       setDoctorAssignedForm({
                         ...doctorAssignedForm,
@@ -7686,7 +7663,7 @@ function AddTimelineEventModal({
                         specialty: matched
                           ? matched.specialty
                           : doctorAssignedForm.specialty,
-                      });
+                      })
                     }}
                     className="w-full border border-slate-300 rounded p-2 font-semibold bg-white text-gray-900"
                   >
@@ -8152,7 +8129,7 @@ function AddTimelineEventModal({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ==================== ErDischargeModal ====================
@@ -8170,27 +8147,27 @@ function ErDischargeModal({
 
   saving = false,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  erClearance: any;
+  erClearance: any
 
-  doctorName?: string;
+  doctorName?: string
 
-  onClose: () => void;
+  onClose: () => void
 
-  onConfirm: (data: { condition: string; instructions: string }) => void;
+  onConfirm: (data: { condition: string ;instructions: string }) => void
 
-  saving?: boolean;
+  saving?: boolean
 }) {
-  const [condition, setCondition] = useState("Clinically Stable / Improved");
+  const [condition, setCondition] = useState("Clinically Stable / Improved")
 
   const [instructions, setInstructions] = useState(
     "Take prescribed discharge medications as advised. Maintain adequate hydration. Return to Emergency Room immediately if severe chest pain, shortness of breath, high fever, or dizziness recurs.",
-  );
+  )
 
-  const [override, setOverride] = useState(false);
+  const [override, setOverride] = useState(false)
 
-  const isAllowed = erClearance.isCleared || override;
+  const isAllowed = erClearance.isCleared || override
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in">
@@ -8359,7 +8336,7 @@ function ErDischargeModal({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ==================== ErWardBedModal ====================
@@ -8375,36 +8352,36 @@ function ErWardBedModal({
 
   saving = false,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  erClearance: any;
+  erClearance: any
 
-  onClose: () => void;
+  onClose: () => void
 
-  onConfirm: (selectedBedId: number, notes: string) => void;
+  onConfirm: (selectedBedId: number, notes: string) => void
 
-  saving?: boolean;
+  saving?: boolean
 }) {
   const availableBeds = useMemo(() => {
     return BedDatabase.load().filter(
       (b) => b.bed_type !== "ICU" && b.status === "Available",
-    );
-  }, []);
+    )
+  }, [])
 
   const [selectedBedId, setSelectedBedId] = useState<number>(
     availableBeds[0]?.id || 101,
-  );
+  )
 
   const [transferNotes, setTransferNotes] = useState(
     "Patient stabilized in ER. Transferred with peripheral IV line and chart. Receiving nurse handover given.",
-  );
+  )
 
-  const [override, setOverride] = useState(false);
+  const [override, setOverride] = useState(false)
 
-  const isAllowed = erClearance.isCleared || override;
+  const isAllowed = erClearance.isCleared || override
 
   const selectedBed =
-    availableBeds.find((b) => b.id === selectedBedId) || availableBeds[0];
+    availableBeds.find((b) => b.id === selectedBedId) || availableBeds[0]
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in">
@@ -8546,7 +8523,7 @@ function ErWardBedModal({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ==================== ErIcuBedModal ====================
@@ -8562,31 +8539,31 @@ function ErIcuBedModal({
 
   saving = false,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  erClearance: any;
+  erClearance: any
 
-  onClose: () => void;
+  onClose: () => void
 
-  onConfirm: (selectedBedId: number, notes: string) => void;
+  onConfirm: (selectedBedId: number, notes: string) => void
 
-  saving?: boolean;
+  saving?: boolean
 }) {
   const availableBeds = useMemo(() => {
-    return BedDatabase.load().filter((b) => b.bed_type === "ICU");
-  }, []);
+    return BedDatabase.load().filter((b) => b.bed_type === "ICU")
+  }, [])
 
   const [selectedBedId, setSelectedBedId] = useState<number>(
     availableBeds[0]?.id || 201,
-  );
+  )
 
   const [transferNotes, setTransferNotes] = useState(
     "STAT Intensive Care Unit transfer. Monitored airway & IV inotropes. Daily ICU Flowsheet charted.",
-  );
+  )
 
-  const [override, setOverride] = useState(false);
+  const [override, setOverride] = useState(false)
 
-  const isAllowed = erClearance.isCleared || override;
+  const isAllowed = erClearance.isCleared || override
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in">
@@ -8722,45 +8699,45 @@ function ErIcuBedModal({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 // ==================== Patient Historical Medical Archive Modal ====================
 
 interface PatientHistoryArchiveModalProps {
   patient: {
-    patient_id?: string | null;
+    patient_id?: string | null
 
-    name?: string | null;
+    name?: string | null
 
-    last_name?: string | null;
+    last_name?: string | null
 
-    gender?: string | null;
+    gender?: string | null
 
-    age?: number | string | null;
+    age?: number | string | null
 
-    phone?: string | null;
+    phone?: string | null
 
-    blood_group?: string | null;
+    blood_group?: string | null
 
-    allergies?: string | null;
-  };
+    allergies?: string | null
+  }
 
-  activeVisitNo?: string;
+  activeVisitNo?: string
 
   patientHistory: {
-    erVisits: ErVisitRecord[];
+    erVisits: ErVisitRecord[]
 
-    opEncounters: DBOPEncounter[];
+    opEncounters: DBOPEncounter[]
 
-    medicalProfile?: ErPatientMedicalProfile | null;
-  };
+    medicalProfile?: ErPatientMedicalProfile | null
+  }
 
-  onClose: () => void;
+  onClose: () => void
 
-  onQuoteInNote?: (snippet: string, message: string) => void;
+  onQuoteInNote?: (snippet: string, message: string) => void
 
-  onSwitchToTab?: () => void;
+  onSwitchToTab?: () => void
 }
 
 function PatientHistoryArchiveModal({
@@ -8776,45 +8753,44 @@ function PatientHistoryArchiveModal({
 
   onSwitchToTab,
 }: PatientHistoryArchiveModalProps) {
-  const [activeSubTab, setActiveSubTab] = useState<
-    "all" | "er" | "op" | "meds" | "conditions"
-  >("all");
+  const [activeSubTab, setActiveSubTab] =
+    useState<"all" | "er" | "op" | "meds" | "conditions">("all")
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("")
 
   const fullName =
-    [patient.name, patient.last_name].filter(Boolean).join(" ") || "Patient";
+    [patient.name, patient.last_name].filter(Boolean).join(" ") || "Patient"
 
-  const bloodGroup = patient.blood_group || "O+";
+  const bloodGroup = patient.blood_group || "O+"
 
-  const allergies = patient.allergies || "No Known Allergies";
+  const allergies = patient.allergies || "No Known Allergies"
 
-  const uhid = patient.patient_id || "P-000000";
+  const uhid = patient.patient_id || "P-000000"
 
   const totalEpisodes =
-    patientHistory.erVisits.length + patientHistory.opEncounters.length;
+    patientHistory.erVisits.length + patientHistory.opEncounters.length
 
-  const q = searchQuery.toLowerCase().trim();
+  const q = searchQuery.toLowerCase().trim()
 
   // Filtered ER visits
 
   const filteredEr = patientHistory.erVisits.filter((v) => {
-    if (!q) return true;
+    if (!q) return true
 
-    const complaint = v.complaints?.map((c) => c.complaint).join(" ") || "";
+    const complaint = v.complaints?.map((c) => c.complaint).join(" ") || ""
 
-    const doctor = v.assigned_doctor_name || "";
+    const doctor = v.assigned_doctor_name || ""
 
-    const specialty = v.assigned_specialty || "";
+    const specialty = v.assigned_specialty || ""
 
-    const notes = v.clinical_notes?.map((n) => n.content).join(" ") || "";
+    const notes = v.clinical_notes?.map((n) => n.content).join(" ") || ""
 
     const treatments =
       v.treatments
         ?.map((t) => `${t.intervention_type} ${t.description || ""}`)
-        .join(" ") || "";
+        .join(" ") || ""
 
-    const reason = v.disposition?.clinical_reason || "";
+    const reason = v.disposition?.clinical_reason || ""
 
     return (
       v.visit_no.toLowerCase().includes(q) ||
@@ -8824,24 +8800,24 @@ function PatientHistoryArchiveModal({
       notes.toLowerCase().includes(q) ||
       treatments.toLowerCase().includes(q) ||
       reason.toLowerCase().includes(q)
-    );
-  });
+    )
+  })
 
   // Filtered OP encounters
 
   const filteredOp = patientHistory.opEncounters.filter((enc) => {
-    if (!q) return true;
+    if (!q) return true
 
-    const complaint = enc.chiefComplaint || "";
+    const complaint = enc.chiefComplaint || ""
 
-    const diag = enc.diagnosis || "";
+    const diag = enc.diagnosis || ""
 
-    const doctor = enc.assignedDoctor || enc.aiDoctor || "";
+    const doctor = enc.assignedDoctor || enc.aiDoctor || ""
 
-    const dept = enc.dept || enc.aiSpecialty || "";
+    const dept = enc.dept || enc.aiSpecialty || ""
 
     const rx =
-      enc.prescription?.map((p) => `${p.medicine} ${p.dosage}`).join(" ") || "";
+      enc.prescription?.map((p) => `${p.medicine} ${p.dosage}`).join(" ") || ""
 
     return (
       enc.id.toLowerCase().includes(q) ||
@@ -8850,29 +8826,29 @@ function PatientHistoryArchiveModal({
       doctor.toLowerCase().includes(q) ||
       dept.toLowerCase().includes(q) ||
       rx.toLowerCase().includes(q)
-    );
-  });
+    )
+  })
 
   // Filtered Meds
 
   const filteredMeds = (
     patientHistory.medicalProfile?.current_medications || []
   ).filter((m) => {
-    if (!q) return true;
+    if (!q) return true
 
     return (
       m.name.toLowerCase().includes(q) ||
       m.dosage.toLowerCase().includes(q) ||
       m.indication.toLowerCase().includes(q)
-    );
-  });
+    )
+  })
 
   const handleQuoteAllMeds = () => {
     if (
       !onQuoteInNote ||
       !patientHistory.medicalProfile?.current_medications?.length
     )
-      return;
+      return
 
     const medText = patientHistory.medicalProfile.current_medications
 
@@ -8881,28 +8857,28 @@ function PatientHistoryArchiveModal({
           `• ${m.name} ${m.dosage} (${m.frequency}) - Indication: ${m.indication}`,
       )
 
-      .join("\n");
+      .join("\n")
 
-    const snippet = `[Patient Regular Medications On File]:\n${medText}`;
+    const snippet = `[Patient Regular Medications On File]:\n${medText}`
 
     onQuoteInNote(
       snippet,
       "Quoted regular home medications into current clinical note.",
-    );
-  };
+    )
+  }
 
   const handleQuoteCompleteSummary = () => {
-    if (!onQuoteInNote) return;
+    if (!onQuoteInNote) return
 
     const condText = patientHistory.medicalProfile?.chronic_conditions?.length
       ? `Chronic Conditions: ${patientHistory.medicalProfile.chronic_conditions.join(", ")}.`
-      : "No documented chronic conditions.";
+      : "No documented chronic conditions."
 
     const surgeryText = patientHistory.medicalProfile?.past_surgeries
       ? `Past Surgeries: ${patientHistory.medicalProfile.past_surgeries}.`
-      : "";
+      : ""
 
-    const lastEr = patientHistory.erVisits[0];
+    const lastEr = patientHistory.erVisits[0]
 
     const erText = lastEr
       ? `Last ER Visit (${lastEr.visit_no}, ${formatDateTimeIST(lastEr.arrival_at)}): ${lastEr.complaints?.[0]?.complaint || "Evaluated in ER"}. Outcome: ${
@@ -8910,21 +8886,21 @@ function PatientHistoryArchiveModal({
             ? formatOutcomeLabel(lastEr.disposition.outcome)
             : "Discharged"
         }.`
-      : "";
+      : ""
 
-    const lastOp = patientHistory.opEncounters[0];
+    const lastOp = patientHistory.opEncounters[0]
 
     const opText = lastOp
       ? `Last OP Consultation (${lastOp.id}, ${lastOp.dept || "OPD"}): ${lastOp.diagnosis || lastOp.chiefComplaint || "Assessed"}.`
-      : "";
+      : ""
 
-    const fullSummary = `[Patient Historical Summary Archive - ${uhid}]:\n${condText}\n${surgeryText}\n${erText}\n${opText}`;
+    const fullSummary = `[Patient Historical Summary Archive - ${uhid}]:\n${condText}\n${surgeryText}\n${erText}\n${opText}`
 
     onQuoteInNote(
       fullSummary,
       "Quoted longitudinal patient medical archive into active clinical note.",
-    );
-  };
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-5 backdrop-blur-xs animate-in fade-in">
@@ -9220,12 +9196,12 @@ function PatientHistoryArchiveModal({
                         <button
                           type="button"
                           onClick={() => {
-                            const snippet = `• Regular Home Med: ${med.name} ${med.dosage} (${med.frequency}) - Indication: ${med.indication}`;
+                            const snippet = `• Regular Home Med: ${med.name} ${med.dosage} (${med.frequency}) - Indication: ${med.indication}`
 
                             onQuoteInNote(
                               snippet,
                               `Quoted ${med.name} into clinical note.`,
-                            );
+                            )
                           }}
                           className="px-2 py-1 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 text-[11px] font-bold rounded cursor-pointer shrink-0 transition"
                           title="Quote single medication into clinical note"
@@ -9263,12 +9239,12 @@ function PatientHistoryArchiveModal({
                     const pastVitals =
                       v.vitals && v.vitals.length > 0
                         ? v.vitals[v.vitals.length - 1]
-                        : null;
+                        : null
 
                     const pastComplaint =
                       v.complaints && v.complaints.length > 0
                         ? v.complaints[0]
-                        : null;
+                        : null
 
                     return (
                       <div
@@ -9317,12 +9293,12 @@ function PatientHistoryArchiveModal({
                                   v.disposition?.outcome
                                     ? formatOutcomeLabel(v.disposition.outcome)
                                     : "Discharged"
-                                }.`;
+                                }.`
 
                                 onQuoteInNote(
                                   noteSnippet,
                                   `Quoted historical visit ${v.visit_no} into current visit clinical note.`,
-                                );
+                                )
                               }}
                               className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-[#1B4FD8] text-xs font-semibold rounded shadow-2xs transition cursor-pointer flex items-center gap-1 self-start sm:self-auto"
                             >
@@ -9521,7 +9497,7 @@ function PatientHistoryArchiveModal({
                           </div>
                         )}
                       </div>
-                    );
+                    )
                   })}
                 </div>
               ) : (
@@ -9594,14 +9570,14 @@ function PatientHistoryArchiveModal({
                               const rxStr =
                                 enc.prescription && enc.prescription.length > 0
                                   ? `Prescriptions: ${enc.prescription.map((p) => `${p.medicine} (${p.dosage})`).join(", ")}.`
-                                  : "";
+                                  : ""
 
-                              const snippet = `[OP Consultation History - ${enc.id} (${enc.dept || "OPD"})]: Diagnosis: ${enc.diagnosis || enc.chiefComplaint || "Assessed"}. ${rxStr}`;
+                              const snippet = `[OP Consultation History - ${enc.id} (${enc.dept || "OPD"})]: Diagnosis: ${enc.diagnosis || enc.chiefComplaint || "Assessed"}. ${rxStr}`
 
                               onQuoteInNote(
                                 snippet,
                                 `Quoted OP encounter ${enc.id} into current clinical note.`,
-                              );
+                              )
                             }}
                             className="px-2 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-[#1B4FD8] text-xs font-semibold rounded shadow-2xs transition cursor-pointer flex items-center gap-1 self-start sm:self-auto"
                           >
@@ -9702,7 +9678,7 @@ function PatientHistoryArchiveModal({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export function VisitDetailPanel({
@@ -9726,25 +9702,25 @@ export function VisitDetailPanel({
 
   onSelectVisit,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  loading: boolean;
+  loading: boolean
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onNavigate?: (page: string, extraData?: any) => void;
+  onNavigate?: (page: string, extraData?: any) => void
 
-  onBack: () => void;
+  onBack: () => void
 
-  onRefresh: () => void;
+  onRefresh: () => void
 
-  onOrderMedication: () => void;
+  onOrderMedication: () => void
 
-  visits?: ErVisit[];
+  visits?: ErVisit[]
 
-  onSelectVisit?: (id: number) => void;
+  onSelectVisit?: (id: number) => void
 }) {
   const patientFullName = detail.patient
     ? [detail.patient.name, detail.patient.last_name].filter(Boolean).join(" ")
@@ -9752,11 +9728,11 @@ export function VisitDetailPanel({
       ? [detail.patient_name, detail.patient_last_name]
           .filter(Boolean)
           .join(" ")
-      : null;
+      : null
 
   const displayName = detail.is_unknown_patient
     ? detail.unknown_patient_label || "Unknown Male"
-    : patientFullName || "Patient";
+    : patientFullName || "Patient"
 
   const initials =
     displayName
@@ -9771,67 +9747,60 @@ export function VisitDetailPanel({
 
       .join("")
 
-      .toUpperCase() || "ER";
+      .toUpperCase() || "ER"
 
-  const [activeTab, setActiveTab] = useState<
-    | "overview"
-    | "timeline"
-    | "vitals"
-    | "investigations"
-    | "medications"
-    | "notes"
-    | "disposition"
-    | "documents"
-    | "history"
-  >("overview");
+  const [activeTab, setActiveTab] =
+    useState<"overview" | "timeline" | "vitals" | "investigations" | "medications" | "notes" | "disposition" | "documents" | "history">(
+      "overview",
+    )
 
   // Historical ER visits, OP encounters & medical profile for this patient (excluding current visit)
 
   const [patientHistory, setPatientHistory] = useState<{
-    erVisits: ErVisitRecord[];
+    erVisits: ErVisitRecord[]
 
-    opEncounters: DBOPEncounter[];
+    opEncounters: DBOPEncounter[]
 
-    medicalProfile?: ErPatientMedicalProfile | null;
-  }>({ erVisits: [], opEncounters: [] });
+    medicalProfile?: ErPatientMedicalProfile | null
+  }>({ erVisits: [], opEncounters: [] })
 
   useEffect(() => {
-    const pid = detail.patient_id || detail.patient?.patient_id;
+    const pid = detail.patient_id || detail.patient?.patient_id
 
-    const pName = detail.patient_name || detail.patient?.name;
+    const pName = detail.patient_name || detail.patient?.name
 
-    const pPhone = detail.patient_phone || detail.patient?.phone;
+    const pPhone = detail.patient_phone || detail.patient?.phone
 
-    if (!pid && !pName) return;
+    if (!pid && !pName) return
 
     try {
       const allErVisits = ErDatabase.getVisitsByPatient(
         pid || "",
         pName,
         pPhone,
-      );
+      )
 
-      const priorEr = allErVisits.filter((v) => v.id !== detail.id);
+      const priorEr = allErVisits.filter((v) => v.id !== detail.id)
 
       const isCoreHospitalPatient =
         pid &&
         (pid.startsWith("UMR") ||
           pid.startsWith("OP-") ||
-          Boolean(db.getPatientByUmr(pid)));
+          Boolean(db.getPatientByUmr(pid)))
 
       const priorOp = isCoreHospitalPatient
         ? db.getEncountersForPatient(pid, pName)
-        : [];
+        : []
 
-      const profile = ErDatabase.getPatientMedicalProfile(pid || "", pName);
+      const profile = ErDatabase.getPatientMedicalProfile(pid || "", pName)
 
       setPatientHistory({
         erVisits: priorEr,
         opEncounters: priorOp,
         medicalProfile: profile,
-      });
+      })
     } catch (e) {
-      console.error("Failed to load patient history:", e);
+      console.error("Failed to load patient history:", e)
     }
   }, [
     detail.id,
@@ -9841,7 +9810,7 @@ export function VisitDetailPanel({
     detail.patient?.name,
     detail.patient_phone,
     detail.patient?.phone,
-  ]);
+  ])
 
   const priorCount =
     patientHistory.erVisits.length +
@@ -9852,57 +9821,57 @@ export function VisitDetailPanel({
     (patientHistory.medicalProfile?.past_surgeries ? 1 : 0) +
     ((patientHistory.medicalProfile?.current_medications?.length || 0) > 0
       ? 1
-      : 0);
+      : 0)
 
   // Patient is an existing patient with medical history ONLY if not unknown AND has prior hospital records
 
   const isExistingPatient = useMemo(() => {
-    if (detail.is_unknown_patient) return false;
+    if (detail.is_unknown_patient) return false
 
-    return priorCount > 0;
-  }, [priorCount, detail.is_unknown_patient]);
+    return priorCount > 0
+  }, [priorCount, detail.is_unknown_patient])
 
   // If viewing a new patient (or patient without prior history) and current tab is 'history', reset to 'overview'
 
   useEffect(() => {
     if (!isExistingPatient && activeTab === "history") {
-      setActiveTab("overview");
+      setActiveTab("overview")
     }
-  }, [isExistingPatient, activeTab]);
+  }, [isExistingPatient, activeTab])
 
-  const [trendRange, setTrendRange] = useState("Last 2 Hours");
+  const [trendRange, setTrendRange] = useState("Last 2 Hours")
 
-  const [showHandoverModal, setShowHandoverModal] = useState(false);
+  const [showHandoverModal, setShowHandoverModal] = useState(false)
 
-  const [showAddVitalsModal, setShowAddVitalsModal] = useState(false);
+  const [showAddVitalsModal, setShowAddVitalsModal] = useState(false)
+  const [showAiTriageModal, setShowAiTriageModal] = useState(false)
 
-  const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
+  const [showAddMedicationModal, setShowAddMedicationModal] = useState(false)
 
   const [showAddInterventionModal, setShowAddInterventionModal] =
-    useState(false);
+    useState(false)
 
-  const [showAddNoteModal, setShowAddNoteModal] = useState(false);
+  const [showAddNoteModal, setShowAddNoteModal] = useState(false)
 
-  const [showInvestigationModal, setShowInvestigationModal] = useState(false);
+  const [showInvestigationModal, setShowInvestigationModal] = useState(false)
 
   const [showAddTimelineEventModal, setShowAddTimelineEventModal] =
-    useState(false);
+    useState(false)
 
-  const [defaultTimelineEventType, setDefaultTimelineEventType] = useState<
-    ErTimelineEventType | undefined
-  >();
+  const [defaultTimelineEventType, setDefaultTimelineEventType] =
+    useState<ErTimelineEventType | undefined>()
 
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
 
-  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
 
   // Derive latest vitals (null if no vitals recorded yet)
 
-  const hasVitals = Boolean(detail.vitals && detail.vitals.length > 0);
+  const hasVitals = Boolean(detail.vitals && detail.vitals.length > 0)
 
   const latestVitals = hasVitals
     ? detail.vitals[detail.vitals.length - 1]
-    : null;
+    : null
 
   // Form states for quick actions
 
@@ -9929,7 +9898,7 @@ export function VisitDetailPanel({
       latestVitals?.pain_score != null ? String(latestVitals.pain_score) : "0",
 
     gcs: latestVitals?.gcs ? String(latestVitals.gcs) : "15",
-  });
+  })
 
   const [quickMedication, setQuickMedication] = useState({
     name: "",
@@ -9941,149 +9910,157 @@ export function VisitDetailPanel({
     administeredBy: "Staff RN",
 
     notes: "",
-  });
+  })
 
   const [quickIntervention, setQuickIntervention] = useState({
     type: "",
     description: "",
-  });
+  })
 
   const [quickNote, setQuickNote] = useState({
     type: "Physician Progress Note",
     content: "",
-  });
+  })
 
   const [quickInvestigation, setQuickInvestigation] = useState({
     name: "12-Lead ECG",
     priority: "STAT",
-  });
+  })
 
-  const [actionSaving, setActionSaving] = useState(false);
+  const [actionSaving, setActionSaving] = useState(false)
 
   // Clinical Journey Lifecycle Flags
 
   const hasDoctor = Boolean(
     detail.assigned_doctor_name && detail.doctor_assigned_at,
-  );
+  )
 
-  const hasDisposition = Boolean(detail.disposition);
+  const hasDisposition = Boolean(detail.disposition)
 
   const hasBedRequest = Boolean(
     detail.bed_requests && detail.bed_requests.length > 0,
-  );
+  )
 
   const isTransferred =
     detail.status === "closed" ||
-    detail.bed_requests?.some((b) => b.status === "allocated");
+    detail.bed_requests?.some((b) => b.status === "allocated")
 
-  const [showDispositionModal, setShowDispositionModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false)
 
-  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showEditPatientModal, setShowEditPatientModal] = useState(false)
 
-  const [showEditPatientModal, setShowEditPatientModal] = useState(false);
+  const [billingVersion, setBillingVersion] = useState(0)
 
-  const [aiRunning, setAiRunning] = useState(false);
+  const [transferOverride, setTransferOverride] = useState(false)
 
-  const [billingVersion, setBillingVersion] = useState(0);
+  // Fed by AITriagePanel's onSuggestion once "Auto-Triage with AI" runs --
+  // pre-fills DoctorAssignForm and, once run, the bed-level suggestion offered
+  // in the Disposition tab (see suggestBedNeed's call site below). Session-only:
+  // never persisted directly, only what staff actually confirm through the
+  // real assign-doctor/triage/disposition endpoints is.
+  const [aiPrefills, setAiPrefills] = useState<AiSectionPrefills | null>(null)
 
-  const [transferOverride, setTransferOverride] = useState(false);
+  // "Direct Doctor Roster" (manual specialty/doctor pick) vs "AI Symptom
+  // Triage" -- staff don't always want the AI in the loop, so the Assign
+  // Doctor modal offers both, same as the booking-method toggle in
+  // Appointments.tsx. Switches to "direct" automatically once AI produces a
+  // suggestion, so the result lands straight on the confirm-and-override form.
+  const [assignMode, setAssignMode] = useState<"direct" | "ai">("direct")
 
   // ER Action & Receipt Modal States
 
-  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false)
 
-  const [receiptClaim, setReceiptClaim] = useState<ClaimRecord | null>(null);
+  const [receiptClaim, setReceiptClaim] = useState<ClaimRecord | null>(null)
 
   const [receiptPayment, setReceiptPayment] = useState<PaymentRecord | null>(
     null,
-  );
+  )
 
-  const [showDischargeModal, setShowDischargeModal] = useState(false);
+  const [showDischargeModal, setShowDischargeModal] = useState(false)
 
-  const [showWardBedModal, setShowWardBedModal] = useState(false);
+  const [showWardBedModal, setShowWardBedModal] = useState(false)
 
-  const [showIcuBedModal, setShowIcuBedModal] = useState(false);
+  const [showIcuBedModal, setShowIcuBedModal] = useState(false)
 
   // Subscribe to Central Billing updates in real-time
 
   useEffect(() => {
     return BillingDatabase.onUpdate(() => {
-      setBillingVersion((v) => v + 1);
-    });
-  }, []);
+      setBillingVersion((v) => v + 1)
+    })
+  }, [])
 
-  const curVisitNo = detail.visit_no || detail.patient_id || String(detail.id);
+  const curVisitNo = detail.visit_no || detail.patient_id || String(detail.id)
 
-  const curPatientId = detail.patient_id || detail.patient?.patient_id || "";
+  const curPatientId = detail.patient_id || detail.patient?.patient_id || ""
 
-  const curPatientName = detail.patient?.name || detail.patient_name || "";
+  const curPatientName = detail.patient?.name || detail.patient_name || ""
 
   const curPatientLastName =
-    detail.patient?.last_name || detail.patient_last_name || "";
+    detail.patient?.last_name || detail.patient_last_name || ""
 
-  const curGender = detail.patient?.gender || detail.patient_gender || "Male";
+  const curGender = detail.patient?.gender || detail.patient_gender || "Male"
 
-  const curAge = String(detail.patient?.age || detail.patient_age || 30);
+  const curAge = String(detail.patient?.age || detail.patient_age || 30)
 
-  const curDob = detail.patient?.dob || "";
+  const curDob = detail.patient?.dob || ""
 
-  const curPhone = detail.patient?.phone || detail.patient_phone || "";
+  const curPhone = detail.patient?.phone || detail.patient_phone || ""
 
   const curEmergency =
-    detail.patient?.emergency_contact || detail.patient_emergency_contact || "";
+    detail.patient?.emergency_contact || detail.patient_emergency_contact || ""
 
-  const curGuardian = detail.patient?.guardian_name || "";
+  const curGuardian = detail.patient?.guardian_name || ""
 
-  const curAddress = detail.patient?.address || "";
+  const curAddress = detail.patient?.address || ""
 
-  const curAllergies = detail.patient?.allergies || "No Known Allergies";
+  const curAllergies = detail.patient?.allergies || "No Known Allergies"
 
-  const curBloodGroup = detail.patient?.blood_group || "O+";
+  const curBloodGroup = detail.patient?.blood_group || "O+"
 
   // Derive chief complaint & onset
 
   const primaryComplaint =
     detail.complaints && detail.complaints.length > 0
       ? detail.complaints[0]
-      : null;
+      : null
 
   const chiefComplaint =
-    primaryComplaint?.complaint || "Acute Emergency Presentation";
+    primaryComplaint?.complaint || "Acute Emergency Presentation"
 
   const onsetText = primaryComplaint?.duration
     ? `${primaryComplaint.duration} before arrival`
-    : `${formatTimeStr(detail.arrival_at)} (at arrival)`;
+    : `${formatTimeStr(detail.arrival_at)} (at arrival)`
 
   // Derive attending doctor
 
   const doctorName = detail.assigned_doctor_name
     ? detail.assigned_doctor_name.replace(/\s*\(.*\)/, "")
-    : "Awaiting Doctor";
+    : "Awaiting Doctor"
 
   const doctorSpecialty =
     detail.assigned_specialty ||
     detail.assigned_doctor_name?.match(/\((.*)\)/)?.[1] ||
-    "Emergency Medicine";
+    "Emergency Medicine"
 
   // Derive triage info
 
   const triageCatCode =
-    detail.triage_category || detail.triage?.category || "B2";
+    detail.triage_category || detail.triage?.category || "B2"
 
-  const triageCatObj = categories.find(
-    (c) => c.category_code === triageCatCode,
-  );
+  const triageCatObj = categories.find((c) => c.category_code === triageCatCode)
 
   const triageCatLabel = triageCatObj
     ? triageCatObj.category_label
-    : "Emergent Priority";
+    : "Emergent Priority"
 
   // Derive bed / location
 
   const location =
     detail.triage?.triage_bed_label ||
     detail.triage_bed_label ||
-    "ER Triage Bay";
+    "ER Triage Bay"
 
   // Derive destination
 
@@ -10091,7 +10068,7 @@ export function VisitDetailPanel({
     getDestination(detail) ||
     (detail.disposition
       ? `• ${formatOutcomeLabel(detail.disposition.outcome)}`
-      : "• Under Assessment");
+      : "• Under Assessment")
 
   // Form state for Doctor Disposition
 
@@ -10103,17 +10080,15 @@ export function VisitDetailPanel({
     reason: `Patient presenting with ${chiefComplaint}. Emergency stabilization completed in ER. Recommended for intensive monitoring and inpatient care.`,
 
     priority: "High Priority",
-  });
+  })
 
   // Compute ER Financial Clearance Status
-
   const erClearance = useMemo(() => {
     return BillingDatabase.getErFinancialClearance(
       curVisitNo,
-
-      curPatientName,
+      displayName || curPatientName,
     );
-  }, [curVisitNo, curPatientName, billingVersion]);
+  }, [curVisitNo, displayName, curPatientName, billingVersion]);
 
   // Form state for editing Patient Demographics & Allergies
 
@@ -10139,12 +10114,12 @@ export function VisitDetailPanel({
     allergies: curAllergies,
 
     blood_group: curBloodGroup,
-  });
+  })
 
   // Open Standard Hospital Receipt Modal
 
   const handleOpenReceipt = () => {
-    const claims = BillingDatabase.getClaims();
+    const claims = BillingDatabase.getClaims()
 
     const matched = claims.find(
       (c) =>
@@ -10152,30 +10127,30 @@ export function VisitDetailPanel({
         (erClearance.invoiceNo && c.invoiceNo === erClearance.invoiceNo) ||
         (erClearance.claimId && c.id === erClearance.claimId) ||
         c.patientName === displayName,
-    );
+    )
 
     if (matched) {
-      setReceiptClaim(matched);
+      setReceiptClaim(matched)
 
-      const payments = BillingDatabase.getAllPayments();
+      const payments = BillingDatabase.getAllPayments()
 
       const matchPayment = payments.find(
         (p: PaymentRecord) =>
           p.invoiceId === matched.invoiceNo ||
           p.invoiceId === matched.id ||
           (erClearance.receiptNo && p.receiptNo === erClearance.receiptNo),
-      );
+      )
 
-      setReceiptPayment(matchPayment || null);
+      setReceiptPayment(matchPayment || null)
 
-      setShowReceiptModal(true);
+      setShowReceiptModal(true)
     } else {
       setNotice({
         type: "warning",
         message: "No official billing receipt generated yet.",
-      });
+      })
     }
-  };
+  }
 
   // Step 7: Mark Patient Clinically Stabilized
 
@@ -10190,27 +10165,27 @@ export function VisitDetailPanel({
           "Patient vital signs and acute presentation successfully stabilized under emergency resuscitation protocol.",
 
         logged_by: "Staff RN",
-      });
+      })
 
       setNotice({
         type: "success",
         message: "Patient marked as clinically stabilized.",
-      });
+      })
 
-      onRefresh();
+      onRefresh()
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to log stabilization.",
-      });
+      })
     }
-  };
+  }
 
   // Step 15A: Execute Discharge Home
 
   const handleExecuteDischarge = (data: {
-    condition: string;
-    instructions: string;
+    condition: string
+    instructions: string
   }) => {
     try {
       ErDatabase.addTimelineEvent(detail.id, {
@@ -10221,40 +10196,40 @@ export function VisitDetailPanel({
         notes: `Condition: ${data.condition}. Advice: ${data.instructions || "Standard discharge instructions."}`,
 
         logged_by: "Staff RN",
-      });
+      })
 
       ErDatabase.updateVisit(detail.id, {
         status: "closed",
         closed_at: new Date().toISOString(),
-      });
+      })
 
       setNotice({
         type: "success",
         message: `Patient ${displayName} discharged successfully (${data.condition}).`,
-      });
+      })
 
-      setShowDischargeModal(false);
+      setShowDischargeModal(false)
 
-      onRefresh();
+      onRefresh()
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to discharge patient.",
-      });
+      })
     }
-  };
+  }
 
   // Step 15B: Execute Inpatient Ward Bed Allocation & Transfer
 
   const handleExecuteWardTransfer = (selectedBedId: number, notes: string) => {
     try {
-      const bed = BedDatabase.load().find((b) => b.id === selectedBedId);
+      const bed = BedDatabase.load().find((b) => b.id === selectedBedId)
 
-      const wardName = bed ? bed.ward : "General Inpatient Ward";
+      const wardName = bed ? bed.ward : "General Inpatient Ward"
 
       const bedLabel = bed
         ? `${bed.ward} (Room ${bed.room_no} / Bed ${bed.bed_no})`
-        : `Ward Bed #${selectedBedId}`;
+        : `Ward Bed #${selectedBedId}`
 
       BedDatabase.assignBed(
         selectedBedId,
@@ -10276,7 +10251,7 @@ export function VisitDetailPanel({
         `Transferred from ER (${detail.visit_no}) to ${wardName}. Handover: ${notes}`,
 
         7,
-      );
+      )
 
       ErDatabase.addTimelineEvent(detail.id, {
         event_type: "patient_transferred",
@@ -10286,40 +10261,40 @@ export function VisitDetailPanel({
         notes: `Handover notes: ${notes}`,
 
         logged_by: "Staff RN",
-      });
+      })
 
       ErDatabase.updateVisit(detail.id, {
         status: "closed",
         closed_at: new Date().toISOString(),
-      });
+      })
 
       setNotice({
         type: "success",
         message: `Patient ${displayName} transferred to ${wardName} (${bedLabel}) successfully.`,
-      });
+      })
 
-      setShowWardBedModal(false);
+      setShowWardBedModal(false)
 
-      onRefresh();
+      onRefresh()
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to transfer to ward.",
-      });
+      })
     }
-  };
+  }
 
   // Step 15C: Execute ICU Critical Care Bed Allocation & Transfer
 
   const handleExecuteIcuTransfer = (selectedBedId: number, notes: string) => {
     try {
-      const bed = BedDatabase.load().find((b) => b.id === selectedBedId);
+      const bed = BedDatabase.load().find((b) => b.id === selectedBedId)
 
-      const icuUnit = bed ? bed.ward : "Trauma & Surgical ICU";
+      const icuUnit = bed ? bed.ward : "Trauma & Surgical ICU"
 
       const bedLabel = bed
         ? `${bed.ward} (Room ${bed.room_no} / Bed ${bed.bed_no})`
-        : `ICU Bed #${selectedBedId}`;
+        : `ICU Bed #${selectedBedId}`
 
       BedDatabase.assignBed(
         selectedBedId,
@@ -10341,7 +10316,7 @@ export function VisitDetailPanel({
         `Emergency ICU transfer from ER (${detail.visit_no}). Critical care handover: ${notes}`,
 
         10,
-      );
+      )
 
       ErDatabase.addTimelineEvent(detail.id, {
         event_type: "patient_transferred",
@@ -10351,28 +10326,28 @@ export function VisitDetailPanel({
         notes: `Critical care handover notes: ${notes}`,
 
         logged_by: "Staff RN",
-      });
+      })
 
       ErDatabase.updateVisit(detail.id, {
         status: "closed",
         closed_at: new Date().toISOString(),
-      });
+      })
 
       setNotice({
         type: "success",
         message: `Patient ${displayName} transferred to ${icuUnit} (${bedLabel}) successfully.`,
-      });
+      })
 
-      setShowIcuBedModal(false);
+      setShowIcuBedModal(false)
 
-      onRefresh();
+      onRefresh()
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to transfer to ICU.",
-      });
+      })
     }
-  };
+  }
 
   const handleGenerateErBill = () => {
     try {
@@ -10383,30 +10358,30 @@ export function VisitDetailPanel({
           d.department === "Emergency" &&
           ((detail.visit_no && d.encounterId === detail.visit_no) ||
             (curPatientId && d.patientId === curPatientId)),
-      );
+      )
 
-      const billItems: any[] = [];
+      const billItems: any[] = []
 
       // Add items from staged department charges first
 
       stagedDeptCharges.forEach((dept) => {
-        (dept.items || []).forEach((it) => {
-          billItems.push({ ...it });
-        });
-      });
+        ;(dept.items || []).forEach((it) => {
+          billItems.push({ ...it })
+        })
+      })
 
       // 2. Charted treatments / medications not already in billItems
 
       if (detail.treatments && detail.treatments.length > 0) {
         detail.treatments.forEach((t, idx) => {
           const medName =
-            t.description || t.intervention_type || "Emergency Treatment";
+            t.description || t.intervention_type || "Emergency Treatment"
 
-          const tariff = resolveErItemPrice(medName, "medication");
+          const tariff = resolveErItemPrice(medName, "medication")
 
           const alreadyExists = billItems.some((b) =>
             b.description.toLowerCase().includes(medName.toLowerCase()),
-          );
+          )
 
           if (!alreadyExists) {
             billItems.push({
@@ -10427,22 +10402,22 @@ export function VisitDetailPanel({
               insuranceCovered: 0,
 
               patientPayable: tariff.unitPrice,
-            });
+            })
           }
-        });
+        })
       }
 
       // 3. Charted diagnostic investigations not already in billItems
 
       if (detail.investigations && detail.investigations.length > 0) {
         detail.investigations.forEach((inv, idx) => {
-          const testName = inv.test_name || "Diagnostic Investigation";
+          const testName = inv.test_name || "Diagnostic Investigation"
 
-          const tariff = resolveErItemPrice(testName, "investigation");
+          const tariff = resolveErItemPrice(testName, "investigation")
 
           const alreadyExists = billItems.some((b) =>
             b.description.toLowerCase().includes(testName.toLowerCase()),
-          );
+          )
 
           if (!alreadyExists) {
             billItems.push({
@@ -10463,9 +10438,9 @@ export function VisitDetailPanel({
               insuranceCovered: 0,
 
               patientPayable: tariff.unitPrice,
-            });
+            })
           }
-        });
+        })
       }
 
       // 4. Charted timeline interventions / procedures not already in billItems
@@ -10476,13 +10451,13 @@ export function VisitDetailPanel({
             ev.event_type === "intervention_given" ||
             ev.event_type === "medication_given"
           ) {
-            const intvName = ev.event_name || ev.notes || "Emergency Procedure";
+            const intvName = ev.event_name || ev.notes || "Emergency Procedure"
 
-            const tariff = resolveErItemPrice(intvName, "intervention");
+            const tariff = resolveErItemPrice(intvName, "intervention")
 
             const alreadyExists = billItems.some((b) =>
               b.description.toLowerCase().includes(intvName.toLowerCase()),
-            );
+            )
 
             if (!alreadyExists) {
               billItems.push({
@@ -10503,10 +10478,10 @@ export function VisitDetailPanel({
                 insuranceCovered: 0,
 
                 patientPayable: tariff.unitPrice,
-              });
+              })
             }
           }
-        });
+        })
       }
 
       // 5. If no items were charted yet, provide standard base triage & bedside monitoring
@@ -10552,108 +10527,120 @@ export function VisitDetailPanel({
 
             patientPayable: 50,
           },
-        );
+        )
       }
 
+      const encKey = String(detail.visit_no || curVisitNo || detail.id || "").trim();
+      const pidKey = String(curPatientId || detail.patient_id || (detail.patient && detail.patient.patient_id) || "").trim();
+
+      // Look for an existing Emergency claim specifically for this encounter or patient
       let activeClaim = BillingDatabase.getClaims().find(
         (c) =>
           c.status !== "Voided" &&
-          (c.encounterId === detail.visit_no ||
-            (erClearance.invoiceNo && c.invoiceNo === erClearance.invoiceNo) ||
-            (erClearance.claimId && c.id === erClearance.claimId) ||
-            c.patientName === displayName),
+          (c.department === "Emergency" || (Boolean(detail.visit_no) && c.encounterId === detail.visit_no)) &&
+          (
+            (Boolean(detail.visit_no) && c.encounterId === detail.visit_no) ||
+            (Boolean(encKey) && c.encounterId === encKey) ||
+            (Boolean(detail.id) && (c.encounterId === String(detail.id) || c.encounterId === `ER-${detail.id}`)) ||
+            (Boolean(erClearance.invoiceNo) && c.invoiceNo === erClearance.invoiceNo) ||
+            (Boolean(erClearance.claimId) && c.id === erClearance.claimId) ||
+            (Boolean(pidKey) && c.patientId === pidKey) ||
+            (Boolean(displayName) && c.patientName.toLowerCase() === displayName.toLowerCase())
+          ),
       );
 
-      if (!activeClaim) {
-        activeClaim = BillingDatabase.createClaim({
-          patientId:
-            curPatientId || `UMR${Math.floor(100000 + Math.random() * 900000)}`,
+      const subtotal = billItems.reduce(
+        (sum, it) => sum + Number(it.patientPayable || it.total || 0),
+        0,
+      );
 
-          patientName: displayName,
-
-          mrn: detail.patient_id?.replace("UMR", "") || "100245",
-
-          age: Number(curAge) || 40,
-
-          gender: curGender as any,
-
-          phone: curPhone || "+91 98765 43210",
-
-          department: "Emergency",
-
-          carePathway: `ER Emergency Stabilization (${triageCatCode})`,
-
-          encounterId: detail.visit_no,
-
-          dateOfService: new Date().toISOString().split("T")[0],
-
-          insuranceProvider: "Self-Pay",
-
-          status: "Accepted",
-
-          items: billItems,
-        });
-      } else {
+      if (activeClaim) {
         activeClaim = BillingDatabase.updateClaim(activeClaim.id, {
           items: billItems,
-
+          department: "Emergency",
+          encounterId: encKey || activeClaim.encounterId,
           status: "Accepted",
+          amountPaid: 0,
+          balanceDue: subtotal,
+          payments: [],
+        });
+      } else {
+        activeClaim = BillingDatabase.createClaim({
+          patientId:
+            pidKey || `UMR${Math.floor(100000 + Math.random() * 900000)}`,
+          patientName: displayName,
+          mrn: (pidKey || detail.patient_id || "").replace("UMR", "").replace("P-", "") || "100245",
+          age: Number(curAge) || 40,
+          gender: curGender as any,
+          phone: curPhone || "+91 98765 43210",
+          department: "Emergency",
+          carePathway: `ER Emergency Stabilization (${triageCatCode})`,
+          encounterId: encKey || detail.visit_no || String(detail.id),
+          dateOfService: new Date().toISOString().split("T")[0],
+          insuranceProvider: "Self-Pay",
+          status: "Accepted",
+          items: billItems,
         });
       }
 
       // Mark all matching staged department charges as "Invoiced in Central Billing"
-
       stagedDeptCharges.forEach((d) => {
-        BillingDatabase.createDepartmentCharge({
-          ...d,
+        try {
+          BillingDatabase.createDepartmentCharge({
+            ...d,
+            status: "Invoiced in Central Billing",
+            invoiceId: activeClaim?.invoiceNo || activeClaim?.id,
+          });
+        } catch {}
+      });
 
-          status: "Invoiced in Central Billing",
-
-          invoiceId: activeClaim?.invoiceNo || activeClaim?.id,
+      // Log dispatch to timeline safely
+      try {
+        ErDatabase.addTimelineEvent(Number(detail.id), {
+          event_type: "intervention_given",
+          event_name: "Bill Dispatched to Central Billing",
+          notes: `ER clinical bill of ₹${(activeClaim.balanceDue || activeClaim.patientPortion).toLocaleString("en-IN")} dispatched to Central Billing Desk (Invoice: ${activeClaim.invoiceNo}). Clearance pending.`,
+          logged_by: "Staff RN",
         });
-      });
-
-      // Log dispatch to timeline
-
-      ErDatabase.addTimelineEvent(detail.id, {
-        event_type: "intervention_given",
-
-        event_name: "Bill Dispatched to Central Billing",
-
-        notes: `ER clinical bill of ₹${activeClaim.patientPortion.toLocaleString("en-IN")} dispatched to Central Billing Desk (Invoice: ${activeClaim.invoiceNo}). Clearance pending.`,
-
-        logged_by: "Staff RN",
-      });
+      } catch (tlErr) {
+        console.warn("Timeline log skipped:", tlErr);
+      }
 
       BillingDatabase.setPreselectedClaimForBilling(
         activeClaim.id || activeClaim.invoiceNo,
       );
 
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
+
+      if (onRefresh) {
+        try {
+          onRefresh();
+        } catch {}
+      }
+
       setNotice({
         type: "success",
-
-        message: `📄 ER Bill Generated: Invoice ${activeClaim.invoiceNo} (₹${activeClaim.patientPortion.toLocaleString("en-IN")}) sent to Central Billing Department.`,
+        message: `📄 ER Bill Generated: Invoice ${activeClaim.invoiceNo} (₹${(activeClaim.balanceDue || activeClaim.patientPortion).toLocaleString("en-IN")}) sent to Central Billing Department.`,
       });
-
-      setBillingVersion((v) => v + 1);
     } catch (e: any) {
       setNotice({
         type: "error",
         message: e.message || "Failed to generate bill.",
-      });
+      })
     }
-  };
+  }
 
   const handleSavePatientDemographics = async () => {
-    const patientId = detail.patient_id || detail.patient?.patient_id;
+    const patientId = detail.patient_id || detail.patient?.patient_id
 
     if (!patientId) {
-      setNotice({ type: "error", message: "Patient ID missing for edit." });
+      setNotice({ type: "error", message: "Patient ID missing for edit." })
 
-      return;
+      return
     }
 
-    setActionSaving(true);
+    setActionSaving(true)
 
     try {
       await apiFetch(`/api/er/patients/${patientId}`, {
@@ -10682,215 +10669,117 @@ export function VisitDetailPanel({
 
           blood_group: editPatientForm.blood_group,
         }),
-      });
+      })
 
       setNotice({
         type: "success",
         message: "Patient demographics & allergies updated successfully.",
-      });
+      })
 
-      setShowEditPatientModal(false);
+      setShowEditPatientModal(false)
 
-      onRefresh();
+      onRefresh()
     } catch {
       setNotice({
         type: "error",
         message: "Failed to update patient information.",
-      });
+      })
     } finally {
-      setActionSaving(false);
+      setActionSaving(false)
     }
-  };
+  }
 
   // Nurse-maintained patient journey timeline events
 
   const activeTimelineEvents = useMemo(() => {
-    return getSynthesizedTimeline(detail);
-  }, [detail]);
+    return getSynthesizedTimeline(detail)
+  }, [detail])
 
   // Dynamic Vitals Chart Coordinates
 
   const vitalsChartData = useMemo(() => {
     if (!detail.vitals || detail.vitals.length === 0) {
-      return { bpPoints: [], hrPoints: [], spo2Points: [], timeLabels: [] };
+      return { bpPoints: [], hrPoints: [], spo2Points: [], timeLabels: [] }
     }
 
-    const pts = detail.vitals;
+    const pts = detail.vitals
 
-    const n = pts.length;
+    const n = pts.length
 
-    const xStep = n > 1 ? (280 - 35) / (n - 1) : 0;
+    const xStep = n > 1 ? (280 - 35) / (n - 1) : 0
 
     const bpPoints = pts.map((v, i) => {
-      const val = v.bp_systolic || 120;
+      const val = v.bp_systolic || 120
 
-      const y = Math.max(15, Math.min(95, 95 - ((val - 50) / 170) * 80));
+      const y = Math.max(15, Math.min(95, 95 - ((val - 50) / 170) * 80))
 
-      const x = n === 1 ? 140 : 35 + i * xStep;
+      const x = n === 1 ? 140 : 35 + i * xStep
 
-      return { x, y, val };
-    });
+      return { x, y, val }
+    })
 
     const hrPoints = pts.map((v, i) => {
-      const val = v.heart_rate || 80;
+      const val = v.heart_rate || 80
 
-      const y = Math.max(20, Math.min(95, 95 - ((val - 40) / 120) * 75));
+      const y = Math.max(20, Math.min(95, 95 - ((val - 40) / 120) * 75))
 
-      const x = n === 1 ? 140 : 35 + i * xStep;
+      const x = n === 1 ? 140 : 35 + i * xStep
 
-      return { x, y, val };
-    });
+      return { x, y, val }
+    })
 
     const spo2Points = pts.map((v, i) => {
-      const val = v.spo2 || 95;
+      const val = v.spo2 || 95
 
-      const y = Math.max(25, Math.min(95, 95 - ((val - 70) / 30) * 70));
+      const y = Math.max(25, Math.min(95, 95 - ((val - 70) / 30) * 70))
 
-      const x = n === 1 ? 140 : 35 + i * xStep;
+      const x = n === 1 ? 140 : 35 + i * xStep
 
-      return { x, y, val };
-    });
+      return { x, y, val }
+    })
 
     const timeLabels = pts.map((v) =>
       v.recorded_at ? formatTimeStr(v.recorded_at) : "",
-    );
+    )
 
-    return { bpPoints, hrPoints, spo2Points, timeLabels };
-  }, [detail.vitals]);
+    return { bpPoints, hrPoints, spo2Points, timeLabels }
+  }, [detail.vitals])
 
   // Handlers for quick actions
 
   const handleSaveVitals = async () => {
-    setActionSaving(true);
+    setActionSaving(true)
 
     try {
-      ErDatabase.addVitals(detail.id, {
-        heart_rate: Number(quickVitals.hr) || null,
-
-        bp_systolic: Number(quickVitals.bpSys) || null,
-
-        bp_diastolic: Number(quickVitals.bpDia) || null,
-
-        spo2: Number(quickVitals.spo2) || null,
-
-        respiratory_rate: Number(quickVitals.rr) || null,
-
-        temperature: Number(quickVitals.temp) || null,
-
-        blood_glucose: Number(quickVitals.glucose) || null,
-
-        pain_score: Number(quickVitals.pain) || null,
-
-        gcs: Number(quickVitals.gcs) || null,
-
-        recorded_by: "Staff Nurse Lisa Park",
-      });
+      await apiFetch(`/api/er/visits/${detail.id}/vitals`, {
+        method: "POST",
+        body: JSON.stringify({
+          heart_rate: Number(quickVitals.hr) || null,
+          bp_systolic: Number(quickVitals.bpSys) || null,
+          bp_diastolic: Number(quickVitals.bpDia) || null,
+          spo2: Number(quickVitals.spo2) || null,
+          respiratory_rate: Number(quickVitals.rr) || null,
+          temperature: Number(quickVitals.temp) || null,
+          blood_glucose: Number(quickVitals.glucose) || null,
+          pain_score: Number(quickVitals.pain) || null,
+          gcs: Number(quickVitals.gcs) || null,
+        }),
+      })
 
       setNotice({
         type: "success",
         message: "Emergency vitals recorded successfully.",
-      });
+      })
 
-      setShowAddVitalsModal(false);
+      setShowAddVitalsModal(false)
 
-      onRefresh();
-    } catch {
-      setNotice({ type: "success", message: "Emergency vitals updated." });
-
-      setShowAddVitalsModal(false);
-
-      onRefresh();
+      onRefresh()
+    } catch (error: any) {
+      reportError(setNotice, error, "Failed to record vitals.")
     } finally {
-      setActionSaving(false);
+      setActionSaving(false)
     }
-  };
-
-  const handleTriggerAiAssignment = async () => {
-    setAiRunning(true);
-
-    try {
-      const symptomsText = `Complaints: ${chiefComplaint}. Onset: ${onsetText}. Vitals: BP ${latestVitals?.bp_systolic || 120}/${latestVitals?.bp_diastolic || 80}, HR ${latestVitals?.heart_rate || 80}, SpO2 ${latestVitals?.spo2 || 98}%.`;
-
-      const aiEval = await ErDatabase.evaluateClinicalTriage(
-        symptomsText,
-        latestVitals || {},
-      );
-
-      const fallbackDoc = getSuggestedDoctorForPatient(detail);
-
-      const fallbackSpec = getSuggestedSpecialtyForPatient(detail);
-
-      const docName = aiEval.suggestedDoctor || fallbackDoc;
-
-      const spec = aiEval.suggestedDepartment || fallbackSpec;
-
-      ErDatabase.assignDoctor(detail.id, {
-        doctor_name: docName,
-
-        specialty: spec,
-      });
-
-      setNotice({
-        type: "success",
-
-        message: `🤖 AI Clinical Decision Engine: Assigned ${docName} (${spec}) based on acute presentation and stabilized vitals.`,
-      });
-
-      onRefresh();
-    } catch {
-      const fallbackDoc = getSuggestedDoctorForPatient(detail);
-
-      const fallbackSpec = getSuggestedSpecialtyForPatient(detail);
-
-      ErDatabase.assignDoctor(detail.id, {
-        doctor_name: fallbackDoc,
-
-        specialty: fallbackSpec,
-      });
-
-      setNotice({
-        type: "success",
-
-        message: `🤖 AI Clinical Engine: Assigned ${fallbackDoc} (${fallbackSpec}) based on clinical presentation.`,
-      });
-
-      onRefresh();
-    } finally {
-      setAiRunning(false);
-    }
-  };
-
-  const handleSaveDisposition = async () => {
-    setActionSaving(true);
-
-    try {
-      ErDatabase.recordDisposition(detail.id, {
-        outcome: dispositionForm.outcome,
-
-        required_specialty: dispositionForm.specialty,
-
-        reason: dispositionForm.reason,
-
-        priority: dispositionForm.priority,
-
-        witness_doctor: doctorName,
-      });
-
-      setNotice({
-        type: "success",
-
-        message: `Doctor Disposition Recorded: ${formatOutcomeLabel(dispositionForm.outcome)}. Bed request initiated.`,
-      });
-
-      setShowDispositionModal(false);
-
-      onRefresh();
-    } catch {
-      setNotice({ type: "error", message: "Failed to record disposition." });
-    } finally {
-      setActionSaving(false);
-    }
-  };
+  }
 
   const handleConfirmTransfer = async () => {
     if (
@@ -10902,32 +10791,32 @@ export function VisitDetailPanel({
         type: "error",
 
         message: `Financial Clearance Block: Patient has unsettled ER charges of ₹${erClearance.balanceDue.toLocaleString("en-IN")}. Must clear payment at Central Billing Desk prior to transfer (or check Emergency STAT Override).`,
-      });
+      })
 
-      return;
+      return
     }
 
-    setActionSaving(true);
+    setActionSaving(true)
 
     try {
-      const isIcu = dispositionForm.outcome.includes("icu");
+      const isIcu = dispositionForm.outcome.includes("icu")
 
       const pendingReq = (detail.bed_requests || []).find(
         (b) => b.status === "pending" || b.status === "allocated",
-      );
+      )
 
       // Allocate real bed in BedDatabase
 
       const availableBeds = BedDatabase.load().filter(
         (b) => b.status === "Available",
-      );
+      )
 
       const targetBed =
         availableBeds.find((b) =>
           isIcu ? b.bed_type === "ICU" : b.bed_type !== "ICU",
-        ) || availableBeds[0];
+        ) || availableBeds[0]
 
-      let allocatedBedLabel = isIcu ? "ICU Bed #04" : "Inpatient Ward Bed #302";
+      let allocatedBedLabel = isIcu ? "ICU Bed #04" : "Inpatient Ward Bed #302"
 
       if (targetBed) {
         BedDatabase.assignBed(
@@ -10950,9 +10839,9 @@ export function VisitDetailPanel({
           `Transferred from ER (${detail.visit_no}) for ${dispositionForm.specialty}. Indication: ${dispositionForm.reason}`,
 
           7,
-        );
+        )
 
-        allocatedBedLabel = `${targetBed.ward} (Room ${targetBed.room_no} / Bed ${targetBed.bed_no})`;
+        allocatedBedLabel = `${targetBed.ward} (Room ${targetBed.room_no} / Bed ${targetBed.bed_no})`
       }
 
       if (pendingReq) {
@@ -10960,22 +10849,22 @@ export function VisitDetailPanel({
           pendingReq.id,
           targetBed?.id || 101,
           `Physical transfer confirmed from ER to ${allocatedBedLabel}.`,
-        );
+        )
       } else {
         ErDatabase.updateVisit(detail.id, {
           status: "closed",
           closed_at: new Date().toISOString(),
-        });
+        })
       }
 
       // Update transfer notification in BedDatabase
 
-      const notifs = BedDatabase.getTransferNotifications();
+      const notifs = BedDatabase.getTransferNotifications()
 
       const matchNotif = notifs.find(
         (n) =>
           n.er_visit_id === detail.id || n.patient_id === detail.patient_id,
-      );
+      )
 
       if (matchNotif) {
         BedDatabase.updateNotificationStatus(
@@ -10983,79 +10872,75 @@ export function VisitDetailPanel({
           "allocated",
           targetBed?.id,
           allocatedBedLabel,
-        );
+        )
       }
 
       setNotice({
         type: "success",
 
         message: `Patient ${displayName} successfully transferred and relocated to ${allocatedBedLabel}. Bed board updated in real-time.`,
-      });
+      })
 
-      setShowTransferModal(false);
+      setShowTransferModal(false)
 
-      onRefresh();
+      onRefresh()
     } catch {
       setNotice({
         type: "success",
         message: "Transfer completed and bed board updated.",
-      });
+      })
 
-      setShowTransferModal(false);
+      setShowTransferModal(false)
 
-      onRefresh();
+      onRefresh()
     } finally {
-      setActionSaving(false);
+      setActionSaving(false)
     }
-  };
+  }
 
   const handleSaveNote = async () => {
-    if (!quickNote.content.trim()) return;
+    if (!quickNote.content.trim()) return
 
-    setActionSaving(true);
+    setActionSaving(true)
 
     try {
-      ErDatabase.addClinicalNote(detail.id, {
-        note_type: quickNote.type,
+      await apiFetch(`/api/er/visits/${detail.id}/notes`, {
+        method: "POST",
+        body: JSON.stringify({
+          note_type: quickNote.type,
+          content: quickNote.content.trim(),
+        }),
+      })
 
-        content: quickNote.content.trim(),
+      setNotice({ type: "success", message: "Clinical note recorded." })
 
-        author: doctorName,
-      });
+      setQuickNote({ type: "Physician Progress Note", content: "" })
 
-      setNotice({ type: "success", message: "Clinical note recorded." });
+      setShowAddNoteModal(false)
 
-      setQuickNote({ type: "Physician Progress Note", content: "" });
-
-      setShowAddNoteModal(false);
-
-      onRefresh();
-    } catch {
-      setNotice({ type: "success", message: "Clinical note added." });
-
-      setShowAddNoteModal(false);
-
-      onRefresh();
+      onRefresh()
+    } catch (error: any) {
+      reportError(setNotice, error, "Failed to record clinical note.")
     } finally {
-      setActionSaving(false);
+      setActionSaving(false)
     }
-  };
+  }
 
   const handleSaveMedication = async () => {
-    if (!quickMedication.name.trim()) return;
+    if (!quickMedication.name.trim()) return
 
-    setActionSaving(true);
+    setActionSaving(true)
 
     try {
-      const medName = quickMedication.name.trim();
+      const medName = quickMedication.name.trim()
 
-      const dose = quickMedication.dose.trim();
+      const dose = quickMedication.dose.trim()
 
-      const route = quickMedication.route || "IV Push";
+      const route = quickMedication.route || "IV Push"
 
       const fullTitle = dose
         ? `${medName} (${dose}, ${route})`
-        : `${medName} (${route})`;
+        : `${medName} (${route})`
 
       const desc = [
         `Dose: ${dose || "Standard dose"} | Route: ${route}`,
@@ -11065,13 +10950,13 @@ export function VisitDetailPanel({
           : null,
       ]
         .filter(Boolean)
-        .join(" • ");
+        .join(" • ")
 
       ErDatabase.addTreatment(detail.id, {
         intervention_type: fullTitle,
 
         description: desc,
-      });
+      })
 
       // Also add to patient journey timeline
 
@@ -11087,11 +10972,11 @@ export function VisitDetailPanel({
         }`,
 
         logged_by: quickMedication.administeredBy || "Staff RN",
-      });
+      })
 
       // Accrue charge automatically to Central Billing
 
-      const priced = resolveErItemPrice(medName, "medication");
+      const priced = resolveErItemPrice(medName, "medication")
 
       const chargeRes = BillingDatabase.addErClinicalCharge(
         detail.visit_no || detail.patient_id || String(detail.id),
@@ -11115,7 +11000,7 @@ export function VisitDetailPanel({
           gender:
             detail.patient_gender ||
             detail.patient?.gender ||
-            (curGender as any) ||
+            curGender as any ||
             "Other",
 
           phone: detail.patient_phone || detail.patient?.phone || curPhone,
@@ -11132,13 +11017,13 @@ export function VisitDetailPanel({
 
           quantity: 1,
         },
-      );
+      )
 
       setNotice({
         type: "success",
 
         message: `💊 Medication ${medName} ${dose} administered • ₹${priced.unitPrice.toLocaleString("en-IN")} accrued to Central Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")}).`,
-      });
+      })
 
       setQuickMedication({
         name: "",
@@ -11150,39 +11035,43 @@ export function VisitDetailPanel({
         administeredBy: "Staff RN",
 
         notes: "",
-      });
+      })
 
-      setShowAddMedicationModal(false);
+      setShowAddMedicationModal(false)
 
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
       onRefresh();
     } catch {
       setNotice({
         type: "success",
         message: "Medication administered and logged.",
-      });
+      })
 
-      setShowAddMedicationModal(false);
+      setShowAddMedicationModal(false)
 
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
       onRefresh();
     } finally {
-      setActionSaving(false);
+      setActionSaving(false)
     }
-  };
+  }
 
   const handleSaveIntervention = async () => {
-    if (!quickIntervention.type.trim()) return;
+    if (!quickIntervention.type.trim()) return
 
-    setActionSaving(true);
+    setActionSaving(true)
 
     try {
-      const typeStr = quickIntervention.type.trim();
+      const typeStr = quickIntervention.type.trim()
 
-      const descStr = quickIntervention.description.trim();
+      const desc = quickIntervention.description.trim() || typeStr;
 
       ErDatabase.addTreatment(detail.id, {
         intervention_type: typeStr,
 
-        description: descStr || undefined,
+        description: desc,
       });
 
       // Also add to patient journey timeline
@@ -11190,16 +11079,16 @@ export function VisitDetailPanel({
       ErDatabase.addTimelineEvent(detail.id, {
         event_type: "intervention_given",
 
-        event_name: `Procedure: ${typeStr}`,
+        event_name: `Intervention: ${typeStr}`,
 
-        notes: descStr || undefined,
+        notes: desc,
 
         logged_by: "Staff RN",
-      });
+      })
 
       // Accrue charge automatically to Central Billing
 
-      const priced = resolveErItemPrice(typeStr, "intervention");
+      const priced = resolveErItemPrice(typeStr, "intervention")
 
       const chargeRes = BillingDatabase.addErClinicalCharge(
         detail.visit_no || detail.patient_id || String(detail.id),
@@ -11223,7 +11112,7 @@ export function VisitDetailPanel({
           gender:
             detail.patient_gender ||
             detail.patient?.gender ||
-            (curGender as any) ||
+            curGender as any ||
             "Other",
 
           phone: detail.patient_phone || detail.patient?.phone || curPhone,
@@ -11240,39 +11129,43 @@ export function VisitDetailPanel({
 
           quantity: 1,
         },
-      );
+      )
 
       setNotice({
         type: "success",
 
         message: `➕ Procedure ${typeStr} logged • ₹${priced.unitPrice.toLocaleString("en-IN")} accrued to Central Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")}).`,
-      });
+      })
 
-      setQuickIntervention({ type: "", description: "" });
+      setQuickIntervention({ type: "", description: "" })
 
-      setShowAddInterventionModal(false);
+      setShowAddInterventionModal(false)
 
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
       onRefresh();
     } catch {
-      setNotice({ type: "success", message: "Intervention saved." });
+      setNotice({ type: "success", message: "Intervention saved." })
 
-      setShowAddInterventionModal(false);
+      setShowAddInterventionModal(false)
 
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
       onRefresh();
     } finally {
-      setActionSaving(false);
+      setActionSaving(false)
     }
-  };
+  }
 
   const handleSaveInvestigation = async () => {
-    setActionSaving(true);
+    setActionSaving(true)
 
     try {
       ErDatabase.addInvestigation(detail.id, {
         name: quickInvestigation.name,
 
         priority: quickInvestigation.priority,
-      });
+      })
 
       // Also add to patient journey timeline
 
@@ -11284,14 +11177,14 @@ export function VisitDetailPanel({
         notes: `Priority: ${quickInvestigation.priority}. Specimen collected and dispatched to emergency lab.`,
 
         logged_by: "Staff RN",
-      });
+      })
 
       // Accrue charge automatically to Central Billing
 
       const priced = resolveErItemPrice(
         quickInvestigation.name,
         "investigation",
-      );
+      )
 
       const chargeRes = BillingDatabase.addErClinicalCharge(
         detail.visit_no || detail.patient_id || String(detail.id),
@@ -11315,7 +11208,7 @@ export function VisitDetailPanel({
           gender:
             detail.patient_gender ||
             detail.patient?.gender ||
-            (curGender as any) ||
+            curGender as any ||
             "Other",
 
           phone: detail.patient_phone || detail.patient?.phone || curPhone,
@@ -11332,58 +11225,60 @@ export function VisitDetailPanel({
 
           quantity: 1,
         },
-      );
+      )
 
       setNotice({
         type: "success",
 
         message: `🔬 Diagnostic order dispatched: ${quickInvestigation.name} • ₹${priced.unitPrice.toLocaleString("en-IN")} accrued to Central Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")}).`,
-      });
+      })
 
-      setShowInvestigationModal(false);
+      setShowInvestigationModal(false)
 
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
       onRefresh();
     } catch {
       setNotice({
         type: "success",
         message: `Investigation ${quickInvestigation.name} ordered.`,
-      });
+      })
 
-      setShowInvestigationModal(false);
+      setShowInvestigationModal(false)
 
-      onRefresh();
+      onRefresh()
     } finally {
-      setActionSaving(false);
+      setActionSaving(false)
     }
-  };
+  }
 
   const handleDeleteTimelineEvent = (eventId: number) => {
     try {
-      ErDatabase.deleteTimelineEvent(detail.id, eventId);
+      ErDatabase.deleteTimelineEvent(detail.id, eventId)
 
-      onRefresh();
+      onRefresh()
 
-      setNotice({ type: "success", message: "Timeline event removed." });
+      setNotice({ type: "success", message: "Timeline event removed." })
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to remove event.",
-      });
+      })
     }
-  };
+  }
 
   return (
-    <div className="space-y-4 max-w-[1550px] mx-auto pb-10">
+    <div className="space-y-4 max-w-[1550px] mx-auto pb-10 font-sans">
       {/* 1. Sleek Top Action & Navigation Bar (Rectangular Box Layout) */}
-      <div className="bg-white border border-[#DDE2EC] rounded p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white border border-slate-300 rounded-none p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         {/* Left Side: Back Button | Patient Badge / Switcher */}
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
             type="button"
             onClick={onBack}
-            className="px-3.5 py-1.5 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-gray-700 font-semibold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
-            <FiArrowLeft className="w-3.5 h-3.5 text-gray-500" />
+            <FiArrowLeft className="w-3.5 h-3.5 text-slate-500" />
             <span>Back</span>
           </button>
 
@@ -11395,7 +11290,7 @@ export function VisitDetailPanel({
               <select
                 value={detail.id}
                 onChange={(e) => onSelectVisit(Number(e.target.value))}
-                className="bg-[#F8FAFC] border border-[#CBD5E1] hover:border-[#1B4FD8] font-semibold text-gray-900 text-[12px] rounded pl-3 pr-7 py-1.5 shadow-2xs cursor-pointer focus:outline-none focus:border-[#1B4FD8] transition-colors"
+                className="bg-slate-50 border border-slate-300 hover:border-[#1B4FD8] font-semibold text-slate-900 text-xs rounded-none pl-3 pr-7 py-1.5 shadow-2xs cursor-pointer focus:outline-none focus:border-[#1B4FD8] transition-colors"
               >
                 {visits.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -11410,9 +11305,9 @@ export function VisitDetailPanel({
               </select>
             </div>
           ) : (
-            <div className="px-3 py-1.5 bg-[#F8FAFC] border border-[#CBD5E1] font-semibold text-gray-900 text-[12px] rounded shadow-2xs flex items-center gap-1.5">
+            <div className="px-3 py-1.5 bg-slate-50 border border-slate-300 font-semibold text-slate-900 text-xs rounded-none shadow-2xs flex items-center gap-1.5">
               <span>{displayName}</span>
-              <span className="text-[#64748B] font-normal">
+              <span className="text-slate-500 font-normal">
                 ({detail.visit_no})
               </span>
             </div>
@@ -11425,7 +11320,7 @@ export function VisitDetailPanel({
           <button
             type="button"
             onClick={() => setShowAddTimelineEventModal(true)}
-            className="px-3.5 py-1.5 bg-[#1B4FD8] hover:bg-[#1E40AF] text-white font-semibold rounded text-[12px] flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+            className="px-3.5 py-1.5 bg-[#1B4FD8] hover:bg-[#1541B5] text-white font-semibold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <FiPlus className="w-3.5 h-3.5 text-blue-100" />
             <span>Add Event</span>
@@ -11435,17 +11330,27 @@ export function VisitDetailPanel({
           <button
             type="button"
             onClick={() => setShowAddVitalsModal(true)}
-            className="px-3 py-1.5 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-[#1D4ED8] font-bold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-[#1D4ED8] font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="text-xs">🫀</span>
             <span>Add Vitals</span>
+          </button>
+
+          {/* Assign Doctor */}
+          <button
+            type="button"
+            onClick={() => setShowAiTriageModal(true)}
+            className="px-3 py-1.5 bg-white border border-purple-300 hover:bg-purple-50 text-purple-700 font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+          >
+            <FiUserCheck className="w-3.5 h-3.5" aria-hidden />
+            <span>Assign Doctor</span>
           </button>
 
           {/* Medication */}
           <button
             type="button"
             onClick={() => setShowAddMedicationModal(true)}
-            className="px-3 py-1.5 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-[#047857] font-bold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-[#047857] font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="text-xs">💊</span>
             <span>Medication</span>
@@ -11455,7 +11360,7 @@ export function VisitDetailPanel({
           <button
             type="button"
             onClick={() => setShowAddInterventionModal(true)}
-            className="px-3 py-1.5 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-[#0F766E] font-bold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-[#0F766E] font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="text-xs">💉</span>
             <span>Procedure</span>
@@ -11465,7 +11370,7 @@ export function VisitDetailPanel({
           <button
             type="button"
             onClick={() => setShowAddNoteModal(true)}
-            className="px-3 py-1.5 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-[#7E22CE] font-bold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-[#7E22CE] font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="text-xs">📝</span>
             <span>Add Note</span>
@@ -11475,7 +11380,7 @@ export function VisitDetailPanel({
           <button
             type="button"
             onClick={() => setShowInvestigationModal(true)}
-            className="px-3 py-1.5 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-[#B45309] font-bold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-[#B45309] font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="text-xs">🔬</span>
             <span>STAT Tests</span>
@@ -11485,17 +11390,17 @@ export function VisitDetailPanel({
           <button
             type="button"
             onClick={() => setShowHandoverModal(true)}
-            className="px-3 py-1.5 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-slate-700 font-bold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="text-xs">🖨️</span>
             <span>Print SBAR</span>
           </button>
 
-          {/* Transfer Patient (Doctor Disposition) */}
+          {/* Transfer Patient */}
           <button
             type="button"
-            onClick={() => setShowDispositionModal(true)}
-            className="px-3 py-1.5 bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 font-bold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            onClick={() => setActiveTab("disposition")}
+            className="px-3 py-1.5 bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="text-xs">🔄</span>
             <span>Transfer Patient</span>
@@ -11505,7 +11410,7 @@ export function VisitDetailPanel({
           <button
             type="button"
             onClick={() => setShowTransferModal(true)}
-            className="px-3 py-1.5 bg-blue-50 border border-blue-300 hover:bg-blue-100 text-blue-900 font-bold rounded text-[12px] flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+            className="px-3 py-1.5 bg-blue-50 border border-blue-300 hover:bg-blue-100 text-blue-900 font-bold rounded-none text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="text-xs">🛏️</span>
             <span>Request Bed</span>
@@ -11516,10 +11421,10 @@ export function VisitDetailPanel({
             <button
               type="button"
               onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="px-3 py-1.5 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-slate-700 font-bold rounded text-[12px] flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
+              className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold rounded-none text-xs flex items-center gap-1 shadow-2xs transition-colors cursor-pointer"
             >
               <span>⋮ More</span>
-              <FiChevronDown className="w-3 h-3 text-gray-400" />
+              <FiChevronDown className="w-3 h-3 text-slate-400" />
             </button>
 
             {showMoreMenu && (
@@ -11528,13 +11433,12 @@ export function VisitDetailPanel({
                   className="fixed inset-0 z-40"
                   onClick={() => setShowMoreMenu(false)}
                 />
-                <div className="absolute right-0 mt-1.5 w-56 bg-white border border-[#DDE2EC] rounded shadow-lg py-1.5 z-50 text-[12px] font-medium text-slate-700 space-y-0.5">
+                <div className="absolute right-0 mt-1.5 w-56 bg-white border border-slate-300 rounded-none shadow-lg py-1.5 z-50 text-xs font-medium text-slate-700 space-y-0.5">
                   <button
                     type="button"
                     onClick={() => {
-                      setShowMoreMenu(false);
-
-                      printErHandoverSheet(detail, categories);
+                      setShowMoreMenu(false)
+                      printErHandoverSheet(detail, categories)
                     }}
                     className="w-full px-3.5 py-1.5 text-left hover:bg-slate-50 flex items-center gap-2 cursor-pointer text-slate-700"
                   >
@@ -11543,9 +11447,8 @@ export function VisitDetailPanel({
                   <button
                     type="button"
                     onClick={() => {
-                      setShowMoreMenu(false);
-
-                      setShowEditPatientModal(true);
+                      setShowMoreMenu(false)
+                      setShowEditPatientModal(true)
                     }}
                     className="w-full px-3.5 py-1.5 text-left hover:bg-slate-50 flex items-center gap-2 cursor-pointer text-slate-700"
                   >
@@ -11559,20 +11462,20 @@ export function VisitDetailPanel({
       </div>
 
       {/* 2. Patient Header Banner Card */}
-      <div className="bg-white border border-[#DDE2EC] rounded p-5 shadow-2xs">
+      <div className="bg-white border border-slate-300 rounded-none p-5 shadow-2xs">
         <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
           {/* Left: Avatar & Identity */}
           <div className="flex items-center gap-4 min-w-[280px]">
-            <div className="w-14 h-14 rounded bg-[#1B4FD8] text-white flex items-center justify-center font-bold text-xl shadow-xs shrink-0">
+            <div className="w-14 h-14 rounded-none bg-[#1B4FD8] text-white flex items-center justify-center font-bold text-xl shadow-2xs shrink-0">
               {initials}
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-[22px] font-bold text-gray-900 leading-tight">
+                <h1 className="text-[22px] font-bold text-slate-900 leading-tight">
                   {displayName}
                 </h1>
                 <span
-                  className={`px-2.5 py-1 rounded-md text-[11.5px] font-black shrink-0 border shadow-xs inline-flex items-center gap-1.5 ${
+                  className={`px-2.5 py-0.5 rounded-none text-[11px] font-black shrink-0 border shadow-2xs inline-flex items-center gap-1.5 ${
                     triageCatCode === "B1"
                       ? "bg-red-600 text-white border-red-700"
                       : triageCatCode === "B2"
@@ -11592,11 +11495,10 @@ export function VisitDetailPanel({
                   <button
                     type="button"
                     onClick={() => {
-                      setShowHistoryModal(true);
-
-                      setActiveTab("history");
+                      setShowHistoryModal(true)
+                      setActiveTab("history")
                     }}
-                    className="px-2.5 py-1 rounded-md text-[11.5px] font-semibold shrink-0 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 shadow-2xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="px-2.5 py-0.5 rounded-none text-[11px] font-semibold shrink-0 border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 shadow-2xs inline-flex items-center gap-1.5 transition-colors cursor-pointer"
                     title="Check past records of this existing patient"
                   >
                     <span>📜</span>
@@ -11609,13 +11511,13 @@ export function VisitDetailPanel({
                     </span>
                   </button>
                 ) : !detail.is_unknown_patient ? (
-                  <span className="px-2.5 py-1 rounded-md text-[11.5px] font-semibold shrink-0 border border-slate-200 bg-slate-100 text-slate-700 shadow-2xs inline-flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-none text-[11px] font-semibold shrink-0 border border-slate-300 bg-slate-100 text-slate-700 shadow-2xs inline-flex items-center gap-1">
                     <span>✨</span>
                     <span>New Patient</span>
                   </span>
                 ) : null}
               </div>
-              <div className="text-[12.5px] text-[#64748B] font-medium mt-1 flex items-center gap-2 flex-wrap">
+              <div className="text-[12.5px] text-slate-500 font-medium mt-1 flex items-center gap-2 flex-wrap">
                 <span>
                   {detail.patient_id ||
                     detail.patient?.patient_id ||
@@ -11634,7 +11536,7 @@ export function VisitDetailPanel({
                   )
                 </span>
               </div>
-              <div className="text-[12px] text-[#64748B] mt-1 flex items-center gap-3 flex-wrap">
+              <div className="text-xs text-slate-500 mt-1 flex items-center gap-3 flex-wrap">
                 <span className="flex items-center gap-1">
                   <span>📞</span>{" "}
                   {detail.patient?.phone || detail.patient_phone || "—"}
@@ -11648,18 +11550,18 @@ export function VisitDetailPanel({
           </div>
 
           {/* Right: Visit Metadata & Status */}
-          <div className="flex flex-wrap items-center justify-between xl:justify-end gap-4 sm:gap-6 lg:gap-8 border-t xl:border-t-0 xl:border-l border-[#DDE2EC] pt-4 xl:pt-0 xl:pl-8 text-[12px] min-w-0">
+          <div className="flex flex-wrap items-center justify-between xl:justify-end gap-4 sm:gap-6 lg:gap-8 border-t xl:border-t-0 xl:border-l border-slate-200 pt-4 xl:pt-0 xl:pl-8 text-xs min-w-0">
             <div>
-              <span className="text-[#64748B] block text-[11px] font-medium">
+              <span className="text-slate-500 block text-[11px] font-medium">
                 ER Visit ID
               </span>
-              <div className="font-bold text-gray-900 flex items-center gap-1 mt-0.5 whitespace-nowrap">
+              <div className="font-bold text-slate-900 flex items-center gap-1 mt-0.5 whitespace-nowrap">
                 <span>{detail.visit_no}</span>
                 <button
                   onClick={() =>
                     navigator.clipboard?.writeText(detail.visit_no)
                   }
-                  className="text-gray-400 hover:text-[#1B4FD8] text-[11px] cursor-pointer"
+                  className="text-slate-400 hover:text-[#1B4FD8] text-[11px] cursor-pointer"
                   title="Copy ID"
                 >
                   📋
@@ -11668,58 +11570,61 @@ export function VisitDetailPanel({
             </div>
 
             <div>
-              <span className="text-[#64748B] block text-[11px] font-medium">
+              <span className="text-slate-500 block text-[11px] font-medium">
                 Arrival
               </span>
-              <div className="font-bold text-gray-900 mt-0.5 whitespace-nowrap">
+              <div className="font-bold text-slate-900 mt-0.5 whitespace-nowrap">
                 {formatDateTimeIST(detail.arrival_at)}
               </div>
-              <span className="text-[11px] text-[#64748B]">
+              <span className="text-[11px] text-slate-500">
                 {elapsedSince(detail.arrival_at)}
               </span>
             </div>
 
             <div>
-              <span className="text-[#64748B] block text-[11px] font-medium">
+              <span className="text-slate-500 block text-[11px] font-medium">
                 Accompanied By
               </span>
-              <div className="font-bold text-gray-900 mt-0.5 whitespace-nowrap">
+              <div className="font-bold text-slate-900 mt-0.5 whitespace-nowrap">
                 {detail.patient?.guardian_name || "Self / Family"}
               </div>
             </div>
 
             <div>
-              <span className="text-[#64748B] block text-[11px] font-medium">
+              <span className="text-slate-500 block text-[11px] font-medium">
                 Brought By
               </span>
-              <div className="font-bold text-gray-900 mt-0.5 whitespace-nowrap">
+              <div className="font-bold text-slate-900 mt-0.5 whitespace-nowrap">
                 {formatArrivalModeLabel(detail.arrival_mode)}
               </div>
             </div>
 
-            <div className="border-t sm:border-t-0 sm:border-l border-[#DDE2EC] pt-3 sm:pt-0 sm:pl-6 shrink-0 w-full sm:w-auto">
-              <span className="text-[#64748B] block text-[11px] font-medium mb-1.5">
+            <div className="border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-6 shrink-0 w-full sm:w-auto">
+              <span className="text-slate-500 block text-[11px] font-medium mb-1.5">
                 Current Status
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-[12px] font-bold bg-[#FEF3C7] text-[#B45309] border border-amber-200 whitespace-nowrap">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-bold bg-[#FEF3C7] text-[#B45309] border border-amber-300 whitespace-nowrap">
                 <span className="w-2 h-2 rounded-full bg-[#B45309] animate-pulse"></span>
                 {STATUS_LABELS[detail.status] ||
                   detail.status.replace(/_/g, " ").toUpperCase()}
               </span>
             </div>
 
-            <div className="border-t sm:border-t-0 sm:border-l border-[#DDE2EC] pt-3 sm:pt-0 sm:pl-6 shrink-0 w-full sm:w-auto">
-              <span className="text-[#64748B] block text-[11.5px] font-medium mb-1.5">
+            <div className="border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-6 shrink-0 w-full sm:w-auto">
+              <span className="text-slate-500 block text-[11.5px] font-medium mb-1.5">
                 Billing Clearance
               </span>
               {erClearance.status === "paid" ? (
                 <div className="flex items-center gap-2">
                   <span
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[12px] font-bold bg-[#DCFCE7] text-[#15803D] border border-emerald-300 whitespace-nowrap"
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-bold bg-[#DCFCE7] text-[#15803D] border border-emerald-300 whitespace-nowrap"
                     title={`Receipt: ${erClearance.receiptNo || "Paid & Cleared"}`}
                   >
                     <span className="w-2 h-2 rounded-full bg-[#15803D]"></span>
-                    <span>✅ Cleared</span>
+                    <span>
+                      ✅ Paid: ₹
+                      {(erClearance.totalAmount || 0).toLocaleString("en-IN")}
+                    </span>
                     {erClearance.receiptNo && (
                       <span className="text-[11px] font-normal text-emerald-800">
                         ({erClearance.receiptNo})
@@ -11729,19 +11634,56 @@ export function VisitDetailPanel({
                   <button
                     type="button"
                     onClick={handleOpenReceipt}
-                    className="px-2 py-0.5 bg-white hover:bg-emerald-50 text-emerald-800 rounded border border-emerald-300 text-[11px] font-bold cursor-pointer shadow-2xs transition-colors"
+                    className="px-2 py-0.5 bg-white hover:bg-emerald-50 text-emerald-800 rounded-none border border-emerald-300 text-[11px] font-bold cursor-pointer shadow-2xs transition-colors"
                   >
                     🧾 Receipt
                   </button>
+                </div>
+              ) : erClearance.status === "due" ||
+                (erClearance.hasActiveBill &&
+                  (erClearance.balanceDue || 0) > 0) ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[12px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FCD34D] whitespace-nowrap shadow-2xs"
+                    title={`Bill dispatched to Central Billing (${erClearance.invoiceNo || "Invoice Pending"}). Payment pending.`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#B45309] animate-pulse"></span>
+                    <span>
+                      ⏳ Pending: ₹
+                      {(
+                        erClearance.balanceDue ||
+                        erClearance.totalAmount ||
+                        0
+                      ).toLocaleString("en-IN")}
+                    </span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
+                    Sent to Billing (Awaiting Payment)
+                  </span>
+                  {onNavigate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        BillingDatabase.setPreselectedClaimForBilling(
+                          erClearance.claimId || erClearance.invoiceNo || "",
+                        );
+                        onNavigate("billing");
+                      }}
+                      className="px-2.5 py-1 bg-[#15803D] hover:bg-[#166534] text-white rounded text-[11.5px] font-bold cursor-pointer shadow-2xs flex items-center gap-1 transition-colors ml-1"
+                      title="Open Central Billing Department POS to collect payment now"
+                    >
+                      <span>💳 Collect in Billing →</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 flex-wrap">
                   {(erClearance.unbilledAmount || 0) > 0 ? (
                     <span
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-medium bg-[#F1F5F9] text-[#475569] border border-slate-300 whitespace-nowrap"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[11.5px] font-medium bg-slate-100 text-slate-700 border border-slate-300 whitespace-nowrap"
                       title="Active clinical care. Staged unbilled charges in ER."
                     >
-                      <span className="w-2 h-2 rounded-full bg-[#94A3B8]"></span>
+                      <span className="w-2 h-2 rounded-full bg-slate-400"></span>
                       <span>
                         Unbilled: ₹
                         {(erClearance.unbilledAmount || 0).toLocaleString(
@@ -11751,7 +11693,7 @@ export function VisitDetailPanel({
                     </span>
                   ) : erClearance.status === "due" ? (
                     <span
-                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[12px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FCD34D] whitespace-nowrap shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FCD34D] whitespace-nowrap shadow-2xs"
                       title="Bill dispatched to Central Billing. Payment pending."
                     >
                       <span className="w-2 h-2 rounded-full bg-[#B45309]"></span>
@@ -11761,8 +11703,8 @@ export function VisitDetailPanel({
                       </span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11.5px] font-medium bg-[#F1F5F9] text-[#475569] border border-slate-300 whitespace-nowrap">
-                      <span className="w-2 h-2 rounded-full bg-[#94A3B8]"></span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-none text-[11.5px] font-medium bg-slate-100 text-slate-700 border border-slate-300 whitespace-nowrap">
+                      <span className="w-2 h-2 rounded-full bg-slate-400"></span>
                       <span>Unbilled: ₹0</span>
                     </span>
                   )}
@@ -11770,7 +11712,7 @@ export function VisitDetailPanel({
                   <button
                     type="button"
                     onClick={handleGenerateErBill}
-                    className="px-2.5 py-1 bg-[#1B4FD8] hover:bg-[#1E40AF] text-white rounded text-[11.5px] font-bold cursor-pointer shadow-2xs flex items-center gap-1 transition-colors"
+                    className="px-2.5 py-1 bg-[#1B4FD8] hover:bg-[#1541B5] text-white rounded-none text-[11.5px] font-bold cursor-pointer shadow-2xs flex items-center gap-1 transition-colors"
                     title="Generate ER bill and send to Central Billing Department"
                   >
                     <span>📤 Send to Billing</span>
@@ -11785,33 +11727,23 @@ export function VisitDetailPanel({
       {/* 3. Horizontal Navigation Tabs */}
       <div
         id="er-horizontal-tab-bar"
-        className="bg-white border border-[#DDE2EC] rounded px-4 shadow-2xs overflow-x-auto"
+        className="bg-white border border-slate-300 rounded-none px-4 shadow-2xs overflow-x-auto"
       >
         <div className="flex items-center gap-6 min-w-max">
           {[
             { id: "overview", label: "Clinical Overview" },
-
             { id: "timeline", label: "Timeline" },
-
             { id: "vitals", label: "Vitals & Trends" },
-
             { id: "investigations", label: "Investigations" },
-
             { id: "medications", label: "Medications & Interventions" },
-
             { id: "notes", label: "Notes" },
-
             { id: "disposition", label: "Disposition & Transfer" },
-
             { id: "documents", label: "Documents" },
-
             ...(isExistingPatient
               ? [
                   {
                     id: "history",
-
                     label: "History",
-
                     badge: priorCount > 0 ? priorCount : undefined,
                   },
                 ]
@@ -11820,19 +11752,19 @@ export function VisitDetailPanel({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`py-3 text-[13px] font-semibold transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 ${
+              className={`py-3 text-xs font-bold transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 rounded-none ${
                 activeTab === tab.id
-                  ? "border-[#1B4FD8] text-[#1B4FD8]"
-                  : "border-transparent text-[#64748B] hover:text-gray-900"
+                  ? "border-[#1B4FD8] text-[#1B4FD8] bg-blue-50/40 px-2"
+                  : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 px-2"
               }`}
             >
               <span>{tab.label}</span>
               {tab.badge !== undefined && (
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10.5px] font-bold ${
+                  className={`px-1.5 py-0.2 rounded-none text-[10px] font-bold border ${
                     activeTab === tab.id
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-slate-200 text-slate-700"
+                      ? "bg-blue-100 text-blue-800 border-blue-200"
+                      : "bg-slate-200 text-slate-700 border-slate-300"
                   }`}
                 >
                   {tab.badge}
@@ -11849,10 +11781,10 @@ export function VisitDetailPanel({
           {/* Main 12-Column Responsive Dashboard Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 items-stretch">
             {/* Column 1: CLINICAL SNAPSHOT */}
-            <div className="col-span-1 md:col-span-1 lg:col-span-3 xl:col-span-3 bg-white border border-[#DDE2EC] rounded p-4 shadow-2xs flex flex-col justify-between space-y-4">
+            <div className="col-span-1 md:col-span-1 lg:col-span-3 xl:col-span-3 bg-white border border-slate-300 rounded-none p-4 shadow-2xs flex flex-col justify-between space-y-4">
               <div>
-                <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-2.5">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     CLINICAL SNAPSHOT
                   </span>
                   <button
@@ -11863,88 +11795,88 @@ export function VisitDetailPanel({
                   </button>
                 </div>
 
-                <div className="space-y-3 pt-3 text-[12px]">
+                <div className="space-y-3 pt-3 text-xs">
                   <div>
-                    <span className="text-[#64748B] block text-[10.5px]">
+                    <span className="text-slate-500 block text-[10.5px]">
                       Chief Complaint
                     </span>
-                    <strong className="text-gray-900 font-semibold">
+                    <strong className="text-slate-900 font-bold">
                       {chiefComplaint}
                     </strong>
                   </div>
 
                   <div>
-                    <span className="text-[#64748B] block text-[10.5px]">
+                    <span className="text-slate-500 block text-[10.5px]">
                       Onset
                     </span>
-                    <span className="text-gray-800">{onsetText}</span>
+                    <span className="text-slate-800 font-medium">{onsetText}</span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                     <div>
-                      <span className="text-[#64748B] block text-[10.5px]">
+                      <span className="text-slate-500 block text-[10.5px]">
                         Current Location
                       </span>
-                      <strong className="text-gray-900 font-semibold text-[11.5px] flex items-center gap-1 mt-0.5">
+                      <strong className="text-slate-900 font-bold text-[11.5px] flex items-center gap-1 mt-0.5">
                         <span className="text-xs">🛏️</span> {location}
                       </strong>
                     </div>
 
                     <div>
-                      <span className="text-[#64748B] block text-[10.5px]">
+                      <span className="text-slate-500 block text-[10.5px]">
                         Attending Doctor
                       </span>
-                      <strong className="text-gray-900 font-semibold text-[11.5px] flex items-center gap-1 mt-0.5">
+                      <strong className="text-slate-900 font-bold text-[11.5px] flex items-center gap-1 mt-0.5">
                         <span className="text-xs">👨‍⚕️</span> {doctorName}
                       </strong>
-                      <span className="text-[#64748B] block text-[10px] truncate">
+                      <span className="text-slate-500 block text-[10px] truncate">
                         {doctorSpecialty}
                       </span>
                     </div>
                   </div>
 
                   <div className="border-t border-slate-100 pt-2">
-                    <span className="text-[#64748B] block text-[10.5px] mb-1.5">
+                    <span className="text-slate-500 block text-[10.5px] mb-1.5">
                       Vitals (Latest)
                     </span>
                     {latestVitals ? (
                       <div className="flex flex-wrap gap-1.5">
                         {latestVitals.bp_systolic &&
                           latestVitals.bp_diastolic && (
-                            <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#FEE2E2] text-[#DC2626] border border-red-200">
+                            <span className="px-2 py-0.5 rounded-none text-[10.5px] font-bold bg-red-50 text-red-700 border border-red-200">
                               BP {latestVitals.bp_systolic}/
                               {latestVitals.bp_diastolic} mmHg
                             </span>
                           )}
                         {latestVitals.heart_rate && (
-                          <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#FEE2E2] text-[#DC2626] border border-red-200">
+                          <span className="px-2 py-0.5 rounded-none text-[10.5px] font-bold bg-red-50 text-red-700 border border-red-200">
                             HR {latestVitals.heart_rate} bpm
                           </span>
                         )}
                         {latestVitals.spo2 && (
-                          <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#FEE2E2] text-[#DC2626] border border-red-200">
+                          <span className="px-2 py-0.5 rounded-none text-[10.5px] font-bold bg-red-50 text-red-700 border border-red-200">
                             SpO₂ {latestVitals.spo2}%
                           </span>
                         )}
                         {latestVitals.respiratory_rate && (
-                          <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#FFEDD5] text-[#EA580C] border border-orange-200">
+                          <span className="px-2 py-0.5 rounded-none text-[10.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                             RR {latestVitals.respiratory_rate}/min
                           </span>
                         )}
                         {latestVitals.temperature && (
-                          <span className="px-2 py-0.5 rounded text-[10.5px] font-bold bg-[#DCFCE7] text-[#16A34A] border border-green-200">
+                          <span className="px-2 py-0.5 rounded-none text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             Temp {latestVitals.temperature}°F
                           </span>
                         )}
                       </div>
                     ) : (
-                      <div className="p-2 bg-slate-50 border border-slate-200 rounded text-[11px] flex items-center justify-between">
-                        <span className="text-[#64748B] italic">
+                      <div className="p-2 bg-slate-50 border border-slate-200 rounded-none text-[11px] flex items-center justify-between">
+                        <span className="text-slate-500 italic">
                           No vitals charted yet
                         </span>
                         <button
                           onClick={() => setShowAddVitalsModal(true)}
-                          className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-[#1B4FD8] font-bold rounded cursor-pointer text-[10.5px] transition-colors"
+                          className="px-2 py-0.5 bg-blue-50 hover:bg-blue-100 text-[#1B4FD8] font-bold rounded-none cursor-pointer text-[10.5px] transition-colors border border-blue-200"
                         >
                           + Add Vitals
                         </button>
@@ -12055,9 +11987,9 @@ export function VisitDetailPanel({
                     <button
                       type="button"
                       onClick={() => {
-                        setDefaultTimelineEventType(undefined);
+                        setDefaultTimelineEventType(undefined)
 
-                        setShowAddTimelineEventModal(true);
+                        setShowAddTimelineEventModal(true)
                       }}
                       className="font-bold text-[#1B4FD8] hover:underline cursor-pointer flex items-center gap-1"
                     >
@@ -12089,9 +12021,9 @@ export function VisitDetailPanel({
                       <button
                         type="button"
                         onClick={() => {
-                          setDefaultTimelineEventType("initial_vitals");
+                          setDefaultTimelineEventType("initial_vitals")
 
-                          setShowAddTimelineEventModal(true);
+                          setShowAddTimelineEventModal(true)
                         }}
                         className="mt-2 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-[#1B4FD8] rounded text-[11px] font-bold cursor-pointer transition-colors"
                       >
@@ -12102,7 +12034,7 @@ export function VisitDetailPanel({
                     activeTimelineEvents.slice(0, 8).map((ev) => {
                       const def =
                         TIMELINE_EVENT_DEFINITIONS[ev.event_type] ||
-                        TIMELINE_EVENT_DEFINITIONS.initial_vitals;
+                        TIMELINE_EVENT_DEFINITIONS.initial_vitals
 
                       return (
                         <div
@@ -12234,7 +12166,7 @@ export function VisitDetailPanel({
                             </span>
                           </div>
                         </div>
-                      );
+                      )
                     })
                   )}
                 </div>
@@ -12245,9 +12177,9 @@ export function VisitDetailPanel({
                 <button
                   type="button"
                   onClick={() => {
-                    setDefaultTimelineEventType(undefined);
+                    setDefaultTimelineEventType(undefined)
 
-                    setShowAddTimelineEventModal(true);
+                    setShowAddTimelineEventModal(true)
                   }}
                   className="text-[#1B4FD8] font-bold hover:underline cursor-pointer"
                 >
@@ -12929,7 +12861,87 @@ export function VisitDetailPanel({
               </div>
             </div>
           </div>
+
         </>
+      )}
+
+      {/* Assign Doctor modal -- opened from the header's "Assign Doctor"
+          button. Offers both a manual specialty/doctor pick and the real,
+          backend-wired AI Triage Assistant behind one "Booking Method"
+          toggle, same pattern as Appointments.tsx's booking modal. */}
+      {showAiTriageModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-xl w-full shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 pt-4">
+              <span className="text-[13px] font-bold text-gray-900">Assign Doctor</span>
+              <button
+                type="button"
+                onClick={() => setShowAiTriageModal(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mx-5 mt-3 bg-[#EFF6FF] border border-blue-200 rounded px-3 py-2.5 flex items-center justify-between gap-4">
+              <span className="text-[11.5px] font-bold text-[#1B4FD8]">
+                Booking Method:
+              </span>
+              <div className="flex bg-white p-1 rounded border border-blue-200 gap-1">
+                <button
+                  type="button"
+                  onClick={() => setAssignMode("direct")}
+                  className={`px-3 py-1 text-[12px] font-bold rounded transition-colors cursor-pointer ${
+                    assignMode === "direct"
+                      ? "bg-[#1B4FD8] text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  👨‍⚕️ Direct Doctor Roster
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAssignMode("ai")}
+                  className={`px-3 py-1 text-[12px] font-bold rounded transition-colors cursor-pointer ${
+                    assignMode === "ai"
+                      ? "bg-[#1B4FD8] text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  ✨ AI Symptom Triage
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5">
+              {assignMode === "direct" ? (
+                <DoctorAssignForm
+                  visitId={detail.id}
+                  existingDoctor={detail.assigned_doctor_name}
+                  existingSpecialty={detail.assigned_specialty}
+                  triageCategory={detail.triage?.category}
+                  aiPrefill={aiPrefills?.doctor ?? null}
+                  setNotice={setNotice}
+                  onSaved={() => {
+                    onRefresh()
+                    setShowAiTriageModal(false)
+                  }}
+                />
+              ) : (
+                <AITriagePanel
+                  detail={detail}
+                  categories={categories}
+                  setNotice={setNotice}
+                  onRefresh={onRefresh}
+                  onSuggestion={(prefills) => {
+                    setAiPrefills(prefills)
+                    setAssignMode("direct")
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Timeline Tab */}
@@ -12952,9 +12964,9 @@ export function VisitDetailPanel({
             categories={categories}
             onDeleteEvent={handleDeleteTimelineEvent}
             onAddEvent={(type) => {
-              setDefaultTimelineEventType(type);
+              setDefaultTimelineEventType(type)
 
-              setShowAddTimelineEventModal(true);
+              setShowAddTimelineEventModal(true)
             }}
           />
         </div>
@@ -13227,11 +13239,19 @@ export function VisitDetailPanel({
           ) : (
             <DispositionForm
               visitId={detail.id}
-              bedNeed={suggestBedNeed(
-                detail.triage_category,
-                detail.assigned_specialty,
-                categories,
-              )}
+              bedNeed={
+                aiPrefills?.bedRecommendation
+                  ? {
+                      levelOfCare: aiPrefills.bedRecommendation.levelOfCare,
+                      specialty: detail.assigned_specialty || null,
+                      reason: aiPrefills.bedRecommendation.reason,
+                    }
+                  : suggestBedNeed(
+                      detail.triage_category,
+                      detail.assigned_specialty,
+                      categories,
+                    )
+              }
               setNotice={setNotice}
               onSaved={onRefresh}
             />
@@ -13531,9 +13551,9 @@ export function VisitDetailPanel({
                               `• ${m.name} ${m.dosage} (${m.frequency}) - Indication: ${m.indication}`,
                           )
 
-                          .join("\n");
+                          .join("\n")
 
-                        const snippet = `[Patient Regular Medications On File]:\n${medText}`;
+                        const snippet = `[Patient Regular Medications On File]:\n${medText}`
 
                         setQuickNote((prev) => ({
                           ...prev,
@@ -13541,16 +13561,16 @@ export function VisitDetailPanel({
                           content: prev.content
                             ? `${prev.content}\n\n${snippet}`
                             : snippet,
-                        }));
+                        }))
 
-                        setActiveTab("notes");
+                        setActiveTab("notes")
 
                         setNotice({
                           type: "success",
 
                           message:
                             "Quoted regular medications into clinical assessment note.",
-                        });
+                        })
                       }}
                       className="text-[11px] font-semibold text-[#1B4FD8] hover:underline cursor-pointer flex items-center gap-1"
                     >
@@ -13608,12 +13628,12 @@ export function VisitDetailPanel({
                   const pastVitals =
                     v.vitals && v.vitals.length > 0
                       ? v.vitals[v.vitals.length - 1]
-                      : null;
+                      : null
 
                   const pastComplaint =
                     v.complaints && v.complaints.length > 0
                       ? v.complaints[0]
-                      : null;
+                      : null
 
                   return (
                     <div
@@ -13656,7 +13676,7 @@ export function VisitDetailPanel({
                                 v.disposition?.outcome
                                   ? formatOutcomeLabel(v.disposition.outcome)
                                   : "Discharged"
-                              }.`;
+                              }.`
 
                               setQuickNote((prev) => ({
                                 ...prev,
@@ -13664,15 +13684,15 @@ export function VisitDetailPanel({
                                 content: prev.content
                                   ? `${prev.content}\n\n${noteSnippet}`
                                   : noteSnippet,
-                              }));
+                              }))
 
-                              setActiveTab("notes");
+                              setActiveTab("notes")
 
                               setNotice({
                                 type: "success",
 
                                 message: `Quoted historical record ${v.visit_no} into current visit clinical note.`,
-                              });
+                              })
                             }}
                             className="px-2.5 py-1 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-[#1B4FD8] text-[11.5px] font-semibold rounded shadow-2xs transition-colors cursor-pointer flex items-center gap-1"
                             title="Reference this past visit in the active clinical note"
@@ -13867,7 +13887,7 @@ export function VisitDetailPanel({
                         </div>
                       )}
                     </div>
-                  );
+                  )
                 })}
               </div>
             ) : (
@@ -13938,9 +13958,9 @@ export function VisitDetailPanel({
                           const rxStr =
                             enc.prescription && enc.prescription.length > 0
                               ? `Prescriptions: ${enc.prescription.map((p) => `${p.medicine} (${p.dosage})`).join(", ")}.`
-                              : "";
+                              : ""
 
-                          const snippet = `[OP Consultation History - ${enc.id} (${enc.dept || "OPD"})]: Diagnosis: ${enc.diagnosis || enc.chiefComplaint || "Assessed"}. ${rxStr}`;
+                          const snippet = `[OP Consultation History - ${enc.id} (${enc.dept || "OPD"})]: Diagnosis: ${enc.diagnosis || enc.chiefComplaint || "Assessed"}. ${rxStr}`
 
                           setQuickNote((prev) => ({
                             ...prev,
@@ -13948,15 +13968,15 @@ export function VisitDetailPanel({
                             content: prev.content
                               ? `${prev.content}\n\n${snippet}`
                               : snippet,
-                          }));
+                          }))
 
-                          setActiveTab("notes");
+                          setActiveTab("notes")
 
                           setNotice({
                             type: "success",
 
                             message: `Quoted OP encounter ${enc.id} into current clinical note.`,
-                          });
+                          })
                         }}
                         className="px-2 py-1 bg-white border border-[#CBD5E1] hover:bg-slate-50 text-[#1B4FD8] text-[11px] font-semibold rounded shadow-2xs transition-colors cursor-pointer flex items-center gap-1 self-start sm:self-auto"
                         title="Quote this consultation into current note"
@@ -14367,9 +14387,9 @@ export function VisitDetailPanel({
               <button
                 type="button"
                 onClick={() => {
-                  setShowAddMedicationModal(false);
+                  setShowAddMedicationModal(false)
 
-                  onOrderMedication();
+                  onOrderMedication()
                 }}
                 className="text-[11px] text-[#1B4FD8] font-bold hover:underline cursor-pointer flex items-center gap-1"
               >
@@ -14692,243 +14712,6 @@ export function VisitDetailPanel({
         </div>
       )}
 
-      {/* 5. Doctor Evaluation & Disposition Modal */}
-      {showDispositionModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in backdrop-blur-xs">
-          <div className="bg-white rounded-xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div>
-                <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
-                  <span>🔄</span> Transfer Patient &amp; Doctor Disposition
-                </h3>
-                <p className="text-[11.5px] text-slate-500 mt-0.5">
-                  Select clinical transfer pathway and inpatient disposition
-                  order for {displayName} ({detail.visit_no}).
-                </p>
-              </div>
-              <button
-                onClick={() => setShowDispositionModal(false)}
-                className="text-gray-400 hover:text-gray-600 font-bold text-lg cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4 text-[12px]">
-              <div>
-                <label className="block font-bold text-gray-700 mb-2">
-                  Select Clinical Transfer / Disposition Pathway:
-                </label>
-                <div className="space-y-2">
-                  {DISPOSITION_DESTINATION_OPTIONS.map((opt) => {
-                    const isSelected = dispositionForm.outcome === opt.value;
-
-                    return (
-                      <div
-                        key={opt.value}
-                        onClick={() => {
-                          setDispositionForm({
-                            ...dispositionForm,
-
-                            outcome: opt.value,
-
-                            specialty: opt.defaultSpecialty,
-
-                            priority: opt.defaultPriority,
-                          });
-                        }}
-                        className={`p-3 rounded-lg border-2 cursor-pointer transition-all flex items-start justify-between gap-3 ${
-                          isSelected
-                            ? "border-[#1B4FD8] bg-blue-50/70 shadow-xs ring-1 ring-[#1B4FD8]"
-                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80"
-                        }`}
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-lg shrink-0 mt-0.5">
-                            {opt.icon}
-                          </span>
-                          <div>
-                            <div className="font-bold text-slate-900 text-[13px] leading-snug">
-                              {opt.title}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10.5px] font-bold border ${opt.badgeColor}`}
-                              >
-                                {opt.tag}
-                              </span>
-                              <span className="text-[11px] text-slate-500">
-                                Target: {opt.defaultSpecialty}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="shrink-0 mt-0.5">
-                          <span
-                            className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] font-bold ${
-                              isSelected
-                                ? "bg-[#1B4FD8] text-white border-[#1B4FD8]"
-                                : "border-slate-300 bg-white"
-                            }`}
-                          >
-                            {isSelected ? "✓" : ""}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">
-                    Target Specialty / Department
-                  </label>
-                  <select
-                    value={dispositionForm.specialty}
-                    onChange={(e) =>
-                      setDispositionForm({
-                        ...dispositionForm,
-                        specialty: e.target.value,
-                      })
-                    }
-                    className="w-full border border-slate-300 rounded p-2 text-gray-800 font-medium bg-white"
-                  >
-                    <option value="Intensive Care Unit (ICU)">
-                      Intensive Care Unit (ICU)
-                    </option>
-                    <option value="Cardiology">
-                      Cardiology / Coronary Care Unit (CCU)
-                    </option>
-                    <option value="Neurology / Stroke Care">
-                      Neurology / Stroke Care
-                    </option>
-                    <option value="Pulmonology / Respiratory Care">
-                      Pulmonology / Respiratory Care
-                    </option>
-                    <option value="Orthopedics / Trauma">
-                      Orthopedics / Trauma Care
-                    </option>
-                    <option value="General Medicine Ward">
-                      General Medicine Inpatient Ward
-                    </option>
-                    <option value="General Surgery Ward">
-                      General Surgery Inpatient Ward
-                    </option>
-                    <option value="Pediatrics">Pediatric Inpatient Unit</option>
-                    <option value="Emergency OT / Cath Lab">
-                      Emergency Operating Theatre / Cath Lab
-                    </option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-gray-700 mb-1">
-                    Transfer Priority
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      "STAT / Emergency",
-                      "High Priority",
-                      "Routine Admission",
-                    ].map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() =>
-                          setDispositionForm({
-                            ...dispositionForm,
-                            priority: p,
-                          })
-                        }
-                        className={`py-2 px-1.5 rounded text-[11px] font-bold border transition-all cursor-pointer text-center ${
-                          dispositionForm.priority === p
-                            ? "bg-[#1B4FD8] text-white border-[#1B4FD8] shadow-xs"
-                            : "bg-white text-gray-700 border-slate-200 hover:bg-slate-50"
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-700 mb-1">
-                  Clinical Reason &amp; Handover Instructions
-                </label>
-                <textarea
-                  rows={3}
-                  value={dispositionForm.reason}
-                  onChange={(e) =>
-                    setDispositionForm({
-                      ...dispositionForm,
-                      reason: e.target.value,
-                    })
-                  }
-                  placeholder="Document clinical justification for transfer, special nursing orders, and receiving doctor handover..."
-                  className="w-full border border-slate-300 rounded p-2.5 text-gray-800"
-                />
-              </div>
-            </div>
-
-            {/* Financial Clearance Notice in Disposition Modal */}
-            {erClearance.isCleared ? (
-              <div className="p-2.5 bg-emerald-50 border border-emerald-300 rounded text-[11.5px] text-emerald-900 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span>✅</span>
-                  <span>
-                    <strong>Central Billing Status:</strong> Account Cleared
-                    (Receipt: {erClearance.receiptNo || "Paid"}).
-                  </span>
-                </div>
-                <span className="px-2 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-bold uppercase">
-                  Ready
-                </span>
-              </div>
-            ) : (
-              <div className="p-2.5 bg-amber-50 border border-amber-300 rounded text-[11.5px] text-amber-900 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span>🔒</span>
-                  <span>
-                    <strong>Central Billing Protocol:</strong> Patient has
-                    outstanding dues of{" "}
-                    <strong className="text-red-700 font-mono">
-                      ₹{erClearance.balanceDue.toLocaleString("en-IN")}
-                    </strong>
-                    . Settlement required before discharge or physical transfer.
-                  </span>
-                </div>
-                <span className="px-2 py-0.5 bg-amber-600 text-white rounded text-[10px] font-bold uppercase">
-                  Due at Billing
-                </span>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
-              <button
-                onClick={() => setShowDispositionModal(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-gray-700 rounded text-[12.5px] font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveDisposition}
-                disabled={actionSaving}
-                className="px-5 py-2 bg-[#D97706] hover:bg-[#B45309] text-white rounded text-[12.5px] font-bold cursor-pointer shadow-xs flex items-center gap-1.5"
-              >
-                <span>🔄</span>{" "}
-                {actionSaving
-                  ? "Recording..."
-                  : "Save Disposition & Transfer Order"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 6. Physical Bed Transfer & Relocation Modal */}
       {showTransferModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-in fade-in">
@@ -15052,9 +14835,9 @@ export function VisitDetailPanel({
                   <button
                     type="button"
                     onClick={() => {
-                      setShowTransferModal(false);
+                      setShowTransferModal(false)
 
-                      handleGenerateErBill();
+                      handleGenerateErBill()
                     }}
                     className="px-2.5 py-1 bg-[#1B4FD8] hover:bg-[#1E40AF] text-white font-bold rounded text-[11px] shrink-0 cursor-pointer shadow-2xs flex items-center gap-1"
                   >
@@ -15368,9 +15151,9 @@ export function VisitDetailPanel({
                           setEditPatientForm({
                             ...editPatientForm,
                             allergies: "No Known Allergies",
-                          });
+                          })
                         } else {
-                          const current = editPatientForm.allergies;
+                          const current = editPatientForm.allergies
 
                           if (
                             !current ||
@@ -15380,12 +15163,12 @@ export function VisitDetailPanel({
                             setEditPatientForm({
                               ...editPatientForm,
                               allergies: tag.val,
-                            });
+                            })
                           } else if (!current.includes(tag.val)) {
                             setEditPatientForm({
                               ...editPatientForm,
                               allergies: `${current}, ${tag.val}`,
-                            });
+                            })
                           }
                         }
                       }}
@@ -15489,21 +15272,21 @@ export function VisitDetailPanel({
               ...prev,
 
               content: prev.content ? `${prev.content}\n\n${snippet}` : snippet,
-            }));
+            }))
 
-            setActiveTab("notes");
+            setActiveTab("notes")
 
-            setNotice({ type: "success", message });
+            setNotice({ type: "success", message })
           }}
           onSwitchToTab={() => {
-            setShowHistoryModal(false);
+            setShowHistoryModal(false)
 
-            setActiveTab("history");
+            setActiveTab("history")
           }}
         />
       )}
     </div>
-  );
+  )
 }
 
 function ErTimelineView({
@@ -15515,29 +15298,28 @@ function ErTimelineView({
 
   onDeleteEvent,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
-  onAddEvent?: (type?: ErTimelineEventType) => void;
+  onAddEvent?: (type?: ErTimelineEventType) => void
 
-  onDeleteEvent?: (eventId: number) => void;
+  onDeleteEvent?: (eventId: number) => void
 }) {
-  const [filterCategory, setFilterCategory] = useState<
-    "all" | "vitals" | "treatments" | "physician" | "transfer"
-  >("all");
+  const [filterCategory, setFilterCategory] =
+    useState<"all" | "vitals" | "treatments" | "physician" | "transfer">("all")
 
-  const allEvents = useMemo(() => getSynthesizedTimeline(detail), [detail]);
+  const allEvents = useMemo(() => getSynthesizedTimeline(detail), [detail])
 
   const filteredEvents = useMemo(() => {
-    if (filterCategory === "all") return allEvents;
+    if (filterCategory === "all") return allEvents
 
     if (filterCategory === "vitals") {
       return allEvents.filter(
         (e) =>
           e.event_type === "initial_vitals" ||
           e.event_type === "followup_vitals",
-      );
+      )
     }
 
     if (filterCategory === "treatments") {
@@ -15546,7 +15328,7 @@ function ErTimelineView({
           e.event_type === "medication_given" ||
           e.event_type === "intervention_given" ||
           e.event_type === "patient_stabilized",
-      );
+      )
     }
 
     if (filterCategory === "physician") {
@@ -15555,7 +15337,7 @@ function ErTimelineView({
           e.event_type === "doctor_assigned" ||
           e.event_type === "doctor_arrived" ||
           e.event_type === "doctor_assessment_completed",
-      );
+      )
     }
 
     if (filterCategory === "transfer") {
@@ -15566,30 +15348,30 @@ function ErTimelineView({
           e.event_type === "destination_assigned" ||
           e.event_type === "destination_bed_assigned" ||
           e.event_type === "patient_transferred",
-      );
+      )
     }
 
-    return allEvents;
-  }, [allEvents, filterCategory]);
+    return allEvents
+  }, [allEvents, filterCategory])
 
   const vitalsCount = allEvents.filter(
     (e) =>
       e.event_type === "initial_vitals" || e.event_type === "followup_vitals",
-  ).length;
+  ).length
 
   const treatmentsCount = allEvents.filter(
     (e) =>
       e.event_type === "medication_given" ||
       e.event_type === "intervention_given" ||
       e.event_type === "patient_stabilized",
-  ).length;
+  ).length
 
   const physicianCount = allEvents.filter(
     (e) =>
       e.event_type === "doctor_assigned" ||
       e.event_type === "doctor_arrived" ||
       e.event_type === "doctor_assessment_completed",
-  ).length;
+  ).length
 
   const transferCount = allEvents.filter(
     (e) =>
@@ -15598,7 +15380,7 @@ function ErTimelineView({
       e.event_type === "destination_assigned" ||
       e.event_type === "destination_bed_assigned" ||
       e.event_type === "patient_transferred",
-  ).length;
+  ).length
 
   return (
     <div className="space-y-4">
@@ -15674,7 +15456,7 @@ function ErTimelineView({
           filteredEvents.map((ev) => {
             const def =
               TIMELINE_EVENT_DEFINITIONS[ev.event_type] ||
-              TIMELINE_EVENT_DEFINITIONS.initial_vitals;
+              TIMELINE_EVENT_DEFINITIONS.initial_vitals
 
             return (
               <div key={ev.id} className="relative group">
@@ -16007,12 +15789,12 @@ function ErTimelineView({
                   </div>
                 </div>
               </div>
-            );
+            )
           })
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function ErHandoverModal({
@@ -16022,27 +15804,27 @@ function ErHandoverModal({
 
   onClose,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
-  onClose: () => void;
+  onClose: () => void
 }) {
   const patientName = detail.patient
     ? [detail.patient.name, detail.patient.last_name].filter(Boolean).join(" ")
-    : detail.patient_id;
+    : detail.patient_id
 
   // detail.vitals comes back ordered oldest-first (ASC by recorded_at, see
 
   // get_er_visit) -- index 0 is the FIRST reading taken, not the latest.
 
-  const initialVitals = detail.vitals[0];
+  const initialVitals = detail.vitals[0]
 
-  const latestVitals = detail.vitals[detail.vitals.length - 1];
+  const latestVitals = detail.vitals[detail.vitals.length - 1]
 
   const handlePrint = () => {
-    printErHandoverSheet(detail, categories);
-  };
+    printErHandoverSheet(detail, categories)
+  }
 
   return (
     <Modal title="Structured ER Clinical Handover Sheet" onClose={onClose} open>
@@ -16292,7 +16074,7 @@ function ErHandoverModal({
         </div>
       </div>
     </Modal>
-  );
+  )
 }
 
 function MergeUnknownPatient({
@@ -16304,13 +16086,13 @@ function MergeUnknownPatient({
 
   onNavigate,
 }: {
-  visitId: number;
+  visitId: number
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onMerged: () => void;
+  onMerged: () => void
 
-  onNavigate?: (page: string, extraData?: any) => void;
+  onNavigate?: (page: string, extraData?: any) => void
 }) {
   // Search-first: staff searching by name/phone/ID once someone identifies
 
@@ -16322,67 +16104,67 @@ function MergeUnknownPatient({
 
   // Patient Registration and comes straight back here already merged.
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState("")
 
-  const [searchResults, setSearchResults] = useState<Patient[]>([]);
+  const [searchResults, setSearchResults] = useState<Patient[]>([])
 
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (selectedPatient || searchQuery.trim().length < 2) {
-      setSearchResults([]);
+      setSearchResults([])
 
-      return;
+      return
     }
 
     const handle = setTimeout(async () => {
       try {
         const data = await apiFetch<{ patients: Patient[] }>(
           `/api/patients?q=${encodeURIComponent(searchQuery.trim())}`,
-        );
+        )
 
-        setSearchResults((data.patients || []).slice(0, 8));
+        setSearchResults((data.patients || []).slice(0, 8))
       } catch (error) {
-        console.error(error);
+        console.error(error)
       }
-    }, 400);
+    }, 400)
 
-    return () => clearTimeout(handle);
-  }, [searchQuery, selectedPatient]);
+    return () => clearTimeout(handle)
+  }, [searchQuery, selectedPatient])
 
   const submit = async () => {
     if (!selectedPatient) {
       setNotice({
         type: "error",
         message: "Search and select the confirmed patient first.",
-      });
+      })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       await apiFetch(`/api/er/visits/${visitId}/merge-unknown`, {
         method: "POST",
 
         body: JSON.stringify({ patient_id: selectedPatient.patient_id }),
-      });
+      })
 
       setNotice({
         type: "success",
         message: "Visit merged into the confirmed patient record.",
-      });
+      })
 
-      onMerged();
+      onMerged()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to merge this visit.");
+      reportError(setNotice, error, "Failed to merge this visit.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="panel" style={{ borderColor: "#e67e22" }}>
@@ -16406,8 +16188,8 @@ function MergeUnknownPatient({
             size="sm"
             variant="ghost"
             onClick={() => {
-              setSelectedPatient(null);
-              setSearchQuery("");
+              setSelectedPatient(null)
+              setSearchQuery("")
             }}
           >
             Change
@@ -16432,8 +16214,8 @@ function MergeUnknownPatient({
                   type="button"
                   className="er-patient-search-row"
                   onClick={() => {
-                    setSelectedPatient(p);
-                    setSearchResults([]);
+                    setSelectedPatient(p)
+                    setSearchResults([])
                   }}
                 >
                   <span>
@@ -16472,12 +16254,12 @@ function MergeUnknownPatient({
         </Button>
       </div>
     </div>
-  );
+  )
 }
 
 function ComplaintList({ complaints }: { complaints: ErComplaint[] }) {
   if (complaints.length === 0)
-    return <p className="muted">No complaints recorded.</p>;
+    return <p className="muted">No complaints recorded.</p>
 
   return (
     <ul className="er-list">
@@ -16493,7 +16275,7 @@ function ComplaintList({ complaints }: { complaints: ErComplaint[] }) {
         </li>
       ))}
     </ul>
-  );
+  )
 }
 
 function AddComplaintForm({
@@ -16503,28 +16285,28 @@ function AddComplaintForm({
 
   onAdded,
 }: {
-  visitId: number;
+  visitId: number
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onAdded: () => void;
+  onAdded: () => void
 }) {
-  const [complaint, setComplaint] = useState("");
+  const [complaint, setComplaint] = useState("")
 
-  const [severity, setSeverity] = useState("");
+  const [severity, setSeverity] = useState("")
 
-  const [caseCategory, setCaseCategory] = useState("");
+  const [caseCategory, setCaseCategory] = useState("")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   const submit = async () => {
     if (!complaint.trim()) {
-      setNotice({ type: "error", message: "Enter a complaint." });
+      setNotice({ type: "error", message: "Enter a complaint." })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       await apiFetch(`/api/er/visits/${visitId}/complaints`, {
@@ -16537,21 +16319,21 @@ function AddComplaintForm({
 
           case_category: caseCategory || undefined,
         }),
-      });
+      })
 
-      setComplaint("");
+      setComplaint("")
 
-      setSeverity("");
+      setSeverity("")
 
-      setCaseCategory("");
+      setCaseCategory("")
 
-      onAdded();
+      onAdded()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to add complaint.");
+      reportError(setNotice, error, "Failed to add complaint.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="module-form-grid" style={{ marginTop: "0.75rem" }}>
@@ -16582,17 +16364,17 @@ function AddComplaintForm({
         {saving ? "Adding..." : "Add Complaint"}
       </Button>
     </div>
-  );
+  )
 }
 
 function formatTimeShortIST(iso: string | null): string {
-  if (!iso) return "-";
+  if (!iso) return "-"
 
-  const hasOffset = /([zZ]|[+-]\d{2}:\d{2})$/.test(iso);
+  const hasOffset = /([zZ]|[+-]\d{2}:\d{2})$/.test(iso)
 
-  const parsed = new Date(hasOffset ? iso : `${iso}Z`);
+  const parsed = new Date(hasOffset ? iso : `${iso}Z`)
 
-  if (Number.isNaN(parsed.getTime())) return iso;
+  if (Number.isNaN(parsed.getTime())) return iso
 
   return new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
@@ -16602,7 +16384,7 @@ function formatTimeShortIST(iso: string | null): string {
     minute: "2-digit",
 
     hour12: true,
-  }).format(parsed);
+  }).format(parsed)
 }
 
 function VitalChip({
@@ -16612,13 +16394,13 @@ function VitalChip({
 
   abnormal,
 }: {
-  label: string;
+  label: string
 
-  value: string | number | null | undefined;
+  value: string | number | null | undefined
 
-  abnormal?: boolean;
+  abnormal?: boolean
 }) {
-  if (value == null || value === "") return null;
+  if (value == null || value === "") return null
 
   return (
     <span
@@ -16627,14 +16409,14 @@ function VitalChip({
       <span className="er-vital-chip-label">{label}</span>
       <span className="er-vital-chip-value">{value}</span>
     </span>
-  );
+  )
 }
 
 function VitalsList({ vitals }: { vitals: ErVitals[] }) {
   if (vitals.length === 0)
-    return <p className="muted">No vitals recorded yet.</p>;
+    return <p className="muted">No vitals recorded yet.</p>
 
-  const mostRecentFirst = [...vitals].reverse();
+  const mostRecentFirst = [...vitals].reverse()
 
   return (
     <div className="er-vitals-timeline">
@@ -16714,7 +16496,7 @@ function VitalsList({ vitals }: { vitals: ErVitals[] }) {
         </div>
       ))}
     </div>
-  );
+  )
 }
 
 const CONSCIOUSNESS_OPTIONS = [
@@ -16725,7 +16507,7 @@ const CONSCIOUSNESS_OPTIONS = [
   { value: "Pain", label: "Pain (P) — responds to painful stimuli only" },
 
   { value: "Unresponsive", label: "Unresponsive (U) — comatose / no response" },
-];
+]
 
 function AddVitalsForm({
   visitId,
@@ -16734,34 +16516,34 @@ function AddVitalsForm({
 
   onAdded,
 }: {
-  visitId: number;
+  visitId: number
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onAdded: () => void;
+  onAdded: () => void
 }) {
-  const [heartRate, setHeartRate] = useState("");
+  const [heartRate, setHeartRate] = useState("")
 
-  const [bpSystolic, setBpSystolic] = useState("");
+  const [bpSystolic, setBpSystolic] = useState("")
 
-  const [bpDiastolic, setBpDiastolic] = useState("");
+  const [bpDiastolic, setBpDiastolic] = useState("")
 
-  const [spo2, setSpo2] = useState("");
+  const [spo2, setSpo2] = useState("")
 
-  const [rr, setRr] = useState("");
+  const [rr, setRr] = useState("")
 
-  const [temp, setTemp] = useState("");
+  const [temp, setTemp] = useState("")
 
-  const [grbs, setGrbs] = useState("");
+  const [grbs, setGrbs] = useState("")
 
-  const [painScore, setPainScore] = useState("");
+  const [painScore, setPainScore] = useState("")
 
-  const [consciousness, setConsciousness] = useState("");
+  const [consciousness, setConsciousness] = useState("")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   const submit = async () => {
-    setSaving(true);
+    setSaving(true)
 
     try {
       await apiFetch(`/api/er/visits/${visitId}/vitals`, {
@@ -16786,33 +16568,33 @@ function AddVitalsForm({
 
           consciousness_level: consciousness || undefined,
         }),
-      });
+      })
 
-      setHeartRate("");
+      setHeartRate("")
 
-      setBpSystolic("");
+      setBpSystolic("")
 
-      setBpDiastolic("");
+      setBpDiastolic("")
 
-      setSpo2("");
+      setSpo2("")
 
-      setRr("");
+      setRr("")
 
-      setTemp("");
+      setTemp("")
 
-      setGrbs("");
+      setGrbs("")
 
-      setPainScore("");
+      setPainScore("")
 
-      setConsciousness("");
+      setConsciousness("")
 
-      onAdded();
+      onAdded()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to record vitals.");
+      reportError(setNotice, error, "Failed to record vitals.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="er-sidebar-form" style={{ marginTop: "0.75rem" }}>
@@ -16940,7 +16722,7 @@ function AddVitalsForm({
         {saving ? "Saving..." : "Record Vitals"}
       </Button>
     </div>
-  );
+  )
 }
 
 function TriageForm({
@@ -16956,17 +16738,17 @@ function TriageForm({
 
   onSaved,
 }: {
-  visitId: number;
+  visitId: number
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
-  existing: ErTriage;
+  existing: ErTriage
 
-  aiPrefill: { category: string; reason: string } | null;
+  aiPrefill: { category: string ;reason: string } | null
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onSaved: () => void;
+  onSaved: () => void
 }) {
   // Already triaged -> this form is only for a correction (e.g. condition
 
@@ -16976,17 +16758,17 @@ function TriageForm({
 
   // second full form under the triage that's already been recorded.
 
-  const [open, setOpen] = useState(!existing);
+  const [open, setOpen] = useState(!existing)
 
-  const [category, setCategory] = useState(existing?.category || "");
+  const [category, setCategory] = useState(existing?.category || "")
 
-  const [bedLabel, setBedLabel] = useState(existing?.triage_bed_label || "");
+  const [bedLabel, setBedLabel] = useState(existing?.triage_bed_label || "")
 
-  const [reason, setReason] = useState(existing?.reason || "");
+  const [reason, setReason] = useState(existing?.reason || "")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
-  const [aiFilled, setAiFilled] = useState(false);
+  const [aiFilled, setAiFilled] = useState(false)
 
   // A fresh AI suggestion always wins visually -- open the form (even if
 
@@ -16997,16 +16779,16 @@ function TriageForm({
   // writes anything; "Save Triage"/"Save Correction" below still does that.
 
   useEffect(() => {
-    if (!aiPrefill) return;
+    if (!aiPrefill) return
 
-    setCategory(aiPrefill.category);
+    setCategory(aiPrefill.category)
 
-    setReason(aiPrefill.reason);
+    setReason(aiPrefill.reason)
 
-    setAiFilled(true);
+    setAiFilled(true)
 
-    setOpen(true);
-  }, [aiPrefill]);
+    setOpen(true)
+  }, [aiPrefill])
 
   if (categories.length === 0) {
     return (
@@ -17014,7 +16796,7 @@ function TriageForm({
         No triage categories available. Please contact hospital administration
         before this visit can be triaged.
       </p>
-    );
+    )
   }
 
   if (!open) {
@@ -17024,28 +16806,28 @@ function TriageForm({
         variant="ghost"
         style={{ marginTop: "0.6rem" }}
         onClick={() => {
-          setCategory(existing?.category || "");
+          setCategory(existing?.category || "")
 
-          setBedLabel(existing?.triage_bed_label || "");
+          setBedLabel(existing?.triage_bed_label || "")
 
-          setReason(existing?.reason || "");
+          setReason(existing?.reason || "")
 
-          setOpen(true);
+          setOpen(true)
         }}
       >
         Correct / update triage
       </Button>
-    );
+    )
   }
 
   const submit = async () => {
     if (!category) {
-      setNotice({ type: "error", message: "Select a triage category." });
+      setNotice({ type: "error", message: "Select a triage category." })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       await apiFetch(`/api/er/visits/${visitId}/triage`, {
@@ -17058,19 +16840,19 @@ function TriageForm({
 
           reason: reason || undefined,
         }),
-      });
+      })
 
-      setAiFilled(false);
+      setAiFilled(false)
 
-      if (existing) setOpen(false);
+      if (existing) setOpen(false)
 
-      onSaved();
+      onSaved()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to save triage.");
+      reportError(setNotice, error, "Failed to save triage.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="er-sidebar-form" style={{ marginTop: "0.75rem" }}>
@@ -17092,8 +16874,8 @@ function TriageForm({
         <Select
           value={category}
           onChange={(e) => {
-            setCategory(e.target.value);
-            setAiFilled(false);
+            setCategory(e.target.value)
+            setAiFilled(false)
           }}
         >
           <option value="">Select category</option>
@@ -17143,7 +16925,7 @@ function TriageForm({
         )}
       </div>
     </div>
-  );
+  )
 }
 
 // What AI Triage Assistant hands each downstream section -- it never writes
@@ -17161,12 +16943,14 @@ function TriageForm({
 // field a person can just overwrite -- never a separate auto-applied action.
 
 type AiSectionPrefills = {
-  triage: { category: string; reason: string } | null;
+  triage: { category: string ;reason: string } | null
 
-  doctor: { specialty: string; doctorName: string } | null;
+  doctor: { specialty: string ;doctorName: string } | null
 
-  treatment: { interventionType: string; description: string } | null;
-};
+  treatment: { interventionType: string ;description: string } | null
+
+  bedRecommendation: { levelOfCare: string ;reason: string } | null
+}
 
 function AITriagePanel({
   detail,
@@ -17179,51 +16963,57 @@ function AITriagePanel({
 
   onSuggestion,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  categories: TriageCategory[];
+  categories: TriageCategory[]
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onRefresh?: () => void;
+  onRefresh?: () => void
 
-  onSuggestion?: (prefills: AiSectionPrefills, reasoning: string) => void;
+  onSuggestion?: (prefills: AiSectionPrefills, reasoning: string) => void
 }) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false)
 
-  const [lastAnalysis, setLastAnalysis] = useState<string | null>(null);
+  // Seeded from whatever's already charted, but this is the actual input the
+  // AI reasons over -- editable, not a silent behind-the-scenes summary, so
+  // the nurse can explain the case in their own words before running it.
+  const [symptoms, setSymptoms] = useState(() =>
+    buildSymptomsSummary(detail.complaints, detail.vitals),
+  )
 
-  const hasChartedData =
-    detail.complaints.length > 0 || detail.vitals.length > 0;
+  const [lastAnalysis, setLastAnalysis] = useState<string | null>(null)
 
-  const isAlreadyTriaged = Boolean(detail.triage);
+  const [lastLevelOfCare, setLastLevelOfCare] = useState<string | null>(null)
+
+  const [lastUrgency, setLastUrgency] = useState<string | null>(null)
+
+  const isAlreadyTriaged = Boolean(detail.triage)
 
   const isDoctorAssigned = Boolean(
     detail.assigned_doctor_name || detail.assigned_specialty,
-  );
+  )
 
   const runAITriageAuto = async () => {
-    if (!hasChartedData) {
+    if (!symptoms.trim()) {
       setNotice({
         type: "warning",
 
-        message: "Record complaints or vitals first before running AI Triage.",
-      });
+        message: "Describe the patient's case before running AI Triage.",
+      })
 
-      return;
+      return
     }
 
-    setLoading(true);
+    setLoading(true)
 
     try {
-      const symptoms = buildSymptomsSummary(detail.complaints, detail.vitals);
-
-      const aiRes = await fetchAiTriageSuggestion(symptoms);
+      const aiRes = await fetchAiTriageSuggestion(symptoms.trim())
 
       const categoryMatch = mapUrgencyToTriageCategory(
         aiRes.urgency,
         categories,
-      );
+      )
 
       // Auto-apply triage
 
@@ -17236,7 +17026,7 @@ function AITriagePanel({
 
             reason: (aiRes.reasoning || "AI Triage analysis").substring(0, 500),
           }),
-        });
+        })
       }
 
       // Auto-assign doctor/specialty
@@ -17250,7 +17040,7 @@ function AITriagePanel({
 
             doctor_name: aiRes.doctor || undefined,
           }),
-        });
+        })
       }
 
       // Auto-log multi-step suggested treatments if visit doesn't have treatments
@@ -17260,7 +17050,7 @@ function AITriagePanel({
           ? aiRes.suggested_treatments
           : aiRes.suggested_treatment?.intervention_type
             ? [aiRes.suggested_treatment]
-            : [];
+            : []
 
       if (treatmentsToApply.length > 0 && detail.treatments.length === 0) {
         for (const tr of treatmentsToApply) {
@@ -17274,7 +17064,7 @@ function AITriagePanel({
                 description:
                   tr.description || "Emergency care protocol per AI Triage",
               }),
-            });
+            })
           }
         }
       }
@@ -17299,188 +17089,147 @@ function AITriagePanel({
               description: aiRes.suggested_treatment.description,
             }
           : null,
-      };
 
-      if (onSuggestion) onSuggestion(prefills, aiRes.reasoning);
+        bedRecommendation: aiRes.recommended_level_of_care
+          ? {
+              levelOfCare: aiRes.recommended_level_of_care,
 
-      setLastAnalysis(aiRes.reasoning);
+              reason: aiRes.reasoning,
+            }
+          : null,
+      }
+
+      if (onSuggestion) onSuggestion(prefills, aiRes.reasoning)
+
+      setLastAnalysis(aiRes.reasoning)
+
+      setLastLevelOfCare(aiRes.recommended_level_of_care || null)
+
+      setLastUrgency(aiRes.urgency || null)
 
       setNotice({
         type: "success",
 
         message: "AI Triage & Clinical Protocol updated successfully.",
-      });
+      })
 
-      if (onRefresh) onRefresh();
+      if (onRefresh) onRefresh()
     } catch (error: any) {
-      reportError(setNotice, error, "AI Triage failed.");
+      reportError(setNotice, error, "AI Triage failed.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const displayReasoning = lastAnalysis || detail.triage?.reason;
+  const displayReasoning = lastAnalysis || detail.triage?.reason
+  const displayDepartment = isDoctorAssigned
+    ? detail.assigned_specialty || "Emergency"
+    : null
+  const displayDoctor = detail.assigned_doctor_name || null
 
   return (
-    <div
-      className="panel er-ai-panel"
-      style={{
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-      }}
-    >
-      <div
-        className="er-ai-panel-head"
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <FiZap aria-hidden style={{ color: "#7c3aed", fontSize: "1.2rem" }} />
-          <h4
-            style={{
-              margin: 0,
-              fontSize: "1.05rem",
-              fontWeight: 700,
-              color: "#1e293b",
-            }}
-          >
-            AI Clinical Triage Assistant
-          </h4>
-          {isAlreadyTriaged && (
-            <span
-              style={{
-                fontSize: "0.75rem",
-                padding: "0.2rem 0.55rem",
-                borderRadius: "999px",
-                background: "#ecfdf5",
-                color: "#059669",
-                fontWeight: 600,
-              }}
-            >
-              ✓ Auto-Triaged
-            </span>
-          )}
-        </div>
-        <Button
-          size="sm"
-          onClick={runAITriageAuto}
-          disabled={loading || !hasChartedData}
-          className="er-ai-run-button"
-          style={{
-            background: "#7c3aed",
-            color: "#fff",
-            borderColor: "#7c3aed",
-          }}
-        >
-          {loading
-            ? "Evaluating..."
-            : isAlreadyTriaged
-              ? "Re-evaluate with AI"
-              : "Auto-Triage with AI"}
-        </Button>
+    <div className="space-y-4 font-sans">
+      <div className="flex items-center gap-2">
+        <FiZap aria-hidden className="text-purple-600 text-lg" />
+        <h4 className="text-[15px] font-bold text-slate-900">
+          AI Clinical Triage Assistant
+        </h4>
+        {isAlreadyTriaged && (
+          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-none bg-emerald-50 text-emerald-700 border border-emerald-200">
+            ✓ Triaged
+          </span>
+        )}
       </div>
 
-      {!hasChartedData ? (
-        <p className="muted er-ai-panel-hint" style={{ marginTop: "0.5rem" }}>
-          Record complaints or initial vitals to enable automated AI Triage
-          evaluation.
+      <div>
+        <label className="block text-xs font-bold text-slate-700 mb-1">
+          Explain the Case / Symptoms Narrative*
+        </label>
+        <Textarea
+          rows={4}
+          value={symptoms}
+          onChange={(e) => setSymptoms(e.target.value)}
+          placeholder="e.g. Sharp chest pain radiating to left arm, cold sweats, shortness of breath since 45 minutes ago..."
+          className="w-full border border-slate-300 rounded-none p-3 text-xs focus:outline-none focus:border-[#1B4FD8]"
+        />
+        <p className="text-[11px] text-slate-500 mt-1">
+          Pre-filled from charted complaints and vitals -- edit or add detail before running AI Triage.
         </p>
-      ) : isAlreadyTriaged || displayReasoning ? (
-        <div
-          className="er-ai-result"
-          style={{
-            marginTop: "0.75rem",
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            borderRadius: "8px",
-            padding: "0.9rem",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.8rem",
-              alignItems: "center",
-              marginBottom: "0.65rem",
-              paddingBottom: "0.65rem",
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
+      </div>
+
+      <Button
+        onClick={runAITriageAuto}
+        disabled={loading || !symptoms.trim()}
+        className="w-full h-10 bg-blue-50 text-[#1B4FD8] font-bold text-xs rounded-none border border-blue-300 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-2xs"
+      >
+        {loading ? (
+          <div className="w-4 h-4 border-2 border-[#1B4FD8] border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <FiZap aria-hidden />
+        )}
+        {loading
+          ? "Analyzing Case with AI..."
+          : isAlreadyTriaged
+            ? "Re-run AI Triage & Doctor Recommendation"
+            : "Run AI Triage & Doctor Recommendation"}
+      </Button>
+
+      {(displayDepartment || displayDoctor || lastLevelOfCare || displayReasoning) && (
+        <div className="bg-slate-50 border border-slate-300 rounded-none p-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2 mb-3">
+            <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+              Recommended Allocation
+            </span>
             {detail.triage && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.35rem",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "0.8rem",
-                    color: "#64748b",
-                    fontWeight: 600,
-                  }}
-                >
-                  Triage Level:
-                </span>
-                <TriageChip
-                  category={detail.triage.category}
-                  categories={categories}
-                  bedLabel={detail.triage.triage_bed_label}
-                />
-              </div>
-            )}
-            {isDoctorAssigned && (
-              <div style={{ fontSize: "0.85rem", color: "#334155" }}>
-                <span style={{ color: "#64748b", fontWeight: 600 }}>
-                  Department:
-                </span>{" "}
-                <strong>{detail.assigned_specialty || "Emergency"}</strong>
-                {detail.assigned_doctor_name && (
-                  <>
-                    {" "}
-                    &middot;{" "}
-                    <span style={{ color: "#64748b", fontWeight: 600 }}>
-                      Doctor:
-                    </span>{" "}
-                    <strong>{detail.assigned_doctor_name}</strong>
-                  </>
-                )}
-              </div>
+              <TriageChip
+                category={detail.triage.category}
+                categories={categories}
+                bedLabel={detail.triage.triage_bed_label}
+              />
             )}
           </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <div className="text-[11px] text-slate-500 mb-0.5">
+                Recommended Specialty
+              </div>
+              <div className="text-xs font-bold text-[#1B4FD8]">
+                {displayDepartment || "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-slate-500 mb-0.5">
+                Recommended Doctor
+              </div>
+              <div className="text-xs font-bold text-slate-900">
+                {displayDoctor || "Any available"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-slate-500 mb-0.5">Urgency</div>
+              <div className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-none inline-block border border-emerald-200">
+                {lastUrgency || "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-slate-500 mb-0.5">
+                Level of Care
+              </div>
+              <div className="text-xs font-bold text-slate-900 uppercase">
+                {lastLevelOfCare || "—"}
+              </div>
+            </div>
+          </div>
           {displayReasoning && (
-            <p
-              className="er-ai-reasoning"
-              style={{
-                fontSize: "0.88rem",
-                lineHeight: "1.5",
-                margin: 0,
-                color: "#1e293b",
-              }}
-            >
-              <strong style={{ color: "#0f172a" }}>
-                Clinical Assessment & Reasoning:
-              </strong>{" "}
+            <p className="text-xs text-slate-700 mt-3 pt-3 border-t border-slate-200 leading-relaxed font-medium bg-white p-2.5 border border-slate-200 rounded-none">
+              <strong className="text-slate-900 block mb-1">Clinical Reasoning:</strong>
               {displayReasoning}
             </p>
           )}
         </div>
-      ) : (
-        <div
-          style={{ marginTop: "0.6rem", fontSize: "0.85rem", color: "#64748b" }}
-        >
-          Vitals and complaints are charted. Click{" "}
-          <strong>Auto-Triage with AI</strong> to automatically classify
-          urgency, assign specialty doctor, and suggest protocols.
-        </div>
       )}
     </div>
-  );
+  )
 }
 
 const INTERVENTION_LABELS: Record<string, string> = {
@@ -17509,11 +17258,11 @@ const INTERVENTION_LABELS: Record<string, string> = {
   gastric_lavage: "Gastric Lavage & Decontamination",
 
   other: "Other Clinical Procedure",
-};
+}
 
 function TreatmentList({ treatments }: { treatments: ErTreatment[] }) {
   if (treatments.length === 0)
-    return <p className="muted">No interventions logged.</p>;
+    return <p className="muted">No interventions logged.</p>
 
   return (
     <div
@@ -17526,7 +17275,7 @@ function TreatmentList({ treatments }: { treatments: ErTreatment[] }) {
     >
       {treatments.map((t, idx) => {
         const label =
-          INTERVENTION_LABELS[t.intervention_type] || t.intervention_type;
+          INTERVENTION_LABELS[t.intervention_type] || t.intervention_type
 
         return (
           <div
@@ -17584,10 +17333,10 @@ function TreatmentList({ treatments }: { treatments: ErTreatment[] }) {
               </div>
             </div>
           </div>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 function AddTreatmentForm({
@@ -17599,21 +17348,21 @@ function AddTreatmentForm({
 
   onAdded,
 }: {
-  visitId: number;
+  visitId: number
 
-  aiPrefill: { interventionType: string; description: string } | null;
+  aiPrefill: { interventionType: string ;description: string } | null
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onAdded: () => void;
+  onAdded: () => void
 }) {
-  const [interventionType, setInterventionType] = useState("");
+  const [interventionType, setInterventionType] = useState("")
 
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState("")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
-  const [aiFilled, setAiFilled] = useState(false);
+  const [aiFilled, setAiFilled] = useState(false)
 
   // Pre-fills the fields only -- logging an actual intervention is a real
 
@@ -17622,34 +17371,34 @@ function AddTreatmentForm({
   // click below no matter how it got into these fields.
 
   useEffect(() => {
-    if (!aiPrefill) return;
+    if (!aiPrefill) return
 
-    setInterventionType(aiPrefill.interventionType);
+    setInterventionType(aiPrefill.interventionType)
 
-    setDescription(aiPrefill.description);
+    setDescription(aiPrefill.description)
 
-    setAiFilled(true);
-  }, [aiPrefill]);
+    setAiFilled(true)
+  }, [aiPrefill])
 
   const submit = async () => {
     if (!interventionType) {
-      setNotice({ type: "error", message: "Select an intervention type." });
+      setNotice({ type: "error", message: "Select an intervention type." })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
-      const label = INTERVENTION_LABELS[interventionType] || interventionType;
+      const label = INTERVENTION_LABELS[interventionType] || interventionType
 
-      const priced = resolveErItemPrice(label, "intervention");
+      const priced = resolveErItemPrice(label, "intervention")
 
       ErDatabase.addTreatment(visitId, {
         intervention_type: label,
 
         description: description || undefined,
-      });
+      })
 
       ErDatabase.addTimelineEvent(visitId, {
         event_type: "intervention_given",
@@ -17659,7 +17408,7 @@ function AddTreatmentForm({
         notes: description || undefined,
 
         logged_by: "Staff RN",
-      });
+      })
 
       const chargeRes = BillingDatabase.addErClinicalCharge(
         String(visitId),
@@ -17687,7 +17436,7 @@ function AddTreatmentForm({
 
           quantity: 1,
         },
-      );
+      )
 
       try {
         await apiFetch(`/api/er/visits/${visitId}/treatments`, {
@@ -17698,7 +17447,7 @@ function AddTreatmentForm({
 
             description: description || undefined,
           }),
-        });
+        })
       } catch {
         // Standalone offline store already saved above
       }
@@ -17707,21 +17456,21 @@ function AddTreatmentForm({
         type: "success",
 
         message: `Procedure ${label} recorded • ₹${priced.unitPrice.toLocaleString("en-IN")} accrued to Central Billing (Total Due: ₹${chargeRes.newBalance.toLocaleString("en-IN")}).`,
-      });
+      })
 
-      setInterventionType("");
+      setInterventionType("")
 
-      setDescription("");
+      setDescription("")
 
-      setAiFilled(false);
+      setAiFilled(false)
 
-      onAdded();
+      onAdded()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to log intervention.");
+      reportError(setNotice, error, "Failed to log intervention.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div style={{ marginTop: "0.75rem" }}>
@@ -17734,8 +17483,8 @@ function AddTreatmentForm({
         <Select
           value={interventionType}
           onChange={(e) => {
-            setInterventionType(e.target.value);
-            setAiFilled(false);
+            setInterventionType(e.target.value)
+            setAiFilled(false)
           }}
         >
           <option value="">Select Intervention Type...</option>
@@ -17761,8 +17510,8 @@ function AddTreatmentForm({
           placeholder="Clinical details / instructions (e.g. 100% O2 via NRBM)"
           value={description}
           onChange={(e) => {
-            setDescription(e.target.value);
-            setAiFilled(false);
+            setDescription(e.target.value)
+            setAiFilled(false)
           }}
         />
         <Button size="sm" onClick={submit} disabled={saving}>
@@ -17804,7 +17553,7 @@ function AddTreatmentForm({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function DoctorAssignForm({
@@ -17814,133 +17563,107 @@ function DoctorAssignForm({
 
   existingSpecialty,
 
+  triageCategory,
+
   aiPrefill,
 
   setNotice,
 
   onSaved,
 }: {
-  visitId: number;
+  visitId: number
 
-  existingDoctor?: string | null;
+  existingDoctor?: string | null
 
-  existingSpecialty?: string | null;
+  existingSpecialty?: string | null
 
-  aiPrefill: { specialty: string; doctorName: string } | null;
+  triageCategory?: string | null
 
-  setNotice: (notice: Notice | null) => void;
+  aiPrefill: { specialty: string ;doctorName: string } | null
 
-  onSaved: () => void;
+  setNotice: (notice: Notice | null) => void
+
+  onSaved: () => void
 }) {
-  const [open, setOpen] = useState(!existingDoctor);
+  const [departments, setDepartments] = useState<string[]>([])
 
-  const [departments, setDepartments] = useState<string[]>([]);
+  const [doctors, setDoctors] = useState<{
+    id: number
+    doctor_name: string
+    department: string
+    status: string
+  }[]>([])
 
-  const [doctors, setDoctors] = useState<
-    {
-      doctor_name: string;
-      department: string;
-    }[]
-  >([]);
+  const [specialty, setSpecialty] = useState(existingSpecialty || "")
 
-  const [specialty, setSpecialty] = useState(existingSpecialty || "");
+  const [doctorName, setDoctorName] = useState(existingDoctor || "")
 
-  const [doctorName, setDoctorName] = useState(existingDoctor || "");
+  const [saving, setSaving] = useState(false)
 
-  const [saving, setSaving] = useState(false);
+  const [aiFilled, setAiFilled] = useState(false)
 
-  const [aiFilled, setAiFilled] = useState(false);
+  // When AI Triage Assistant provides a recommendation, prefill fields with a review tag.
+  useEffect(() => {
+    if (!aiPrefill) return
 
-  // When AI Triage Assistant provides a recommendation, prefill fields and open form with review tag
+    setSpecialty(aiPrefill.specialty)
+
+    setDoctorName(aiPrefill.doctorName)
+
+    setAiFilled(true)
+  }, [aiPrefill])
 
   useEffect(() => {
-    if (!aiPrefill) return;
+    setSpecialty(existingSpecialty || "")
 
-    setSpecialty(aiPrefill.specialty);
-
-    setDoctorName(aiPrefill.doctorName);
-
-    setAiFilled(true);
-
-    setOpen(true);
-  }, [aiPrefill]);
+    setDoctorName(existingDoctor || "")
+  }, [existingDoctor, existingSpecialty])
 
   useEffect(() => {
-    if (!existingDoctor) {
-      setOpen(true);
-
-      setSpecialty("");
-
-      setDoctorName("");
-    } else {
-      setSpecialty(existingSpecialty || "");
-
-      setDoctorName(existingDoctor || "");
-    }
-  }, [existingDoctor, existingSpecialty]);
-
-  useEffect(() => {
-    (async () => {
+    ;(async () => {
       try {
         const deptsRes = await apiFetch<{
-          departments: { department_name: string }[];
-        }>("/api/registration/departments");
+          departments: { department_name: string }[]
+        }>("/api/registration/departments")
 
         const docsRes = await apiFetch<{
-          doctors: { doctor_name: string; department: string }[];
-        }>("/api/op/doctors");
+          doctors: { id: number; doctor_name: string; department: string; status: string }[]
+        }>("/api/op/doctors")
 
-        setDepartments(deptsRes.departments.map((d) => d.department_name));
+        setDepartments(deptsRes.departments.map((d) => d.department_name))
 
-        setDoctors(docsRes.doctors);
+        setDoctors(docsRes.doctors)
       } catch (error) {
-        console.error(error);
+        console.error(error)
       }
-    })();
-  }, []);
+    })()
+  }, [])
 
   const doctorsInSpecialty = specialty
     ? doctors.filter(
         (d) => (d.department || "").toLowerCase() === specialty.toLowerCase(),
       )
-    : doctors;
+    : doctors
 
   const doctorOptions =
-    doctorsInSpecialty.length > 0 ? doctorsInSpecialty : doctors;
+    doctorsInSpecialty.length > 0 ? doctorsInSpecialty : doctors
 
-  if (!open) {
-    return (
-      <Button
-        size="sm"
-        variant="ghost"
-        style={{ marginTop: "0.6rem" }}
-        onClick={() => {
-          setSpecialty(existingSpecialty || "");
-
-          setDoctorName(existingDoctor || "");
-
-          setOpen(true);
-        }}
-      >
-        Change doctor
-      </Button>
-    );
-  }
+  const selectedDoctor = doctors.find((d) => d.doctor_name === doctorName)
 
   const submit = async () => {
     if (!specialty.trim()) {
-      setNotice({ type: "error", message: "Select the required specialty." });
+      setNotice({ type: "error", message: "Select the required specialty." })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       const result = await apiFetch<{
-        doctor_name: string;
-        matched_specialty: string;
-        used_fallback: boolean;
+        doctor_name: string
+        matched_specialty: string
+        used_fallback: boolean
       }>(
         `/api/er/visits/${visitId}/assign-doctor`,
 
@@ -17953,114 +17676,170 @@ function DoctorAssignForm({
             doctor_name: doctorName.trim() || undefined,
           }),
         },
-      );
+      )
 
-      let message: string;
+      let message: string
 
       if (!result.doctor_name) {
         message =
-          "No doctor is on staff at all yet -- add one under Doctor Scheduling, or assign one manually once available.";
+          "No doctor is on staff at all yet -- add one under Doctor Scheduling, or assign one manually once available."
       } else if (result.used_fallback) {
-        message = `No ${specialty.trim()} specialist on staff -- assigned ${result.doctor_name} (${result.matched_specialty}) as the covering doctor instead. Confirm or override before they accept.`;
+        message = `No ${specialty.trim()} specialist on staff -- assigned ${result.doctor_name} (${result.matched_specialty}) as the covering doctor instead. Confirm or override before they accept.`
       } else {
-        message = `Assigned doctor: ${result.doctor_name}. Confirm or override before the doctor accepts.`;
+        message = `Assigned doctor: ${result.doctor_name}. Confirm or override before the doctor accepts.`
       }
 
-      setNotice({ type: result.doctor_name ? "success" : "warning", message });
+      setNotice({ type: result.doctor_name ? "success" : "warning", message })
 
-      setAiFilled(false);
+      setAiFilled(false)
 
-      if (existingDoctor) setOpen(false);
-
-      onSaved();
+      onSaved()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to assign a doctor.");
+      reportError(setNotice, error, "Failed to assign a doctor.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
-    <div style={{ marginTop: "0.75rem" }}>
-      {aiFilled && (
-        <p className="er-ai-field-note">
-          <FiZap aria-hidden /> AI-suggested — review before assigning
-        </p>
-      )}
-      <div className="er-sidebar-form" style={{ marginTop: "0.4rem" }}>
-        <div>
-          <Label style={{ fontSize: "0.8rem", color: "#64748b" }}>
-            Required specialty
-          </Label>
-          <Select
-            value={specialty}
-            onChange={(e) => {
-              setSpecialty(e.target.value);
-
-              setDoctorName("");
-
-              setAiFilled(false);
-            }}
-          >
-            <option value="">Select specialty...</option>
-            {departments.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </Select>
+    <div className="space-y-4">
+      <div className="bg-[#F8FAFC] border border-[#DDE2EC] rounded p-4">
+        <div className="flex items-center justify-between border-b border-[#DDE2EC] pb-2 mb-3">
+          <span className="text-[12.5px] font-bold text-gray-900">
+            🩺 Select Medical Specialty &amp; Attending Doctor
+          </span>
+          <span className="text-[11px] text-[#64748B]">
+            {doctors.length} doctor{doctors.length === 1 ? "" : "s"} on roster
+          </span>
         </div>
-        <div>
-          <Label style={{ fontSize: "0.8rem", color: "#64748b" }}>
-            Doctor (optional -- overrides suggestion)
-          </Label>
-          <Select
-            value={doctorName}
-            onChange={(e) => {
-              setDoctorName(e.target.value);
 
-              setAiFilled(false);
-            }}
-          >
-            <option value="">Auto -- let the system pick</option>
-            {doctorOptions.map((d) => (
-              <option key={d.doctor_name} value={d.doctor_name}>
-                {d.doctor_name} ({d.department})
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.25rem" }}>
-          <Button
-            size="sm"
-            onClick={submit}
-            disabled={saving}
-            style={{ flex: 1 }}
-          >
-            {saving ? "Assigning..." : "Assign Doctor"}
-          </Button>
-          {existingDoctor && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setOpen(false);
+        {aiFilled && (
+          <p className="text-[11.5px] font-semibold text-[#7C3AED] flex items-center gap-1.5 mb-2.5">
+            <FiZap aria-hidden /> AI-suggested — review before assigning
+          </p>
+        )}
 
-                setAiFilled(false);
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+              Specialty / Department*
+            </label>
+            <Select
+              value={specialty}
+              onChange={(e) => {
+                setSpecialty(e.target.value)
+
+                setDoctorName("")
+
+                setAiFilled(false)
               }}
             >
-              Cancel
-            </Button>
-          )}
+              <option value="">Select specialty...</option>
+              {departments.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+              Attending Doctor
+            </label>
+            <Select
+              value={doctorName}
+              onChange={(e) => {
+                setDoctorName(e.target.value)
+
+                setAiFilled(false)
+              }}
+            >
+              <option value="">Auto -- let the system pick</option>
+              {doctorOptions.map((d) => (
+                <option key={d.doctor_name} value={d.doctor_name}>
+                  {d.doctor_name} ({d.department})
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
+
+        {selectedDoctor && (
+          <div className="mt-3 bg-white border border-blue-200 rounded p-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[13px] font-bold text-gray-900">
+                {selectedDoctor.doctor_name}
+              </div>
+              <div className="text-[11.5px] text-[#64748B]">
+                {selectedDoctor.department}
+              </div>
+            </div>
+            <span
+              className={`text-[11px] font-bold px-2.5 py-1 rounded whitespace-nowrap ${
+                selectedDoctor.status === "active"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-gray-100 text-gray-600 border border-gray-200"
+              }`}
+            >
+              {selectedDoctor.status === "active" ? "On Staff" : "Inactive"}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {(specialty || doctorName) && (
+        <div className="bg-[#F8FAFC] border border-[#DDE2EC] rounded p-4">
+          <div className="flex items-center justify-between border-b border-[#DDE2EC] pb-2 mb-3">
+            <span className="text-[12.5px] font-bold text-gray-900">
+              Assignment Confirmation
+            </span>
+            {specialty && (
+              <span className="text-[11px] font-mono text-[#1B4FD8]">
+                {specialty}
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <div className="text-[11px] text-[#64748B] mb-0.5">
+                Assigned Specialty
+              </div>
+              <div className="text-[13px] font-semibold text-[#1B4FD8]">
+                {specialty || "—"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-[#64748B] mb-0.5">
+                Assigned Physician
+              </div>
+              <div className="text-[13px] font-semibold text-gray-900">
+                {doctorName || "Auto-assigned"}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] text-[#64748B] mb-0.5">
+                Current Triage
+              </div>
+              {renderTriagePill(triageCategory)}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-1">
+        <div className="text-[11.5px] text-[#64748B]">
+          Assigning notifies the doctor and updates the visit status.
+        </div>
+        <Button onClick={submit} disabled={saving}>
+          {saving ? "Assigning..." : "Assign Doctor"}
+        </Button>
       </div>
     </div>
-  );
+  )
 }
 
 function NotesList({ notes }: { notes: ErClinicalNote[] }) {
-  if (notes.length === 0)
-    return <p className="muted">No clinical notes yet.</p>;
+  if (notes.length === 0) return <p className="muted">No clinical notes yet.</p>
 
   return (
     <ul className="er-list">
@@ -18079,7 +17858,7 @@ function NotesList({ notes }: { notes: ErClinicalNote[] }) {
         </li>
       ))}
     </ul>
-  );
+  )
 }
 
 const LAMA_REFUSAL_REASONS = [
@@ -18094,7 +17873,7 @@ const LAMA_REFUSAL_REASONS = [
   "Dissatisfaction with treatment / refusal of emergency procedure",
 
   "Other clinical refusal",
-];
+]
 
 const RELATION_OPTIONS = [
   "Self (Patient)",
@@ -18118,7 +17897,7 @@ const RELATION_OPTIONS = [
   "Friend / Colleague",
 
   "Other",
-];
+]
 
 function ConsentDocumentControl({
   consentId,
@@ -18129,36 +17908,36 @@ function ConsentDocumentControl({
 
   onChanged,
 }: {
-  consentId: number;
+  consentId: number
 
-  filename?: string | null;
+  filename?: string | null
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onChanged: () => void;
+  onChanged: () => void
 }) {
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState(false)
 
   const handlePick = async (file: File | undefined) => {
-    if (!file) return;
+    if (!file) return
 
-    setUploading(true);
+    setUploading(true)
 
     try {
-      await uploadConsentDocument(consentId, file);
+      await uploadConsentDocument(consentId, file)
 
-      setNotice({ type: "success", message: "Signed document attached." });
+      setNotice({ type: "success", message: "Signed document attached." })
 
-      onChanged();
+      onChanged()
     } catch (error: any) {
       setNotice({
         type: "error",
         message: error.message || "Failed to upload the signed document.",
-      });
+      })
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   if (filename) {
     return (
@@ -18176,7 +17955,7 @@ function ConsentDocumentControl({
       >
         <FiFileText aria-hidden /> View signed document
       </a>
-    );
+    )
   }
 
   return (
@@ -18209,7 +17988,7 @@ function ConsentDocumentControl({
         style={{ display: "none" }}
       />
     </label>
-  );
+  )
 }
 
 function ConsentsList({
@@ -18221,27 +18000,27 @@ function ConsentsList({
 
   onDocumentChanged,
 }: {
-  consents: ErConsent[];
+  consents: ErConsent[]
 
-  loading: boolean;
+  loading: boolean
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onDocumentChanged: () => void;
+  onDocumentChanged: () => void
 }) {
   if (loading)
     return (
       <p className="muted" style={{ fontSize: "0.85rem" }}>
         Loading consents...
       </p>
-    );
+    )
 
   if (consents.length === 0) {
     return (
       <p className="muted" style={{ fontSize: "0.85rem", margin: "0.4rem 0" }}>
         No formal consents or waivers recorded yet for this visit.
       </p>
-    );
+    )
   }
 
   return (
@@ -18254,12 +18033,12 @@ function ConsentsList({
       }}
     >
       {consents.map((c) => {
-        const isLama = c.consent_type === "lama" || c.consent_type === "dama";
+        const isLama = c.consent_type === "lama" || c.consent_type === "dama"
 
-        const isAdmission = c.consent_type === "admission";
+        const isAdmission = c.consent_type === "admission"
 
         const isEmergency =
-          c.consent_type === "emergency" || c.consent_type === "procedure";
+          c.consent_type === "emergency" || c.consent_type === "procedure"
 
         return (
           <div
@@ -18379,10 +18158,10 @@ function ConsentsList({
               ✔ Recorded &amp; Binding
             </span>
           </div>
-        );
+        )
       })}
     </div>
-  );
+  )
 }
 
 function ErLamaModal({
@@ -18394,62 +18173,62 @@ function ErLamaModal({
 
   setNotice,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  onClose: () => void;
+  onClose: () => void
 
-  onSaved: () => void;
+  onSaved: () => void
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 }) {
   const patientFullName = detail.patient
     ? [detail.patient.name, detail.patient.last_name].filter(Boolean).join(" ")
-    : detail.unknown_patient_label || "Emergency Patient";
+    : detail.unknown_patient_label || "Emergency Patient"
 
-  const [refusalReason, setRefusalReason] = useState(LAMA_REFUSAL_REASONS[0]);
+  const [refusalReason, setRefusalReason] = useState(LAMA_REFUSAL_REASONS[0])
 
-  const [customReason, setCustomReason] = useState("");
+  const [customReason, setCustomReason] = useState("")
 
   const [signedBy, setSignedBy] = useState(
     detail.patient?.guardian_name || patientFullName,
-  );
+  )
 
   const [relation, setRelation] = useState(
     detail.patient?.guardian_name ? "Guardian / Relative" : "Self (Patient)",
-  );
+  )
 
   const [phone, setPhone] = useState(
     detail.patient?.emergency_contact || detail.patient?.phone || "",
-  );
+  )
 
   const [witnessDoctor, setWitnessDoctor] = useState(
     detail.assigned_doctor_name || getSuggestedDoctorForPatient(detail),
-  );
+  )
 
-  const [acknowledged, setAcknowledged] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false)
 
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async () => {
     if (!signedBy.trim()) {
-      setNotice({ type: "error", message: "Signer name is required." });
+      setNotice({ type: "error", message: "Signer name is required." })
 
-      return;
+      return
     }
 
     if (phone && phone.replace(/\D/g, "").length !== 10) {
       setNotice({
         type: "error",
         message: "Enter a valid 10-digit mobile number.",
-      });
+      })
 
-      return;
+      return
     }
 
     if (!witnessDoctor.trim()) {
-      setNotice({ type: "error", message: "Witness doctor is required." });
+      setNotice({ type: "error", message: "Witness doctor is required." })
 
-      return;
+      return
     }
 
     if (!acknowledged) {
@@ -18457,17 +18236,17 @@ function ErLamaModal({
         type: "error",
         message:
           "You must acknowledge the legal indemnity declaration to execute LAMA.",
-      });
+      })
 
-      return;
+      return
     }
 
     const finalReason =
       refusalReason === "Other clinical refusal" && customReason.trim()
         ? customReason.trim()
-        : refusalReason;
+        : refusalReason
 
-    setSubmitting(true);
+    setSubmitting(true)
 
     try {
       await apiFetch(`/api/er/visits/${detail.id}/lama`, {
@@ -18488,24 +18267,24 @@ function ErLamaModal({
 
           legal_waiver_acknowledged: true,
         }),
-      });
+      })
 
       setNotice({
         type: "warning",
 
         message:
           "LAMA Declaration recorded. Legal waiver saved, bed requests cancelled, and ER visit closed.",
-      });
+      })
 
-      onClose();
+      onClose()
 
-      onSaved();
+      onSaved()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to record LAMA declaration.");
+      reportError(setNotice, error, "Failed to record LAMA declaration.")
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   return (
     <Modal
@@ -18686,7 +18465,7 @@ function ErLamaModal({
         </div>
       </div>
     </Modal>
-  );
+  )
 }
 
 function ErConsentModal({
@@ -18700,39 +18479,39 @@ function ErConsentModal({
 
   setNotice,
 }: {
-  detail: ErVisitDetail;
+  detail: ErVisitDetail
 
-  type: "admission" | "emergency";
+  type: "admission" | "emergency"
 
-  onClose: () => void;
+  onClose: () => void
 
-  onSaved: () => void;
+  onSaved: () => void
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 }) {
   const patientFullName = detail.patient
     ? [detail.patient.name, detail.patient.last_name].filter(Boolean).join(" ")
-    : detail.unknown_patient_label || "Emergency Patient";
+    : detail.unknown_patient_label || "Emergency Patient"
 
   const [signedBy, setSignedBy] = useState(
     detail.patient?.guardian_name || patientFullName,
-  );
+  )
 
   const [relation, setRelation] = useState(
     detail.patient?.guardian_name ? "Guardian / Relative" : "Self (Patient)",
-  );
+  )
 
   const [phone, setPhone] = useState(
     detail.patient?.emergency_contact || detail.patient?.phone || "",
-  );
+  )
 
   const [witnessDoctor, setWitnessDoctor] = useState(
     detail.assigned_doctor_name || getSuggestedDoctorForPatient(detail),
-  );
+  )
 
-  const [acknowledged, setAcknowledged] = useState(false);
+  const [acknowledged, setAcknowledged] = useState(false)
 
-  const [submitting, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false)
 
   // Real-world consents are often paper-first -- staff may tick this
 
@@ -18742,36 +18521,36 @@ function ErConsentModal({
 
   // or scan of that signed paper, uploaded right alongside the typed record.
 
-  const [signedDocument, setSignedDocument] = useState<File | null>(null);
+  const [signedDocument, setSignedDocument] = useState<File | null>(null)
 
   const title =
     type === "admission"
       ? "📋 Informed Inpatient / ICU Admission Consent"
-      : "⚡ Emergency High-Risk Treatment Consent";
+      : "⚡ Emergency High-Risk Treatment Consent"
 
   const handleSubmit = async () => {
     if (!signedBy.trim()) {
-      setNotice({ type: "error", message: "Signer name is required." });
+      setNotice({ type: "error", message: "Signer name is required." })
 
-      return;
+      return
     }
 
     if (phone && phone.replace(/\D/g, "").length !== 10) {
       setNotice({
         type: "error",
         message: "Enter a valid 10-digit mobile number.",
-      });
+      })
 
-      return;
+      return
     }
 
     if (!acknowledged) {
-      setNotice({ type: "error", message: "Please accept the consent terms." });
+      setNotice({ type: "error", message: "Please accept the consent terms." })
 
-      return;
+      return
     }
 
-    setSubmitting(true);
+    setSubmitting(true)
 
     try {
       const result = await apiFetch<{ consent_id: number }>(
@@ -18800,11 +18579,11 @@ function ErConsentModal({
                 : "Emergency Clinical Treatment Consent recorded",
           }),
         },
-      );
+      )
 
       if (signedDocument) {
         try {
-          await uploadConsentDocument(result.consent_id, signedDocument);
+          await uploadConsentDocument(result.consent_id, signedDocument)
         } catch (uploadError: any) {
           // The consent record itself is already saved and legally valid on
 
@@ -18815,27 +18594,27 @@ function ErConsentModal({
           setNotice({
             type: "warning",
             message: `${title} recorded, but the attached document failed to upload: ${uploadError.message}`,
-          });
+          })
 
-          onClose();
+          onClose()
 
-          onSaved();
+          onSaved()
 
-          return;
+          return
         }
       }
 
-      setNotice({ type: "success", message: `${title} recorded.` });
+      setNotice({ type: "success", message: `${title} recorded.` })
 
-      onClose();
+      onClose()
 
-      onSaved();
+      onSaved()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to record consent.");
+      reportError(setNotice, error, "Failed to record consent.")
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   return (
     <Modal
@@ -19003,7 +18782,7 @@ function ErConsentModal({
         </div>
       </div>
     </Modal>
-  );
+  )
 }
 
 function AddNoteForm({
@@ -19013,45 +18792,45 @@ function AddNoteForm({
 
   onAdded,
 }: {
-  visitId: number;
+  visitId: number
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onAdded: () => void;
+  onAdded: () => void
 }) {
   const [noteType, setNoteType] = useState<"assessment" | "reassessment">(
     "assessment",
-  );
+  )
 
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState("")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   const submit = async () => {
     if (!content.trim()) {
-      setNotice({ type: "error", message: "Enter note content." });
+      setNotice({ type: "error", message: "Enter note content." })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       await apiFetch(`/api/er/visits/${visitId}/notes`, {
         method: "POST",
 
         body: JSON.stringify({ note_type: noteType, content: content.trim() }),
-      });
+      })
 
-      setContent("");
+      setContent("")
 
-      onAdded();
+      onAdded()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to add note.");
+      reportError(setNotice, error, "Failed to add note.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="module-form-grid" style={{ marginTop: "0.75rem" }}>
@@ -19073,7 +18852,7 @@ function AddNoteForm({
         {saving ? "Saving..." : "Add Note"}
       </Button>
     </div>
-  );
+  )
 }
 
 function DispositionForm({
@@ -19085,43 +18864,43 @@ function DispositionForm({
 
   onSaved,
 }: {
-  visitId: number;
+  visitId: number
 
-  bedNeed: BedNeedSuggestion;
+  bedNeed: BedNeedSuggestion
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onSaved: () => void;
+  onSaved: () => void
 }) {
-  const [outcome, setOutcome] = useState("");
+  const [outcome, setOutcome] = useState("")
 
-  const [requiredSpecialty, setRequiredSpecialty] = useState("");
+  const [requiredSpecialty, setRequiredSpecialty] = useState("")
 
-  const [clinicalReason, setClinicalReason] = useState("");
+  const [clinicalReason, setClinicalReason] = useState("")
 
-  const [priority, setPriority] = useState("");
+  const [priority, setPriority] = useState("")
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false)
 
   const applyBedNeedSuggestion = () => {
-    if (!bedNeed) return;
+    if (!bedNeed) return
 
-    setOutcome(bedNeed.levelOfCare);
+    setOutcome(bedNeed.levelOfCare)
 
-    if (bedNeed.specialty) setRequiredSpecialty(bedNeed.specialty);
-  };
+    if (bedNeed.specialty) setRequiredSpecialty(bedNeed.specialty)
+  }
 
   const submit = async () => {
     if (!outcome || !clinicalReason.trim()) {
       setNotice({
         type: "error",
         message: "Select an outcome and enter the clinical reason.",
-      });
+      })
 
-      return;
+      return
     }
 
-    setSaving(true);
+    setSaving(true)
 
     try {
       const result = await apiFetch<{ bed_request_id: number | null }>(
@@ -19140,7 +18919,7 @@ function DispositionForm({
             priority: priority || undefined,
           }),
         },
-      );
+      )
 
       setNotice({
         type: "success",
@@ -19148,15 +18927,15 @@ function DispositionForm({
         message: result.bed_request_id
           ? "Disposition recorded. A bed request has been sent to Bed Management."
           : "Disposition recorded.",
-      });
+      })
 
-      onSaved();
+      onSaved()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to record disposition.");
+      reportError(setNotice, error, "Failed to record disposition.")
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div className="module-form-grid" style={{ marginTop: "0.75rem" }}>
@@ -19228,7 +19007,7 @@ function DispositionForm({
         {saving ? "Recording..." : "Record Disposition"}
       </Button>
     </div>
-  );
+  )
 }
 
 function CloseVisitPanel({
@@ -19238,52 +19017,52 @@ function CloseVisitPanel({
 
   onClosed,
 }: {
-  visitId: number;
+  visitId: number
 
-  setNotice: (notice: Notice | null) => void;
+  setNotice: (notice: Notice | null) => void
 
-  onClosed: () => void;
+  onClosed: () => void
 }) {
-  const [consultationFee, setConsultationFee] = useState("100");
+  const [consultationFee, setConsultationFee] = useState("100")
 
-  const [items, setItems] = useState<
-    { label: string; amount: number }[] | null
-  >(null);
+  const [items, setItems] = useState<{ label: string ;amount: number }[] | null>(
+    null,
+  )
 
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(0)
 
-  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingPreview, setLoadingPreview] = useState(false)
 
-  const [closing, setClosing] = useState(false);
+  const [closing, setClosing] = useState(false)
 
   const preview = async () => {
-    setLoadingPreview(true);
+    setLoadingPreview(true)
 
     try {
       const data = await apiFetch<{
-        items: { label: string; amount: number }[];
-        total: number;
+        items: { label: string ;amount: number }[]
+        total: number
       }>(
         `/api/er/visits/${visitId}/charges?consultation_fee=${encodeURIComponent(consultationFee || "0")}`,
-      );
+      )
 
-      setItems(data.items);
+      setItems(data.items)
 
-      setTotal(data.total);
+      setTotal(data.total)
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to compute charges.");
+      reportError(setNotice, error, "Failed to compute charges.")
     } finally {
-      setLoadingPreview(false);
+      setLoadingPreview(false)
     }
-  };
+  }
 
   const confirmClose = async () => {
-    setClosing(true);
+    setClosing(true)
 
     try {
       const result = await apiFetch<{
-        invoice_id: number | null;
-        total: number;
+        invoice_id: number | null
+        total: number
       }>(
         `/api/er/visits/${visitId}/close`,
 
@@ -19296,7 +19075,7 @@ function CloseVisitPanel({
             total_amount: total,
           }),
         },
-      );
+      )
 
       setNotice({
         type: "success",
@@ -19304,15 +19083,15 @@ function CloseVisitPanel({
         message: result.invoice_id
           ? `Visit closed. Invoice raised for ${result.total}.`
           : "Visit closed.",
-      });
+      })
 
-      onClosed();
+      onClosed()
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to close the visit.");
+      reportError(setNotice, error, "Failed to close the visit.")
     } finally {
-      setClosing(false);
+      setClosing(false)
     }
-  };
+  }
 
   return (
     <div className="panel" style={{ marginTop: "0.75rem" }}>
@@ -19359,5 +19138,5 @@ function CloseVisitPanel({
         </>
       )}
     </div>
-  );
+  )
 }

@@ -1,16 +1,16 @@
-import { useEffect } from "react";
-import type { ReactNode } from "react";
-import { cn } from "../../lib/cn";
-import Button from "./Button";
+import { useEffect } from "react"
+import type { ReactNode } from "react"
+import { cn } from "../../lib/cn"
+import Button from "./Button"
 
 type ModalProps = {
-  open: boolean;
-  onClose: () => void;
-  title?: string;
-  description?: string;
-  children: ReactNode;
-  className?: string;
-};
+  open: boolean
+  onClose: () => void
+  title?: string
+  description?: string
+  children: ReactNode
+  className?: string
+}
 
 export default function Modal({
   open,
@@ -21,15 +21,15 @@ export default function Modal({
   className,
 }: ModalProps) {
   useEffect(() => {
-    if (!open) return;
+    if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, onClose]);
+      if (event.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [open, onClose])
 
-  if (!open) return null;
+  if (!open) return null
 
   return (
     <div
@@ -61,5 +61,5 @@ export default function Modal({
         <div className="ui-modal-content">{children}</div>
       </div>
     </div>
-  );
+  )
 }

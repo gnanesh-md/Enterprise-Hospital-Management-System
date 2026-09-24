@@ -23,27 +23,67 @@
 
 export interface DemoCredential {
   /** Username in the local RBAC store -- also the role key on the login screen. */
-  username: string;
+  username: string
   /** Password in the local RBAC store. */
-  localPassword: string;
+  localPassword: string
   /** The seeded backend account to open a session with. */
-  backendUsername: string;
-  backendPassword: string;
+  backendUsername: string
+  backendPassword: string
 }
 
-const LOCAL_PASSWORD = "password123";
+const LOCAL_PASSWORD = "password123"
 
 export const DEMO_CREDENTIALS: Record<string, DemoCredential> = {
-  admin: { username: "admin", localPassword: LOCAL_PASSWORD, backendUsername: "admin", backendPassword: "Admin@123" },
-  doctor: { username: "doctor", localPassword: LOCAL_PASSWORD, backendUsername: "doctor", backendPassword: "doctor123" },
-  superadmin: { username: "superadmin", localPassword: LOCAL_PASSWORD, backendUsername: "employee", backendPassword: "employee123" },
-  nurse: { username: "nurse", localPassword: LOCAL_PASSWORD, backendUsername: "staff", backendPassword: "staff123" },
-  pharmacy: { username: "pharmacy", localPassword: LOCAL_PASSWORD, backendUsername: "staff", backendPassword: "staff123" },
-  lab: { username: "lab", localPassword: LOCAL_PASSWORD, backendUsername: "staff", backendPassword: "staff123" },
-  reception: { username: "reception", localPassword: LOCAL_PASSWORD, backendUsername: "staff", backendPassword: "staff123" },
-  billing: { username: "billing", localPassword: LOCAL_PASSWORD, backendUsername: "staff", backendPassword: "staff123" },
-};
+  admin: {
+    username: "admin",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "admin",
+    backendPassword: "Admin@123",
+  },
+  doctor: {
+    username: "doctor",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "doctor",
+    backendPassword: "doctor123",
+  },
+  superadmin: {
+    username: "superadmin",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "employee",
+    backendPassword: "employee123",
+  },
+  nurse: {
+    username: "nurse",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "staff",
+    backendPassword: "staff123",
+  },
+  pharmacy: {
+    username: "pharmacy",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "staff",
+    backendPassword: "staff123",
+  },
+  lab: {
+    username: "lab",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "staff",
+    backendPassword: "staff123",
+  },
+  reception: {
+    username: "reception",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "staff",
+    backendPassword: "staff123",
+  },
+  billing: {
+    username: "billing",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "staff",
+    backendPassword: "staff123",
+  },
+}
 
 export function credentialsForRole(role: string): DemoCredential | undefined {
-  return DEMO_CREDENTIALS[role.trim().toLowerCase()];
+  return DEMO_CREDENTIALS[role.trim().toLowerCase()]
 }

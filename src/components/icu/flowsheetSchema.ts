@@ -6,37 +6,70 @@
 // IcuFlowsheet.tsx walks this schema. Field labels, units and orderings are
 // kept exactly as printed so a nurse moving from paper recognises every box.
 
-export type FieldType = "text" | "number" | "date" | "time" | "select" | "textarea" | "check";
+export type FieldType = "text" | "number" | "date" | "time" | "select" | "textarea" | "check"
 
 export type FieldDef = {
-  key: string;
-  label: string;
-  type?: FieldType;
-  unit?: string;
-  options?: string[];
-  placeholder?: string;
+  key: string
+  label: string
+  type?: FieldType
+  unit?: string
+  options?: string[]
+  placeholder?: string
   /** Grid columns this field spans in a "fields" section. */
-  span?: 1 | 2 | 3 | 4;
-};
+  span?: 1 | 2 | 3 | 4
+}
 
-export type Section =
-  /** Flat label/value form. */
-  | { kind: "fields"; id: string; title: string; note?: string; cols?: 2 | 3 | 4; fields: FieldDef[] }
-  /** Rows the nurse adds as needed (drug chart, lines, microbiology...). */
-  | { kind: "table"; id: string; title: string; note?: string; columns: FieldDef[]; minRows?: number }
-  /** Fixed rows x fixed time-slot columns (special care, pupils, muscle power). */
-  | { kind: "grid"; id: string; title: string; note?: string; rows: string[]; slotGroups: { label: string; slots: string[] }[]; cell?: FieldType }
-  /** One row per hour of the ICU day, columns grouped by parameter family. */
-  | { kind: "hourly"; id: string; title: string; note?: string; groups: { label: string; fields: FieldDef[] }[] }
-  /** Hourly scored scale whose components sum to a total (GCS). */
-  | { kind: "scale"; id: string; title: string; note?: string; interval: 1 | 2; components: { key: string; label: string; options: { label: string; score: number }[] }[] };
+export type Section = /** Flat label/value form. */
+{
+  kind: "fields"
+  id: string
+  title: string
+  note?: string
+  cols?: 2 | 3 | 4
+  fields: FieldDef[]
+} /** Rows the nurse adds as needed (drug chart, lines, microbiology...). */ | {
+  kind: "table"
+  id: string
+  title: string
+  note?: string
+  columns: FieldDef[]
+  minRows?: number
+} /** Fixed rows x fixed time-slot columns (special care, pupils, muscle power). */ | {
+  kind: "grid"
+  id: string
+  title: string
+  note?: string
+  rows: string[]
+  slotGroups: { label: string ;slots: string[] }[]
+  cell?: FieldType
+} /** One row per hour of the ICU day, columns grouped by parameter family. */ | {
+  kind: "hourly"
+  id: string
+  title: string
+  note?: string
+  groups: { label: string ;fields: FieldDef[] }[]
+} /** Hourly scored scale whose components sum to a total (GCS). */ | {
+  kind: "scale"
+  id: string
+  title: string
+  note?: string
+  interval: 1 | 2
+  components: {
+    key: string
+    label: string
+    options: { label: string ;score: number }[]
+  }[]
+}
 
 /** The ICU day runs 08:00 to 07:00 the next morning, as printed on the chart. */
-export const HOURS: string[] = Array.from({ length: 24 }, (_, i) => `${String((8 + i) % 24).padStart(2, "0")}:00`);
+export const HOURS: string[] = Array.from(
+  { length: 24 },
+  (_, i) => `${String((8 + i) % 24).padStart(2, "0")}:00`,
+)
 /** Two-hourly observations (muscle power, RASS). */
-export const TWO_HOURLY: string[] = HOURS.filter((_, i) => i % 2 === 0);
+export const TWO_HOURLY: string[] = HOURS.filter((_, i) => i % 2 === 0)
 
-const yesNo = ["", "Yes", "No"];
+const yesNo = ["", "Yes", "No"]
 
 export const FLOWSHEET_SECTIONS: Section[] = [
   // ── Page 1, right column: chart header ────────────────────────────────────
@@ -53,12 +86,22 @@ export const FLOWSHEET_SECTIONS: Section[] = [
       { key: "dos", label: "D.O.S.", type: "date" },
       { key: "height", label: "Ht", unit: "cm", type: "number" },
       { key: "weight", label: "Wt", unit: "kg", type: "number" },
-      { key: "blood_group", label: "Blood Group", type: "select", options: ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] },
+      {
+        key: "blood_group",
+        label: "Blood Group",
+        type: "select",
+        options: ["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+      },
       { key: "diagnosis", label: "Diagnosis", span: 3 },
       { key: "allergy", label: "Allergy" },
       { key: "procedure", label: "Procedure / Operation", span: 4 },
       { key: "past_history", label: "Past History", type: "textarea", span: 2 },
-      { key: "active_problem", label: "Active Problem", type: "textarea", span: 2 },
+      {
+        key: "active_problem",
+        label: "Active Problem",
+        type: "textarea",
+        span: 2,
+      },
       { key: "diet_plan", label: "Diet Plan", type: "textarea", span: 4 },
     ],
   },
@@ -70,7 +113,12 @@ export const FLOWSHEET_SECTIONS: Section[] = [
     minRows: 4,
     columns: [
       { key: "time", label: "Time", type: "time" },
-      { key: "shift", label: "Shift", type: "select", options: ["", "Day", "Night"] },
+      {
+        key: "shift",
+        label: "Shift",
+        type: "select",
+        options: ["", "Day", "Night"],
+      },
       { key: "order", label: "Order", span: 2 },
       { key: "dr_sign", label: "Dr's Sign" },
       { key: "nurse_sign", label: "Nurse Sign" },
@@ -160,18 +208,50 @@ export const FLOWSHEET_SECTIONS: Section[] = [
       {
         label: "Right",
         fields: [
-          { key: "r_size", label: "Size", unit: "mm", type: "select", options: ["", "1", "2", "3", "4", "5"] },
-          { key: "r_reaction", label: "Reaction", type: "select", options: ["", "R", "NR"] },
+          {
+            key: "r_size",
+            label: "Size",
+            unit: "mm",
+            type: "select",
+            options: ["", "1", "2", "3", "4", "5"],
+          },
+          {
+            key: "r_reaction",
+            label: "Reaction",
+            type: "select",
+            options: ["", "R", "NR"],
+          },
         ],
       },
       {
         label: "Left",
         fields: [
-          { key: "l_size", label: "Size", unit: "mm", type: "select", options: ["", "1", "2", "3", "4", "5"] },
-          { key: "l_reaction", label: "Reaction", type: "select", options: ["", "R", "NR"] },
+          {
+            key: "l_size",
+            label: "Size",
+            unit: "mm",
+            type: "select",
+            options: ["", "1", "2", "3", "4", "5"],
+          },
+          {
+            key: "l_reaction",
+            label: "Reaction",
+            type: "select",
+            options: ["", "R", "NR"],
+          },
         ],
       },
-      { label: "", fields: [{ key: "symmetry", label: "Symmetry", type: "select", options: ["", "Equal", "Unequal"] }] },
+      {
+        label: "",
+        fields: [
+          {
+            key: "symmetry",
+            label: "Symmetry",
+            type: "select",
+            options: ["", "Equal", "Unequal"],
+          },
+        ],
+      },
     ],
   },
   {
@@ -179,7 +259,12 @@ export const FLOWSHEET_SECTIONS: Section[] = [
     id: "muscle_power",
     title: "Muscle Power Grade",
     note: "0 Total paralysis · 1 Palpable or visible contraction · 2 Full range of motion with gravity eliminated · 3 Full range of motion against gravity · 4 Full range of motion with decreased strength · 5 Normal strength · NT Not testable",
-    rows: ["Power — Arm (R)", "Power — Arm (L)", "Power — Leg (R)", "Power — Leg (L)"],
+    rows: [
+      "Power — Arm (R)",
+      "Power — Arm (L)",
+      "Power — Leg (R)",
+      "Power — Leg (L)",
+    ],
     slotGroups: [{ label: "Two-hourly", slots: TWO_HOURLY }],
   },
 
@@ -193,7 +278,12 @@ export const FLOWSHEET_SECTIONS: Section[] = [
     columns: [
       { key: "drug", label: "Drug", span: 2 },
       { key: "dose", label: "Dose" },
-      { key: "route", label: "Route", type: "select", options: ["", "IV", "IM", "SC", "PO", "NG/RT", "PR", "Neb", "Topical"] },
+      {
+        key: "route",
+        label: "Route",
+        type: "select",
+        options: ["", "IV", "IM", "SC", "PO", "NG/RT", "PR", "Neb", "Topical"],
+      },
       { key: "freq", label: "Freq" },
       { key: "times", label: "Times given", span: 2 },
       { key: "nurse_sign", label: "Nurse Sign" },
@@ -234,16 +324,58 @@ export const FLOWSHEET_SECTIONS: Section[] = [
     note: "Stage 1 Non-blanchable redness: two-hourly position change, keep back clean and dry, wrinkle-free bed surface, relieve pressure points. Stage 2 Blister or skin peeling: add foam dressing, assess healing daily, hydration and diet. Stage 3 Full thickness loss with subcutaneous fat visible: clean non-infected wound with normal saline and hydrocolloid dressing; infected wound with sterile water and silver-coated dressing. Stage 4 Full thickness loss with damage to muscle and bone / Unstageable: refer to reconstructive surgery. Deep tissue injury (purple or maroon localised area): follow Stage 1 measures.",
     cols: 3,
     fields: [
-      { key: "stage", label: "Stage", type: "select", options: ["", "Stage 1", "Stage 2", "Stage 3", "Stage 4", "Unstageable", "Deep tissue injury"] },
-      { key: "category", label: "Category of Pressure Injury", type: "select", options: ["", "CAPU", "CAPI", "HAPU", "HAPI", "CIAD", "HIAD"] },
+      {
+        key: "stage",
+        label: "Stage",
+        type: "select",
+        options: [
+          "",
+          "Stage 1",
+          "Stage 2",
+          "Stage 3",
+          "Stage 4",
+          "Unstageable",
+          "Deep tissue injury",
+        ],
+      },
+      {
+        key: "category",
+        label: "Category of Pressure Injury",
+        type: "select",
+        options: ["", "CAPU", "CAPI", "HAPU", "HAPI", "CIAD", "HIAD"],
+      },
       { key: "site", label: "Site" },
-      { key: "intervention_morning", label: "Intervention — Morning", type: "check" },
-      { key: "intervention_evening", label: "Intervention — Evening", type: "check" },
-      { key: "intervention_night", label: "Intervention — Night", type: "check" },
-      { key: "pu_reported_on", label: "Pressure ulcer reported on", type: "date" },
-      { key: "pu_relative_name", label: "Name & signature of relative", span: 2 },
+      {
+        key: "intervention_morning",
+        label: "Intervention — Morning",
+        type: "check",
+      },
+      {
+        key: "intervention_evening",
+        label: "Intervention — Evening",
+        type: "check",
+      },
+      {
+        key: "intervention_night",
+        label: "Intervention — Night",
+        type: "check",
+      },
+      {
+        key: "pu_reported_on",
+        label: "Pressure ulcer reported on",
+        type: "date",
+      },
+      {
+        key: "pu_relative_name",
+        label: "Name & signature of relative",
+        span: 2,
+      },
       { key: "iad_reported_on", label: "IAD reported on", type: "date" },
-      { key: "iad_relative_name", label: "Name & signature of relative", span: 2 },
+      {
+        key: "iad_relative_name",
+        label: "Name & signature of relative",
+        span: 2,
+      },
       { key: "incharge_name", label: "Name & signature of incharge", span: 3 },
     ],
   },
@@ -282,7 +414,15 @@ export const FLOWSHEET_SECTIONS: Section[] = [
         label: "Line / Tube",
         type: "select",
         span: 2,
-        options: ["", "ETT / TT", "Peripheral Cannula", "Central Venous Catheter", "Art. line — radial / femoral", "Ryles tube / PEG / NJ", "Urinary Catheter"],
+        options: [
+          "",
+          "ETT / TT",
+          "Peripheral Cannula",
+          "Central Venous Catheter",
+          "Art. line — radial / femoral",
+          "Ryles tube / PEG / NJ",
+          "Urinary Catheter",
+        ],
       },
       { key: "size", label: "Size / Cuff Pressure" },
       { key: "site", label: "Site" },
@@ -305,8 +445,14 @@ export const FLOWSHEET_SECTIONS: Section[] = [
       { key: "m_id", label: "Morning — Shift nurse ID" },
       { key: "e_id", label: "Evening — Shift nurse ID" },
       { key: "n_id", label: "Night — Shift nurse ID" },
-      { key: "m_taking_initials", label: "Morning — Taking over nurse initials" },
-      { key: "e_taking_initials", label: "Evening — Taking over nurse initials" },
+      {
+        key: "m_taking_initials",
+        label: "Morning — Taking over nurse initials",
+      },
+      {
+        key: "e_taking_initials",
+        label: "Evening — Taking over nurse initials",
+      },
       { key: "n_taking_initials", label: "Night — Taking over nurse initials" },
       { key: "m_taking_id", label: "Morning — Taking over nurse ID" },
       { key: "e_taking_id", label: "Evening — Taking over nurse ID" },
@@ -368,7 +514,12 @@ export const FLOWSHEET_SECTIONS: Section[] = [
         fields: [
           { key: "pain", label: "PANN (Pain)", type: "number" },
           { key: "events", label: "Events", span: 2 },
-          { key: "blood_sugar", label: "Blood sugar", unit: "mg/dl", type: "number" },
+          {
+            key: "blood_sugar",
+            label: "Blood sugar",
+            unit: "mg/dl",
+            type: "number",
+          },
           { key: "insulin", label: "Insulin", unit: "Units", type: "number" },
         ],
       },
@@ -383,13 +534,33 @@ export const FLOWSHEET_SECTIONS: Section[] = [
         label: "Intake",
         fields: [
           { key: "infusions", label: "Infusions", unit: "ml", type: "number" },
-          { key: "sedation", label: "Sedation / Analgesia", unit: "ml", type: "number" },
+          {
+            key: "sedation",
+            label: "Sedation / Analgesia",
+            unit: "ml",
+            type: "number",
+          },
           { key: "iv_fluid", label: "IV fluid", unit: "ml", type: "number" },
           { key: "blood_bag_no", label: "Blood Products — Bag No" },
-          { key: "blood_ml", label: "Blood Products", unit: "ml", type: "number" },
+          {
+            key: "blood_ml",
+            label: "Blood Products",
+            unit: "ml",
+            type: "number",
+          },
           { key: "tpn", label: "TPN", unit: "ml", type: "number" },
-          { key: "enteral_oral", label: "Enteral — Oral", unit: "ml", type: "number" },
-          { key: "enteral_rtf", label: "Enteral — RTF", unit: "ml", type: "number" },
+          {
+            key: "enteral_oral",
+            label: "Enteral — Oral",
+            unit: "ml",
+            type: "number",
+          },
+          {
+            key: "enteral_rtf",
+            label: "Enteral — RTF",
+            unit: "ml",
+            type: "number",
+          },
           { key: "ml_hr", label: "ml/hr", type: "number" },
           { key: "total", label: "Total", unit: "ml", type: "number" },
         ],
@@ -406,12 +577,37 @@ export const FLOWSHEET_SECTIONS: Section[] = [
         fields: [
           { key: "drain_1", label: "D₂ (1)", unit: "ml", type: "number" },
           { key: "drain_2", label: "D₂ (2)", unit: "ml", type: "number" },
-          { key: "total_drain", label: "Total Drain", unit: "ml", type: "number" },
-          { key: "rta_vomiting", label: "RTA / Vomiting", unit: "ml", type: "number" },
-          { key: "bowel_open", label: "Bowel Open", type: "select", options: yesNo },
+          {
+            key: "total_drain",
+            label: "Total Drain",
+            unit: "ml",
+            type: "number",
+          },
+          {
+            key: "rta_vomiting",
+            label: "RTA / Vomiting",
+            unit: "ml",
+            type: "number",
+          },
+          {
+            key: "bowel_open",
+            label: "Bowel Open",
+            type: "select",
+            options: yesNo,
+          },
           { key: "urine_ml_hr", label: "Urine", unit: "ml/hr", type: "number" },
-          { key: "urine_total", label: "Urine Total", unit: "ml", type: "number" },
-          { key: "output_total", label: "Output (Total)", unit: "ml", type: "number" },
+          {
+            key: "urine_total",
+            label: "Urine Total",
+            unit: "ml",
+            type: "number",
+          },
+          {
+            key: "output_total",
+            label: "Output (Total)",
+            unit: "ml",
+            type: "number",
+          },
           { key: "balance", label: "Balance", unit: "ml", type: "number" },
         ],
       },
@@ -471,7 +667,18 @@ export const FLOWSHEET_SECTIONS: Section[] = [
         label: "Sample",
         type: "select",
         span: 2,
-        options: ["", "Sputum Gm stain", "Sputum C/S", "Blood C/S", "Urine R/M", "Urine C/S", "Pleu. Fluid Gm stain", "Pleu. Fluid C/S", "Other Gm stain", "Other C/S"],
+        options: [
+          "",
+          "Sputum Gm stain",
+          "Sputum C/S",
+          "Blood C/S",
+          "Urine R/M",
+          "Urine C/S",
+          "Pleu. Fluid Gm stain",
+          "Pleu. Fluid C/S",
+          "Other Gm stain",
+          "Other C/S",
+        ],
       },
       { key: "date", label: "Date", type: "date" },
       { key: "report", label: "Report", span: 3 },
@@ -483,14 +690,24 @@ export const FLOWSHEET_SECTIONS: Section[] = [
     title: "Last 24hr Balance",
     cols: 4,
     fields: [
-      { key: "intake", label: "Intake (IV + Enteral)", unit: "ml", type: "number" },
+      {
+        key: "intake",
+        label: "Intake (IV + Enteral)",
+        unit: "ml",
+        type: "number",
+      },
       { key: "output", label: "Output", unit: "ml", type: "number" },
       { key: "uo", label: "UO", unit: "ml", type: "number" },
       { key: "drain", label: "Drain", unit: "ml", type: "number" },
       { key: "rta", label: "RTA", unit: "ml", type: "number" },
       { key: "uf", label: "UF", unit: "ml", type: "number" },
       { key: "balance", label: "Balance", unit: "ml", type: "number" },
-      { key: "cumulative_balance", label: "Cumulative Balance", unit: "ml", type: "number" },
+      {
+        key: "cumulative_balance",
+        label: "Cumulative Balance",
+        unit: "ml",
+        type: "number",
+      },
     ],
   },
   {
@@ -506,4 +723,4 @@ export const FLOWSHEET_SECTIONS: Section[] = [
       { key: "stop_date", label: "Stop date", type: "date" },
     ],
   },
-];
+]

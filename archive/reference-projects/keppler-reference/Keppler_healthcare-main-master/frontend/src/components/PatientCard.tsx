@@ -1,9 +1,9 @@
-import type { Patient } from "../types";
-import { Badge, ListItemActions, ListItemContent } from "./ui";
+import type { Patient } from "../types"
+import { Badge, ListItemActions, ListItemContent } from "./ui"
 
 type Props = {
-  patient: Patient;
-};
+  patient: Patient
+}
 
 export default function PatientCard({ patient }: Props) {
   return (
@@ -23,5 +23,5 @@ export default function PatientCard({ patient }: Props) {
         </Badge>
       </ListItemActions>
     </article>
-  );
+  )
 }

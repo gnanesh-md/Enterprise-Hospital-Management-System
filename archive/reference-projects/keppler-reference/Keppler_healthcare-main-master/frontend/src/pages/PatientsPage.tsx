@@ -1,8 +1,14 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
-import { FiEye, FiTrash2, FiExternalLink, FiActivity, FiAlertTriangle } from "react-icons/fi";
-import MarkdownReport from "../components/MarkdownReport";
-import DocumentUploadDropzone from "../components/DocumentUploadDropzone";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
+import type { Dispatch, SetStateAction } from "react"
+import {
+  FiEye,
+  FiTrash2,
+  FiExternalLink,
+  FiActivity,
+  FiAlertTriangle,
+} from "react-icons/fi"
+import MarkdownReport from "../components/MarkdownReport"
+import DocumentUploadDropzone from "../components/DocumentUploadDropzone"
 import {
   Alert,
   Badge,
@@ -19,20 +25,20 @@ import {
   TabsContent,
   TabsTrigger,
   Textarea,
-} from "../components/ui";
+} from "../components/ui"
 import {
   API_BASE,
   SUPPORTED_DOCUMENT_ACCEPT,
   SUPPORTED_DOCUMENT_EXTENSIONS,
-} from "../lib/constants";
-import { apiFetch, reportError, withAuthHeaders } from "../lib/api";
+} from "../lib/constants"
+import { apiFetch, reportError, withAuthHeaders } from "../lib/api"
 import {
   formatDate,
   formatDateTimeIST,
   getISTDateTimeKey,
   getTimestamp,
   stripUploadTimestampPrefix,
-} from "../lib/format";
+} from "../lib/format"
 import type {
   Admission,
   BedAllocation,
@@ -44,48 +50,48 @@ import type {
   ObservationNote,
   Patient,
   PatientMovement,
-} from "../types";
+} from "../types"
 
 type Props = {
-  patients: Patient[];
-  onSelect: (patient: Patient | null) => void;
-  onDelete: (patientId: string) => Promise<void>;
-  onPatientUpdated: (patientId?: string) => Promise<void>;
-  onExportCsv: (query?: string) => Promise<void>;
-  selectedPatient: Patient | null;
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  canEdit: boolean;
-  canDelete: boolean;
-  canReadBilling: boolean;
-  ocrLanguage: string;
-  languages: Record<string, string>;
-  refreshToken: number;
-  onNavigate?: (page: string, extraData?: any) => void;
-};
+  patients: Patient[]
+  onSelect: (patient: Patient | null) => void
+  onDelete: (patientId: string) => Promise<void>
+  onPatientUpdated: (patientId?: string) => Promise<void>
+  onExportCsv: (query?: string) => Promise<void>
+  selectedPatient: Patient | null
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  canEdit: boolean
+  canDelete: boolean
+  canReadBilling: boolean
+  ocrLanguage: string
+  languages: Record<string, string>
+  refreshToken: number
+  onNavigate?: (page: string, extraData?: any) => void
+}
 
-const IMAGE_NAME_PATTERN = /\.(png|jpe?g|webp|bmp|gif|tiff?|heic|heif)$/i;
-type DeleteTarget = { patientId: string; label: string };
-type DeleteDocumentTarget = { id: number; label: string };
+const IMAGE_NAME_PATTERN = /\.(png|jpe?g|webp|bmp|gif|tiff?|heic|heif)$/i
+type DeleteTarget = { patientId: string label: string }
+type DeleteDocumentTarget = { id: number label: string }
 type PatientInvoice = {
-  id: number;
-  invoice_no?: string;
-  module?: string;
-  total_amount?: number;
-  paid_amount?: number;
-  due_amount?: number;
-  payment_status?: string;
-  created_at?: string;
-};
+  id: number
+  invoice_no?: string
+  module?: string
+  total_amount?: number
+  paid_amount?: number
+  due_amount?: number
+  payment_status?: string
+  created_at?: string
+}
 
 function SavedDocumentPreview({ doc }: { doc: DocumentItem }) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [url, setUrl] = useState<string | null>(null)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    let objectUrl: string | null = null;
-    const controller = new AbortController();
-    setError("");
-    setUrl(null);
+    let objectUrl: string | null = null
+    const controller = new AbortController()
+    setError("")
+    setUrl(null)
 
     const load = async () => {
       try {
@@ -95,31 +101,31 @@ function SavedDocumentPreview({ doc }: { doc: DocumentItem }) {
             credentials: "include",
             signal: controller.signal,
           },
-        );
-        if (!response.ok) throw new Error("preview unavailable");
-        const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
-        setUrl(objectUrl);
+        )
+        if (!response.ok) throw new Error("preview unavailable")
+        const blob = await response.blob()
+        objectUrl = URL.createObjectURL(blob)
+        setUrl(objectUrl)
       } catch {
         if (!controller.signal.aborted)
-          setError("Original file preview unavailable.");
+          setError("Original file preview unavailable.")
       }
-    };
-    void load();
+    }
+    void load()
 
     return () => {
-      controller.abort();
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [doc.id]);
+      controller.abort()
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+    }
+  }, [doc.id])
 
-  if (error) return <p className="muted">{error}</p>;
-  if (!url) return <p className="muted">Loading file preview...</p>;
+  if (error) return <p className="muted">{error}</p>
+  if (!url) return <p className="muted">Loading file preview...</p>
 
-  const mime = (doc.mime_type || "").toLowerCase();
-  const name = (doc.file_name || doc.file_path || "").toLowerCase();
-  const isPdf = mime === "application/pdf" || name.endsWith(".pdf");
-  const isImage = mime.startsWith("image/") || IMAGE_NAME_PATTERN.test(name);
+  const mime = (doc.mime_type || "").toLowerCase()
+  const name = (doc.file_name || doc.file_path || "").toLowerCase()
+  const isPdf = mime === "application/pdf" || name.endsWith(".pdf")
+  const isImage = mime.startsWith("image/") || IMAGE_NAME_PATTERN.test(name)
 
   if (isImage)
     return (
@@ -128,7 +134,7 @@ function SavedDocumentPreview({ doc }: { doc: DocumentItem }) {
         src={url}
         alt={doc.file_name || "Document"}
       />
-    );
+    )
   if (isPdf)
     return (
       <iframe
@@ -136,13 +142,13 @@ function SavedDocumentPreview({ doc }: { doc: DocumentItem }) {
         src={url}
         title={`Document ${doc.id}`}
       />
-    );
+    )
 
   return (
     <a className="link" href={url} target="_blank" rel="noreferrer">
       Open document
     </a>
-  );
+  )
 }
 
 export default function PatientsPage({
@@ -161,95 +167,135 @@ export default function PatientsPage({
   refreshToken,
   onNavigate,
 }: Props) {
-  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
-  const [deletingPatient, setDeletingPatient] = useState(false);
-  const [query, setQuery] = useState("");
-  const [careType, setCareType] = useState<"all" | "op" | "ip" | "er">("all");
-  const [patientList, setPatientList] = useState<Patient[]>(initialPatients || []);
-  const [counts, setCounts] = useState<{ all: number; op: number; ip: number; er: number }>({
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deletingPatient, setDeletingPatient] = useState(false)
+  const [query, setQuery] = useState("")
+  const [careType, setCareType] = useState<"all" | "op" | "ip" | "er">("all")
+  const [patientList, setPatientList] = useState<Patient[]>(
+    initialPatients || [],
+  )
+  const [counts, setCounts] = useState<{
+    all: number
+    op: number
+    ip: number
+    er: number
+  }>({
     all: (initialPatients || []).length,
     op: 0,
     ip: 0,
     er: 0,
-  });
-  const [loading, setLoading] = useState(false);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  })
+  const [loading, setLoading] = useState(false)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const fetchPatients = async (term: string, currentCareType: "all" | "op" | "ip" | "er") => {
-    setLoading(true);
+  const fetchPatients = async (
+    term: string,
+    currentCareType: "all" | "op" | "ip" | "er",
+  ) => {
+    setLoading(true)
     try {
-      const qParam = term.trim() ? `&q=${encodeURIComponent(term.trim())}` : "";
-      const typeParam = currentCareType !== "all" ? `&care_type=${currentCareType}` : "";
-      const data = await apiFetch<{ patients?: Patient[]; counts?: { all: number; op: number; ip: number; er: number } }>(
-        `/api/patients?${qParam}${typeParam}`,
-      );
-      setPatientList(data.patients || []);
+      const qParam = term.trim() ? `&q=${encodeURIComponent(term.trim())}` : ""
+      const typeParam =
+        currentCareType !== "all" ? `&care_type=${currentCareType}` : ""
+      const data = await apiFetch<{
+        patients?: Patient[]
+        counts?: { all: number op: number ip: number er: number }
+      }>(`/api/patients?${qParam}${typeParam}`)
+      setPatientList(data.patients || [])
       if (data.counts) {
-        setCounts(data.counts);
+        setCounts(data.counts)
       }
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Failed to load patient records.",
-      );
+      )
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
     if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-      searchTimeoutRef.current = null;
+      clearTimeout(searchTimeoutRef.current)
+      searchTimeoutRef.current = null
     }
     searchTimeoutRef.current = setTimeout(() => {
-      void fetchPatients(query, careType);
-    }, 300);
+      void fetchPatients(query, careType)
+    }, 300)
     return () => {
       if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-        searchTimeoutRef.current = null;
+        clearTimeout(searchTimeoutRef.current)
+        searchTimeoutRef.current = null
       }
-    };
-  }, [query, careType, refreshToken]);
+    }
+  }, [query, careType, refreshToken])
 
   const handleClearSearch = () => {
-    setQuery("");
-  };
+    setQuery("")
+  }
 
   const handleConfirmDeletePatient = async () => {
-    if (!deleteTarget) return;
-    setDeletingPatient(true);
+    if (!deleteTarget) return
+    setDeletingPatient(true)
     try {
-      await onDelete(deleteTarget.patientId);
-      setDeleteTarget(null);
-      void fetchPatients(query, careType);
+      await onDelete(deleteTarget.patientId)
+      setDeleteTarget(null)
+      void fetchPatients(query, careType)
     } finally {
-      setDeletingPatient(false);
+      setDeletingPatient(false)
     }
-  };
+  }
 
   return (
     <section className="patient-page">
       {/* Top Care-Stream Selection & Toolbar */}
-      <div className="patient-header panel" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+      <div
+        className="patient-header panel"
+        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "0.75rem",
+          }}
+        >
           <div>
-            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <FiActivity style={{ color: "#3b82f6" }} /> Patient Directory & Care Stream
+            <h2
+              style={{
+                margin: 0,
+                fontSize: "1.25rem",
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <FiActivity style={{ color: "#3b82f6" }} /> Patient Directory &
+              Care Stream
             </h2>
             <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-              Unified patient registry with dedicated Outpatient (OP), Inpatient (IP), and Emergency (ER) separation.
+              Unified patient registry with dedicated Outpatient (OP), Inpatient
+              (IP), and Emergency (ER) separation.
             </p>
           </div>
 
           {/* Care-Stream Dropdown Filter */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#64748b" }}>Filter Stream:</span>
+            <span
+              style={{ fontSize: "0.85rem", fontWeight: 600, color: "#64748b" }}
+            >
+              Filter Stream:
+            </span>
             <Select
               value={careType}
-              onChange={(e) => setCareType(e.target.value as "all" | "op" | "ip" | "er")}
+              onChange={(e) =>
+                setCareType(e.target.value as "all" | "op" | "ip" | "er")
+              }
               style={{ width: "230px", fontWeight: 600 }}
             >
               <option value="all">All Care Streams ({counts.all})</option>
@@ -264,23 +310,37 @@ export default function PatientsPage({
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           <button
             type="button"
-            className={`btn btn-sm ${careType === "all" ? "btn-primary" : "btn-secondary"}`}
+            className={`btn btn-sm ${
+              careType === "all" ? "btn-primary" : "btn-secondary"
+            }`}
             onClick={() => setCareType("all")}
-            style={{ borderRadius: "20px", padding: "0.35rem 1rem", fontSize: "0.85rem" }}
+            style={{
+              borderRadius: "20px",
+              padding: "0.35rem 1rem",
+              fontSize: "0.85rem",
+            }}
           >
             All Patients <strong>({counts.all})</strong>
           </button>
           <button
             type="button"
-            className={`btn btn-sm ${careType === "op" ? "btn-primary" : "btn-secondary"}`}
+            className={`btn btn-sm ${
+              careType === "op" ? "btn-primary" : "btn-secondary"
+            }`}
             onClick={() => setCareType("op")}
-            style={{ borderRadius: "20px", padding: "0.35rem 1rem", fontSize: "0.85rem" }}
+            style={{
+              borderRadius: "20px",
+              padding: "0.35rem 1rem",
+              fontSize: "0.85rem",
+            }}
           >
             Outpatient (OP) <strong>({counts.op})</strong>
           </button>
           <button
             type="button"
-            className={`btn btn-sm ${careType === "ip" ? "btn-primary" : "btn-secondary"}`}
+            className={`btn btn-sm ${
+              careType === "ip" ? "btn-primary" : "btn-secondary"
+            }`}
             onClick={() => setCareType("ip")}
             style={{
               borderRadius: "20px",
@@ -295,7 +355,9 @@ export default function PatientsPage({
           </button>
           <button
             type="button"
-            className={`btn btn-sm ${careType === "er" ? "btn-primary" : "btn-secondary"}`}
+            className={`btn btn-sm ${
+              careType === "er" ? "btn-primary" : "btn-secondary"
+            }`}
             onClick={() => setCareType("er")}
             style={{
               borderRadius: "20px",
@@ -331,11 +393,26 @@ export default function PatientsPage({
 
       {/* Patient List Table */}
       <div className="panel">
-        <div className="list-meta" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          className="list-meta"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           <p className="muted" style={{ margin: 0 }}>
             {query.trim()
-              ? `Found ${patientList.length} search results in ${careType === "all" ? "All Streams" : careType.toUpperCase()}.`
-              : `Showing ${patientList.length} patient${patientList.length === 1 ? "" : "s"} in ${careType === "all" ? "All Care Streams" : careType.toUpperCase()}.`}
+              ? `Found ${patientList.length} search results in ${
+                  careType === "all" ? "All Streams" : careType.toUpperCase()
+                }.`
+              : `Showing ${patientList.length} patient${
+                  patientList.length === 1 ? "" : "s"
+                } in ${
+                  careType === "all"
+                    ? "All Care Streams"
+                    : careType.toUpperCase()
+                }.`}
           </p>
           {loading && <Badge>Loading...</Badge>}
         </div>
@@ -351,18 +428,29 @@ export default function PatientsPage({
               <TableCell className="text-center">Actions</TableCell>
             </TableHead>
             {patientList.map((patient) => {
-              const expanded = selectedPatient?.patient_id === patient.patient_id;
-              const isEr = patient.care_stream === "ER" || patient.patient_id.startsWith("ER-PAT-");
-              const isIp = patient.care_stream === "IP" || !!patient.active_bed;
+              const expanded =
+                selectedPatient?.patient_id === patient.patient_id
+              const isEr =
+                patient.care_stream === "ER" ||
+                patient.patient_id.startsWith("ER-PAT-")
+              const isIp = patient.care_stream === "IP" || !!patient.active_bed
 
               return (
                 <Fragment key={patient.patient_id}>
-                  <TableRow className={`hover:bg-muted/50 ${expanded ? "active" : ""}`}>
+                  <TableRow
+                    className={`hover:bg-muted/50 ${expanded ? "active" : ""}`}
+                  >
                     <TableCell>
-                      <div className="font-medium text-foreground" style={{ fontSize: "0.95rem" }}>
+                      <div
+                        className="font-medium text-foreground"
+                        style={{ fontSize: "0.95rem" }}
+                      >
                         {patient.name} {patient.last_name}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5" style={{ fontFamily: "monospace", fontWeight: 600 }}>
+                      <div
+                        className="text-xs text-muted-foreground mt-0.5"
+                        style={{ fontFamily: "monospace", fontWeight: 600 }}
+                      >
                         {patient.patient_id}
                       </div>
                     </TableCell>
@@ -427,12 +515,24 @@ export default function PatientsPage({
                             </div>
                           )}
                           {patient.er_triage_category && (
-                            <span style={{ fontSize: "0.75rem", color: "#dc2626", fontWeight: 600 }}>
+                            <span
+                              style={{
+                                fontSize: "0.75rem",
+                                color: "#dc2626",
+                                fontWeight: 600,
+                              }}
+                            >
                               Triage: {patient.er_triage_category}
                             </span>
                           )}
                           {patient.active_er_status && (
-                            <span className="muted" style={{ fontSize: "0.75rem", marginLeft: "0.4rem" }}>
+                            <span
+                              className="muted"
+                              style={{
+                                fontSize: "0.75rem",
+                                marginLeft: "0.4rem",
+                              }}
+                            >
                               ({patient.active_er_status})
                             </span>
                           )}
@@ -441,7 +541,17 @@ export default function PatientsPage({
                               <button
                                 type="button"
                                 className="link"
-                                style={{ fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "0.2rem", background: "none", border: "none", padding: 0, cursor: "pointer", color: "#dc2626" }}
+                                style={{
+                                  fontSize: "0.75rem",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.2rem",
+                                  background: "none",
+                                  border: "none",
+                                  padding: 0,
+                                  cursor: "pointer",
+                                  color: "#dc2626",
+                                }}
                                 onClick={() => onNavigate("er")}
                               >
                                 <FiExternalLink /> Open in ER Board
@@ -459,7 +569,17 @@ export default function PatientsPage({
                               <button
                                 type="button"
                                 className="link"
-                                style={{ fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "0.2rem", background: "none", border: "none", padding: 0, cursor: "pointer", color: "#6366f1" }}
+                                style={{
+                                  fontSize: "0.75rem",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.2rem",
+                                  background: "none",
+                                  border: "none",
+                                  padding: 0,
+                                  cursor: "pointer",
+                                  color: "#6366f1",
+                                }}
                                 onClick={() => onNavigate("beds")}
                               >
                                 <FiExternalLink /> Bed Management
@@ -470,10 +590,15 @@ export default function PatientsPage({
                       ) : (
                         <div style={{ fontSize: "0.85rem" }}>
                           <div style={{ color: "#334155" }}>
-                            {patient.appointment_doctor ? `Dr. ${patient.appointment_doctor}` : "Ambulatory Patient"}
+                            {patient.appointment_doctor
+                              ? `Dr. ${patient.appointment_doctor}`
+                              : "Ambulatory Patient"}
                           </div>
                           {patient.appointment_dept && (
-                            <span className="muted" style={{ fontSize: "0.75rem" }}>
+                            <span
+                              className="muted"
+                              style={{ fontSize: "0.75rem" }}
+                            >
                               {patient.appointment_dept}
                             </span>
                           )}
@@ -483,7 +608,8 @@ export default function PatientsPage({
 
                     {/* Age / Gender */}
                     <TableCell className="text-center">
-                      <span>{patient.age ? `${patient.age}y` : "—"}</span> / <span>{patient.gender || "—"}</span>
+                      <span>{patient.age ? `${patient.age}y` : "—"}</span> /{" "}
+                      <span>{patient.gender || "—"}</span>
                     </TableCell>
 
                     {/* Phone & Emergency Contact */}
@@ -495,7 +621,13 @@ export default function PatientsPage({
                           <span className="muted">—</span>
                         )}
                         {patient.emergency_contact && (
-                          <div style={{ fontSize: "0.75rem", color: "#dc2626", fontWeight: 500 }}>
+                          <div
+                            style={{
+                              fontSize: "0.75rem",
+                              color: "#dc2626",
+                              fontWeight: 500,
+                            }}
+                          >
                             Emg: {patient.emergency_contact}
                           </div>
                         )}
@@ -561,7 +693,7 @@ export default function PatientsPage({
                     </div>
                   )}
                 </Fragment>
-              );
+              )
             })}
           </Table>
         </div>
@@ -571,7 +703,7 @@ export default function PatientsPage({
           aria-label="Patient list cards"
         >
           {patientList.map((patient) => {
-            const expanded = selectedPatient?.patient_id === patient.patient_id;
+            const expanded = selectedPatient?.patient_id === patient.patient_id
             return (
               <article
                 className="module-mobile-card"
@@ -624,7 +756,7 @@ export default function PatientsPage({
                   </Button>
                 </div>
               </article>
-            );
+            )
           })}
         </div>
 
@@ -649,40 +781,40 @@ export default function PatientsPage({
         confirmLabel="Delete Patient"
       />
     </section>
-  );
+  )
 }
 
 type PatientDetailProps = {
-  patientRef: Patient | string;
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  canEdit: boolean;
-  canReadBilling: boolean;
-  ocrLanguage: string;
-  languages: Record<string, string>;
-  canDelete: boolean;
-  onRequestDelete: (patient: Patient) => void;
-  onPatientUpdated: (patientId?: string) => Promise<void>;
-  refreshToken?: number;
-};
+  patientRef: Patient | string
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  canEdit: boolean
+  canReadBilling: boolean
+  ocrLanguage: string
+  languages: Record<string, string>
+  canDelete: boolean
+  onRequestDelete: (patient: Patient) => void
+  onPatientUpdated: (patientId?: string) => Promise<void>
+  refreshToken?: number
+}
 
 type PatientEditForm = {
-  name: string;
-  middle_name: string;
-  last_name: string;
-  dob: string;
-  age: string;
-  weight: string;
-  height: string;
-  gender: string;
-  pregnant: boolean;
-  allergies: string;
-  symptoms: string;
-  phone: string;
-  address: string;
-  blood_group: string;
-  emergency_contact: string;
-  aadhar_number: string;
-};
+  name: string
+  middle_name: string
+  last_name: string
+  dob: string
+  age: string
+  weight: string
+  height: string
+  gender: string
+  pregnant: boolean
+  allergies: string
+  symptoms: string
+  phone: string
+  address: string
+  blood_group: string
+  emergency_contact: string
+  aadhar_number: string
+}
 
 const toEditForm = (patient: Patient): PatientEditForm => ({
   name: patient.name || "",
@@ -710,14 +842,14 @@ const toEditForm = (patient: Patient): PatientEditForm => ({
   blood_group: patient.blood_group || "",
   emergency_contact: patient.emergency_contact || "",
   aadhar_number: patient.aadhar_number || "",
-});
+})
 
 function formatCurrency(amount?: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
-  }).format(amount || 0);
+  }).format(amount || 0)
 }
 
 function PatientDetail({
@@ -733,36 +865,34 @@ function PatientDetail({
   refreshToken = 0,
 }: PatientDetailProps) {
   const patientId =
-    typeof patientRef === "string" ? patientRef : patientRef.patient_id;
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [admissions, setAdmissions] = useState<Admission[]>([]);
-  const [movements, setMovements] = useState<PatientMovement[]>([]);
-  const [encounters, setEncounters] = useState<Encounter[]>([]);
-  const [beds, setBeds] = useState<BedAllocation[]>([]);
-  const [medications, setMedications] = useState<MedicationSchedule[]>([]);
-  const [notes, setNotes] = useState<ObservationNote[]>([]);
-  const [certificates, setCertificates] = useState<Certificate[]>([]);
-  const [billingInvoices, setBillingInvoices] = useState<PatientInvoice[]>([]);
-  const [downloadReady, setDownloadReady] = useState<
-    Record<number, Record<string, boolean>>
-  >({});
-  const [isEditing, setIsEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [careTab, setCareTab] = useState("encounters");
-  const [addingMovement, setAddingMovement] = useState(false);
-  const [savingEncounter, setSavingEncounter] = useState(false);
-  const [savingMedication, setSavingMedication] = useState(false);
-  const [savingNote, setSavingNote] = useState(false);
-  const [savingCertificate, setSavingCertificate] = useState(false);
-  const [deletingCertificateId, setDeletingCertificateId] = useState<
-    number | null
-  >(null);
+    typeof patientRef === "string" ? patientRef : patientRef.patient_id
+  const [patient, setPatient] = useState<Patient | null>(null)
+  const [documents, setDocuments] = useState<DocumentItem[]>([])
+  const [admissions, setAdmissions] = useState<Admission[]>([])
+  const [movements, setMovements] = useState<PatientMovement[]>([])
+  const [encounters, setEncounters] = useState<Encounter[]>([])
+  const [beds, setBeds] = useState<BedAllocation[]>([])
+  const [medications, setMedications] = useState<MedicationSchedule[]>([])
+  const [notes, setNotes] = useState<ObservationNote[]>([])
+  const [certificates, setCertificates] = useState<Certificate[]>([])
+  const [billingInvoices, setBillingInvoices] = useState<PatientInvoice[]>([])
+  const [downloadReady, setDownloadReady] =
+    useState<Record<number, Record<string, boolean>>>({})
+  const [isEditing, setIsEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [careTab, setCareTab] = useState("encounters")
+  const [addingMovement, setAddingMovement] = useState(false)
+  const [savingEncounter, setSavingEncounter] = useState(false)
+  const [savingMedication, setSavingMedication] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
+  const [savingCertificate, setSavingCertificate] = useState(false)
+  const [deletingCertificateId, setDeletingCertificateId] =
+    useState<number | null>(null)
   const [movementForm, setMovementForm] = useState({
     admission_id: "",
     from_department: "",
     to_department: "",
-  });
+  })
   const [encounterForm, setEncounterForm] = useState({
     encounter_type: "OP",
     insurance_provider: "",
@@ -770,7 +900,7 @@ function PatientDetail({
     referral_source: "",
     referral_name: "",
     is_accident: false,
-  });
+  })
   const [medicationForm, setMedicationForm] = useState({
     medicine_name: "",
     dosage: "",
@@ -778,42 +908,42 @@ function PatientDetail({
     administered: false,
     alert_enabled: true,
     notes: "",
-  });
+  })
   const [noteForm, setNoteForm] = useState({
     admission_id: "",
     doctor_name: "",
     note: "",
     treatment_plan: "",
-  });
+  })
   const [certificateForm, setCertificateForm] = useState({
     admission_id: "",
     certificate_type: "medical_certificate",
     title: "",
     body: "",
-  });
-  const [editForm, setEditForm] = useState<PatientEditForm | null>(null);
-  const [uploadDocType, setUploadDocType] = useState("document");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [deletingDocId, setDeletingDocId] = useState<number | null>(null);
+  })
+  const [editForm, setEditForm] = useState<PatientEditForm | null>(null)
+  const [uploadDocType, setUploadDocType] = useState("document")
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [deletingDocId, setDeletingDocId] = useState<number | null>(null)
   const [processingOcrDocId, setProcessingOcrDocId] = useState<number | null>(
     null,
-  );
-  const [expandedDocs, setExpandedDocs] = useState<Record<number, boolean>>({});
+  )
+  const [expandedDocs, setExpandedDocs] = useState<Record<number, boolean>>({})
   const [deleteDocumentTarget, setDeleteDocumentTarget] =
-    useState<DeleteDocumentTarget | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+    useState<DeleteDocumentTarget | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const loadData = async () => {
-    if (!patientId) return;
-    setLoading(true);
-    setLoadError(null);
+    if (!patientId) return
+    setLoading(true)
+    setLoadError(null)
     try {
       const p = await apiFetch<{ patient: Patient }>(
         `/api/patients/${patientId}`,
-      );
-      setPatient(p.patient);
+      )
+      setPatient(p.patient)
       const requests: Promise<unknown>[] = [
         apiFetch<{ documents?: DocumentItem[] }>(
           `/api/patients/${patientId}/documents`,
@@ -837,15 +967,15 @@ function PatientDetail({
         apiFetch<{ certificates?: Certificate[] }>(
           `/api/patients/${patientId}/certificates`,
         ),
-      ];
+      ]
       if (canReadBilling) {
         requests.push(
           apiFetch<{ invoices?: PatientInvoice[] }>(
             `/api/billing/invoices?patient_id=${encodeURIComponent(patientId)}`,
           ),
-        );
+        )
       }
-      const results = await Promise.all(requests);
+      const results = await Promise.all(requests)
       const [
         docs,
         adm,
@@ -856,94 +986,92 @@ function PatientDetail({
         noteData,
         certificateData,
         maybeInvoices,
-      ] = results as [
-        { documents?: DocumentItem[] },
-        { admissions?: Admission[] },
-        { movements?: PatientMovement[] },
-        { encounters?: Encounter[] },
-        { beds?: BedAllocation[] },
-        { medications?: MedicationSchedule[] },
-        { notes?: ObservationNote[] },
-        { certificates?: Certificate[] },
-        ({ invoices?: PatientInvoice[] } | undefined)?,
-      ];
-      setDocuments(docs.documents || []);
-      setAdmissions(adm.admissions || []);
-      setMovements(mv.movements || []);
-      setEncounters(enc.encounters || []);
-      setBeds(bedData.beds || []);
-      setMedications(med.medications || []);
-      setNotes(noteData.notes || []);
-      setCertificates(certificateData.certificates || []);
-      setBillingInvoices(canReadBilling ? maybeInvoices?.invoices || [] : []);
+      ] = results as [{ documents?: DocumentItem[] }, {
+        admissions?: Admission[]
+      }, { movements?: PatientMovement[] }, { encounters?: Encounter[] }, {
+        beds?: BedAllocation[]
+      }, { medications?: MedicationSchedule[] }, {
+        notes?: ObservationNote[]
+      }, { certificates?: Certificate[] }, {
+        invoices?: PatientInvoice[]
+      } | undefined?]
+      setDocuments(docs.documents || [])
+      setAdmissions(adm.admissions || [])
+      setMovements(mv.movements || [])
+      setEncounters(enc.encounters || [])
+      setBeds(bedData.beds || [])
+      setMedications(med.medications || [])
+      setNotes(noteData.notes || [])
+      setCertificates(certificateData.certificates || [])
+      setBillingInvoices(canReadBilling ? maybeInvoices?.invoices || [] : [])
     } catch (error) {
-      setPatient(null);
-      setDocuments([]);
-      setAdmissions([]);
-      setMovements([]);
-      setEncounters([]);
-      setBeds([]);
-      setMedications([]);
-      setNotes([]);
-      setCertificates([]);
-      setBillingInvoices([]);
-      const typedError = error as { status?: number; message?: string };
+      setPatient(null)
+      setDocuments([])
+      setAdmissions([])
+      setMovements([])
+      setEncounters([])
+      setBeds([])
+      setMedications([])
+      setNotes([])
+      setCertificates([])
+      setBillingInvoices([])
+      const typedError = error as { status?: number message?: string }
       if (typedError.status !== 401) {
-        setLoadError(typedError.message || "Failed to load patient details.");
+        setLoadError(typedError.message || "Failed to load patient details.")
       }
-      reportError(setNotice, typedError, "Failed to load patient details.");
+      reportError(setNotice, typedError, "Failed to load patient details.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    void loadData();
-  }, [patientId, refreshToken, canReadBilling]);
+    void loadData()
+  }, [patientId, refreshToken, canReadBilling])
 
   const parseNumber = (label: string, value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const parsed = Number(trimmed);
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    const parsed = Number(trimmed)
     if (!Number.isFinite(parsed)) {
-      throw new Error(`${label} must be a valid number.`);
+      throw new Error(`${label} must be a valid number.`)
     }
-    return parsed;
-  };
+    return parsed
+  }
 
   const startEdit = () => {
-    if (!patient) return;
-    setEditForm(toEditForm(patient));
-    setIsEditing(true);
-  };
+    if (!patient) return
+    setEditForm(toEditForm(patient))
+    setIsEditing(true)
+  }
 
   const cancelEdit = () => {
-    setIsEditing(false);
-    setEditForm(patient ? toEditForm(patient) : null);
-  };
+    setIsEditing(false)
+    setEditForm(patient ? toEditForm(patient) : null)
+  }
 
   const handleSaveEdit = async () => {
-    if (!patient || !editForm) return;
-    const name = editForm.name.trim();
-    const lastName = editForm.last_name.trim();
+    if (!patient || !editForm) return
+    const name = editForm.name.trim()
+    const lastName = editForm.last_name.trim()
     if (!name || !lastName) {
       setNotice({
         type: "warning",
         message: "First name and last name are required.",
-      });
-      return;
+      })
+      return
     }
 
-    let age: number | null = null;
-    let weight: number | null = null;
-    let height: number | null = null;
+    let age: number | null = null
+    let weight: number | null = null
+    let height: number | null = null
     try {
-      age = parseNumber("Age", editForm.age);
-      weight = parseNumber("Weight", editForm.weight);
-      height = parseNumber("Height", editForm.height);
+      age = parseNumber("Age", editForm.age)
+      weight = parseNumber("Weight", editForm.weight)
+      height = parseNumber("Height", editForm.height)
     } catch (error) {
-      setNotice({ type: "warning", message: (error as Error).message });
-      return;
+      setNotice({ type: "warning", message: (error as Error).message })
+      return
     }
 
     const payload = {
@@ -963,72 +1091,74 @@ function PatientDetail({
       blood_group: editForm.blood_group.trim(),
       emergency_contact: editForm.emergency_contact.trim(),
       aadhar_number: editForm.aadhar_number.trim(),
-    };
+    }
 
-    setSaving(true);
+    setSaving(true)
     try {
       await apiFetch(`/api/patients/${patient.patient_id}`, {
         method: "PUT",
         body: JSON.stringify(payload),
-      });
-      await loadData();
-      await onPatientUpdated(patient.patient_id);
-      setIsEditing(false);
-      setNotice({ type: "success", message: "Patient details updated." });
+      })
+      await loadData()
+      await onPatientUpdated(patient.patient_id)
+      setIsEditing(false)
+      setNotice({ type: "success", message: "Patient details updated." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Failed to update patient.",
-      );
+      )
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const handleExportDoc = async (doc: DocumentItem, type: "pdf" | "word") => {
     if (!doc?.ocr_text || !patient) {
       setNotice({
         type: "error",
         message: "No OCR text available for export.",
-      });
-      return;
+      })
+      return
     }
     const payload = {
       patient_name: `${patient.name} ${patient.last_name || ""}`.trim(),
       doc_type: doc.doc_type,
       ocr_text: doc.ocr_text,
       date: doc.created_at,
-    };
+    }
     const response = await fetch(`${API_BASE}/api/export/${type}`, {
       method: "POST",
       headers: withAuthHeaders({ "Content-Type": "application/json" }, "POST"),
       body: JSON.stringify(payload),
       credentials: "include",
-    });
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${patient.patient_id}_${doc.doc_type}.${type === "pdf" ? "pdf" : "docx"}`;
-    link.click();
-    window.URL.revokeObjectURL(url);
+    })
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `${patient.patient_id}_${doc.doc_type}.${
+      type === "pdf" ? "pdf" : "docx"
+    }`
+    link.click()
+    window.URL.revokeObjectURL(url)
     setDownloadReady((prev) => ({
       ...prev,
       [doc.id]: { ...(prev[doc.id] || {}), [type]: false },
-    }));
-  };
+    }))
+  }
 
   const handleUploadDocument = async () => {
     if (!patient || !uploadFile) {
-      setNotice({ type: "warning", message: "Select a file to upload." });
-      return;
+      setNotice({ type: "warning", message: "Select a file to upload." })
+      return
     }
-    setUploading(true);
+    setUploading(true)
     try {
-      const formData = new FormData();
-      formData.append("file", uploadFile);
-      formData.append("doc_type", uploadDocType);
+      const formData = new FormData()
+      formData.append("file", uploadFile)
+      formData.append("doc_type", uploadDocType)
       const response = await fetch(
         `${API_BASE}/api/patients/${patient.patient_id}/documents`,
         {
@@ -1037,39 +1167,39 @@ function PatientDetail({
           body: formData,
           credentials: "include",
         },
-      );
+      )
       if (!response.ok) {
-        throw new Error("Unable to upload document.");
+        throw new Error("Unable to upload document.")
       }
-      setUploadFile(null);
-      await loadData();
-      await onPatientUpdated(patient.patient_id);
-      setNotice({ type: "success", message: "Document uploaded." });
+      setUploadFile(null)
+      await loadData()
+      await onPatientUpdated(patient.patient_id)
+      setNotice({ type: "success", message: "Document uploaded." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to upload document.",
-      );
+      )
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   const handleProcessDocumentOcr = async (doc: DocumentItem) => {
-    if (!patient) return;
-    setProcessingOcrDocId(doc.id);
+    if (!patient) return
+    setProcessingOcrDocId(doc.id)
     try {
       const data = await apiFetch<{
-        document_id: number;
-        ocr_text: string;
-        ocr_language: string;
+        document_id: number
+        ocr_text: string
+        ocr_language: string
       }>(`/api/documents/${doc.id}/ocr`, {
         method: "POST",
         body: JSON.stringify({
           language: ocrLanguage || doc.ocr_language || "en",
         }),
-      });
+      })
 
       setDocuments((prev) =>
         prev.map((item) =>
@@ -1081,95 +1211,95 @@ function PatientDetail({
               }
             : item,
         ),
-      );
-      setNotice({ type: "success", message: "OCR processed and saved." });
+      )
+      setNotice({ type: "success", message: "OCR processed and saved." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to process OCR.",
-      );
+      )
     } finally {
-      setProcessingOcrDocId(null);
+      setProcessingOcrDocId(null)
     }
-  };
+  }
 
   const handleDeleteDocument = async () => {
-    if (!patient) return;
-    if (!deleteDocumentTarget) return;
-    setDeletingDocId(deleteDocumentTarget.id);
+    if (!patient) return
+    if (!deleteDocumentTarget) return
+    setDeletingDocId(deleteDocumentTarget.id)
     try {
       await apiFetch(`/api/documents/${deleteDocumentTarget.id}`, {
         method: "DELETE",
-      });
-      await loadData();
-      await onPatientUpdated(patient.patient_id);
-      setDeleteDocumentTarget(null);
-      setNotice({ type: "success", message: "Document removed." });
+      })
+      await loadData()
+      await onPatientUpdated(patient.patient_id)
+      setDeleteDocumentTarget(null)
+      setNotice({ type: "success", message: "Document removed." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to remove document.",
-      );
+      )
     } finally {
-      setDeletingDocId(null);
+      setDeletingDocId(null)
     }
-  };
+  }
 
   const handleAddMovement = async () => {
-    if (!patient) return;
-    const toDepartment = movementForm.to_department.trim();
+    if (!patient) return
+    const toDepartment = movementForm.to_department.trim()
     if (!toDepartment) {
       setNotice({
         type: "warning",
         message: "Destination department is required.",
-      });
-      return;
+      })
+      return
     }
-    setAddingMovement(true);
+    setAddingMovement(true)
     try {
       const payload: {
-        admission_id?: number;
-        from_department?: string;
-        to_department: string;
+        admission_id?: number
+        from_department?: string
+        to_department: string
       } = {
         to_department: toDepartment,
-      };
+      }
       if (movementForm.admission_id.trim()) {
-        payload.admission_id = Number(movementForm.admission_id);
+        payload.admission_id = Number(movementForm.admission_id)
       }
       if (movementForm.from_department.trim()) {
-        payload.from_department = movementForm.from_department.trim();
+        payload.from_department = movementForm.from_department.trim()
       }
 
       await apiFetch(`/api/patients/${patient.patient_id}/movements`, {
         method: "POST",
         body: JSON.stringify(payload),
-      });
+      })
 
       setMovementForm({
         admission_id: "",
         from_department: "",
         to_department: "",
-      });
-      await loadData();
-      await onPatientUpdated(patient.patient_id);
-      setNotice({ type: "success", message: "Patient movement recorded." });
+      })
+      await loadData()
+      await onPatientUpdated(patient.patient_id)
+      setNotice({ type: "success", message: "Patient movement recorded." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to save patient movement.",
-      );
+      )
     } finally {
-      setAddingMovement(false);
+      setAddingMovement(false)
     }
-  };
+  }
 
   const handleCreateEncounter = async () => {
-    if (!patient) return;
-    setSavingEncounter(true);
+    if (!patient) return
+    setSavingEncounter(true)
     try {
       await apiFetch(`/api/patients/${patient.patient_id}/encounters`, {
         method: "POST",
@@ -1183,7 +1313,7 @@ function PatientDetail({
           referral_name: encounterForm.referral_name.trim() || undefined,
           is_accident: encounterForm.is_accident,
         }),
-      });
+      })
       setEncounterForm({
         encounter_type: "OP",
         insurance_provider: "",
@@ -1191,28 +1321,28 @@ function PatientDetail({
         referral_source: "",
         referral_name: "",
         is_accident: false,
-      });
-      await loadData();
-      await onPatientUpdated(patient.patient_id);
-      setNotice({ type: "success", message: "Encounter created." });
+      })
+      await loadData()
+      await onPatientUpdated(patient.patient_id)
+      setNotice({ type: "success", message: "Encounter created." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create encounter.",
-      );
+      )
     } finally {
-      setSavingEncounter(false);
+      setSavingEncounter(false)
     }
-  };
+  }
 
   const handleAddMedication = async () => {
-    if (!patient) return;
+    if (!patient) return
     if (!medicationForm.medicine_name.trim()) {
-      setNotice({ type: "warning", message: "Medicine name is required." });
-      return;
+      setNotice({ type: "warning", message: "Medicine name is required." })
+      return
     }
-    setSavingMedication(true);
+    setSavingMedication(true)
     try {
       await apiFetch(`/api/patients/${patient.patient_id}/medications`, {
         method: "POST",
@@ -1224,7 +1354,7 @@ function PatientDetail({
           alert_enabled: medicationForm.alert_enabled,
           notes: medicationForm.notes.trim() || undefined,
         }),
-      });
+      })
       setMedicationForm({
         medicine_name: "",
         dosage: "",
@@ -1232,28 +1362,28 @@ function PatientDetail({
         administered: false,
         alert_enabled: true,
         notes: "",
-      });
-      await loadData();
-      await onPatientUpdated(patient.patient_id);
-      setNotice({ type: "success", message: "Medication schedule saved." });
+      })
+      await loadData()
+      await onPatientUpdated(patient.patient_id)
+      setNotice({ type: "success", message: "Medication schedule saved." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to save medication schedule.",
-      );
+      )
     } finally {
-      setSavingMedication(false);
+      setSavingMedication(false)
     }
-  };
+  }
 
   const handleAddNote = async () => {
-    if (!patient) return;
+    if (!patient) return
     if (!noteForm.note.trim()) {
-      setNotice({ type: "warning", message: "Clinical note is required." });
-      return;
+      setNotice({ type: "warning", message: "Clinical note is required." })
+      return
     }
-    setSavingNote(true);
+    setSavingNote(true)
     try {
       await apiFetch(`/api/patients/${patient.patient_id}/notes`, {
         method: "POST",
@@ -1265,37 +1395,37 @@ function PatientDetail({
           note: noteForm.note.trim(),
           treatment_plan: noteForm.treatment_plan.trim() || undefined,
         }),
-      });
+      })
       setNoteForm({
         admission_id: "",
         doctor_name: "",
         note: "",
         treatment_plan: "",
-      });
-      await loadData();
-      await onPatientUpdated(patient.patient_id);
-      setNotice({ type: "success", message: "Observation note saved." });
+      })
+      await loadData()
+      await onPatientUpdated(patient.patient_id)
+      setNotice({ type: "success", message: "Observation note saved." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to save observation note.",
-      );
+      )
     } finally {
-      setSavingNote(false);
+      setSavingNote(false)
     }
-  };
+  }
 
   const handleCreateCertificate = async () => {
-    if (!patient) return;
+    if (!patient) return
     if (!certificateForm.title.trim() || !certificateForm.body.trim()) {
       setNotice({
         type: "warning",
         message: "Certificate title and content are required.",
-      });
-      return;
+      })
+      return
     }
-    setSavingCertificate(true);
+    setSavingCertificate(true)
     try {
       await apiFetch(`/api/patients/${patient.patient_id}/certificates`, {
         method: "POST",
@@ -1307,73 +1437,73 @@ function PatientDetail({
           title: certificateForm.title.trim(),
           body: certificateForm.body.trim(),
         }),
-      });
+      })
       setCertificateForm({
         admission_id: "",
         certificate_type: "medical_certificate",
         title: "",
         body: "",
-      });
-      await loadData();
-      await onPatientUpdated(patient.patient_id);
-      setNotice({ type: "success", message: "Certificate created." });
+      })
+      await loadData()
+      await onPatientUpdated(patient.patient_id)
+      setNotice({ type: "success", message: "Certificate created." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create certificate.",
-      );
+      )
     } finally {
-      setSavingCertificate(false);
+      setSavingCertificate(false)
     }
-  };
+  }
 
   const handleDeleteCertificate = async (certificateId: number) => {
-    setDeletingCertificateId(certificateId);
+    setDeletingCertificateId(certificateId)
     try {
       await apiFetch(`/api/certificates/${certificateId}`, {
         method: "DELETE",
-      });
-      await loadData();
-      await onPatientUpdated(patient?.patient_id);
-      setNotice({ type: "success", message: "Certificate deleted." });
+      })
+      await loadData()
+      await onPatientUpdated(patient?.patient_id)
+      setNotice({ type: "success", message: "Certificate deleted." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete certificate.",
-      );
+      )
     } finally {
-      setDeletingCertificateId(null);
+      setDeletingCertificateId(null)
     }
-  };
+  }
 
   const documentGroups = useMemo(() => {
     const sorted = [...documents].sort(
       (a, b) => getTimestamp(b.created_at) - getTimestamp(a.created_at),
-    );
-    const groups = new Map<string, { label: string; items: DocumentItem[] }>();
+    )
+    const groups = new Map<string, { label: string items: DocumentItem[] }>()
     sorted.forEach((doc) => {
-      const key = getISTDateTimeKey(doc.created_at) || "unknown";
-      const label = formatDateTimeIST(doc.created_at);
+      const key = getISTDateTimeKey(doc.created_at) || "unknown"
+      const label = formatDateTimeIST(doc.created_at)
       if (!groups.has(key)) {
-        groups.set(key, { label, items: [] });
+        groups.set(key, { label, items: [] })
       }
-      groups.get(key)?.items.push(doc);
-    });
+      groups.get(key)?.items.push(doc)
+    })
     return Array.from(groups.entries()).map(([key, value]) => ({
       key,
       ...value,
-    }));
-  }, [documents]);
+    }))
+  }, [documents])
 
   const visitTimeline = useMemo(() => {
     const events: {
-      key: string;
-      label: string;
-      at?: string | null;
-      detail: string;
-    }[] = [];
+      key: string
+      label: string
+      at?: string | null
+      detail: string
+    }[] = []
     admissions.forEach((adm) =>
       events.push({
         key: `admission-${adm.id}`,
@@ -1381,7 +1511,7 @@ function PatientDetail({
         at: adm.discharge_date || adm.admission_date,
         detail: adm.notes || `Admission #${adm.id}`,
       }),
-    );
+    )
     encounters.forEach((enc) =>
       events.push({
         key: `encounter-${enc.id}`,
@@ -1393,7 +1523,7 @@ function PatientDetail({
           enc.status ||
           "Visit created",
       }),
-    );
+    )
     movements.forEach((mv) =>
       events.push({
         key: `movement-${mv.id}`,
@@ -1401,7 +1531,7 @@ function PatientDetail({
         at: mv.moved_at,
         detail: `${mv.from_department || "Unknown"} to ${mv.to_department}`,
       }),
-    );
+    )
     notes.forEach((entry) =>
       events.push({
         key: `note-${entry.id}`,
@@ -1409,7 +1539,7 @@ function PatientDetail({
         at: entry.created_at,
         detail: entry.note,
       }),
-    );
+    )
     documents.forEach((doc) =>
       events.push({
         key: `document-${doc.id}`,
@@ -1417,18 +1547,18 @@ function PatientDetail({
         at: doc.created_at,
         detail: doc.doc_type.replace(/_/g, " "),
       }),
-    );
+    )
     return events.sort(
       (a, b) => getTimestamp(b.at || "") - getTimestamp(a.at || ""),
-    );
-  }, [admissions, encounters, movements, notes, documents]);
+    )
+  }, [admissions, encounters, movements, notes, documents])
 
   if (loading) {
     return (
       <section className="panel">
         <p className="muted">Loading patient details...</p>
       </section>
-    );
+    )
   }
 
   if (loadError) {
@@ -1436,10 +1566,10 @@ function PatientDetail({
       <section className="panel">
         <Alert variant="error">{loadError}</Alert>
       </section>
-    );
+    )
   }
 
-  if (!patient) return null;
+  if (!patient) return null
 
   return (
     <section className="panel patient-detail-panel">
@@ -1451,10 +1581,10 @@ function PatientDetail({
           variant="secondary"
           onClick={() => {
             if (isEditing) {
-              cancelEdit();
-              return;
+              cancelEdit()
+              return
             }
-            startEdit();
+            startEdit()
           }}
           disabled={!canEdit || saving}
           title={!canEdit ? "Requires patient write access." : ""}
@@ -2356,11 +2486,11 @@ function PatientDetail({
                     open={!!expandedDocs[doc.id]}
                     onToggle={(event) => {
                       const isOpen = (event.currentTarget as HTMLDetailsElement)
-                        .open;
+                        .open
                       setExpandedDocs((prev) => ({
                         ...prev,
                         [doc.id]: isOpen,
-                      }));
+                      }))
                     }}
                   >
                     <summary>
@@ -2370,12 +2500,12 @@ function PatientDetail({
                           type="button"
                           variant="secondary"
                           onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
+                            event.preventDefault()
+                            event.stopPropagation()
                             setExpandedDocs((prev) => ({
                               ...prev,
                               [doc.id]: !prev[doc.id],
-                            }));
+                            }))
                           }}
                         >
                           {expandedDocs[doc.id] ? "Close" : "Open"}
@@ -2384,13 +2514,13 @@ function PatientDetail({
                           type="button"
                           variant="secondary"
                           onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
+                            event.preventDefault()
+                            event.stopPropagation()
                             window.open(
                               `${API_BASE}/api/documents/${doc.id}/file`,
                               "_blank",
                               "noopener,noreferrer",
-                            );
+                            )
                           }}
                         >
                           Open Original
@@ -2400,14 +2530,14 @@ function PatientDetail({
                             type="button"
                             variant="destructive"
                             onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
+                              event.preventDefault()
+                              event.stopPropagation()
                               setDeleteDocumentTarget({
                                 id: doc.id,
                                 label:
                                   stripUploadTimestampPrefix(doc.file_name) ||
                                   doc.doc_type.replace("_", " "),
-                              });
+                              })
                             }}
                             disabled={deletingDocId === doc.id}
                           >
@@ -2428,7 +2558,11 @@ function PatientDetail({
                         <SavedDocumentPreview doc={doc} />
                       </div>
                       <div
-                        className={`ocr-preview ocr-markdown-preview ${!(doc.ocr_text || "").trim() ? "ocr-markdown-needs-ocr" : ""}`}
+                        className={`ocr-preview ocr-markdown-preview ${
+                          !(doc.ocr_text || "").trim()
+                            ? "ocr-markdown-needs-ocr"
+                            : ""
+                        }`}
                       >
                         <p className="muted">Markdown OCR</p>
                         {!(doc.ocr_text || "").trim() ? (
@@ -2519,5 +2653,5 @@ function PatientDetail({
         confirmLabel="Delete Document"
       />
     </section>
-  );
+  )
 }

@@ -1,9 +1,9 @@
-import * as React from "react";
-import { cn } from "../../lib/cn";
+import * as React from "react"
+import { cn } from "../../lib/cn"
 
 type ContainerProps = React.HTMLAttributes<HTMLDivElement> & {
-  size?: "sm" | "md" | "lg" | "xl" | "full";
-};
+  size?: "sm" | "md" | "lg" | "xl" | "full"
+}
 
 const sizeClassMap: Record<NonNullable<ContainerProps["size"]>, string> = {
   sm: "ui-container-sm",
@@ -11,7 +11,7 @@ const sizeClassMap: Record<NonNullable<ContainerProps["size"]>, string> = {
   lg: "ui-container-lg",
   xl: "ui-container-xl",
   full: "ui-container-full",
-};
+}
 
 function Container({ className, size = "xl", ...props }: ContainerProps) {
   return (
@@ -19,7 +19,7 @@ function Container({ className, size = "xl", ...props }: ContainerProps) {
       className={cn("ui-container", sizeClassMap[size], className)}
       {...props}
     />
-  );
+  )
 }
 
-export default Container;
+export default Container

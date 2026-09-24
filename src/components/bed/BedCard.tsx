@@ -1,40 +1,47 @@
-import { FaBed } from "react-icons/fa";
-import { FiTool } from "react-icons/fi";
-import { formatDateTimeIST } from "../../lib/format";
-import { BillingDatabase } from "../../services/billingDb";
+import { FaBed } from "react-icons/fa"
+import { FiTool } from "react-icons/fi"
+import { formatDateTimeIST } from "../../lib/format"
+import { BillingDatabase } from "../../services/billingDb"
 
 export type BedCardData = {
-  id: number | string;
-  room_no: string;
-  bed_no: string;
-  bed_type: string;
-  status: "Available" | "Occupied" | "Maintenance";
-  admission_date?: string | null;
-  patient_id?: string | null;
-  patient_name?: string | null;
-  patient_last_name?: string | null;
-  patient_phone?: string | null;
-  patient_age?: number | null;
-  patient_gender?: string | null;
-  admission_notes?: string | null;
-};
+  id: number | string
+  room_no: string
+  bed_no: string
+  bed_type: string
+  status: "Available" | "Occupied" | "Maintenance"
+  admission_date?: string | null
+  patient_id?: string | null
+  patient_name?: string | null
+  patient_last_name?: string | null
+  patient_phone?: string | null
+  patient_age?: number | null
+  patient_gender?: string | null
+  admission_notes?: string | null
+}
 
 export function bedOccupantName(bed: BedCardData): string {
-  return `${bed.patient_name || ""} ${bed.patient_last_name || ""}`.trim() || "-";
+  return (
+    `${bed.patient_name || ""} ${bed.patient_last_name || ""}`.trim() || "-"
+  )
 }
 
 // Drives the card's fill color for an occupied bed -- "other" covers both an
 // actual non-binary gender on file and a bed whose gender wasn't recorded,
 // so a card is never left uncolored.
-export function bedGenderVariant(bed: BedCardData): "male" | "female" | "other" {
-  const g = (bed.patient_gender || "").trim().toLowerCase();
-  if (g.startsWith("m")) return "male";
-  if (g.startsWith("f")) return "female";
-  return "other";
+export function bedGenderVariant(
+  bed: BedCardData,
+): "male" | "female" | "other" {
+  const g = (bed.patient_gender || "").trim().toLowerCase()
+  if (g.startsWith("m")) return "male"
+  if (g.startsWith("f")) return "female"
+  return "other"
 }
 
 function daysSinceAdmission(iso: string): number {
-  return Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) + 1);
+  return Math.max(
+    1,
+    Math.floor((Date.now() - new Date(iso).getTime()) / 86400000) + 1,
+  )
 }
 
 // The one bed tile used by both the Inpatient Bed Board (read-only overview)
@@ -48,32 +55,38 @@ export function BedCard<T extends BedCardData>({
   onClick,
   onPatientClick,
   readOnly,
-}: {
-  bed: T;
-  onClick?: () => void;
   // Opens the patient's real clinical chart -- kept separate from `onClick`
   // (which opens the bed-allocation modal) so the two actions don't collide;
   // the patient name renders as its own clickable link when this is set.
   // Generic (T, not the base BedCardData) so a caller with a richer bed row
   // shape (e.g. BedManagementPage's `Bed`) can pass a handler typed for that
   // full shape without TS treating it as unsafe.
-  onPatientClick?: (bed: T) => void;
   // Inpatient Bed Board renders these read-only (it's a monitoring view, not
   // a workflow) -- a plain div instead of a button so it doesn't look
   // clickable when there's nothing behind the click.
-  readOnly?: boolean;
+}: {
+  bed: T
+  onClick?: () => void
+  onPatientClick?: (bed: T) => void
+  readOnly?: boolean
 }) {
   // Computed before render (rather than in an IIFE mid-JSX) so the card knows
   // whether it has a flag row at all -- an empty row would still claim its
   // padding and break the shared baseline across a grid row.
-  const flags: { key: string; text: string }[] = [];
+  const flags: { key: string ;text: string }[] = []
   if (bed.status === "Occupied" && bed.patient_id) {
-    const clr = BillingDatabase.getInpatientFinancialClearance(bed.patient_id, bedOccupantName(bed));
+    const clr = BillingDatabase.getInpatientFinancialClearance(
+      bed.patient_id,
+      bedOccupantName(bed),
+    )
     if (clr.totalAmount !== 0 || clr.balanceDue !== 0) {
       if (!clr.isCleared && clr.balanceDue > 0) {
-        flags.push({ key: "due", text: `🔒 Due ₹${clr.balanceDue.toLocaleString("en-IN")}` });
+        flags.push({
+          key: "due",
+          text: `🔒 Due ₹${clr.balanceDue.toLocaleString("en-IN")}`,
+        })
       } else if (clr.isCleared) {
-        flags.push({ key: "cleared", text: "✅ Bill cleared" });
+        flags.push({ key: "cleared", text: "✅ Bill cleared" })
       }
     }
   }
@@ -83,7 +96,7 @@ export function BedCard<T extends BedCardData>({
     (bed.admission_notes.toLowerCase().includes("er") ||
       bed.admission_notes.toLowerCase().includes("transfer"))
   ) {
-    flags.push({ key: "transfer", text: "🚑 Transferred" });
+    flags.push({ key: "transfer", text: "🚑 Transferred" })
   }
 
   const variant =
@@ -91,19 +104,25 @@ export function BedCard<T extends BedCardData>({
       ? `occupied-${bedGenderVariant(bed)}`
       : bed.status === "Maintenance"
         ? "maintenance"
-        : "available";
+        : "available"
   return (
-    <div className={`bed-info-card bed-info-card-${variant}${bed.bed_type === "ICU" ? " bed-info-card-icu" : ""}`}>
+    <div
+      className={`bed-info-card bed-info-card-${variant}${
+        bed.bed_type === "ICU" ? " bed-info-card-icu" : ""
+      }`}
+    >
       <div
         role={readOnly ? undefined : "button"}
         tabIndex={readOnly ? undefined : 0}
-        className={`bed-info-card-main${readOnly ? " bed-info-card-main-static" : ""}`}
+        className={`bed-info-card-main${
+          readOnly ? " bed-info-card-main-static" : ""
+        }`}
         onClick={readOnly ? undefined : onClick}
         onKeyDown={
           readOnly
             ? undefined
             : (e) => {
-                if (e.key === "Enter" || e.key === " ") onClick?.();
+                if (e.key === "Enter" || e.key === " ") onClick?.()
               }
         }
       >
@@ -123,13 +142,13 @@ export function BedCard<T extends BedCardData>({
                 role="link"
                 tabIndex={0}
                 onClick={(e) => {
-                  e.stopPropagation();
-                  onPatientClick(bed);
+                  e.stopPropagation()
+                  onPatientClick(bed)
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
-                    e.stopPropagation();
-                    onPatientClick(bed);
+                    e.stopPropagation()
+                    onPatientClick(bed)
                   }
                 }}
               >
@@ -144,12 +163,17 @@ export function BedCard<T extends BedCardData>({
               {bed.patient_id ? ` · ${bed.patient_id}` : ""}
             </span>
             {bed.admission_date && (
-              <span className="bed-info-card-meta">Day {daysSinceAdmission(bed.admission_date)}</span>
+              <span className="bed-info-card-meta">
+                Day {daysSinceAdmission(bed.admission_date)}
+              </span>
             )}
             {flags.length > 0 && (
               <div className="bed-info-card-flags">
                 {flags.map((flag) => (
-                  <span key={flag.key} className={`bed-info-card-flag bed-info-card-flag-${flag.key}`}>
+                  <span
+                    key={flag.key}
+                    className={`bed-info-card-flag bed-info-card-flag-${flag.key}`}
+                  >
                     {flag.text}
                   </span>
                 ))}
@@ -169,13 +193,16 @@ export function BedCard<T extends BedCardData>({
         )}
       </div>
 
-      {bed.status === "Occupied" && (bed.patient_phone || bed.admission_date) && (
-        <div className="bed-info-card-tooltip" role="tooltip">
-          <strong>{bedOccupantName(bed)}</strong>
-          {bed.patient_phone && <span>{bed.patient_phone}</span>}
-          {bed.admission_date && <span>Admitted {formatDateTimeIST(bed.admission_date)}</span>}
-        </div>
-      )}
+      {bed.status === "Occupied" &&
+        (bed.patient_phone || bed.admission_date) && (
+          <div className="bed-info-card-tooltip" role="tooltip">
+            <strong>{bedOccupantName(bed)}</strong>
+            {bed.patient_phone && <span>{bed.patient_phone}</span>}
+            {bed.admission_date && (
+              <span>Admitted {formatDateTimeIST(bed.admission_date)}</span>
+            )}
+          </div>
+        )}
     </div>
-  );
+  )
 }

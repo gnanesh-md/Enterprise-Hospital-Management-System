@@ -1,11 +1,11 @@
-import React from "react";
-import "./Skeleton.css";
+import React from "react"
+import "./Skeleton.css"
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "text" | "circular" | "rectangular" | "rounded";
-  width?: string | number;
-  height?: string | number;
-  animation?: "pulse" | "wave" | false;
+  variant?: "text" | "circular" | "rectangular" | "rounded"
+  width?: string | number
+  height?: string | number
+  animation?: "pulse" | "wave" | false
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({
@@ -24,13 +24,13 @@ export const Skeleton: React.FC<SkeletonProps> = ({
     className,
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(" ")
 
   const inlineStyle = {
     width: width,
     height: height,
     ...style,
-  };
+  }
 
-  return <div className={classes} style={inlineStyle} {...props} />;
-};
+  return <div className={classes} style={inlineStyle} {...props} />
+}

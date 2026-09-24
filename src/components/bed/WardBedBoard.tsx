@@ -1,20 +1,30 @@
-import { useEffect, useState } from "react";
-import { BedCard, type BedCardData } from "./BedCard";
+import { useEffect, useState } from "react"
+import { BedCard, type BedCardData } from "./BedCard"
 
 // One room's header -- used by both branches below so a room reads the same
 // whether it rendered as a side-by-side column or behind a tab.
-function RoomHead<T extends BedCardData>({ room, beds }: { room: string; beds: T[] }) {
-  const occupied = beds.filter((b) => b.status === "Occupied").length;
-  const free = beds.filter((b) => b.status === "Available").length;
+function RoomHead<T extends BedCardData>({
+  room,
+  beds,
+}: {
+  room: string
+  beds: T[]
+}) {
+  const occupied = beds.filter((b) => b.status === "Occupied").length
+  const free = beds.filter((b) => b.status === "Available").length
   return (
     <div className="bed-room-head">
       <span className="bed-room-name">Room {room}</span>
-      <span className={`bed-room-count${occupied === beds.length ? " bed-room-count-full" : ""}`}>
+      <span
+        className={`bed-room-count${
+          occupied === beds.length ? " bed-room-count-full" : ""
+        }`}
+      >
         {occupied}/{beds.length}
       </span>
       <span className="bed-room-free">{free} free</span>
     </div>
-  );
+  )
 }
 
 // Rooms sit as a horizontal tab row (click one to open it) instead of every
@@ -33,24 +43,25 @@ export function WardBedBoard<T extends BedCardData>({
   onPatientClick,
   readOnly,
 }: {
-  rooms: Map<string, T[]>;
-  onBedClick?: (bed: T) => void;
-  onPatientClick?: (bed: T) => void;
-  readOnly?: boolean;
+  rooms: Map<string, T[]>
+  onBedClick?: (bed: T) => void
+  onPatientClick?: (bed: T) => void
+  readOnly?: boolean
 }) {
-  const roomNames = Array.from(rooms.keys());
-  const [selectedRoom, setSelectedRoom] = useState(roomNames[0] || "");
+  const roomNames = Array.from(rooms.keys())
+  const [selectedRoom, setSelectedRoom] = useState(roomNames[0] || "")
 
   useEffect(() => {
-    if (!selectedRoom || !rooms.has(selectedRoom)) setSelectedRoom(roomNames[0] || "");
+    if (!selectedRoom || !rooms.has(selectedRoom))
+      setSelectedRoom(roomNames[0] || "")
     // Only re-check when the set of rooms actually changes (e.g. switching
     // ward), not on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [roomNames.join(",")]);
+  }, [roomNames.join(",")])
 
-  const activeBeds = rooms.get(selectedRoom) || [];
+  const activeBeds = rooms.get(selectedRoom) || []
 
-  if (roomNames.length === 0) return null;
+  if (roomNames.length === 0) return null
 
   const grid = (beds: T[]) => (
     <div className="bed-info-card-grid">
@@ -64,7 +75,7 @@ export function WardBedBoard<T extends BedCardData>({
         />
       ))}
     </div>
-  );
+  )
 
   // One or two rooms fit side by side. Both columns are auto-fit tracks off
   // the same --bed-card-min, so the cards line up across the gutter instead of
@@ -79,20 +90,24 @@ export function WardBedBoard<T extends BedCardData>({
           </div>
         ))}
       </div>
-    );
+    )
   }
 
   return (
     <div>
       <div className="ward-room-tabs">
         {roomNames.map((room) => {
-          const roomBeds = rooms.get(room)!;
-          const occupied = roomBeds.filter((b) => b.status === "Occupied").length;
+          const roomBeds = rooms.get(room)!
+          const occupied = roomBeds.filter(
+            (b) => b.status === "Occupied",
+          ).length
           return (
             <button
               key={room}
               type="button"
-              className={`ward-room-tab${room === selectedRoom ? " ward-room-tab-active" : ""}`}
+              className={`ward-room-tab${
+                room === selectedRoom ? " ward-room-tab-active" : ""
+              }`}
               onClick={() => setSelectedRoom(room)}
             >
               Room {room}
@@ -100,7 +115,7 @@ export function WardBedBoard<T extends BedCardData>({
                 {occupied}/{roomBeds.length}
               </span>
             </button>
-          );
+          )
         })}
       </div>
       <div className="bed-room-col" style={{ marginTop: "0.9rem" }}>
@@ -108,5 +123,5 @@ export function WardBedBoard<T extends BedCardData>({
         {grid(activeBeds)}
       </div>
     </div>
-  );
+  )
 }

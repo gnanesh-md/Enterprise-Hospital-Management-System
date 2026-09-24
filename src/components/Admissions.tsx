@@ -1,86 +1,129 @@
-import { useEffect, useMemo, useState } from "react";
-import { Icon } from "./icons";
-import { BedCard, type BedCardData } from "./bed/BedCard";
-import { apiFetch, reportError } from "../lib/api";
-import { formatDateTimeIST } from "../lib/format";
-import type { Notice } from "../types";
+import { useEffect, useMemo, useState } from "react"
+import { Icon } from "./icons"
+import { BedCard, type BedCardData } from "./bed/BedCard"
+import { apiFetch, reportError } from "../lib/api"
+import { formatDateTimeIST } from "../lib/format"
+import type { Notice } from "../types"
 
 type Bed = BedCardData & {
-  ward: string;
-  bed_type: string;
-  admission_date: string | null;
-};
-
-type Summary = { total: number; available: number; occupied: number; maintenance: number };
-
-type ErBedRequest = {
-  id: number;
-  visit_no: string;
-  patient_name: string | null;
-  patient_last_name: string | null;
-  is_unknown_patient: boolean;
-  unknown_patient_label: string | null;
-  requested_level_of_care: string;
-  requested_specialty: string | null;
-  requested_at: string;
-};
-
-function requestPatientLabel(req: ErBedRequest): string {
-  if (req.is_unknown_patient) return req.unknown_patient_label || "Unidentified patient";
-  const name = `${req.patient_name || ""} ${req.patient_last_name || ""}`.trim();
-  return name || "Patient";
+  ward: string
+  bed_type: string
+  admission_date: string | null
 }
 
-type Props = { setNotice?: (n: Notice | null) => void; navigate?: (page: string) => void };
+type Summary = {
+  total: number
+  available: number
+  occupied: number
+  maintenance: number
+}
+
+type ErBedRequest = {
+  id: number
+  visit_no: string
+  patient_name: string | null
+  patient_last_name: string | null
+  is_unknown_patient: boolean
+  unknown_patient_label: string | null
+  requested_level_of_care: string
+  requested_specialty: string | null
+  requested_at: string
+}
+
+function requestPatientLabel(req: ErBedRequest): string {
+  if (req.is_unknown_patient)
+    return req.unknown_patient_label || "Unidentified patient"
+  const name = `${req.patient_name || ""} ${req.patient_last_name || ""}`.trim()
+  return name || "Patient"
+}
+
+type Props = {
+  setNotice?: (n: Notice | null) => void
+  navigate?: (page: string) => void
+}
 
 export default function Admissions({ setNotice, navigate }: Props) {
-  const [activeTab, setActiveTab] = useState<"requests" | "admitted">("requests");
-  const [beds, setBeds] = useState<Bed[]>([]);
-  const [summary, setSummary] = useState<Summary>({ total: 0, available: 0, occupied: 0, maintenance: 0 });
-  const [requests, setRequests] = useState<ErBedRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"requests" | "admitted">(
+    "requests",
+  )
+  const [beds, setBeds] = useState<Bed[]>([])
+  const [summary, setSummary] = useState<Summary>({
+    total: 0,
+    available: 0,
+    occupied: 0,
+    maintenance: 0,
+  })
+  const [requests, setRequests] = useState<ErBedRequest[]>([])
+  const [loading, setLoading] = useState(true)
 
   const load = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       const [bedsRes, requestsRes] = await Promise.all([
-        apiFetch<{ beds: Bed[]; summary: Summary }>("/api/beds"),
-        apiFetch<{ bed_requests: ErBedRequest[] }>("/api/er/bed-requests?status=pending").catch(() => ({
+        apiFetch<{ beds: Bed[] ;summary: Summary }>("/api/beds"),
+        apiFetch<{ bed_requests: ErBedRequest[] }>(
+          "/api/er/bed-requests?status=pending",
+        ).catch(() => ({
           bed_requests: [] as ErBedRequest[],
         })),
-      ]);
-      setBeds(bedsRes.beds || []);
-      setSummary(bedsRes.summary || { total: 0, available: 0, occupied: 0, maintenance: 0 });
-      setRequests(requestsRes.bed_requests || []);
+      ])
+      setBeds(bedsRes.beds || [])
+      setSummary(
+        bedsRes.summary || {
+          total: 0,
+          available: 0,
+          occupied: 0,
+          maintenance: 0,
+        },
+      )
+      setRequests(requestsRes.bed_requests || [])
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to load admissions data.");
+      reportError(setNotice, error, "Failed to load admissions data.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    void load();
-  }, []);
+    void load()
+  }, [])
 
-  const availableGeneral = beds.filter((b) => b.status === "Available" && b.bed_type !== "ICU").length;
-  const availableIcu = beds.filter((b) => b.status === "Available" && b.bed_type === "ICU").length;
+  const availableGeneral = beds.filter(
+    (b) => b.status === "Available" && b.bed_type !== "ICU",
+  ).length
+  const availableIcu = beds.filter(
+    (b) => b.status === "Available" && b.bed_type === "ICU",
+  ).length
 
   const admittedToday = useMemo(() => {
-    const today = new Date().toDateString();
+    const today = new Date().toDateString()
     return beds
-      .filter((b) => b.status === "Occupied" && b.admission_date && new Date(b.admission_date).toDateString() === today)
-      .sort((a, b) => new Date(b.admission_date!).getTime() - new Date(a.admission_date!).getTime());
-  }, [beds]);
+      .filter(
+        (b) =>
+          b.status === "Occupied" &&
+          b.admission_date &&
+          new Date(b.admission_date).toDateString() === today,
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.admission_date!).getTime() -
+          new Date(a.admission_date!).getTime(),
+      )
+  }, [beds])
 
-  const goToBedManagement = () => navigate?.("beds");
+  const goToBedManagement = () => navigate?.("beds")
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F0F2F5]">
       <div className="bg-white border-b border-[#DDE2EC] px-6 py-4 flex items-center justify-between gap-4 flex-shrink-0">
         <div className="min-w-0">
-          <h1 className="text-base font-semibold text-gray-900 leading-tight">Inpatient Admissions</h1>
-          <p className="text-[11.5px] text-[#64748B] mt-0.5">Live admission requests and today's admissions &mdash; assign beds from Bed Management.</p>
+          <h1 className="text-base font-semibold text-gray-900 leading-tight">
+            Inpatient Admissions
+          </h1>
+          <p className="text-[11.5px] text-[#64748B] mt-0.5">
+            Live admission requests and today's admissions &mdash; assign beds
+            from Bed Management.
+          </p>
         </div>
         <button
           onClick={goToBedManagement}
@@ -94,18 +137,47 @@ export default function Admissions({ setNotice, navigate }: Props) {
         {/* Key Metrics -- same px-6 gutter as the header above, so the cards
             line up under the title instead of being centred in their own
             max-w-7xl column. */}
-        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div
+          className="grid gap-3"
+          style={{
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          }}
+        >
           {[
-            { label: "Pending requests", value: requests.length, tone: "#D97706" },
-            { label: "Admitted today", value: admittedToday.length, tone: "#16A34A" },
-            { label: "Available beds (general)", value: availableGeneral, tone: "#0F172A" },
+            {
+              label: "Pending requests",
+              value: requests.length,
+              tone: "#D97706",
+            },
+            {
+              label: "Admitted today",
+              value: admittedToday.length,
+              tone: "#16A34A",
+            },
+            {
+              label: "Available beds (general)",
+              value: availableGeneral,
+              tone: "#0F172A",
+            },
             // Available ICU beds are headroom, not an alarm -- this used to
             // render in the same red as a critical metric.
-            { label: "Available beds (ICU)", value: availableIcu, tone: "#7C3AED" },
+            {
+              label: "Available beds (ICU)",
+              value: availableIcu,
+              tone: "#7C3AED",
+            },
           ].map((stat) => (
-            <div key={stat.label} className="bg-white border border-[#DDE2EC] px-4 py-3 rounded-md">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">{stat.label}</div>
-              <div className="text-2xl font-mono font-bold leading-tight mt-1" style={{ color: stat.tone }}>
+            <div
+              key={stat.label}
+              className="bg-white border border-[#DDE2EC] px-4 py-3 rounded-md"
+            >
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                {stat.label}
+              </div>
+              <div
+                className="text-2xl font-mono font-bold leading-tight mt-1"
+                style={{ color: stat.tone }}
+              >
                 {loading ? "—" : stat.value}
               </div>
             </div>
@@ -116,13 +188,21 @@ export default function Admissions({ setNotice, navigate }: Props) {
           <div className="border-b border-[#DDE2EC] flex px-4">
             <button
               onClick={() => setActiveTab("requests")}
-              className={`px-4 py-3 text-[13px] font-semibold border-b-2 transition-colors ${activeTab === "requests" ? "border-[#1B4FD8] text-[#1B4FD8]" : "border-transparent text-[#64748B] hover:text-gray-900"}`}
+              className={`px-4 py-3 text-[13px] font-semibold border-b-2 transition-colors ${
+                activeTab === "requests"
+                  ? "border-[#1B4FD8] text-[#1B4FD8]"
+                  : "border-transparent text-[#64748B] hover:text-gray-900"
+              }`}
             >
               Pending Admission Requests ({requests.length})
             </button>
             <button
               onClick={() => setActiveTab("admitted")}
-              className={`px-4 py-3 text-[13px] font-semibold border-b-2 transition-colors ${activeTab === "admitted" ? "border-[#1B4FD8] text-[#1B4FD8]" : "border-transparent text-[#64748B] hover:text-gray-900"}`}
+              className={`px-4 py-3 text-[13px] font-semibold border-b-2 transition-colors ${
+                activeTab === "admitted"
+                  ? "border-[#1B4FD8] text-[#1B4FD8]"
+                  : "border-transparent text-[#64748B] hover:text-gray-900"
+              }`}
             >
               Admitted Today ({admittedToday.length})
             </button>
@@ -136,27 +216,42 @@ export default function Admissions({ setNotice, navigate }: Props) {
                 ) : requests.length === 0 ? (
                   <div className="py-12 flex flex-col items-center justify-center text-[#94A3B8]">
                     <div className="text-4xl mb-3">📋</div>
-                    <div className="text-[13px] font-semibold text-gray-700 mb-1">No pending requests</div>
-                    <div className="text-[12px]">ER admission requests awaiting a bed will appear here.</div>
+                    <div className="text-[13px] font-semibold text-gray-700 mb-1">
+                      No pending requests
+                    </div>
+                    <div className="text-[12px]">
+                      ER admission requests awaiting a bed will appear here.
+                    </div>
                   </div>
                 ) : (
                   requests.map((req) => (
-                    <div key={req.id} className="bg-white border border-[#DDE2EC] rounded-md p-3.5 flex items-center justify-between gap-4 hover:border-[#1B4FD8] transition-colors">
+                    <div
+                      key={req.id}
+                      className="bg-white border border-[#DDE2EC] rounded-md p-3.5 flex items-center justify-between gap-4 hover:border-[#1B4FD8] transition-colors"
+                    >
                       <div className="flex items-start gap-4">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-[14px] bg-[#1B4FD8]">
                           {requestPatientLabel(req).charAt(0)}
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-[14px] font-bold text-gray-900">{requestPatientLabel(req)}</h3>
-                            <span className="text-[11px] font-mono text-[#64748B]">{req.visit_no}</span>
+                            <h3 className="text-[14px] font-bold text-gray-900">
+                              {requestPatientLabel(req)}
+                            </h3>
+                            <span className="text-[11px] font-mono text-[#64748B]">
+                              {req.visit_no}
+                            </span>
                           </div>
                           <div className="text-[12.5px] text-gray-700 mb-1">
-                            <strong>Requested:</strong> {req.requested_level_of_care.toUpperCase()}
-                            {req.requested_specialty ? ` · ${req.requested_specialty}` : ""}
+                            <strong>Requested:</strong>{" "}
+                            {req.requested_level_of_care.toUpperCase()}
+                            {req.requested_specialty
+                              ? ` · ${req.requested_specialty}`
+                              : ""}
                           </div>
                           <div className="text-[11.5px] text-[#64748B]">
-                            Requested from ER · {formatDateTimeIST(req.requested_at)}
+                            Requested from ER ·{" "}
+                            {formatDateTimeIST(req.requested_at)}
                           </div>
                         </div>
                       </div>
@@ -179,8 +274,12 @@ export default function Admissions({ setNotice, navigate }: Props) {
                 ) : admittedToday.length === 0 ? (
                   <div className="py-12 flex flex-col items-center justify-center text-[#94A3B8]">
                     <div className="text-4xl mb-3">🛏️</div>
-                    <div className="text-[13px] font-semibold text-gray-700 mb-1">No admissions today</div>
-                    <div className="text-[12px]">Patients admitted today will appear here.</div>
+                    <div className="text-[13px] font-semibold text-gray-700 mb-1">
+                      No admissions today
+                    </div>
+                    <div className="text-[12px]">
+                      Patients admitted today will appear here.
+                    </div>
                   </div>
                 ) : (
                   <div className="bed-info-card-grid">
@@ -195,5 +294,5 @@ export default function Admissions({ setNotice, navigate }: Props) {
         </div>
       </div>
     </div>
-  );
+  )
 }

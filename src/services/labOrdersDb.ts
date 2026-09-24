@@ -12,71 +12,65 @@
  * pharmacy queue already existed and is reused as-is.
  */
 
-const ORDERS_KEY = "hospai_lab_orders_v1";
-const CHANNEL_NAME = "hospai_lab_orders";
+const ORDERS_KEY = "hospai_lab_orders_v1"
+const CHANNEL_NAME = "hospai_lab_orders"
 
-export type LabOrderStatus =
-  | "Awaiting Billing"
-  | "Billed"
-  | "Sample Collected"
-  | "In Progress"
-  | "Completed"
-  | "Cancelled";
+export type LabOrderStatus = "Awaiting Billing" | "Billed" | "Sample Collected" | "In Progress" | "Completed" | "Cancelled"
 
-export type LabBillingStatus = "Pending" | "Paid" | "Waived" | "Cancelled";
+export type LabBillingStatus = "Pending" | "Paid" | "Waived" | "Cancelled"
 
 export interface LabOrderTest {
-  id: string;
-  name: string;
-  category: string;
-  urgency: "Routine" | "STAT" | string;
-  price: number;
-  status: "Ordered" | "Sample Collected" | "In Progress" | "Completed";
-  result?: string;
-  resultUnit?: string;
-  referenceRange?: string;
-  flag?: "H" | "L" | "Critical" | "";
-  resultedAt?: string;
+  id: string
+  name: string
+  category: string
+  urgency: "Routine" | "STAT" | string
+  price: number
+  status: "Ordered" | "Sample Collected" | "In Progress" | "Completed"
+  result?: string
+  resultUnit?: string
+  referenceRange?: string
+  flag?: "H" | "L" | "Critical" | ""
+  resultedAt?: string
 }
 
 export interface LabOrderEvent {
-  at: string;
-  actor: string;
-  action: string;
-  detail?: string;
+  at: string
+  actor: string
+  action: string
+  detail?: string
 }
 
 export interface LabOrder {
-  id: string;
-  consultationId?: string;
-  encounterId: string;
-  umr: string;
-  patientName: string;
-  age: number;
-  sex: string;
-  phone: string;
-  opNumber: string;
-  doctorId: string;
-  doctorName: string;
-  department: string;
-  diagnosis: string;
-  clinicalNotes?: string;
-  tests: LabOrderTest[];
-  status: LabOrderStatus;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  consultationId?: string
+  encounterId: string
+  umr: string
+  patientName: string
+  age: number
+  sex: string
+  phone: string
+  opNumber: string
+  doctorId: string
+  doctorName: string
+  department: string
+  diagnosis: string
+  clinicalNotes?: string
+  tests: LabOrderTest[]
+  status: LabOrderStatus
+  createdAt: string
+  updatedAt: string
   billing: {
-    status: LabBillingStatus;
-    invoiceNo?: string;
-    subtotal: number;
-    discount: number;
-    total: number;
-    mode?: "Cash" | "Card" | "UPI" | "Insurance" | "Corporate";
-    receiptNo?: string;
-    paidAt?: string;
-    collectedBy?: string;
-  };
-  history: LabOrderEvent[];
+    status: LabBillingStatus
+    invoiceNo?: string
+    subtotal: number
+    discount: number
+    total: number
+    mode?: "Cash" | "Card" | "UPI" | "Insurance" | "Corporate"
+    receiptNo?: string
+    paidAt?: string
+    collectedBy?: string
+  }
+  history: LabOrderEvent[]
 }
 
 /**
@@ -84,7 +78,7 @@ export interface LabOrder {
  * bills at the troponin rate; anything unlisted falls back to DEFAULT_TEST_PRICE
  * so an order is never dispatched with a zero total.
  */
-const PRICE_BOOK: { match: string; price: number }[] = [
+const PRICE_BOOK: { match: string ;price: number }[] = [
   { match: "complete blood count", price: 350 },
   { match: "cbc", price: 350 },
   { match: "esr", price: 200 },
@@ -135,91 +129,115 @@ const PRICE_BOOK: { match: string; price: number }[] = [
   { match: "spirometry", price: 900 },
   { match: "pft", price: 900 },
   { match: "eeg", price: 2400 },
-];
+]
 
-export const DEFAULT_TEST_PRICE = 500;
+export const DEFAULT_TEST_PRICE = 500
 
 export function priceForTest(testName: string): number {
-  const normalized = (testName || "").toLowerCase();
+  const normalized = (testName || "").toLowerCase()
   // Longest match wins, so "ct angiogram" doesn't bill at the bare "ct" rate
   // only because that entry happens to come first in the list.
-  const hit = PRICE_BOOK.filter(entry => normalized.includes(entry.match)).sort(
-    (a, b) => b.match.length - a.match.length
-  )[0];
-  return hit ? hit.price : DEFAULT_TEST_PRICE;
+  const hit = PRICE_BOOK.filter((entry) =>
+    normalized.includes(entry.match),
+  ).sort((a, b) => b.match.length - a.match.length)[0]
+  return hit ? hit.price : DEFAULT_TEST_PRICE
 }
 
 // ── Storage plumbing ─────────────────────────────────────────────────────────
 
-const listeners = new Set<() => void>();
-let channel: BroadcastChannel | null = null;
+const listeners = new Set<() => void>()
+let channel: BroadcastChannel | null = null
 
 function ensureChannel(): BroadcastChannel | null {
-  if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") return null;
+  if (typeof window === "undefined" || typeof BroadcastChannel === "undefined")
+    return null
   if (!channel) {
-    channel = new BroadcastChannel(CHANNEL_NAME);
-    channel.onmessage = () => listeners.forEach(fn => fn());
+    channel = new BroadcastChannel(CHANNEL_NAME)
+    channel.onmessage = () => listeners.forEach((fn) => fn())
   }
-  return channel;
+  return channel
 }
 
 function notify() {
-  listeners.forEach(fn => fn());
-  ensureChannel()?.postMessage("changed");
+  listeners.forEach((fn) => fn())
+  ensureChannel()?.postMessage("changed")
+}
+
+// Backfills fields every real LabOrder is supposed to have but an older,
+// already-persisted browser record might not (the type has evolved since
+// this store first shipped -- `billing` in particular used to not exist,
+// and a stale record missing it crashes every screen that reads
+// `order.billing.status` directly, e.g. DoctorPortal's PatientContextPanel).
+// Normalizing once here, at the single chokepoint every read goes through,
+// protects all of them instead of guarding each call site separately.
+function normalizeOrder(order: LabOrder): LabOrder {
+  return {
+    ...order,
+    tests: order.tests || [],
+    history: order.history || [],
+    billing: order.billing || {
+      status: "Pending",
+      subtotal: 0,
+      discount: 0,
+      total: 0,
+    },
+  }
 }
 
 function readOrders(): LabOrder[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return []
   try {
-    const raw = window.localStorage.getItem(ORDERS_KEY);
-    return raw ? (JSON.parse(raw) as LabOrder[]) : [];
+    const raw = window.localStorage.getItem(ORDERS_KEY)
+    const parsed = raw ? (JSON.parse(raw) as LabOrder[]) : []
+    return parsed.map(normalizeOrder)
   } catch {
-    return [];
+    return []
   }
 }
 
 function writeOrders(orders: LabOrder[]): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return
   try {
-    window.localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+    window.localStorage.setItem(ORDERS_KEY, JSON.stringify(orders))
   } catch (err) {
-    console.error("Lab orders: could not persist", err);
+    console.error("Lab orders: could not persist", err)
   }
 }
 
 function nextSequence(prefix: string, existing: number): string {
-  return `${prefix}-${String(existing + 1).padStart(5, "0")}`;
+  return `${prefix}-${String(existing + 1).padStart(5, "0")}`
 }
 
 // ── API ──────────────────────────────────────────────────────────────────────
 
 export class LabOrderDatabase {
   static subscribe(listener: () => void): () => void {
-    listeners.add(listener);
-    ensureChannel();
-    return () => listeners.delete(listener);
+    listeners.add(listener)
+    ensureChannel()
+    return () => listeners.delete(listener)
   }
 
   static getOrders(): LabOrder[] {
     return readOrders().sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
   }
 
   static getOrder(id: string): LabOrder | undefined {
-    return readOrders().find(o => o.id === id);
+    return readOrders().find((o) => o.id === id)
   }
 
   static getOrdersForPatient(umr: string): LabOrder[] {
-    const normalized = umr.toUpperCase();
-    return this.getOrders().filter(o => o.umr.toUpperCase() === normalized);
+    const normalized = umr.toUpperCase()
+    return this.getOrders().filter((o) => o.umr.toUpperCase() === normalized)
   }
 
   /** Reception's queue: ordered by the doctor, not yet paid for. */
   static getBillingQueue(): LabOrder[] {
     return this.getOrders().filter(
-      o => o.status === "Awaiting Billing" && o.billing.status === "Pending"
-    );
+      (o) => o.status === "Awaiting Billing" && o.billing.status === "Pending",
+    )
   }
 
   /**
@@ -228,39 +246,39 @@ export class LabOrderDatabase {
    */
   static getLabWorklist(): LabOrder[] {
     return this.getOrders().filter(
-      o => o.status !== "Awaiting Billing" && o.status !== "Cancelled"
-    );
+      (o) => o.status !== "Awaiting Billing" && o.status !== "Cancelled",
+    )
   }
 
   static createOrder(input: {
-    consultationId?: string;
-    encounterId: string;
-    umr: string;
-    patientName: string;
-    age: number;
-    sex: string;
-    phone: string;
-    opNumber: string;
-    doctorId: string;
-    doctorName: string;
-    department: string;
-    diagnosis: string;
-    clinicalNotes?: string;
-    tests: { name: string; category?: string; urgency?: string }[];
+    consultationId?: string
+    encounterId: string
+    umr: string
+    patientName: string
+    age: number
+    sex: string
+    phone: string
+    opNumber: string
+    doctorId: string
+    doctorName: string
+    department: string
+    diagnosis: string
+    clinicalNotes?: string
+    tests: { name: string ;category?: string ;urgency?: string }[]
   }): LabOrder {
-    const orders = readOrders();
-    const now = new Date().toISOString();
+    const orders = readOrders()
+    const now = new Date().toISOString()
 
     const tests: LabOrderTest[] = input.tests.map((test, index) => ({
       id: `LT-${index + 1}`,
       name: test.name,
       category: test.category || "Pathology",
-      urgency: (test.urgency as LabOrderTest["urgency"]) || "Routine",
+      urgency: test.urgency as LabOrderTest["urgency"] || "Routine",
       price: priceForTest(test.name),
       status: "Ordered",
-    }));
+    }))
 
-    const subtotal = tests.reduce((sum, t) => sum + t.price, 0);
+    const subtotal = tests.reduce((sum, t) => sum + t.price, 0)
     const order: LabOrder = {
       id: nextSequence("LAB", orders.length),
       consultationId: input.consultationId,
@@ -295,32 +313,45 @@ export class LabOrderDatabase {
           detail: `${tests.length} investigation(s) sent to reception for billing`,
         },
       ],
-    };
+    }
 
-    writeOrders([order, ...orders]);
-    notify();
-    return order;
+    writeOrders([order, ...orders])
+    notify()
+    return order
   }
 
-  private static mutate(id: string, mutator: (order: LabOrder) => LabOrder): LabOrder | undefined {
-    const orders = readOrders();
-    const index = orders.findIndex(o => o.id === id);
-    if (index < 0) return undefined;
-    const updated = { ...mutator(orders[index]), updatedAt: new Date().toISOString() };
-    orders[index] = updated;
-    writeOrders(orders);
-    notify();
-    return updated;
+  private static mutate(
+    id: string,
+    mutator: (order: LabOrder) => LabOrder,
+  ): LabOrder | undefined {
+    const orders = readOrders()
+    const index = orders.findIndex((o) => o.id === id)
+    if (index < 0) return undefined
+    const updated = {
+      ...mutator(orders[index]),
+      updatedAt: new Date().toISOString(),
+    }
+    orders[index] = updated
+    writeOrders(orders)
+    notify()
+    return updated
   }
 
   /** Reception takes payment. This is what releases the order to the laboratory. */
   static markBilled(
     id: string,
-    payment: { mode: NonNullable<LabOrder["billing"]["mode"]>; discount?: number; collectedBy: string }
+    payment: {
+      mode: NonNullable<LabOrder["billing"]["mode"]>
+      discount?: number
+      collectedBy: string
+    },
   ): LabOrder | undefined {
-    return this.mutate(id, order => {
-      const discount = Math.max(0, Math.min(payment.discount || 0, order.billing.subtotal));
-      const total = order.billing.subtotal - discount;
+    return this.mutate(id, (order) => {
+      const discount = Math.max(
+        0,
+        Math.min(payment.discount || 0, order.billing.subtotal),
+      )
+      const total = order.billing.subtotal - discount
       return {
         ...order,
         status: "Billed",
@@ -343,30 +374,44 @@ export class LabOrderDatabase {
             detail: `₹${total.toLocaleString("en-IN")} via ${payment.mode} -- released to laboratory`,
           },
         ],
-      };
-    });
+      }
+    })
   }
 
-  static advanceStatus(id: string, status: LabOrderStatus, actor: string): LabOrder | undefined {
-    return this.mutate(id, order => ({
+  static advanceStatus(
+    id: string,
+    status: LabOrderStatus,
+    actor: string,
+  ): LabOrder | undefined {
+    return this.mutate(id, (order) => ({
       ...order,
       status,
       tests:
         status === "Sample Collected" || status === "In Progress"
-          ? order.tests.map(t => (t.status === "Completed" ? t : { ...t, status }))
+          ? order.tests.map((t) =>
+              t.status === "Completed" ? t : { ...t, status },
+            )
           : order.tests,
-      history: [...order.history, { at: new Date().toISOString(), actor, action: status }],
-    }));
+      history: [
+        ...order.history,
+        { at: new Date().toISOString(), actor, action: status },
+      ],
+    }))
   }
 
   static recordResult(
     id: string,
     testId: string,
-    result: { value: string; unit?: string; referenceRange?: string; flag?: LabOrderTest["flag"] },
-    actor: string
+    result: {
+      value: string
+      unit?: string
+      referenceRange?: string
+      flag?: LabOrderTest["flag"]
+    },
+    actor: string,
   ): LabOrder | undefined {
-    return this.mutate(id, order => {
-      const tests = order.tests.map(t =>
+    return this.mutate(id, (order) => {
+      const tests = order.tests.map((t) =>
         t.id === testId
           ? {
               ...t,
@@ -377,9 +422,9 @@ export class LabOrderDatabase {
               flag: (result.flag || "") as LabOrderTest["flag"],
               resultedAt: new Date().toISOString(),
             }
-          : t
-      );
-      const allDone = tests.every(t => t.status === "Completed");
+          : t,
+      )
+      const allDone = tests.every((t) => t.status === "Completed")
       return {
         ...order,
         tests,
@@ -396,22 +441,34 @@ export class LabOrderDatabase {
             at: new Date().toISOString(),
             actor,
             action: "Result entered",
-            detail: `${order.tests.find(t => t.id === testId)?.name || testId}: ${result.value}`,
+            detail: `${order.tests.find((t) => t.id === testId)?.name || testId}: ${result.value}`,
           },
         ],
-      };
-    });
+      }
+    })
   }
 
-  static cancelOrder(id: string, actor: string, reason: string): LabOrder | undefined {
-    return this.mutate(id, order => ({
+  static cancelOrder(
+    id: string,
+    actor: string,
+    reason: string,
+  ): LabOrder | undefined {
+    return this.mutate(id, (order) => ({
       ...order,
       status: "Cancelled",
-      billing: { ...order.billing, status: order.billing.status === "Paid" ? "Paid" : "Cancelled" },
+      billing: {
+        ...order.billing,
+        status: order.billing.status === "Paid" ? "Paid" : "Cancelled",
+      },
       history: [
         ...order.history,
-        { at: new Date().toISOString(), actor, action: "Cancelled", detail: reason },
+        {
+          at: new Date().toISOString(),
+          actor,
+          action: "Cancelled",
+          detail: reason,
+        },
       ],
-    }));
+    }))
   }
 }

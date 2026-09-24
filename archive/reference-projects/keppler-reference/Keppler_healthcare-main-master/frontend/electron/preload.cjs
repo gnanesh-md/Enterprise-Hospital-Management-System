@@ -1,4 +1,4 @@
-const { contextBridge } = require("electron");
+const { contextBridge } = require("electron")
 
 contextBridge.exposeInMainWorld("electron", {
   versions: {
@@ -6,4 +6,4 @@ contextBridge.exposeInMainWorld("electron", {
     electron: process.versions.electron,
     node: process.versions.node,
   },
-});
+})

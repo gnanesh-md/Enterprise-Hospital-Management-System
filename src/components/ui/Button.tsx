@@ -1,15 +1,14 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { cn } from "../../lib/cn";
+import type { ButtonHTMLAttributes, ReactNode } from "react"
+import { cn } from "../../lib/cn"
 
-type ButtonVariant =
-  "default" | "primary" | "secondary" | "ghost" | "destructive" | "danger";
-type ButtonSize = "default" | "sm" | "lg";
+type ButtonVariant = "default" | "primary" | "secondary" | "ghost" | "destructive" | "danger"
+type ButtonSize = "default" | "sm" | "lg"
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  children: ReactNode;
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-};
+  children: ReactNode
+  variant?: ButtonVariant
+  size?: ButtonSize
+}
 
 const variantClassMap: Record<ButtonVariant, string> = {
   default: "secondary",
@@ -18,13 +17,13 @@ const variantClassMap: Record<ButtonVariant, string> = {
   ghost: "ghost",
   destructive: "destructive",
   danger: "destructive",
-};
+}
 
 const sizeClassMap: Record<ButtonSize, string> = {
   default: "",
   sm: "ui-button-sm",
   lg: "ui-button-lg",
-};
+}
 
 export default function Button({
   children,
@@ -45,5 +44,5 @@ export default function Button({
     >
       {children}
     </button>
-  );
+  )
 }

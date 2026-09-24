@@ -1,5 +1,5 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite"
+import react from "@vitejs/plugin-react"
 
 export default defineConfig({
   plugins: [react()],
@@ -13,22 +13,26 @@ export default defineConfig({
       // backend's own same-path routes, which DO require a session + CSRF
       // token that these plain fetch() calls never send, producing a 403.
       "/api/symptom-ai/meta": {
-        target: process.env.SYMPTOM_BACKEND_PROXY_TARGET || "http://127.0.0.1:5002",
+        target:
+          process.env.SYMPTOM_BACKEND_PROXY_TARGET || "http://127.0.0.1:5002",
         changeOrigin: true,
         secure: false,
       },
       "/api/symptom-ai/detect-region": {
-        target: process.env.SYMPTOM_BACKEND_PROXY_TARGET || "http://127.0.0.1:5002",
+        target:
+          process.env.SYMPTOM_BACKEND_PROXY_TARGET || "http://127.0.0.1:5002",
         changeOrigin: true,
         secure: false,
       },
       "/api/symptom-ai/analyze": {
-        target: process.env.SYMPTOM_BACKEND_PROXY_TARGET || "http://127.0.0.1:5002",
+        target:
+          process.env.SYMPTOM_BACKEND_PROXY_TARGET || "http://127.0.0.1:5002",
         changeOrigin: true,
         secure: false,
       },
       "/api/symptom-ai/export/pdf": {
-        target: process.env.SYMPTOM_BACKEND_PROXY_TARGET || "http://127.0.0.1:5002",
+        target:
+          process.env.SYMPTOM_BACKEND_PROXY_TARGET || "http://127.0.0.1:5002",
         changeOrigin: true,
         secure: false,
       },
@@ -50,8 +54,8 @@ export default defineConfig({
     exclude: ["tests/e2e/**", "node_modules/**", "dist/**"],
     server: {
       deps: {
-        inline: ["@exodus/bytes", "html-encoding-sniffer"]
-      }
-    }
+        inline: ["@exodus/bytes", "html-encoding-sniffer"],
+      },
+    },
   },
-});
+})

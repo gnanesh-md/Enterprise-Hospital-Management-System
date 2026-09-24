@@ -26,6 +26,8 @@ export interface MasterDoctor {
   staffId: string
 
   selectedOnCard?: boolean
+
+  consultationFee?: number
 }
 
 /** Password every seeded local account uses -- see `demoCredentials.ts`. */
@@ -587,9 +589,33 @@ export const INITIAL_DOCTOR_MASTER: MasterDoctor[] = [
   },
 ]
 
+export function getDefaultFeeForSpecialty(specialty?: string | null): number {
+  if (!specialty) return 500
+  const s = specialty.toLowerCase()
+  if (s.includes("neuro")) return 800
+  if (s.includes("ortho")) return 700
+  if (s.includes("cardio")) return 500
+  if (s.includes("gastro")) return 600
+  if (s.includes("gyne") || s.includes("obg")) return 400
+  if (s.includes("pedia")) return 450
+  if (s.includes("urology")) return 600
+  if (s.includes("oncology")) return 900
+  if (s.includes("vascular")) return 750
+  if (s.includes("critical")) return 700
+  if (s.includes("radiology")) return 350
+  if (s.includes("ent")) return 400
+  return 500
+}
+
 const DOCTOR_MASTER_KEY = "hospai_doctor_master_v3"
 
 export function getDoctorMaster(): MasterDoctor[] {
+  INITIAL_DOCTOR_MASTER.forEach((d) => {
+    if (typeof d.consultationFee !== "number" || isNaN(d.consultationFee)) {
+      d.consultationFee = getDefaultFeeForSpecialty(d.specialty)
+    }
+  })
+
   if (typeof window === "undefined") return INITIAL_DOCTOR_MASTER
 
   try {
@@ -620,6 +646,14 @@ export function getDoctorMaster(): MasterDoctor[] {
       }
     }
 
+    for (const d of parsed) {
+      if (typeof d.consultationFee !== "number" || isNaN(d.consultationFee)) {
+        d.consultationFee = getDefaultFeeForSpecialty(d.specialty)
+
+        updated = true
+      }
+    }
+
     if (updated) {
       window.localStorage.setItem(DOCTOR_MASTER_KEY, JSON.stringify(parsed))
     }
@@ -631,7 +665,17 @@ export function getDoctorMaster(): MasterDoctor[] {
 }
 
 export function saveDoctorMaster(doctors: MasterDoctor[]): void {
-  if (typeof window === "undefined") return
+  if (typeof window === "undefined") {
+    doctors.forEach((updatedDoc) => {
+      const idx = INITIAL_DOCTOR_MASTER.findIndex((d) => d.id === updatedDoc.id)
+      if (idx !== -1) {
+        INITIAL_DOCTOR_MASTER[idx] = updatedDoc
+      } else {
+        INITIAL_DOCTOR_MASTER.push(updatedDoc)
+      }
+    })
+    return
+  }
 
   try {
     window.localStorage.setItem(DOCTOR_MASTER_KEY, JSON.stringify(doctors))
@@ -699,7 +743,22 @@ export const ACTIVE_SPECIALTIES = Array.from(
 ).sort()
 
 export function getDoctorByName(name: string): MasterDoctor | undefined {
-  return getDoctorMaster().find((d) => d.name === name)
+  if (!name) return undefined
+  const norm = name.replace(/^Dr\.\s*/i, "").trim().toLowerCase()
+  return getDoctorMaster().find(
+    (d) =>
+      d.name.toLowerCase() === name.toLowerCase() ||
+      d.name.replace(/^Dr\.\s*/i, "").trim().toLowerCase() === norm,
+  )
+}
+
+export function getDoctorConsultationFee(name: string): number {
+  if (!name) return 500
+  const doc = getDoctorByName(name)
+  if (doc && typeof doc.consultationFee === "number" && doc.consultationFee >= 0) {
+    return doc.consultationFee
+  }
+  return 500
 }
 
 export function doctorsForSpecialty(specialty: string): MasterDoctor[] {

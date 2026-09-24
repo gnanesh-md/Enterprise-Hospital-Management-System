@@ -363,7 +363,7 @@ const INITIAL_ROLES: AppRole[] = [
       "pharmacy_expiry",
     ],
   },
-];
+]
 
 export function getInitialUsers(): AppUser[] {
   const baseUsers: AppUser[] = [

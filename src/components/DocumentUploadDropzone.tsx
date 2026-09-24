@@ -1,13 +1,13 @@
-import { useId, useRef, useState } from "react";
-import { Button, Input } from "./ui";
+import { useId, useRef, useState } from "react"
+import { Button, Input } from "./ui"
 
 type Props = {
-  accept: string;
-  file?: File;
-  helperText?: string;
-  disabled?: boolean;
-  onFileSelect: (file: File | null) => void;
-};
+  accept: string
+  file?: File
+  helperText?: string
+  disabled?: boolean
+  onFileSelect: (file: File | null) => void
+}
 
 export default function DocumentUploadDropzone({
   accept,
@@ -16,29 +16,29 @@ export default function DocumentUploadDropzone({
   disabled = false,
   onFileSelect,
 }: Props) {
-  const inputId = useId();
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
+  const inputId = useId()
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   const pickFile = () => {
-    if (disabled) return;
-    inputRef.current?.click();
-  };
+    if (disabled) return
+    inputRef.current?.click()
+  }
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (disabled) return;
-    setIsDragOver(false);
-    const dropped = event.dataTransfer.files?.[0];
-    if (dropped) onFileSelect(dropped);
-  };
+    event.preventDefault()
+    if (disabled) return
+    setIsDragOver(false)
+    const dropped = event.dataTransfer.files?.[0]
+    if (dropped) onFileSelect(dropped)
+  }
 
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (!disabled) setIsDragOver(true);
-  };
+    event.preventDefault()
+    if (!disabled) setIsDragOver(true)
+  }
 
-  const handleDragLeave = () => setIsDragOver(false);
+  const handleDragLeave = () => setIsDragOver(false)
 
   return (
     <div className="upload-widget">
@@ -53,14 +53,16 @@ export default function DocumentUploadDropzone({
       />
 
       <div
-        className={`upload-dropzone${isDragOver ? " is-dragover" : ""}${disabled ? " is-disabled" : ""}`}
+        className={`upload-dropzone${isDragOver ? " is-dragover" : ""}${
+          disabled ? " is-disabled" : ""
+        }`}
         role="button"
         tabIndex={disabled ? -1 : 0}
         onClick={pickFile}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            pickFile();
+            event.preventDefault()
+            pickFile()
           }
         }}
         onDrop={handleDrop}
@@ -95,5 +97,5 @@ export default function DocumentUploadDropzone({
         </Button>
       </div>
     </div>
-  );
+  )
 }

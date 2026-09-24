@@ -1,35 +1,35 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ACTIVE_DOCTORS, MasterDoctor } from "../services/doctorMaster";
-import { notifyPatientCalledToNurse } from "../services/patientNotifications";
-import { Icon } from './icons';
-import { db, DBOPEncounter, DBPatient } from '../services/db';
+import React, { useState, useEffect, useMemo } from "react"
+import { ACTIVE_DOCTORS, MasterDoctor } from "../services/doctorMaster"
+import { notifyPatientCalledToNurse } from "../services/patientNotifications"
+import { Icon } from "./icons"
+import { db, DBOPEncounter, DBPatient } from "../services/db"
 
 interface OPManagementProps {
-  onNavigateToOPWorkflow?: (encId: string, step?: number) => void;
-  onNavigateToNurseStation?: () => void;
-  staffName?: string;
-  onNavigateToDoctorWorkflow?: (encId: string) => void;
-  onNavigateToQueue?: (dept?: string) => void;
-  onNavigateToOPRegistration?: () => void;
-  onNavigateToOPDProcedures?: () => void;
+  onNavigateToOPWorkflow?: (encId: string, step?: number) => void
+  onNavigateToNurseStation?: () => void
+  staffName?: string
+  onNavigateToDoctorWorkflow?: (encId: string) => void
+  onNavigateToQueue?: (dept?: string) => void
+  onNavigateToOPRegistration?: () => void
+  onNavigateToOPDProcedures?: () => void
 }
 
 interface DepartmentCapacity {
-  name: string;
-  code: string;
-  headDoctor: string;
-  activeDoctors: number;
-  totalDoctors: number;
-  rooms: string[];
-  capacityThreshold: number;
-  doctors: MasterDoctor[];
-  totalEncounters?: number;
-  waitingCount?: number;
-  inConsultCount?: number;
-  completedCount?: number;
-  loadPercentage?: number;
-  status?: string;
-  encounters?: DBOPEncounter[];
+  name: string
+  code: string
+  headDoctor: string
+  activeDoctors: number
+  totalDoctors: number
+  rooms: string[]
+  capacityThreshold: number
+  doctors: MasterDoctor[]
+  totalEncounters?: number
+  waitingCount?: number
+  inConsultCount?: number
+  completedCount?: number
+  loadPercentage?: number
+  status?: string
+  encounters?: DBOPEncounter[]
 }
 
 /** Statuses considered awaiting triage at Nurse Station */
@@ -39,49 +39,54 @@ const AWAITING_VITALS_STATUSES: DBOPEncounter["status"][] = [
   "AI Recommended",
   "Awaiting Doctor",
   "Doctor Assigned",
-];
+]
 
 // Helper: Calculate NEWS2 Early Warning Score from Vitals
-function calculateNEWS2(vitals?: { bp: string; pulse: string; temp: string; spo2: string }): { score: number; risk: "Low" | "Medium" | "High" } {
-  if (!vitals || !vitals.bp) return { score: 0, risk: "Low" };
-  let score = 0;
+function calculateNEWS2(vitals?: {
+  bp: string
+  pulse: string
+  temp: string
+  spo2: string
+}): { score: number ;risk: "Low" | "Medium" | "High" } {
+  if (!vitals || !vitals.bp) return { score: 0, risk: "Low" }
+  let score = 0
 
   // Pulse (bpm)
-  const pulse = parseInt(vitals.pulse) || 75;
-  if (pulse <= 40 || pulse >= 131) score += 3;
-  else if (pulse >= 111) score += 2;
-  else if (pulse <= 50 || pulse >= 91) score += 1;
+  const pulse = parseInt(vitals.pulse) || 75
+  if (pulse <= 40 || pulse >= 131) score += 3
+  else if (pulse >= 111) score += 2
+  else if (pulse <= 50 || pulse >= 91) score += 1
 
   // Temp (F)
-  const tempF = parseFloat(vitals.temp) || 98.6;
-  if (tempF < 95.0) score += 3;
-  else if (tempF >= 102.2) score += 2;
-  else if (tempF <= 96.8 || tempF >= 100.4) score += 1;
+  const tempF = parseFloat(vitals.temp) || 98.6
+  if (tempF < 95.0) score += 3
+  else if (tempF >= 102.2) score += 2
+  else if (tempF <= 96.8 || tempF >= 100.4) score += 1
 
   // SpO2 (%)
-  const spo2 = parseInt(vitals.spo2) || 98;
-  if (spo2 <= 91) score += 3;
-  else if (spo2 <= 93) score += 2;
-  else if (spo2 <= 95) score += 1;
+  const spo2 = parseInt(vitals.spo2) || 98
+  if (spo2 <= 91) score += 3
+  else if (spo2 <= 93) score += 2
+  else if (spo2 <= 95) score += 1
 
   // BP Systolic
-  const bpSys = parseInt((vitals.bp || "").split("/")[0]) || 120;
-  if (bpSys <= 90 || bpSys >= 220) score += 3;
-  else if (bpSys <= 100) score += 2;
-  else if (bpSys <= 110) score += 1;
+  const bpSys = parseInt((vitals.bp || "").split("/")[0]) || 120
+  if (bpSys <= 90 || bpSys >= 220) score += 3
+  else if (bpSys <= 100) score += 2
+  else if (bpSys <= 110) score += 1
 
-  let risk: "Low" | "Medium" | "High" = "Low";
-  if (score >= 7) risk = "High";
-  else if (score >= 5) risk = "Medium";
+  let risk: "Low" | "Medium" | "High" = "Low"
+  if (score >= 7) risk = "High"
+  else if (score >= 5) risk = "Medium"
 
-  return { score, risk };
+  return { score, risk }
 }
 
 // Clean Doctor Name Formatter
 function formatCleanDoctorName(name: string): string {
-  if (!name) return "Doctor";
+  if (!name) return "Doctor"
   // Remove multi-initial cluster bloat for clean sleek display
-  return name.replace(/Dr\.\s+([A-Z]\.\s*)+/g, "Dr. ");
+  return name.replace(/Dr\.\s+([A-Z]\.\s*)+/g, "Dr. ")
 }
 
 export default function OPManagement({
@@ -94,41 +99,48 @@ export default function OPManagement({
   onNavigateToOPDProcedures,
 }: OPManagementProps) {
   // DB state & subscription
-  const [encounters, setEncounters] = useState<DBOPEncounter[]>([]);
-  const [patients, setPatients] = useState<DBPatient[]>([]);
+  const [encounters, setEncounters] = useState<DBOPEncounter[]>([])
+  const [patients, setPatients] = useState<DBPatient[]>([])
 
   // View state
-  const [activeTab, setActiveTab] = useState<"patient_flow" | "doctor_chambers" | "department_capacity">("patient_flow");
-  const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("All");
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>("All");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [chamberFilterActiveOnly, setChamberFilterActiveOnly] = useState(false);
+  const [activeTab, setActiveTab] =
+    useState<"patient_flow" | "doctor_chambers" | "department_capacity">(
+      "patient_flow",
+    )
+  const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("All")
+  const [selectedStatusFilter, setSelectedStatusFilter] =
+    useState<string>("All")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [chamberFilterActiveOnly, setChamberFilterActiveOnly] = useState(false)
 
   // Modals
-  const [selectedDeptRoster, setSelectedDeptRoster] = useState<DepartmentCapacity | null>(null);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [selectedJourneyEncounter, setSelectedJourneyEncounter] = useState<DBOPEncounter | null>(null);
-  const [selectedChamberDetail, setSelectedChamberDetail] = useState<any | null>(null);
+  const [selectedDeptRoster, setSelectedDeptRoster] =
+    useState<DepartmentCapacity | null>(null)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false)
+  const [selectedJourneyEncounter, setSelectedJourneyEncounter] =
+    useState<DBOPEncounter | null>(null)
+  const [selectedChamberDetail, setSelectedChamberDetail] =
+    useState<any | null>(null)
 
   // Subscribe to DB
   useEffect(() => {
     const loadData = () => {
-      setEncounters(db.getEncounters());
-      setPatients(db.getPatients());
-    };
-    loadData();
-    const unsubscribe = db.subscribe(loadData);
+      setEncounters(db.getEncounters())
+      setPatients(db.getPatients())
+    }
+    loadData()
+    const unsubscribe = db.subscribe(loadData)
     return () => {
-      unsubscribe();
-    };
-  }, []);
+      unsubscribe()
+    }
+  }, [])
 
   // Department Config derived dynamically from doctor master
   const departmentRows = useMemo(() => {
-    const map: Record<string, DepartmentCapacity> = {};
+    const map: Record<string, DepartmentCapacity> = {}
 
-    ACTIVE_DOCTORS.forEach(d => {
-      const name = d.specialty || "General Medicine";
+    ACTIVE_DOCTORS.forEach((d) => {
+      const name = d.specialty || "General Medicine"
       if (!map[name]) {
         map[name] = {
           name,
@@ -139,41 +151,56 @@ export default function OPManagement({
           rooms: [],
           capacityThreshold: 0,
           doctors: [],
-        };
+        }
       }
-      const dept = map[name];
+      const dept = map[name]
       if (d.section === "Main" && (!dept.rooms.length || !dept.headDoctor)) {
-        dept.headDoctor = d.name;
+        dept.headDoctor = d.name
       }
-      dept.totalDoctors += 1;
-      if (d.section === "Main") dept.activeDoctors += 1;
-      if (!dept.rooms.includes(d.room)) dept.rooms.push(d.room);
-      dept.doctors.push(d);
-      dept.capacityThreshold = Math.max(5, dept.totalDoctors * 5);
-    });
+      dept.totalDoctors += 1
+      if (d.section === "Main") dept.activeDoctors += 1
+      if (!dept.rooms.includes(d.room)) dept.rooms.push(d.room)
+      dept.doctors.push(d)
+      dept.capacityThreshold = Math.max(5, dept.totalDoctors * 5)
+    })
 
     return Object.values(map)
-      .map(dept => {
-        const deptEncounters = encounters.filter(e =>
-          (e.dept || "").toLowerCase().includes(dept.name.toLowerCase()) ||
-          (e.aiSpecialty || "").toLowerCase().includes(dept.name.toLowerCase())
-        );
+      .map((dept) => {
+        const deptEncounters = encounters.filter(
+          (e) =>
+            (e.dept || "").toLowerCase().includes(dept.name.toLowerCase()) ||
+            (e.aiSpecialty || "")
+              .toLowerCase()
+              .includes(dept.name.toLowerCase()),
+        )
 
-        const waitingCount = deptEncounters.filter(e =>
-          e.status === "In Queue" || e.status === "Registered" || e.status === "Awaiting Doctor" || e.status === "Doctor Assigned"
-        ).length;
+        const waitingCount = deptEncounters.filter(
+          (e) =>
+            e.status === "In Queue" ||
+            e.status === "Registered" ||
+            e.status === "Awaiting Doctor" ||
+            e.status === "Doctor Assigned",
+        ).length
 
-        const inConsultCount = deptEncounters.filter(e => e.status === "Under Consultation").length;
-        const completedCount = deptEncounters.filter(e =>
-          e.status === "Consultation Completed" || e.status === "OP Completed" || e.status === "Billing Completed"
-        ).length;
+        const inConsultCount = deptEncounters.filter(
+          (e) => e.status === "Under Consultation",
+        ).length
+        const completedCount = deptEncounters.filter(
+          (e) =>
+            e.status === "Consultation Completed" ||
+            e.status === "OP Completed" ||
+            e.status === "Billing Completed",
+        ).length
 
-        const loadPercentage = Math.min(100, Math.round((waitingCount / dept.capacityThreshold) * 100));
+        const loadPercentage = Math.min(
+          100,
+          Math.round((waitingCount / dept.capacityThreshold) * 100),
+        )
 
-        let status = "Optimal";
-        if (loadPercentage > 85) status = "Overloaded";
-        else if (loadPercentage > 60) status = "High";
-        else if (loadPercentage > 30) status = "Normal";
+        let status = "Optimal"
+        if (loadPercentage > 85) status = "Overloaded"
+        else if (loadPercentage > 60) status = "High"
+        else if (loadPercentage > 30) status = "Normal"
 
         return {
           ...dept,
@@ -183,20 +210,35 @@ export default function OPManagement({
           completedCount,
           loadPercentage,
           status,
-          encounters: deptEncounters
-        };
+          encounters: deptEncounters,
+        }
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [encounters]);
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [encounters])
 
   // Overall Floor Stats
   const stats = useMemo(() => {
-    const totalVisits = encounters.length;
-    const awaitingVitals = encounters.filter(e => AWAITING_VITALS_STATUSES.includes(e.status)).length;
-    const readyInQueue = encounters.filter(e => e.status === "In Queue").length;
-    const inConsult = encounters.filter(e => e.status === "Under Consultation").length;
-    const completed = encounters.filter(e => e.status === "Consultation Completed" || e.status === "OP Completed" || e.status === "Billing Completed").length;
-    const activeDoctorsOnDuty = ACTIVE_DOCTORS.filter(d => d.section === "Main" || encounters.some(e => e.assignedDoctor === d.name)).length;
+    const totalVisits = encounters.length
+    const awaitingVitals = encounters.filter((e) =>
+      AWAITING_VITALS_STATUSES.includes(e.status),
+    ).length
+    const readyInQueue = encounters.filter(
+      (e) => e.status === "In Queue",
+    ).length
+    const inConsult = encounters.filter(
+      (e) => e.status === "Under Consultation",
+    ).length
+    const completed = encounters.filter(
+      (e) =>
+        e.status === "Consultation Completed" ||
+        e.status === "OP Completed" ||
+        e.status === "Billing Completed",
+    ).length
+    const activeDoctorsOnDuty = ACTIVE_DOCTORS.filter(
+      (d) =>
+        d.section === "Main" ||
+        encounters.some((e) => e.assignedDoctor === d.name),
+    ).length
 
     return {
       totalVisits,
@@ -205,25 +247,36 @@ export default function OPManagement({
       inConsult,
       completed,
       activeDoctorsOnDuty,
-    };
-  }, [encounters]);
+    }
+  }, [encounters])
 
   // Doctor Roster & Live Chamber Statuses
   const doctorRosterData = useMemo(() => {
-    const list = ACTIVE_DOCTORS.map(doc => {
-      const docEncounters = encounters.filter(e => e.assignedDoctor === doc.name);
-      const activePatient = docEncounters.find(e => e.status === "Under Consultation") || null;
-      const waitingQueue = docEncounters.filter(e => e.status === "In Queue");
-      const awaitingTriage = docEncounters.filter(e => AWAITING_VITALS_STATUSES.includes(e.status));
-      const completed = docEncounters.filter(e => e.status === "Consultation Completed" || e.status === "OP Completed" || e.status === "Billing Completed");
+    const list = ACTIVE_DOCTORS.map((doc) => {
+      const docEncounters = encounters.filter(
+        (e) => e.assignedDoctor === doc.name,
+      )
+      const activePatient =
+        docEncounters.find((e) => e.status === "Under Consultation") || null
+      const waitingQueue = docEncounters.filter((e) => e.status === "In Queue")
+      const awaitingTriage = docEncounters.filter((e) =>
+        AWAITING_VITALS_STATUSES.includes(e.status),
+      )
+      const completed = docEncounters.filter(
+        (e) =>
+          e.status === "Consultation Completed" ||
+          e.status === "OP Completed" ||
+          e.status === "Billing Completed",
+      )
 
-      let currentStatus: "CONSULTING" | "AVAILABLE" | "WAITING" | "OFF_DUTY" = "OFF_DUTY";
+      let currentStatus: "CONSULTING" | "AVAILABLE" | "WAITING" | "OFF_DUTY" =
+        "OFF_DUTY"
       if (activePatient) {
-        currentStatus = "CONSULTING";
+        currentStatus = "CONSULTING"
       } else if (waitingQueue.length > 0) {
-        currentStatus = "WAITING";
+        currentStatus = "WAITING"
       } else if (doc.section === "Main" || docEncounters.length > 0) {
-        currentStatus = "AVAILABLE";
+        currentStatus = "AVAILABLE"
       }
 
       return {
@@ -236,73 +289,114 @@ export default function OPManagement({
         awaitingTriageCount: awaitingTriage.length,
         completedCount: completed.length,
         totalBooked: docEncounters.length,
-        currentStatus
-      };
-    });
+        currentStatus,
+      }
+    })
 
     // Sort active chambers with patients or consultations FIRST
     return list.sort((a, b) => {
-      const scoreA = (a.activePatient ? 100 : 0) + a.waitingQueueCount * 10 + a.completedCount;
-      const scoreB = (b.activePatient ? 100 : 0) + b.waitingQueueCount * 10 + b.completedCount;
-      return scoreB - scoreA;
-    });
-  }, [encounters]);
+      const scoreA =
+        (a.activePatient ? 100 : 0) +
+        a.waitingQueueCount * 10 +
+        a.completedCount
+      const scoreB =
+        (b.activePatient ? 100 : 0) +
+        b.waitingQueueCount * 10 +
+        b.completedCount
+      return scoreB - scoreA
+    })
+  }, [encounters])
 
   // Filtered Doctor Chambers
   const filteredChambers = useMemo(() => {
-    if (!chamberFilterActiveOnly) return doctorRosterData;
-    return doctorRosterData.filter(d => d.activePatient || d.waitingQueueCount > 0 || d.completedCount > 0);
-  }, [doctorRosterData, chamberFilterActiveOnly]);
+    if (!chamberFilterActiveOnly) return doctorRosterData
+    return doctorRosterData.filter(
+      (d) => d.activePatient || d.waitingQueueCount > 0 || d.completedCount > 0,
+    )
+  }, [doctorRosterData, chamberFilterActiveOnly])
 
   // Filtered Encounters
   const filteredEncounters = useMemo(() => {
-    return encounters.filter(enc => {
+    return encounters.filter((enc) => {
       if (selectedDeptFilter !== "All") {
-        const encDept = (enc.dept || "").toLowerCase();
-        if (!encDept.includes(selectedDeptFilter.toLowerCase())) return false;
+        const encDept = (enc.dept || "").toLowerCase()
+        if (!encDept.includes(selectedDeptFilter.toLowerCase())) return false
       }
       if (selectedStatusFilter !== "All") {
-        if (selectedStatusFilter === "Triage" && !AWAITING_VITALS_STATUSES.includes(enc.status)) return false;
-        if (selectedStatusFilter === "In Queue" && enc.status !== "In Queue") return false;
-        if (selectedStatusFilter === "In Consult" && enc.status !== "Under Consultation") return false;
-        if (selectedStatusFilter === "Completed" && !["Consultation Completed", "OP Completed", "Billing Completed"].includes(enc.status)) return false;
+        if (
+          selectedStatusFilter === "Triage" &&
+          !AWAITING_VITALS_STATUSES.includes(enc.status)
+        )
+          return false
+        if (selectedStatusFilter === "In Queue" && enc.status !== "In Queue")
+          return false
+        if (
+          selectedStatusFilter === "In Consult" &&
+          enc.status !== "Under Consultation"
+        )
+          return false
+        if (
+          selectedStatusFilter === "Completed" &&
+          ![
+            "Consultation Completed",
+            "OP Completed",
+            "Billing Completed",
+          ].includes(enc.status)
+        )
+          return false
       }
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
+        const q = searchQuery.toLowerCase().trim()
         return (
           enc.patientName.toLowerCase().includes(q) ||
           enc.umr.toLowerCase().includes(q) ||
           enc.opNumber.toLowerCase().includes(q) ||
           (enc.assignedDoctor || "").toLowerCase().includes(q) ||
           (enc.chiefComplaint || "").toLowerCase().includes(q)
-        );
+        )
       }
-      return true;
-    });
-  }, [encounters, selectedDeptFilter, selectedStatusFilter, searchQuery]);
+      return true
+    })
+  }, [encounters, selectedDeptFilter, selectedStatusFilter, searchQuery])
 
   // Helper for specialty color pill styles
   const getSpecialtyBadgeStyle = (dept: string) => {
-    const d = (dept || "").toLowerCase();
-    if (d.includes("cardio")) return "bg-rose-50 text-rose-800 border-rose-200";
-    if (d.includes("ortho")) return "bg-amber-50 text-amber-800 border-amber-200";
-    if (d.includes("neuro")) return "bg-purple-50 text-purple-800 border-purple-200";
-    if (d.includes("pediat")) return "bg-teal-50 text-teal-800 border-teal-200";
-    if (d.includes("ent") || d.includes("ophthal")) return "bg-sky-50 text-sky-800 border-sky-200";
-    if (d.includes("gynaec") || d.includes("obg")) return "bg-pink-50 text-pink-800 border-pink-200";
-    return "bg-blue-50 text-blue-800 border-blue-200";
-  };
+    const d = (dept || "").toLowerCase()
+    if (d.includes("cardio")) return "bg-rose-50 text-rose-800 border-rose-200"
+    if (d.includes("ortho"))
+      return "bg-amber-50 text-amber-800 border-amber-200"
+    if (d.includes("neuro"))
+      return "bg-purple-50 text-purple-800 border-purple-200"
+    if (d.includes("pediat")) return "bg-teal-50 text-teal-800 border-teal-200"
+    if (d.includes("ent") || d.includes("ophthal"))
+      return "bg-sky-50 text-sky-800 border-sky-200"
+    if (d.includes("gynaec") || d.includes("obg"))
+      return "bg-pink-50 text-pink-800 border-pink-200"
+    return "bg-blue-50 text-blue-800 border-blue-200"
+  }
 
   // Call Patient to Nurse Station
   const callToNurse = (enc: DBOPEncounter) => {
-    notifyPatientCalledToNurse(enc);
-    db.callToNurseStation(enc.id, staffName);
-  };
+    notifyPatientCalledToNurse(enc)
+    db.callToNurseStation(enc.id, staffName)
+  }
 
   // Export CSV Report
   const handleExportCSV = () => {
-    const headers = ["Encounter_ID", "UMR", "OP_Number", "Patient_Name", "Age", "Sex", "Department", "Doctor", "Room", "Status", "Registration_Time"];
-    const rows = encounters.map(e => [
+    const headers = [
+      "Encounter_ID",
+      "UMR",
+      "OP_Number",
+      "Patient_Name",
+      "Age",
+      "Sex",
+      "Department",
+      "Doctor",
+      "Room",
+      "Status",
+      "Registration_Time",
+    ]
+    const rows = encounters.map((e) => [
       e.id,
       e.umr,
       e.opNumber,
@@ -310,22 +404,27 @@ export default function OPManagement({
       e.age,
       e.sex,
       `"${e.dept}"`,
-      `"${e.assignedDoctor || 'Unassigned'}"`,
+      `"${e.assignedDoctor || "Unassigned"}"`,
       e.room || "Room 101",
       e.status,
-      e.registrationTime || "10:00 AM"
-    ]);
+      e.registrationTime || "10:00 AM",
+    ])
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `OP_Management_Report_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setIsExportModalOpen(false);
-  };
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement("a")
+    link.setAttribute("href", encodedUri)
+    link.setAttribute(
+      "download",
+      `OP_Management_Report_${new Date().toISOString().slice(0, 10)}.csv`,
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    setIsExportModalOpen(false)
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F1F5F9] text-slate-800 font-sans overflow-hidden">
@@ -343,7 +442,8 @@ export default function OPManagement({
               </span>
             </h1>
             <p className="text-[11.5px] text-slate-500">
-              Outpatient floor status, active doctor chambers, and department capacity.
+              Outpatient floor status, active doctor chambers, and department
+              capacity.
             </p>
           </div>
         </div>
@@ -354,14 +454,16 @@ export default function OPManagement({
           <div className="relative">
             <input
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search patient, UMR, token..."
               className="pl-8 pr-3 h-8 text-xs border border-[#CBD5E1] rounded-none bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600 w-56 sm:w-64 font-medium shadow-2xs"
             />
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"><Icon.Search size={13} /></span>
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
+              <Icon.Search size={13} />
+            </span>
           </div>
 
-          <button 
+          <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
             className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-800 text-[12px] font-bold rounded-none transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs h-8"
@@ -373,7 +475,6 @@ export default function OPManagement({
 
       {/* ── MAIN WORKSPACE ── */}
       <div className="flex-1 overflow-y-auto p-5 space-y-4 max-w-7xl mx-auto w-full">
-
         {/* ── 1. VIBRANT SQUARED COLORFUL KPI CARDS ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div className="bg-blue-50/80 border border-blue-200 border-l-4 border-l-blue-600 rounded-none p-3 shadow-2xs">
@@ -381,8 +482,12 @@ export default function OPManagement({
               <span>Total OP Bookings</span>
               <span className="text-blue-600">📊</span>
             </div>
-            <div className="text-2xl font-bold font-mono text-blue-950 mt-1">{stats.totalVisits}</div>
-            <div className="text-[11px] text-blue-700 mt-0.5 font-medium">Today's encounters</div>
+            <div className="text-2xl font-bold font-mono text-blue-950 mt-1">
+              {stats.totalVisits}
+            </div>
+            <div className="text-[11px] text-blue-700 mt-0.5 font-medium">
+              Today's encounters
+            </div>
           </div>
 
           <div className="bg-amber-50/80 border border-amber-200 border-l-4 border-l-amber-500 rounded-none p-3 shadow-2xs">
@@ -390,8 +495,12 @@ export default function OPManagement({
               <span>Awaiting Vitals</span>
               <span className="text-amber-600">⏳</span>
             </div>
-            <div className="text-2xl font-bold font-mono text-amber-950 mt-1">{stats.awaitingVitals}</div>
-            <div className="text-[11px] text-amber-800 mt-0.5 font-medium">Pending triage</div>
+            <div className="text-2xl font-bold font-mono text-amber-950 mt-1">
+              {stats.awaitingVitals}
+            </div>
+            <div className="text-[11px] text-amber-800 mt-0.5 font-medium">
+              Pending triage
+            </div>
           </div>
 
           <div className="bg-sky-50/80 border border-sky-200 border-l-4 border-l-sky-600 rounded-none p-3 shadow-2xs">
@@ -399,8 +508,12 @@ export default function OPManagement({
               <span>Ready in Queue</span>
               <span className="text-sky-600">⏱️</span>
             </div>
-            <div className="text-2xl font-bold font-mono text-sky-950 mt-1">{stats.readyInQueue}</div>
-            <div className="text-[11px] text-sky-800 mt-0.5 font-medium">Awaiting doctor call</div>
+            <div className="text-2xl font-bold font-mono text-sky-950 mt-1">
+              {stats.readyInQueue}
+            </div>
+            <div className="text-[11px] text-sky-800 mt-0.5 font-medium">
+              Awaiting doctor call
+            </div>
           </div>
 
           <div className="bg-purple-50/80 border border-purple-200 border-l-4 border-l-purple-600 rounded-none p-3 shadow-2xs">
@@ -408,8 +521,12 @@ export default function OPManagement({
               <span>In Consultation</span>
               <span className="text-purple-600">👨‍⚕️</span>
             </div>
-            <div className="text-2xl font-bold font-mono text-purple-950 mt-1">{stats.inConsult}</div>
-            <div className="text-[11px] text-purple-800 mt-0.5 font-medium">Inside chambers</div>
+            <div className="text-2xl font-bold font-mono text-purple-950 mt-1">
+              {stats.inConsult}
+            </div>
+            <div className="text-[11px] text-purple-800 mt-0.5 font-medium">
+              Inside chambers
+            </div>
           </div>
 
           <div className="bg-emerald-50/80 border border-emerald-200 border-l-4 border-l-emerald-600 rounded-none p-3 shadow-2xs">
@@ -417,8 +534,12 @@ export default function OPManagement({
               <span>Completed Visits</span>
               <span className="text-emerald-600">✅</span>
             </div>
-            <div className="text-2xl font-bold font-mono text-emerald-950 mt-1">{stats.completed}</div>
-            <div className="text-[11px] text-emerald-800 mt-0.5 font-medium">Finished visits</div>
+            <div className="text-2xl font-bold font-mono text-emerald-950 mt-1">
+              {stats.completed}
+            </div>
+            <div className="text-[11px] text-emerald-800 mt-0.5 font-medium">
+              Finished visits
+            </div>
           </div>
         </div>
 
@@ -436,9 +557,13 @@ export default function OPManagement({
               }`}
             >
               <span>📋 OP Patient Roster</span>
-              <span className={`px-1.5 py-0.2 text-[11px] font-mono font-bold ${
-                activeTab === "patient_flow" ? "bg-white text-blue-900" : "bg-blue-100 text-blue-900 border border-blue-200"
-              }`}>
+              <span
+                className={`px-1.5 py-0.2 text-[11px] font-mono font-bold ${
+                  activeTab === "patient_flow"
+                    ? "bg-white text-blue-900"
+                    : "bg-blue-100 text-blue-900 border border-blue-200"
+                }`}
+              >
                 {filteredEncounters.length}
               </span>
             </button>
@@ -453,9 +578,13 @@ export default function OPManagement({
               }`}
             >
               <span>🚪 Doctor Chambers</span>
-              <span className={`px-1.5 py-0.2 text-[11px] font-mono font-bold ${
-                activeTab === "doctor_chambers" ? "bg-white text-emerald-900" : "bg-emerald-100 text-emerald-900 border border-emerald-200"
-              }`}>
+              <span
+                className={`px-1.5 py-0.2 text-[11px] font-mono font-bold ${
+                  activeTab === "doctor_chambers"
+                    ? "bg-white text-emerald-900"
+                    : "bg-emerald-100 text-emerald-900 border border-emerald-200"
+                }`}
+              >
                 {stats.activeDoctorsOnDuty} Active
               </span>
             </button>
@@ -470,9 +599,13 @@ export default function OPManagement({
               }`}
             >
               <span>🏥 Department Capacity</span>
-              <span className={`px-1.5 py-0.2 text-[11px] font-mono font-bold ${
-                activeTab === "department_capacity" ? "bg-white text-indigo-900" : "bg-indigo-100 text-indigo-900 border border-indigo-200"
-              }`}>
+              <span
+                className={`px-1.5 py-0.2 text-[11px] font-mono font-bold ${
+                  activeTab === "department_capacity"
+                    ? "bg-white text-indigo-900"
+                    : "bg-indigo-100 text-indigo-900 border border-indigo-200"
+                }`}
+              >
                 {departmentRows.length}
               </span>
             </button>
@@ -482,10 +615,12 @@ export default function OPManagement({
           <div className="flex items-center gap-2 overflow-x-auto shrink-0 flex-nowrap">
             {/* Status Filter */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-[#CBD5E1] rounded-none px-2.5 h-8 text-xs shrink-0">
-              <span className="text-slate-600 font-bold text-[11px] whitespace-nowrap">Status:</span>
+              <span className="text-slate-600 font-bold text-[11px] whitespace-nowrap">
+                Status:
+              </span>
               <select
                 value={selectedStatusFilter}
-                onChange={e => setSelectedStatusFilter(e.target.value)}
+                onChange={(e) => setSelectedStatusFilter(e.target.value)}
                 className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer text-xs rounded-none h-full"
               >
                 <option value="All">All Statuses</option>
@@ -498,15 +633,19 @@ export default function OPManagement({
 
             {/* Specialty Filter */}
             <div className="flex items-center gap-1.5 bg-slate-50 border border-[#CBD5E1] rounded-none px-2.5 h-8 text-xs shrink-0">
-              <span className="text-slate-600 font-bold text-[11px] whitespace-nowrap">Dept:</span>
+              <span className="text-slate-600 font-bold text-[11px] whitespace-nowrap">
+                Dept:
+              </span>
               <select
                 value={selectedDeptFilter}
-                onChange={e => setSelectedDeptFilter(e.target.value)}
+                onChange={(e) => setSelectedDeptFilter(e.target.value)}
                 className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer text-xs rounded-none h-full"
               >
                 <option value="All">All Specialties</option>
-                {departmentRows.map(d => (
-                  <option key={d.name} value={d.name}>{d.name}</option>
+                {departmentRows.map((d) => (
+                  <option key={d.name} value={d.name}>
+                    {d.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -545,12 +684,19 @@ export default function OPManagement({
                   </thead>
                   <tbody className="divide-y divide-[#E2E8F0] text-[12px]">
                     {filteredEncounters.map((enc) => {
-                      const isCompleted = enc.status === "Consultation Completed" || enc.status === "OP Completed" || enc.status === "Billing Completed";
-                      const isAwaitingVitals = AWAITING_VITALS_STATUSES.includes(enc.status);
-                      const news2 = calculateNEWS2(enc.vitals);
+                      const isCompleted =
+                        enc.status === "Consultation Completed" ||
+                        enc.status === "OP Completed" ||
+                        enc.status === "Billing Completed"
+                      const isAwaitingVitals =
+                        AWAITING_VITALS_STATUSES.includes(enc.status)
+                      const news2 = calculateNEWS2(enc.vitals)
 
                       return (
-                        <tr key={enc.id} className="hover:bg-blue-50/40 transition-colors">
+                        <tr
+                          key={enc.id}
+                          className="hover:bg-blue-50/40 transition-colors"
+                        >
                           {/* Token & UMR */}
                           <td className="px-4 py-3 whitespace-nowrap">
                             <span className="font-mono font-bold text-xs text-blue-900 bg-blue-100 px-2.5 py-1 rounded-none border border-blue-300 inline-block shadow-2xs">
@@ -563,25 +709,40 @@ export default function OPManagement({
 
                           {/* Patient Info */}
                           <td className="px-4 py-3">
-                            <div className="font-bold text-slate-900 text-[13px]">{enc.patientName}</div>
-                            <div className="text-[11px] text-slate-600 font-medium">{enc.age} yrs · {enc.sex} · {enc.phone}</div>
+                            <div className="font-bold text-slate-900 text-[13px]">
+                              {enc.patientName}
+                            </div>
+                            <div className="text-[11px] text-slate-600 font-medium">
+                              {enc.age} yrs · {enc.sex} · {enc.phone}
+                            </div>
                             <div className="text-[10.5px] text-slate-500 truncate max-w-xs mt-0.5 font-medium">
-                              💬 {enc.chiefComplaint || enc.symptoms.join(", ") || "General Evaluation"}
+                              💬{" "}
+                              {enc.chiefComplaint ||
+                                enc.symptoms.join(", ") ||
+                                "General Evaluation"}
                             </div>
                           </td>
 
                           {/* Dept & Doctor (MINIMALIST UNIFIED ALIGNED BADGE) */}
                           <td className="px-4 py-3 whitespace-nowrap">
                             <div className="flex items-center mb-1">
-                              <span className={`px-2.5 py-0.5 text-[11px] font-bold uppercase border ${getSpecialtyBadgeStyle(enc.dept)} rounded-none inline-flex items-center gap-1.5 h-5 leading-none shadow-2xs`}>
+                              <span
+                                className={`px-2.5 py-0.5 text-[11px] font-bold uppercase border ${getSpecialtyBadgeStyle(enc.dept)} rounded-none inline-flex items-center gap-1.5 h-5 leading-none shadow-2xs`}
+                              >
                                 <span>{enc.dept || "General Medicine"}</span>
-                                <span className="opacity-40 font-normal">|</span>
-                                <span className="font-mono text-slate-800 text-[10.5px] font-bold">{enc.room || "Room 101"}</span>
+                                <span className="opacity-40 font-normal">
+                                  |
+                                </span>
+                                <span className="font-mono text-slate-800 text-[10.5px] font-bold">
+                                  {enc.room || "Room 101"}
+                                </span>
                               </span>
                             </div>
                             <div className="text-[11.5px] text-slate-900 font-bold flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shrink-0"></span>
-                              <span>{enc.assignedDoctor || "Assigned by Reception"}</span>
+                              <span>
+                                {enc.assignedDoctor || "Assigned by Reception"}
+                              </span>
                             </div>
                           </td>
 
@@ -589,15 +750,20 @@ export default function OPManagement({
                           <td className="px-4 py-3 whitespace-nowrap">
                             {enc.vitals?.bp ? (
                               <div>
-                                <span className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase border inline-block ${
-                                  news2.risk === 'High' ? 'bg-red-100 text-red-900 border-red-300' :
-                                  news2.risk === 'Medium' ? 'bg-amber-100 text-amber-900 border-amber-300' :
-                                  'bg-emerald-100 text-emerald-900 border-emerald-300'
-                                }`}>
+                                <span
+                                  className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase border inline-block ${
+                                    news2.risk === "High"
+                                      ? "bg-red-100 text-red-900 border-red-300"
+                                      : news2.risk === "Medium"
+                                        ? "bg-amber-100 text-amber-900 border-amber-300"
+                                        : "bg-emerald-100 text-emerald-900 border-emerald-300"
+                                  }`}
+                                >
                                   NEWS2: {news2.score} ({news2.risk})
                                 </span>
                                 <div className="text-slate-700 font-mono text-[10.5px] mt-1 font-semibold">
-                                  BP: <strong>{enc.vitals.bp}</strong> · HR: <strong>{enc.vitals.pulse}</strong>
+                                  BP: <strong>{enc.vitals.bp}</strong> · HR:{" "}
+                                  <strong>{enc.vitals.pulse}</strong>
                                 </div>
                               </div>
                             ) : (
@@ -609,12 +775,17 @@ export default function OPManagement({
 
                           {/* Status */}
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-[10px] font-bold px-2.5 py-1 rounded-none uppercase border inline-block ${
-                              isCompleted ? 'bg-emerald-100 text-emerald-900 border-emerald-300' :
-                              enc.status === 'Under Consultation' ? 'bg-purple-100 text-purple-900 border-purple-300' :
-                              enc.status === 'In Queue' ? 'bg-blue-100 text-blue-900 border-blue-300' :
-                              'bg-amber-100 text-amber-900 border-amber-300'
-                            }`}>
+                            <span
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-none uppercase border inline-block ${
+                                isCompleted
+                                  ? "bg-emerald-100 text-emerald-900 border-emerald-300"
+                                  : enc.status === "Under Consultation"
+                                    ? "bg-purple-100 text-purple-900 border-purple-300"
+                                    : enc.status === "In Queue"
+                                      ? "bg-blue-100 text-blue-900 border-blue-300"
+                                      : "bg-amber-100 text-amber-900 border-amber-300"
+                              }`}
+                            >
                               {enc.status}
                             </span>
                           </td>
@@ -643,7 +814,9 @@ export default function OPManagement({
                               {onNavigateToDoctorWorkflow && (
                                 <button
                                   type="button"
-                                  onClick={() => onNavigateToDoctorWorkflow(enc.id)}
+                                  onClick={() =>
+                                    onNavigateToDoctorWorkflow(enc.id)
+                                  }
                                   className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-700 text-[11px] font-bold rounded-none cursor-pointer shadow-xs transition-colors"
                                 >
                                   Doctor →
@@ -652,7 +825,7 @@ export default function OPManagement({
                             </div>
                           </td>
                         </tr>
-                      );
+                      )
                     })}
                   </tbody>
                 </table>
@@ -671,7 +844,9 @@ export default function OPManagement({
                   <span className="w-2.5 h-2.5 bg-emerald-600 inline-block"></span>
                   Doctor Chamber Corridor Status
                 </h2>
-                <p className="text-[11.5px] text-slate-600 font-medium">Live room utilization &amp; consultant queue status.</p>
+                <p className="text-[11.5px] text-slate-600 font-medium">
+                  Live room utilization &amp; consultant queue status.
+                </p>
               </div>
 
               <div className="flex items-center gap-2">
@@ -696,7 +871,16 @@ export default function OPManagement({
                       : "bg-white text-slate-700 border-[#CBD5E1] hover:bg-slate-50"
                   }`}
                 >
-                  Active Today ({doctorRosterData.filter(d => d.activePatient || d.waitingQueueCount > 0 || d.completedCount > 0).length})
+                  Active Today (
+                  {
+                    doctorRosterData.filter(
+                      (d) =>
+                        d.activePatient ||
+                        d.waitingQueueCount > 0 ||
+                        d.completedCount > 0,
+                    ).length
+                  }
+                  )
                 </button>
               </div>
             </div>
@@ -714,24 +898,31 @@ export default function OPManagement({
                 </thead>
                 <tbody className="divide-y divide-[#E2E8F0] text-[12px]">
                   {filteredChambers.map((doc) => {
-                    const isConsulting = doc.currentStatus === "CONSULTING";
-                    const isWaiting = doc.currentStatus === "WAITING";
+                    const isConsulting = doc.currentStatus === "CONSULTING"
+                    const isWaiting = doc.currentStatus === "WAITING"
 
                     return (
-                      <tr key={doc.id} className="hover:bg-emerald-50/30 transition-colors">
+                      <tr
+                        key={doc.id}
+                        className="hover:bg-emerald-50/30 transition-colors"
+                      >
                         {/* Room & Doctor */}
                         <td className="px-4 py-3.5 whitespace-nowrap">
                           <div className="flex items-center gap-2.5">
                             <span className="font-mono font-bold text-xs bg-slate-100 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-none shadow-2xs">
                               {doc.room}
                             </span>
-                            <span className="font-bold text-slate-900 text-[13px]">{doc.cleanName}</span>
+                            <span className="font-bold text-slate-900 text-[13px]">
+                              {doc.cleanName}
+                            </span>
                           </div>
                         </td>
 
                         {/* Specialty */}
                         <td className="px-4 py-3.5 whitespace-nowrap">
-                          <span className={`text-[11px] font-bold px-2 py-0.5 border rounded-none inline-block ${getSpecialtyBadgeStyle(doc.specialty || "")}`}>
+                          <span
+                            className={`text-[11px] font-bold px-2 py-0.5 border rounded-none inline-block ${getSpecialtyBadgeStyle(doc.specialty || "")}`}
+                          >
                             {doc.specialty}
                           </span>
                         </td>
@@ -741,12 +932,15 @@ export default function OPManagement({
                           {isConsulting ? (
                             <span className="bg-purple-100 text-purple-950 border border-purple-300 font-bold text-[11.5px] px-2.5 py-1 rounded-none inline-flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
-                              In Consult: <strong>{doc.activePatient?.opNumber}</strong> ({doc.activePatient?.patientName})
+                              In Consult:{" "}
+                              <strong>{doc.activePatient?.opNumber}</strong> (
+                              {doc.activePatient?.patientName})
                             </span>
                           ) : isWaiting ? (
                             <span className="bg-amber-100 text-amber-950 border border-amber-300 font-bold text-[11.5px] px-2.5 py-1 rounded-none inline-flex items-center gap-1.5">
                               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                              <strong>{doc.waitingQueueCount} Waiting</strong> (Next: {doc.waitingQueue[0]?.opNumber})
+                              <strong>{doc.waitingQueueCount} Waiting</strong>{" "}
+                              (Next: {doc.waitingQueue[0]?.opNumber})
                             </span>
                           ) : (
                             <span className="bg-emerald-100 text-emerald-950 border border-emerald-300 font-bold text-[11.5px] px-2.5 py-1 rounded-none inline-flex items-center gap-1.5">
@@ -759,7 +953,14 @@ export default function OPManagement({
                         {/* Queue Metrics */}
                         <td className="px-4 py-3.5 text-center whitespace-nowrap font-mono text-[11.5px]">
                           <span className="text-slate-700 font-semibold">
-                            Queue: <strong className="text-slate-900">{doc.waitingQueueCount}</strong> · Done: <strong className="text-emerald-700">{doc.completedCount}</strong>
+                            Queue:{" "}
+                            <strong className="text-slate-900">
+                              {doc.waitingQueueCount}
+                            </strong>{" "}
+                            · Done:{" "}
+                            <strong className="text-emerald-700">
+                              {doc.completedCount}
+                            </strong>
                           </span>
                         </td>
 
@@ -774,7 +975,7 @@ export default function OPManagement({
                           </button>
                         </td>
                       </tr>
-                    );
+                    )
                   })}
                 </tbody>
               </table>
@@ -809,18 +1010,33 @@ export default function OPManagement({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#E2E8F0]">
-                  {departmentRows.map(d => (
-                    <tr key={d.name} className="hover:bg-indigo-50/30 transition-colors">
+                  {departmentRows.map((d) => (
+                    <tr
+                      key={d.name}
+                      className="hover:bg-indigo-50/30 transition-colors"
+                    >
                       <td className="px-4 py-3">
-                        <span className={`px-2 py-0.5 text-[11px] font-bold border rounded-none inline-block ${getSpecialtyBadgeStyle(d.name)}`}>
+                        <span
+                          className={`px-2 py-0.5 text-[11px] font-bold border rounded-none inline-block ${getSpecialtyBadgeStyle(d.name)}`}
+                        >
                           {d.name}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-900 font-bold">👨‍⚕️ {d.headDoctor}</td>
-                      <td className="px-4 py-3 font-mono font-bold text-slate-900">{d.activeDoctors} / {d.totalDoctors} Drs</td>
-                      <td className="px-4 py-3 font-mono font-bold text-amber-700">{d.waitingCount}</td>
-                      <td className="px-4 py-3 font-mono font-bold text-purple-700">{d.inConsultCount}</td>
-                      <td className="px-4 py-3 font-mono font-bold text-emerald-700">{d.completedCount}</td>
+                      <td className="px-4 py-3 text-slate-900 font-bold">
+                        👨‍⚕️ {d.headDoctor}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold text-slate-900">
+                        {d.activeDoctors} / {d.totalDoctors} Drs
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold text-amber-700">
+                        {d.waitingCount}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold text-purple-700">
+                        {d.inConsultCount}
+                      </td>
+                      <td className="px-4 py-3 font-mono font-bold text-emerald-700">
+                        {d.completedCount}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="w-28 space-y-1">
                           <div className="flex justify-between text-[10px] font-mono text-slate-700 font-bold">
@@ -828,10 +1044,16 @@ export default function OPManagement({
                             <span>{d.status}</span>
                           </div>
                           <div className="w-full h-2 bg-slate-200 rounded-none overflow-hidden border border-slate-300">
-                            <div className={`h-full transition-all ${
-                              (d.loadPercentage || 0) > 80 ? 'bg-red-600' :
-                              (d.loadPercentage || 0) > 50 ? 'bg-amber-500' : 'bg-emerald-600'
-                            }`} style={{ width: `${d.loadPercentage}%` }}></div>
+                            <div
+                              className={`h-full transition-all ${
+                                (d.loadPercentage || 0) > 80
+                                  ? "bg-red-600"
+                                  : (d.loadPercentage || 0) > 50
+                                    ? "bg-amber-500"
+                                    : "bg-emerald-600"
+                              }`}
+                              style={{ width: `${d.loadPercentage}%` }}
+                            ></div>
                           </div>
                         </div>
                       </td>
@@ -851,7 +1073,6 @@ export default function OPManagement({
             </div>
           </div>
         )}
-
       </div>
 
       {/* ── MODAL: PATIENT JOURNEY TIMELINE ── */}
@@ -860,34 +1081,90 @@ export default function OPManagement({
           <div className="bg-white border-2 border-[#CBD5E1] rounded-none shadow-xl max-w-lg w-full p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-2">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">Patient Journey — {selectedJourneyEncounter.patientName}</h3>
-                <p className="text-[11px] text-slate-500">UMR: {selectedJourneyEncounter.umr} · OP Token: {selectedJourneyEncounter.opNumber}</p>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Patient Journey — {selectedJourneyEncounter.patientName}
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  UMR: {selectedJourneyEncounter.umr} · OP Token:{" "}
+                  {selectedJourneyEncounter.opNumber}
+                </p>
               </div>
-              <button onClick={() => setSelectedJourneyEncounter(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button
+                onClick={() => setSelectedJourneyEncounter(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
             </div>
 
             {/* Visual Step Progress */}
             <div className="space-y-2 text-xs">
               {[
-                { stage: "Reception Registration", status: "Completed", desc: `Registered at ${selectedJourneyEncounter.registrationTime || '10:00 AM'}` },
-                { stage: "Nurse Vitals Baseline", status: selectedJourneyEncounter.vitals ? "Completed" : "Pending", desc: selectedJourneyEncounter.vitals ? `BP: ${selectedJourneyEncounter.vitals.bp}, HR: ${selectedJourneyEncounter.vitals.pulse}` : "Awaiting triage at Nurse Station" },
-                { stage: "Token Queue Call", status: selectedJourneyEncounter.status === "In Queue" || selectedJourneyEncounter.status === "Under Consultation" || selectedJourneyEncounter.status === "OP Completed" ? "Completed" : "Pending", desc: `Assigned Room: ${selectedJourneyEncounter.room || 'Chamber 101'}` },
-                { stage: "Physician Consultation", status: selectedJourneyEncounter.status === "Under Consultation" || selectedJourneyEncounter.status === "OP Completed" ? "Completed" : "Pending", desc: `Doctor: ${selectedJourneyEncounter.assignedDoctor || 'Assigned Consultant'}` },
+                {
+                  stage: "Reception Registration",
+                  status: "Completed",
+                  desc: `Registered at ${selectedJourneyEncounter.registrationTime || "10:00 AM"}`,
+                },
+                {
+                  stage: "Nurse Vitals Baseline",
+                  status: selectedJourneyEncounter.vitals
+                    ? "Completed"
+                    : "Pending",
+                  desc: selectedJourneyEncounter.vitals
+                    ? `BP: ${selectedJourneyEncounter.vitals.bp}, HR: ${selectedJourneyEncounter.vitals.pulse}`
+                    : "Awaiting triage at Nurse Station",
+                },
+                {
+                  stage: "Token Queue Call",
+                  status:
+                    selectedJourneyEncounter.status === "In Queue" ||
+                    selectedJourneyEncounter.status === "Under Consultation" ||
+                    selectedJourneyEncounter.status === "OP Completed"
+                      ? "Completed"
+                      : "Pending",
+                  desc: `Assigned Room: ${selectedJourneyEncounter.room || "Chamber 101"}`,
+                },
+                {
+                  stage: "Physician Consultation",
+                  status:
+                    selectedJourneyEncounter.status === "Under Consultation" ||
+                    selectedJourneyEncounter.status === "OP Completed"
+                      ? "Completed"
+                      : "Pending",
+                  desc: `Doctor: ${selectedJourneyEncounter.assignedDoctor || "Assigned Consultant"}`,
+                },
               ].map((step, idx) => (
-                <div key={idx} className="flex items-start gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-none">
-                  <div className={`w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded-none ${
-                    step.status === 'Completed' ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
-                  }`}>
-                    {step.status === 'Completed' ? '✓' : idx + 1}
+                <div
+                  key={idx}
+                  className="flex items-start gap-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-none"
+                >
+                  <div
+                    className={`w-5 h-5 flex items-center justify-center text-[10px] font-bold rounded-none ${
+                      step.status === "Completed"
+                        ? "bg-emerald-600 text-white"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    {step.status === "Completed" ? "✓" : idx + 1}
                   </div>
                   <div className="flex-1">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-900">{step.stage}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none border ${
-                        step.status === 'Completed' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
-                      }`}>{step.status}</span>
+                      <span className="font-bold text-slate-900">
+                        {step.stage}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded-none border ${
+                          step.status === "Completed"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            : "bg-amber-50 text-amber-800 border-amber-200"
+                        }`}
+                      >
+                        {step.status}
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{step.desc}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {step.desc}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -912,35 +1189,57 @@ export default function OPManagement({
           <div className="bg-white border-2 border-[#CBD5E1] rounded-none shadow-xl max-w-xl w-full p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-200 pb-2">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">Chamber Queue — {selectedChamberDetail.name}</h3>
-                <p className="text-xs text-slate-500">{selectedChamberDetail.specialty} · Room {selectedChamberDetail.room}</p>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  Chamber Queue — {selectedChamberDetail.name}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {selectedChamberDetail.specialty} · Room{" "}
+                  {selectedChamberDetail.room}
+                </p>
               </div>
-              <button onClick={() => setSelectedChamberDetail(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button
+                onClick={() => setSelectedChamberDetail(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="space-y-2 max-h-72 overflow-y-auto">
               {selectedChamberDetail.waitingQueue.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-500">No patients waiting in queue for this chamber.</div>
+                <div className="p-6 text-center text-xs text-slate-500">
+                  No patients waiting in queue for this chamber.
+                </div>
               ) : (
-                selectedChamberDetail.waitingQueue.map((patient: DBOPEncounter, idx: number) => (
-                  <div key={patient.id} className="p-3 bg-slate-50 border border-slate-200 rounded-none flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 border border-blue-200">
-                        #{idx + 1} Token {patient.opNumber}
-                      </span>
-                      <div>
-                        <div className="font-bold text-slate-900">{patient.patientName}</div>
-                        <div className="text-[11px] text-slate-500">UMR: {patient.umr} · {patient.age} yrs ({patient.sex})</div>
+                selectedChamberDetail.waitingQueue.map(
+                  (patient: DBOPEncounter, idx: number) => (
+                    <div
+                      key={patient.id}
+                      className="p-3 bg-slate-50 border border-slate-200 rounded-none flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 border border-blue-200">
+                          #{idx + 1} Token {patient.opNumber}
+                        </span>
+                        <div>
+                          <div className="font-bold text-slate-900">
+                            {patient.patientName}
+                          </div>
+                          <div className="text-[11px] text-slate-500">
+                            UMR: {patient.umr} · {patient.age} yrs (
+                            {patient.sex})
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-[10.5px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 font-bold">
+                          {patient.status}
+                        </span>
                       </div>
                     </div>
-
-                    <div className="text-right">
-                      <span className="text-[10.5px] bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 font-bold">
-                        {patient.status}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  ),
+                )
               )}
             </div>
 
@@ -961,11 +1260,26 @@ export default function OPManagement({
       {isExportModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white border-2 border-[#CBD5E1] rounded-none shadow-xl max-w-md w-full p-5 space-y-4">
-            <h3 className="font-bold text-slate-900 text-sm">Export Daily OP Report</h3>
-            <p className="text-xs text-slate-600">Download CSV dataset of today's outpatient encounters ({encounters.length} records).</p>
+            <h3 className="font-bold text-slate-900 text-sm">
+              Export Daily OP Report
+            </h3>
+            <p className="text-xs text-slate-600">
+              Download CSV dataset of today's outpatient encounters (
+              {encounters.length} records).
+            </p>
             <div className="flex justify-end gap-2 text-xs font-bold pt-1">
-              <button onClick={() => setIsExportModalOpen(false)} className="px-3 py-1.5 bg-slate-100 rounded-none text-slate-700">Cancel</button>
-              <button onClick={handleExportCSV} className="px-4 py-1.5 bg-[#1B4FD8] text-white rounded-none">Download CSV</button>
+              <button
+                onClick={() => setIsExportModalOpen(false)}
+                className="px-3 py-1.5 bg-slate-100 rounded-none text-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleExportCSV}
+                className="px-4 py-1.5 bg-[#1B4FD8] text-white rounded-none"
+              >
+                Download CSV
+              </button>
             </div>
           </div>
         </div>
@@ -977,18 +1291,32 @@ export default function OPManagement({
           <div className="bg-white border-2 border-[#CBD5E1] rounded-none shadow-xl max-w-md w-full p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-200 pb-2">
               <div>
-                <h3 className="font-bold text-slate-900 text-sm">{selectedDeptRoster.name} Roster</h3>
-                <p className="text-xs text-slate-500">Head Doctor: {selectedDeptRoster.headDoctor}</p>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {selectedDeptRoster.name} Roster
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Head Doctor: {selectedDeptRoster.headDoctor}
+                </p>
               </div>
-              <button onClick={() => setSelectedDeptRoster(null)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button
+                onClick={() => setSelectedDeptRoster(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
             </div>
 
             <div className="space-y-1.5 max-h-56 overflow-y-auto">
-              {selectedDeptRoster.doctors.map(doc => (
-                <div key={doc.id} className="p-2.5 bg-slate-50 border border-slate-200 rounded-none flex justify-between items-center text-xs">
+              {selectedDeptRoster.doctors.map((doc) => (
+                <div
+                  key={doc.id}
+                  className="p-2.5 bg-slate-50 border border-slate-200 rounded-none flex justify-between items-center text-xs"
+                >
                   <div>
                     <span className="font-bold text-slate-900">{doc.name}</span>
-                    <p className="text-slate-500 text-[10.5px]">{doc.qualification}</p>
+                    <p className="text-slate-500 text-[10.5px]">
+                      {doc.qualification}
+                    </p>
                   </div>
                   <span className="font-mono bg-slate-900 text-white px-2 py-0.5 rounded-none text-[10.5px] font-bold">
                     📍 {doc.room}
@@ -1009,5 +1337,5 @@ export default function OPManagement({
         </div>
       )}
     </div>
-  );
+  )
 }

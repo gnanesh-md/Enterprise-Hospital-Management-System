@@ -1,16 +1,16 @@
-import { act } from "react";
-import { createRoot } from "react-dom/client";
-import BillingPage from "./BillingPage";
+import { act } from "react"
+import { createRoot } from "react-dom/client"
+import BillingPage from "./BillingPage"
 
 function flush() {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 function jsonResponse(payload: unknown) {
   return Promise.resolve({
     ok: true,
     json: () => Promise.resolve(payload),
-  });
+  })
 }
 
 describe("BillingPage", () => {
@@ -22,47 +22,47 @@ describe("BillingPage", () => {
           total_collected: 0,
           total_due: 0,
           payment_mode_breakdown: [],
-        });
+        })
       }
       if (url.includes("/api/billing/invoices")) {
         return jsonResponse({
           invoices: [{ id: 1, invoice_no: "INV-1", due_amount: 2500 }],
-        });
+        })
       }
-      return jsonResponse({});
-    });
-    global.fetch = fetchMock as any;
+      return jsonResponse({})
+    })
+    global.fetch = (fetchMock as any)
 
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
+    const container = document.createElement("div")
+    document.body.appendChild(container)
+    const root = createRoot(container)
 
     await act(async () => {
-      root.render(<BillingPage setNotice={vi.fn()} />);
-      await flush();
-      await flush();
-    });
+      root.render(<BillingPage setNotice={vi.fn()} />)
+      await flush()
+      await flush()
+    })
 
-    expect(container.textContent).toContain("Record Payment");
+    expect(container.textContent).toContain("Record Payment")
     expect(
       container.querySelector('select[aria-label="Billing payment invoice"]'),
-    ).toBeTruthy();
+    ).toBeTruthy()
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/billing/revenue-summary"),
       expect.any(Object),
-    );
+    )
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/billing/invoices"),
       expect.any(Object),
-    );
+    )
     expect(fetchMock).not.toHaveBeenCalledWith(
       expect.stringContaining("/api/billing/claims"),
       expect.any(Object),
-    );
+    )
 
     act(() => {
-      root.unmount();
-    });
-    container.remove();
-  });
-});
+      root.unmount()
+    })
+    container.remove()
+  })
+})

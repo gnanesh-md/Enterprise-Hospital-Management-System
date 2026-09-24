@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { apiFetch } from "../lib/api";
-import StatCard from "../components/StatCard";
+import React, { useState, useEffect } from "react"
+import { apiFetch } from "../lib/api"
+import StatCard from "../components/StatCard"
 import {
   Button,
   Card,
@@ -15,56 +15,56 @@ import {
   Modal,
   Input,
   Label,
-} from "../components/ui";
+} from "../components/ui"
 
 export default function PatientExperiencePage({
   setNotice,
 }: {
-  setNotice: any;
+  setNotice: any
 }) {
-  const [feedback, setFeedback] = useState<any[]>([]);
+  const [feedback, setFeedback] = useState<any[]>([])
   const [summary, setSummary] = useState({
     total_responses: 0,
     average_rating: 0,
     unresolved_low_rated: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
+  })
+  const [loading, setLoading] = useState(true)
+  const [showAddModal, setShowAddModal] = useState(false)
   const [manualFeedback, setManualFeedback] = useState({
     patient_id: "",
     comment: "",
-  });
-  const [saving, setSaving] = useState(false);
+  })
+  const [saving, setSaving] = useState(false)
 
   const loadData = () => {
-    setLoading(true);
+    setLoading(true)
     Promise.all([
       apiFetch<{ feedback: any[] }>("/api/whatsapp/feedback"),
       apiFetch<any>("/api/whatsapp/feedback/summary"),
     ])
       .then(([fData, sData]) => {
-        setFeedback(fData.feedback || []);
+        setFeedback(fData.feedback || [])
         setSummary(
           sData || {
             total_responses: 0,
             average_rating: 0,
             unresolved_low_rated: 0,
           },
-        );
+        )
       })
       .catch((err) => {
-        console.error(err);
+        console.error(err)
         setNotice({
           type: "error",
           message: "Failed to load patient experience data.",
-        });
+        })
       })
-      .finally(() => setLoading(false));
-  };
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadData()
+  }, [])
 
   const exportCSV = () => {
     const headers = [
@@ -74,7 +74,7 @@ export default function PatientExperiencePage({
       "Received At",
       "WhatsApp Msg ID",
       "Phone",
-    ];
+    ]
     const rows = filteredFeedback.map((f) => [
       f.patient_id || "",
       f.patient_name || "Unknown",
@@ -82,53 +82,51 @@ export default function PatientExperiencePage({
       f.received_at,
       f.whatsapp_message_id || "",
       f.phone_number || "",
-    ]);
+    ])
 
     const csvContent = [
       headers.join(","),
       ...rows.map((e) => `"${e.join('","')}"`),
-    ].join("\n");
+    ].join("\n")
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.setAttribute("href", url)
     link.setAttribute(
       "download",
       `patient_feedback_${new Date().toISOString().split("T")[0]}.csv`,
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+    )
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   const sortedFeedback = [...feedback].sort((a, b) => {
-    return (
-      new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
-    );
-  });
+    return new Date(b.received_at).getTime() - new Date(a.received_at).getTime()
+  })
 
-  const filteredFeedback = sortedFeedback;
+  const filteredFeedback = sortedFeedback
 
   const submitManualFeedback = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualFeedback.comment) return;
-    setSaving(true);
+    e.preventDefault()
+    if (!manualFeedback.comment) return
+    setSaving(true)
     try {
       await apiFetch("/api/whatsapp/feedback", {
         method: "POST",
         body: JSON.stringify(manualFeedback),
-      });
-      setNotice({ type: "success", message: "Feedback logged successfully." });
-      setShowAddModal(false);
-      setManualFeedback({ patient_id: "", comment: "" });
-      loadData();
+      })
+      setNotice({ type: "success", message: "Feedback logged successfully." })
+      setShowAddModal(false)
+      setManualFeedback({ patient_id: "", comment: "" })
+      loadData()
     } catch (err) {
-      setNotice({ type: "error", message: "Failed to log feedback." });
+      setNotice({ type: "error", message: "Failed to log feedback." })
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -144,7 +142,7 @@ export default function PatientExperiencePage({
           <p>Loading patient insights...</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -338,5 +336,5 @@ export default function PatientExperiencePage({
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

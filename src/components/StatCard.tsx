@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from "react"
 
 type Props = {
-  label: string;
-  value: string | number;
-  icon?: ReactNode;
-};
+  label: string
+  value: string | number
+  icon?: ReactNode
+}
 
 export default function StatCard({ label, value, icon }: Props) {
   return (
@@ -15,5 +15,5 @@ export default function StatCard({ label, value, icon }: Props) {
         <h3>{value}</h3>
       </div>
     </div>
-  );
+  )
 }

@@ -1,7 +1,7 @@
 type Props = {
-  label: string;
-  value: string | number;
-};
+  label: string
+  value: string | number
+}
 
 export default function StatCard({ label, value }: Props) {
   return (
@@ -9,5 +9,5 @@ export default function StatCard({ label, value }: Props) {
       <p>{label}</p>
       <h3>{value}</h3>
     </div>
-  );
+  )
 }

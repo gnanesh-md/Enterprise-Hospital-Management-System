@@ -216,10 +216,10 @@ export function usePharmacyData() {
         new Date().getTime() + 90 * 24 * 60 * 60 * 1000,
     )
     .map((b) => {
-      const m = medicines.find((m) => m.id === b.medicineId);
+      const m = medicines.find((m) => m.id === b.medicineId)
       const daysLeft = Math.ceil(
         (new Date(b.expiryDate).getTime() - Date.now()) / (24 * 60 * 60 * 1000),
-      );
+      )
       return {
         id: b.id,
 
@@ -265,13 +265,18 @@ export function usePharmacyData() {
         (b.billDate || "").startsWith(dateStr) &&
         !b.billNumber?.startsWith("MOD-") &&
         !(b as any).isModifiedReturnBill,
-    );
-    const dayReturns = (typeof PharmacyDatabase.getReturns === "function" ? PharmacyDatabase.getReturns() : []).filter(
-      (r: any) => (r.createdAt || "").startsWith(dateStr),
-    );
-    const dayGross = dayBills.reduce((acc, b) => acc + (b.totalAmount || 0), 0);
-    const dayRefunds = dayReturns.reduce((acc: number, r: any) => acc + (r.refundAmount || 0), 0);
-    const dayNetRevenue = Math.max(0, dayGross - dayRefunds);
+    )
+    const dayReturns = (
+      typeof PharmacyDatabase.getReturns === "function"
+        ? PharmacyDatabase.getReturns()
+        : []
+    ).filter((r: any) => (r.createdAt || "").startsWith(dateStr))
+    const dayGross = dayBills.reduce((acc, b) => acc + (b.totalAmount || 0), 0)
+    const dayRefunds = dayReturns.reduce(
+      (acc: number, r: any) => acc + (r.refundAmount || 0),
+      0,
+    )
+    const dayNetRevenue = Math.max(0, dayGross - dayRefunds)
 
     return {
       date: new Date(dateStr).toLocaleDateString("en-US", { weekday: "short" }),
@@ -279,26 +284,26 @@ export function usePharmacyData() {
       gross: dayGross,
       refunds: dayRefunds,
       orders: dayBills.length,
-    };
-  });
+    }
+  })
 
   const refresh = () => {
-    setMedicines(PharmacyDatabase.getMedicines());
-    setPrescriptions(PharmacyDatabase.getPrescriptions());
-    setSuppliers(PharmacyDatabase.getSuppliers());
-    setPurchaseOrders(PharmacyDatabase.getPurchaseOrders());
-    setCategories(PharmacyDatabase.getCategories());
-    setBatches(PharmacyDatabase.getBatches());
-    setBills(PharmacyDatabase.getBills());
-    setUsers(PharmacyDatabase.getUsers());
-    setNotifications(PharmacyDatabase.getNotifications());
-    setAuditLogs(PharmacyDatabase.getAuditLogs());
-    setStockTransfers(PharmacyDatabase.getTransfers());
-    setStockTransactions(PharmacyDatabase.getStockTransactions());
-    setGrns(PharmacyDatabase.getGRNs());
-    setSupplierReturns(PharmacyDatabase.getSupplierReturns());
-    setAdjustments(PharmacyDatabase.getAdjustments());
-  };
+    setMedicines(PharmacyDatabase.getMedicines())
+    setPrescriptions(PharmacyDatabase.getPrescriptions())
+    setSuppliers(PharmacyDatabase.getSuppliers())
+    setPurchaseOrders(PharmacyDatabase.getPurchaseOrders())
+    setCategories(PharmacyDatabase.getCategories())
+    setBatches(PharmacyDatabase.getBatches())
+    setBills(PharmacyDatabase.getBills())
+    setUsers(PharmacyDatabase.getUsers())
+    setNotifications(PharmacyDatabase.getNotifications())
+    setAuditLogs(PharmacyDatabase.getAuditLogs())
+    setStockTransfers(PharmacyDatabase.getTransfers())
+    setStockTransactions(PharmacyDatabase.getStockTransactions())
+    setGrns(PharmacyDatabase.getGRNs())
+    setSupplierReturns(PharmacyDatabase.getSupplierReturns())
+    setAdjustments(PharmacyDatabase.getAdjustments())
+  }
 
   useEffect(() => {
     const handleUpdate = () => refresh()
@@ -435,11 +440,14 @@ export function usePharmacyData() {
       totalPurchase: 0,
     })),
     purchaseOrders: purchaseOrders
-      .filter((p) => p.supplierId && suppliers.some((s) => s.id === p.supplierId))
+      .filter(
+        (p) => p.supplierId && suppliers.some((s) => s.id === p.supplierId),
+      )
       .map((p) => ({
         ...p,
         supplier:
-          suppliers.find((s) => s.id === p.supplierId)?.supplierName || "Supplier",
+          suppliers.find((s) => s.id === p.supplierId)?.supplierName ||
+          "Supplier",
         itemsCount: p.items ? p.items.length : 0,
         items: p.items || [],
         total: p.totalOrderValue || 0,

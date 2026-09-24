@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Dispatch, FormEvent, SetStateAction } from "react";
-import PatientAutocomplete from "../components/PatientAutocomplete";
+import { useEffect, useMemo, useState } from "react"
+import type { Dispatch, FormEvent, SetStateAction } from "react"
+import PatientAutocomplete from "../components/PatientAutocomplete"
 import {
   Alert,
   Button,
@@ -14,128 +14,127 @@ import {
   TableRow,
   Tabs,
   TabsTrigger,
-} from "../components/ui";
-import { apiFetch, reportError } from "../lib/api";
-import { formatDate } from "../lib/format";
-import type { Notice, Patient, PharmacySale } from "../types";
-import { API_BASE } from "../lib/constants";
+} from "../components/ui"
+import { apiFetch, reportError } from "../lib/api"
+import { formatDate } from "../lib/format"
+import type { Notice, Patient, PharmacySale } from "../types"
+import { API_BASE } from "../lib/constants"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+}
 
-type PharmacyTab =
-  "overview" | "inventory" | "prescriptions" | "sales" | "suppliers";
+type PharmacyTab = "overview" | "inventory" | "prescriptions" | "sales" | "suppliers"
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 10
 
 // Items expiring within this many days surface in the overview alert banner
 // alongside low/out-of-stock -- expiry_date was already tracked on every
 // inventory row but never actually used for anything before this.
-const EXPIRY_WARNING_DAYS = 30;
+const EXPIRY_WARNING_DAYS = 30
 
 type PharmacySummary = {
-  low_stock_count: number;
-  out_of_stock_count: number;
-  damaged_stock_count: number;
-  sales_total: number;
-};
+  low_stock_count: number
+  out_of_stock_count: number
+  damaged_stock_count: number
+  sales_total: number
+}
 
 type InventoryItem = {
-  id: number;
-  medicine_name: string;
-  batch_no?: string;
-  quantity?: number;
-  reorder_level?: number;
-  unit_price?: number;
-  expiry_date?: string;
-  stock_condition?: string;
-};
+  id: number
+  medicine_name: string
+  batch_no?: string
+  quantity?: number
+  reorder_level?: number
+  unit_price?: number
+  expiry_date?: string
+  stock_condition?: string
+}
 
 type InventoryForm = {
-  id: string;
-  medicine_name: string;
-  batch_no: string;
-  quantity: string;
-  reorder_level: string;
-  unit_price: string;
-  expiry_date: string;
-  stock_condition: "proper" | "damaged";
-};
+  id: string
+  medicine_name: string
+  batch_no: string
+  quantity: string
+  reorder_level: string
+  unit_price: string
+  expiry_date: string
+  stock_condition: "proper" | "damaged"
+}
 
 type SaleForm = {
-  invoice_id: string;
-  patient_id: string;
-  prescription_ref: string;
-  medicine_name: string;
-  quantity: string;
-  unit_price: string;
-};
+  invoice_id: string
+  patient_id: string
+  prescription_ref: string
+  medicine_name: string
+  quantity: string
+  unit_price: string
+}
 
 type Supplier = {
-  id: number;
-  supplier_name: string;
-  contact_person?: string;
-  phone?: string;
-  status?: string;
-};
+  id: number
+  supplier_name: string
+  contact_person?: string
+  phone?: string
+  status?: string
+}
 
 type Purchase = {
-  id: number;
-  supplier_id?: number | null;
-  medicine_name: string;
-  quantity?: number;
-  unit_cost?: number;
-  total_cost?: number;
-  status?: string;
-  expected_date?: string | null;
-  received_date?: string | null;
-};
+  id: number
+  supplier_id?: number | null
+  medicine_name: string
+  quantity?: number
+  unit_cost?: number
+  total_cost?: number
+  status?: string
+  expected_date?: string | null
+  received_date?: string | null
+}
 
 type SupplierForm = {
-  id: string;
-  supplier_name: string;
-  contact_person: string;
-  phone: string;
-  status: "active" | "inactive";
-};
+  id: string
+  supplier_name: string
+  contact_person: string
+  phone: string
+  status: "active" | "inactive"
+}
 
 type PendingPrescription = {
-  id: number;
-  hospital_id: number;
-  patient_id: string;
-  patient_name: string;
-  patient_last_name: string;
-  doctor_username: string;
-  medicines_json: string;
-  status: string;
-  created_at: string;
-  doc_id?: number;
-};
+  id: number
+  hospital_id: number
+  patient_id: string
+  patient_name: string
+  patient_last_name: string
+  doctor_username: string
+  medicines_json: string
+  status: string
+  created_at: string
+  doc_id?: number
+}
 
 type PurchaseForm = {
-  id: string;
-  supplier_id: string;
-  medicine_name: string;
-  quantity: string;
-  unit_cost: string;
-  status: "ordered" | "received" | "cancelled";
-  expected_date: string;
-  received_date: string;
-};
+  id: string
+  supplier_id: string
+  medicine_name: string
+  quantity: string
+  unit_cost: string
+  status: "ordered" | "received" | "cancelled"
+  expected_date: string
+  received_date: string
+}
 
 type PharmacyFilters = {
-  search: string;
-  condition: string;
-  low_stock_only: boolean;
-};
+  search: string
+  condition: string
+  low_stock_only: boolean
+}
 
 const EMPTY_SUMMARY: PharmacySummary = {
   low_stock_count: 0,
   out_of_stock_count: 0,
   damaged_stock_count: 0,
   sales_total: 0,
-};
+}
 
 const DEFAULT_INVENTORY_FORM: InventoryForm = {
   id: "",
@@ -146,7 +145,7 @@ const DEFAULT_INVENTORY_FORM: InventoryForm = {
   unit_price: "0",
   expiry_date: "",
   stock_condition: "proper",
-};
+}
 
 const DEFAULT_SALE_FORM: SaleForm = {
   invoice_id: "",
@@ -155,7 +154,7 @@ const DEFAULT_SALE_FORM: SaleForm = {
   medicine_name: "",
   quantity: "1",
   unit_price: "0",
-};
+}
 
 const DEFAULT_SUPPLIER_FORM: SupplierForm = {
   id: "",
@@ -163,7 +162,7 @@ const DEFAULT_SUPPLIER_FORM: SupplierForm = {
   contact_person: "",
   phone: "",
   status: "active",
-};
+}
 
 const DEFAULT_PURCHASE_FORM: PurchaseForm = {
   id: "",
@@ -174,67 +173,66 @@ const DEFAULT_PURCHASE_FORM: PurchaseForm = {
   status: "ordered",
   expected_date: "",
   received_date: "",
-};
+}
 
 const DEFAULT_PHARMACY_FILTERS: PharmacyFilters = {
   search: "",
   condition: "",
   low_stock_only: false,
-};
+}
 
 function formatCurrency(amount?: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
-  }).format(amount || 0);
+  }).format(amount || 0)
 }
 
 export default function PharmacyPage({ setNotice }: Props) {
-  const [summary, setSummary] = useState<PharmacySummary>(EMPTY_SUMMARY);
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [sales, setSales] = useState<PharmacySale[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [pendingPrescriptions, setPendingPrescriptions] = useState<
-    PendingPrescription[]
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [summary, setSummary] = useState<PharmacySummary>(EMPTY_SUMMARY)
+  const [items, setItems] = useState<InventoryItem[]>([])
+  const [sales, setSales] = useState<PharmacySale[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [purchases, setPurchases] = useState<Purchase[]>([])
+  const [pendingPrescriptions, setPendingPrescriptions] =
+    useState<PendingPrescription[]>([])
+  const [loading, setLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [inventoryForm, setInventoryForm] = useState<InventoryForm>(
     DEFAULT_INVENTORY_FORM,
-  );
-  const [saleForm, setSaleForm] = useState<SaleForm>(DEFAULT_SALE_FORM);
+  )
+  const [saleForm, setSaleForm] = useState<SaleForm>(DEFAULT_SALE_FORM)
   const [supplierForm, setSupplierForm] = useState<SupplierForm>(
     DEFAULT_SUPPLIER_FORM,
-  );
+  )
   const [purchaseForm, setPurchaseForm] = useState<PurchaseForm>(
     DEFAULT_PURCHASE_FORM,
-  );
+  )
   const [filters, setFilters] = useState<PharmacyFilters>(
     DEFAULT_PHARMACY_FILTERS,
-  );
-  const [savingInventory, setSavingInventory] = useState(false);
-  const [savingSale, setSavingSale] = useState(false);
-  const [savingSupplier, setSavingSupplier] = useState(false);
-  const [savingPurchase, setSavingPurchase] = useState(false);
-  const [deletingItem, setDeletingItem] = useState<InventoryItem | null>(null);
+  )
+  const [savingInventory, setSavingInventory] = useState(false)
+  const [savingSale, setSavingSale] = useState(false)
+  const [savingSupplier, setSavingSupplier] = useState(false)
+  const [savingPurchase, setSavingPurchase] = useState(false)
+  const [deletingItem, setDeletingItem] = useState<InventoryItem | null>(null)
   const [pendingPrescriptionsSearch, setPendingPrescriptionsSearch] =
-    useState("");
+    useState("")
   const [fulfillModal, setFulfillModal] = useState<PendingPrescription | null>(
     null,
-  );
-  const [fulfillMedicines, setFulfillMedicines] = useState<any[]>([]);
+  )
+  const [fulfillMedicines, setFulfillMedicines] = useState<any[]>([])
 
   // -- UI-only state added for the tabbed redesign; none of the data/handler
   // logic above this line changed. --
-  const [activeTab, setActiveTab] = useState<PharmacyTab>("overview");
-  const [showInventoryModal, setShowInventoryModal] = useState(false);
-  const [showSaleModal, setShowSaleModal] = useState(false);
-  const [showSupplierModal, setShowSupplierModal] = useState(false);
-  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
-  const [inventoryVisibleCount, setInventoryVisibleCount] = useState(PAGE_SIZE);
-  const [salesVisibleCount, setSalesVisibleCount] = useState(PAGE_SIZE);
+  const [activeTab, setActiveTab] = useState<PharmacyTab>("overview")
+  const [showInventoryModal, setShowInventoryModal] = useState(false)
+  const [showSaleModal, setShowSaleModal] = useState(false)
+  const [showSupplierModal, setShowSupplierModal] = useState(false)
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [inventoryVisibleCount, setInventoryVisibleCount] = useState(PAGE_SIZE)
+  const [salesVisibleCount, setSalesVisibleCount] = useState(PAGE_SIZE)
 
   const lowStockItems = useMemo(
     () =>
@@ -244,77 +242,77 @@ export default function PharmacyPage({ setNotice }: Props) {
           Number(item.quantity || 0) <= Number(item.reorder_level || 0),
       ),
     [items],
-  );
+  )
   const outOfStockItems = useMemo(
     () => items.filter((item) => Number(item.quantity || 0) <= 0),
     [items],
-  );
+  )
   const expiringSoonItems = useMemo(() => {
-    const cutoff = Date.now() + EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() + EXPIRY_WARNING_DAYS * 24 * 60 * 60 * 1000
     return items.filter((item) => {
-      if (!item.expiry_date) return false;
-      const expiryTime = new Date(item.expiry_date).getTime();
-      return !Number.isNaN(expiryTime) && expiryTime <= cutoff;
-    });
-  }, [items]);
+      if (!item.expiry_date) return false
+      const expiryTime = new Date(item.expiry_date).getTime()
+      return !Number.isNaN(expiryTime) && expiryTime <= cutoff
+    })
+  }, [items])
   const hasAlerts =
     lowStockItems.length > 0 ||
     outOfStockItems.length > 0 ||
-    expiringSoonItems.length > 0;
+    expiringSoonItems.length > 0
 
   const visibleItems = useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
+    const search = filters.search.trim().toLowerCase()
     return items.filter((item) => {
       const matchesSearch =
         !search ||
         item.medicine_name.toLowerCase().includes(search) ||
-        (item.batch_no || "").toLowerCase().includes(search);
-      const condition = (item.stock_condition || "proper").toLowerCase();
+        (item.batch_no || "").toLowerCase().includes(search)
+      const condition = (item.stock_condition || "proper").toLowerCase()
       const matchesCondition =
-        !filters.condition || condition === filters.condition;
-      const quantity = Number(item.quantity || 0);
-      const reorderLevel = Number(item.reorder_level || 0);
+        !filters.condition || condition === filters.condition
+      const quantity = Number(item.quantity || 0)
+      const reorderLevel = Number(item.reorder_level || 0)
       const matchesLowStock =
-        !filters.low_stock_only || quantity <= reorderLevel;
-      return matchesSearch && matchesCondition && matchesLowStock;
-    });
-  }, [items, filters]);
+        !filters.low_stock_only || quantity <= reorderLevel
+      return matchesSearch && matchesCondition && matchesLowStock
+    })
+  }, [items, filters])
 
   const visibleSales = useMemo(() => {
-    const search = filters.search.trim().toLowerCase();
+    const search = filters.search.trim().toLowerCase()
     return sales.filter((sale) => {
       const matchesSearch =
         !search ||
         sale.medicine_name.toLowerCase().includes(search) ||
         String(sale.invoice_id || "")
           .toLowerCase()
-          .includes(search);
-      if (!matchesSearch) return false;
-      if (!filters.low_stock_only) return true;
+          .includes(search)
+      if (!matchesSearch) return false
+      if (!filters.low_stock_only) return true
       const inventoryItem = items.find(
         (item) => item.medicine_name === sale.medicine_name,
-      );
-      const quantity = Number(inventoryItem?.quantity || 0);
-      const reorderLevel = Number(inventoryItem?.reorder_level || 0);
-      return quantity <= reorderLevel;
-    });
-  }, [sales, items, filters]);
+      )
+      const quantity = Number(inventoryItem?.quantity || 0)
+      const reorderLevel = Number(inventoryItem?.reorder_level || 0)
+      return quantity <= reorderLevel
+    })
+  }, [sales, items, filters])
 
   const visiblePendingPrescriptions = useMemo(() => {
-    const search = pendingPrescriptionsSearch.trim().toLowerCase();
-    if (!search) return pendingPrescriptions;
+    const search = pendingPrescriptionsSearch.trim().toLowerCase()
+    if (!search) return pendingPrescriptions
     return pendingPrescriptions.filter((p) => {
       return (
         p.patient_name.toLowerCase().includes(search) ||
         (p.patient_last_name || "").toLowerCase().includes(search) ||
         p.patient_id.toLowerCase().includes(search)
-      );
-    });
-  }, [pendingPrescriptions, pendingPrescriptionsSearch]);
+      )
+    })
+  }, [pendingPrescriptions, pendingPrescriptionsSearch])
 
   const loadPharmacy = async () => {
-    setLoading(true);
-    setErrorMessage(null);
+    setLoading(true)
+    setErrorMessage(null)
     try {
       const [
         summaryData,
@@ -332,28 +330,28 @@ export default function PharmacyPage({ setNotice }: Props) {
         apiFetch<{ prescriptions?: PendingPrescription[] }>(
           "/api/pharmacy/prescriptions",
         ).catch(() => ({ prescriptions: [] })),
-      ]);
-      const fetchedItems = inventoryData.items || [];
-      const fetchedSales = salesData.sales || [];
-      const fetchedSuppliers = supplierData.suppliers || [];
-      const fetchedPurchases = purchaseData.purchases || [];
-      const fetchedPresc = prescData.prescriptions || [];
-      setSummary({ ...EMPTY_SUMMARY, ...summaryData });
-      setItems(fetchedItems);
-      setSales(fetchedSales);
-      setSuppliers(fetchedSuppliers);
-      setPurchases(fetchedPurchases);
-      setPendingPrescriptions(fetchedPresc);
+      ])
+      const fetchedItems = inventoryData.items || []
+      const fetchedSales = salesData.sales || []
+      const fetchedSuppliers = supplierData.suppliers || []
+      const fetchedPurchases = purchaseData.purchases || []
+      const fetchedPresc = prescData.prescriptions || []
+      setSummary({ ...EMPTY_SUMMARY, ...summaryData })
+      setItems(fetchedItems)
+      setSales(fetchedSales)
+      setSuppliers(fetchedSuppliers)
+      setPurchases(fetchedPurchases)
+      setPendingPrescriptions(fetchedPresc)
       setSaleForm((current) => {
-        if (current.medicine_name) return current;
+        if (current.medicine_name) return current
         return {
           ...current,
           medicine_name: fetchedItems[0]?.medicine_name || "",
           unit_price: String(fetchedItems[0]?.unit_price ?? 0),
-        };
-      });
+        }
+      })
       setPurchaseForm((current) => {
-        if (current.supplier_id || current.medicine_name) return current;
+        if (current.supplier_id || current.medicine_name) return current
         return {
           ...current,
           supplier_id: fetchedSuppliers[0]
@@ -361,27 +359,27 @@ export default function PharmacyPage({ setNotice }: Props) {
             : "",
           medicine_name: fetchedItems[0]?.medicine_name || "",
           unit_cost: String(fetchedItems[0]?.unit_price ?? 0),
-        };
-      });
+        }
+      })
     } catch (error) {
-      const typedError = error as { message?: string; status?: number };
-      setErrorMessage(typedError.message || "Unable to load pharmacy data.");
-      reportError(setNotice, typedError, "Unable to load pharmacy data.");
+      const typedError = error as { message?: string status?: number }
+      setErrorMessage(typedError.message || "Unable to load pharmacy data.")
+      reportError(setNotice, typedError, "Unable to load pharmacy data.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    void loadPharmacy();
-  }, []);
+    void loadPharmacy()
+  }, [])
 
   const handleInventorySubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const medicineName = inventoryForm.medicine_name.trim();
+    event.preventDefault()
+    const medicineName = inventoryForm.medicine_name.trim()
     if (!medicineName) {
-      setNotice({ type: "error", message: "Medicine name is required." });
-      return;
+      setNotice({ type: "error", message: "Medicine name is required." })
+      return
     }
 
     const payload = {
@@ -393,43 +391,43 @@ export default function PharmacyPage({ setNotice }: Props) {
       unit_price: Number(inventoryForm.unit_price) || 0,
       expiry_date: inventoryForm.expiry_date || undefined,
       stock_condition: inventoryForm.stock_condition,
-    };
+    }
 
-    setSavingInventory(true);
+    setSavingInventory(true)
     try {
       await apiFetch("/api/pharmacy/inventory", {
         method: "POST",
         body: JSON.stringify(payload),
-      });
-      setInventoryForm({ ...DEFAULT_INVENTORY_FORM });
-      setShowInventoryModal(false);
+      })
+      setInventoryForm({ ...DEFAULT_INVENTORY_FORM })
+      setShowInventoryModal(false)
       setNotice({
         type: "success",
         message: inventoryForm.id
           ? `${medicineName} updated in pharmacy inventory.`
           : `${medicineName} added to pharmacy inventory.`,
-      });
-      await loadPharmacy();
+      })
+      await loadPharmacy()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to save inventory item.",
-      );
+      )
     } finally {
-      setSavingInventory(false);
+      setSavingInventory(false)
     }
-  };
+  }
 
   const handleSaleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const medicineName = saleForm.medicine_name.trim();
+    event.preventDefault()
+    const medicineName = saleForm.medicine_name.trim()
     if (!medicineName) {
       setNotice({
         type: "error",
         message: "Select a medicine before recording a sale.",
-      });
-      return;
+      })
+      return
     }
 
     const payload = {
@@ -439,123 +437,123 @@ export default function PharmacyPage({ setNotice }: Props) {
       medicine_name: medicineName,
       quantity: Number(saleForm.quantity) || 0,
       unit_price: Number(saleForm.unit_price) || 0,
-    };
+    }
 
     if (payload.quantity <= 0) {
       setNotice({
         type: "error",
         message: "Quantity must be greater than zero.",
-      });
-      return;
+      })
+      return
     }
 
-    setSavingSale(true);
+    setSavingSale(true)
     try {
       await apiFetch("/api/pharmacy/sales", {
         method: "POST",
         body: JSON.stringify(payload),
-      });
+      })
       setSaleForm((current) => ({
         ...DEFAULT_SALE_FORM,
         medicine_name: current.medicine_name,
-      }));
-      setShowSaleModal(false);
+      }))
+      setShowSaleModal(false)
       setNotice({
         type: "success",
         message: `Sale recorded for ${medicineName}.`,
-      });
-      await loadPharmacy();
+      })
+      await loadPharmacy()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to record pharmacy sale.",
-      );
+      )
     } finally {
-      setSavingSale(false);
+      setSavingSale(false)
     }
-  };
+  }
 
   const handleSaleMedicineChange = (medicineName: string) => {
-    const selected = items.find((item) => item.medicine_name === medicineName);
+    const selected = items.find((item) => item.medicine_name === medicineName)
     setSaleForm((current) => ({
       ...current,
       medicine_name: medicineName,
       unit_price: String(selected?.unit_price ?? current.unit_price),
-    }));
-  };
+    }))
+  }
 
   const handleSalePatientSelect = (patient: Patient) => {
-    setSaleForm((current) => ({ ...current, patient_id: patient.patient_id }));
-  };
+    setSaleForm((current) => ({ ...current, patient_id: patient.patient_id }))
+  }
 
   const openAddSale = () => {
     setSaleForm((current) => ({
       ...DEFAULT_SALE_FORM,
       medicine_name: current.medicine_name,
       unit_price: current.unit_price,
-    }));
-    setShowSaleModal(true);
-  };
+    }))
+    setShowSaleModal(true)
+  }
 
   const handleFulfillPrescription = (presc: PendingPrescription) => {
-    let meds = [];
+    let meds = []
     try {
-      meds = JSON.parse(presc.medicines_json);
+      meds = JSON.parse(presc.medicines_json)
     } catch (e) {}
 
     // Auto-fill unit prices and current stock from inventory (case-insensitive,
     // matching how the backend now matches medicine names when it decrements
     // stock on dispense) so staff can see a shortage before billing, not after.
     const enrichedMeds = meds.map((m: any) => {
-      const mName = m.name || m.medicine_name || m.medicine || "";
+      const mName = m.name || m.medicine_name || m.medicine || ""
       const inv = items.find(
         (i) => i.medicine_name.toLowerCase() === mName.toLowerCase(),
-      );
+      )
       return {
         ...m,
         name: mName,
         quantity: Number(m.quantity) || 1,
         unit_price: inv ? inv.unit_price : 0,
         available_stock: inv ? Number(inv.quantity || 0) : null,
-      };
-    });
+      }
+    })
 
-    setFulfillMedicines(enrichedMeds);
-    setFulfillModal(presc);
-  };
+    setFulfillMedicines(enrichedMeds)
+    setFulfillModal(presc)
+  }
 
   const submitFulfillPrescription = async () => {
-    if (!fulfillModal) return;
+    if (!fulfillModal) return
     try {
       await apiFetch(`/api/pharmacy/prescriptions/${fulfillModal.id}/fulfill`, {
         method: "POST",
         body: JSON.stringify({ medicines: fulfillMedicines }),
-      });
+      })
       setNotice({
         type: "success",
         message: "Prescription fulfilled and sales recorded.",
-      });
-      setFulfillModal(null);
-      await loadPharmacy();
+      })
+      setFulfillModal(null)
+      await loadPharmacy()
     } catch (error) {
-      reportError(setNotice, error as any, "Failed to fulfill prescription");
+      reportError(setNotice, error as any, "Failed to fulfill prescription")
     }
-  };
+  }
 
   const handleSupplierSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const supplierName = supplierForm.supplier_name.trim();
+    event.preventDefault()
+    const supplierName = supplierForm.supplier_name.trim()
     if (!supplierName) {
-      setNotice({ type: "error", message: "Supplier name is required." });
-      return;
+      setNotice({ type: "error", message: "Supplier name is required." })
+      return
     }
-    setSavingSupplier(true);
+    setSavingSupplier(true)
     try {
-      const supplierId = Number(supplierForm.id);
+      const supplierId = Number(supplierForm.id)
       const path = supplierId
         ? `/api/pharmacy/suppliers/${supplierId}`
-        : "/api/pharmacy/suppliers";
+        : "/api/pharmacy/suppliers"
       await apiFetch(path, {
         method: supplierId ? "PUT" : "POST",
         body: JSON.stringify({
@@ -564,43 +562,43 @@ export default function PharmacyPage({ setNotice }: Props) {
           phone: supplierForm.phone.trim() || undefined,
           status: supplierForm.status,
         }),
-      });
-      setSupplierForm({ ...DEFAULT_SUPPLIER_FORM });
-      setShowSupplierModal(false);
+      })
+      setSupplierForm({ ...DEFAULT_SUPPLIER_FORM })
+      setShowSupplierModal(false)
       setNotice({
         type: "success",
         message: supplierId ? "Supplier updated." : "Supplier added.",
-      });
-      await loadPharmacy();
+      })
+      await loadPharmacy()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to save supplier.",
-      );
+      )
     } finally {
-      setSavingSupplier(false);
+      setSavingSupplier(false)
     }
-  };
+  }
 
   const handlePurchaseSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const medicineName = purchaseForm.medicine_name.trim();
-    const quantity = Number(purchaseForm.quantity) || 0;
-    const unitCost = Number(purchaseForm.unit_cost) || 0;
+    event.preventDefault()
+    const medicineName = purchaseForm.medicine_name.trim()
+    const quantity = Number(purchaseForm.quantity) || 0
+    const unitCost = Number(purchaseForm.unit_cost) || 0
     if (!medicineName || quantity <= 0 || unitCost < 0) {
       setNotice({
         type: "error",
         message: "Medicine, quantity, and unit cost are required.",
-      });
-      return;
+      })
+      return
     }
-    setSavingPurchase(true);
+    setSavingPurchase(true)
     try {
-      const purchaseId = Number(purchaseForm.id);
+      const purchaseId = Number(purchaseForm.id)
       const path = purchaseId
         ? `/api/pharmacy/purchases/${purchaseId}`
-        : "/api/pharmacy/purchases";
+        : "/api/pharmacy/purchases"
       await apiFetch(path, {
         method: purchaseId ? "PUT" : "POST",
         body: JSON.stringify({
@@ -614,30 +612,30 @@ export default function PharmacyPage({ setNotice }: Props) {
           expected_date: purchaseForm.expected_date || undefined,
           received_date: purchaseForm.received_date || undefined,
         }),
-      });
+      })
       setPurchaseForm((current) => ({
         ...DEFAULT_PURCHASE_FORM,
         supplier_id: current.supplier_id,
         medicine_name: current.medicine_name,
-      }));
-      setShowPurchaseModal(false);
+      }))
+      setShowPurchaseModal(false)
       setNotice({
         type: "success",
         message: purchaseId
           ? "Purchase order updated."
           : "Purchase order created.",
-      });
-      await loadPharmacy();
+      })
+      await loadPharmacy()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to save purchase order.",
-      );
+      )
     } finally {
-      setSavingPurchase(false);
+      setSavingPurchase(false)
     }
-  };
+  }
 
   const handleEditInventory = (item: InventoryItem) => {
     setInventoryForm({
@@ -650,14 +648,14 @@ export default function PharmacyPage({ setNotice }: Props) {
       expiry_date: item.expiry_date || "",
       stock_condition:
         item.stock_condition === "damaged" ? "damaged" : "proper",
-    });
-    setShowInventoryModal(true);
-  };
+    })
+    setShowInventoryModal(true)
+  }
 
   const openAddInventory = () => {
-    setInventoryForm({ ...DEFAULT_INVENTORY_FORM });
-    setShowInventoryModal(true);
-  };
+    setInventoryForm({ ...DEFAULT_INVENTORY_FORM })
+    setShowInventoryModal(true)
+  }
 
   const handleEditSupplier = (supplier: Supplier) => {
     setSupplierForm({
@@ -666,31 +664,31 @@ export default function PharmacyPage({ setNotice }: Props) {
       contact_person: supplier.contact_person || "",
       phone: supplier.phone || "",
       status: supplier.status === "inactive" ? "inactive" : "active",
-    });
-    setShowSupplierModal(true);
-  };
+    })
+    setShowSupplierModal(true)
+  }
 
   const openAddSupplier = () => {
-    setSupplierForm({ ...DEFAULT_SUPPLIER_FORM });
-    setShowSupplierModal(true);
-  };
+    setSupplierForm({ ...DEFAULT_SUPPLIER_FORM })
+    setShowSupplierModal(true)
+  }
 
   const handleDeleteSupplier = async (supplier: Supplier) => {
-    if (!window.confirm(`Delete supplier ${supplier.supplier_name}?`)) return;
+    if (!window.confirm(`Delete supplier ${supplier.supplier_name}?`)) return
     try {
       await apiFetch(`/api/pharmacy/suppliers/${supplier.id}`, {
         method: "DELETE",
-      });
-      setNotice({ type: "success", message: "Supplier deleted." });
-      await loadPharmacy();
+      })
+      setNotice({ type: "success", message: "Supplier deleted." })
+      await loadPharmacy()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete supplier.",
-      );
+      )
     }
-  };
+  }
 
   const handleEditPurchase = (purchase: Purchase) => {
     setPurchaseForm({
@@ -707,82 +705,82 @@ export default function PharmacyPage({ setNotice }: Props) {
             : "ordered",
       expected_date: purchase.expected_date || "",
       received_date: purchase.received_date || "",
-    });
-    setShowPurchaseModal(true);
-  };
+    })
+    setShowPurchaseModal(true)
+  }
 
   const openAddPurchase = () => {
     setPurchaseForm((current) => ({
       ...DEFAULT_PURCHASE_FORM,
       supplier_id: current.supplier_id,
       medicine_name: current.medicine_name,
-    }));
-    setShowPurchaseModal(true);
-  };
+    }))
+    setShowPurchaseModal(true)
+  }
 
   const handleDeletePurchase = async (purchase: Purchase) => {
-    if (!window.confirm(`Delete purchase order ${purchase.id}?`)) return;
+    if (!window.confirm(`Delete purchase order ${purchase.id}?`)) return
     try {
       await apiFetch(`/api/pharmacy/purchases/${purchase.id}`, {
         method: "DELETE",
-      });
-      setNotice({ type: "success", message: "Purchase order deleted." });
-      await loadPharmacy();
+      })
+      setNotice({ type: "success", message: "Purchase order deleted." })
+      await loadPharmacy()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete purchase order.",
-      );
+      )
     }
-  };
+  }
 
   const confirmDeleteInventory = async () => {
-    if (!deletingItem) return;
+    if (!deletingItem) return
     try {
       await apiFetch(`/api/pharmacy/inventory/${deletingItem.id}`, {
         method: "DELETE",
-      });
+      })
       setNotice({
         type: "success",
         message: `${deletingItem.medicine_name} removed from inventory.`,
-      });
-      setDeletingItem(null);
+      })
+      setDeletingItem(null)
       if (inventoryForm.id && Number(inventoryForm.id) === deletingItem.id) {
-        setInventoryForm({ ...DEFAULT_INVENTORY_FORM });
+        setInventoryForm({ ...DEFAULT_INVENTORY_FORM })
       }
-      await loadPharmacy();
+      await loadPharmacy()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete inventory item.",
-      );
-      setDeletingItem(null);
+      )
+      setDeletingItem(null)
     }
-  };
+  }
 
   const alertItems = useMemo(() => {
     const combined = [
       ...outOfStockItems,
       ...lowStockItems,
       ...expiringSoonItems,
-    ];
+    ]
     return combined.filter(
       (item, index) =>
         combined.findIndex((other) => other.id === item.id) === index,
-    );
-  }, [outOfStockItems, lowStockItems, expiringSoonItems]);
+    )
+  }, [outOfStockItems, lowStockItems, expiringSoonItems])
 
-  const visibleInventoryItems = visibleItems.slice(0, inventoryVisibleCount);
-  const visibleSalesRows = visibleSales.slice(0, salesVisibleCount);
+  const visibleInventoryItems = visibleItems.slice(0, inventoryVisibleCount)
+  const visibleSalesRows = visibleSales.slice(0, salesVisibleCount)
 
   const inventoryModal = (
     <Modal
       open={showInventoryModal}
       onClose={() => {
-        setShowInventoryModal(false);
-        setInventoryForm({ ...DEFAULT_INVENTORY_FORM });
+        setShowInventoryModal(false)
+        setInventoryForm({ ...DEFAULT_INVENTORY_FORM })
       }}
       title={inventoryForm.id ? "Edit Medicine" : "Add Medicine to Inventory"}
     >
@@ -885,8 +883,8 @@ export default function PharmacyPage({ setNotice }: Props) {
             type="button"
             variant="ghost"
             onClick={() => {
-              setShowInventoryModal(false);
-              setInventoryForm({ ...DEFAULT_INVENTORY_FORM });
+              setShowInventoryModal(false)
+              setInventoryForm({ ...DEFAULT_INVENTORY_FORM })
             }}
           >
             Cancel
@@ -894,7 +892,7 @@ export default function PharmacyPage({ setNotice }: Props) {
         </div>
       </form>
     </Modal>
-  );
+  )
 
   const saleModal = (
     <Modal
@@ -992,14 +990,14 @@ export default function PharmacyPage({ setNotice }: Props) {
         <p className="muted">Add inventory first before recording a sale.</p>
       ) : null}
     </Modal>
-  );
+  )
 
   const supplierModal = (
     <Modal
       open={showSupplierModal}
       onClose={() => {
-        setShowSupplierModal(false);
-        setSupplierForm({ ...DEFAULT_SUPPLIER_FORM });
+        setShowSupplierModal(false)
+        setSupplierForm({ ...DEFAULT_SUPPLIER_FORM })
       }}
       title={supplierForm.id ? "Edit Supplier" : "Add Supplier"}
     >
@@ -1063,8 +1061,8 @@ export default function PharmacyPage({ setNotice }: Props) {
             type="button"
             variant="ghost"
             onClick={() => {
-              setShowSupplierModal(false);
-              setSupplierForm({ ...DEFAULT_SUPPLIER_FORM });
+              setShowSupplierModal(false)
+              setSupplierForm({ ...DEFAULT_SUPPLIER_FORM })
             }}
           >
             Cancel
@@ -1072,7 +1070,7 @@ export default function PharmacyPage({ setNotice }: Props) {
         </div>
       </form>
     </Modal>
-  );
+  )
 
   const purchaseModal = (
     <Modal
@@ -1143,8 +1141,8 @@ export default function PharmacyPage({ setNotice }: Props) {
           onChange={(event) =>
             setPurchaseForm((current) => ({
               ...current,
-              status: event.target.value as
-                "ordered" | "received" | "cancelled",
+              status: event.target
+                .value as "ordered" | "received" | "cancelled",
             }))
           }
           aria-label="Purchase status"
@@ -1193,15 +1191,15 @@ export default function PharmacyPage({ setNotice }: Props) {
         </div>
       </form>
     </Modal>
-  );
+  )
 
   const fulfillTotal = fulfillMedicines.reduce(
     (acc, m) => acc + m.quantity * (m.unit_price || 0),
     0,
-  );
+  )
   const fulfillShortages = fulfillMedicines.filter(
     (m) => m.available_stock != null && m.quantity > m.available_stock,
-  );
+  )
   const fulfillPrescriptionModal = (
     <Modal
       open={Boolean(fulfillModal)}
@@ -1223,7 +1221,8 @@ export default function PharmacyPage({ setNotice }: Props) {
             <TableCell>Total</TableCell>
           </TableHead>
           {fulfillMedicines.map((m, idx) => {
-            const short = m.available_stock != null && m.quantity > m.available_stock;
+            const short =
+              m.available_stock != null && m.quantity > m.available_stock
             return (
               <TableRow key={idx}>
                 <TableCell>
@@ -1257,9 +1256,12 @@ export default function PharmacyPage({ setNotice }: Props) {
                     value={m.quantity}
                     aria-label={`Quantity to dispense for ${m.name}`}
                     onChange={(e) => {
-                      const newMeds = [...fulfillMedicines];
-                      newMeds[idx].quantity = Math.max(1, Number(e.target.value) || 1);
-                      setFulfillMedicines(newMeds);
+                      const newMeds = [...fulfillMedicines]
+                      newMeds[idx].quantity = Math.max(
+                        1,
+                        Number(e.target.value) || 1,
+                      )
+                      setFulfillMedicines(newMeds)
                     }}
                   />
                 </TableCell>
@@ -1271,9 +1273,9 @@ export default function PharmacyPage({ setNotice }: Props) {
                     placeholder="0"
                     aria-label={`Unit cost for ${m.name}`}
                     onChange={(e) => {
-                      const newMeds = [...fulfillMedicines];
-                      newMeds[idx].unit_price = Number(e.target.value) || 0;
-                      setFulfillMedicines(newMeds);
+                      const newMeds = [...fulfillMedicines]
+                      newMeds[idx].unit_price = Number(e.target.value) || 0
+                      setFulfillMedicines(newMeds)
                     }}
                   />
                 </TableCell>
@@ -1281,7 +1283,7 @@ export default function PharmacyPage({ setNotice }: Props) {
                   {formatCurrency(m.quantity * (m.unit_price || 0))}
                 </TableCell>
               </TableRow>
-            );
+            )
           })}
         </Table>
       </div>
@@ -1309,7 +1311,7 @@ export default function PharmacyPage({ setNotice }: Props) {
         </div>
       </div>
     </Modal>
-  );
+  )
 
   return (
     <section className="pharmacy-premium-container">
@@ -1361,7 +1363,9 @@ export default function PharmacyPage({ setNotice }: Props) {
             .join(", ")}
           {alertItems.length > 6 ? `, +${alertItems.length - 6} more` : ""}
           {pendingPrescriptions.length > 0
-            ? ` · ${pendingPrescriptions.length} prescription${pendingPrescriptions.length === 1 ? "" : "s"} awaiting fulfillment`
+            ? ` · ${pendingPrescriptions.length} prescription${
+                pendingPrescriptions.length === 1 ? "" : "s"
+              } awaiting fulfillment`
             : ""}
         </Alert>
       ) : null}
@@ -1566,8 +1570,8 @@ export default function PharmacyPage({ setNotice }: Props) {
                   <TableCell>Actions</TableCell>
                 </TableHead>
                 {visibleInventoryItems.map((item) => {
-                  const quantity = Number(item.quantity || 0);
-                  const reorderLevel = Number(item.reorder_level || 0);
+                  const quantity = Number(item.quantity || 0)
+                  const reorderLevel = Number(item.reorder_level || 0)
                   const stockBadge =
                     quantity <= 0 ? (
                       <span className="pharmacy-badge pharmacy-badge-danger">
@@ -1581,7 +1585,7 @@ export default function PharmacyPage({ setNotice }: Props) {
                       <span className="pharmacy-badge pharmacy-badge-success">
                         In stock
                       </span>
-                    );
+                    )
                   return (
                     <TableRow key={item.id}>
                       <TableCell>{item.medicine_name}</TableCell>
@@ -1612,7 +1616,7 @@ export default function PharmacyPage({ setNotice }: Props) {
                         </div>
                       </TableCell>
                     </TableRow>
-                  );
+                  )
                 })}
               </Table>
 
@@ -1728,9 +1732,9 @@ export default function PharmacyPage({ setNotice }: Props) {
                 </TableRow>
               ) : (
                 visiblePendingPrescriptions.map((p) => {
-                  let meds = [];
+                  let meds = []
                   try {
-                    meds = JSON.parse(p.medicines_json);
+                    meds = JSON.parse(p.medicines_json)
                   } catch (e) {}
                   return (
                     <TableRow key={p.id}>
@@ -1793,7 +1797,7 @@ export default function PharmacyPage({ setNotice }: Props) {
                         </div>
                       </TableCell>
                     </TableRow>
-                  );
+                  )
                 })
               )}
             </Table>
@@ -2029,5 +2033,5 @@ export default function PharmacyPage({ setNotice }: Props) {
       {purchaseModal}
       {fulfillPrescriptionModal}
     </section>
-  );
+  )
 }

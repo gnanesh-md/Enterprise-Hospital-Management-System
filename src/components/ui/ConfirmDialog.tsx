@@ -1,16 +1,16 @@
-import Modal from "./Modal";
-import Button from "./Button";
+import Modal from "./Modal"
+import Button from "./Button"
 
 type Props = {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: () => void | Promise<void>;
-  title: string;
-  description?: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  loading?: boolean;
-};
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void | Promise<void>
+  title: string
+  description?: string
+  confirmLabel?: string
+  cancelLabel?: string
+  loading?: boolean
+}
 
 export default function ConfirmDialog({
   open,
@@ -43,5 +43,5 @@ export default function ConfirmDialog({
         </Button>
       </div>
     </Modal>
-  );
+  )
 }

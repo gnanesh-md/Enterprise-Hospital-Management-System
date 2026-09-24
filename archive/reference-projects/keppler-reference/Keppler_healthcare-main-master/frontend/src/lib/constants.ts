@@ -6,13 +6,13 @@ import type {
   SignupForm,
   SubModuleOption,
   UserTypeOption,
-} from "../types";
+} from "../types"
 
 // With Vite's dev server proxy, API requests use relative paths (/api/...).
 // The proxy transparently forwards them to the Flask backend on port 5001.
 // This eliminates all cross-origin cookie issues.
-export const API_BASE = import.meta.env.VITE_API_BASE ?? "";
-export const SYMPTOM_API_BASE = import.meta.env.VITE_SYMPTOM_API_BASE ?? "";
+export const API_BASE = import.meta.env.VITE_API_BASE ?? ""
+export const SYMPTOM_API_BASE = import.meta.env.VITE_SYMPTOM_API_BASE ?? ""
 
 export const USER_TYPE_OPTIONS: UserTypeOption[] = [
   {
@@ -25,14 +25,13 @@ export const USER_TYPE_OPTIONS: UserTypeOption[] = [
     label: "Admin User",
     description: "Employee management and full module control.",
   },
-];
+]
 
-export const USER_TYPE_LABELS = USER_TYPE_OPTIONS.reduce<
-  Record<string, string>
->((acc, role) => {
-  acc[role.value] = role.label;
-  return acc;
-}, {});
+export const USER_TYPE_LABELS =
+  USER_TYPE_OPTIONS.reduce<Record<string, string>>((acc, role) => {
+    acc[role.value] = role.label
+    return acc
+  }, {})
 
 // Ordered to match the sidebar's own visual grouping (Overview -> OP
 // Management -> Operations -> AI -> Finance -> Administration), so the RBAC
@@ -66,7 +65,8 @@ export const MODULE_OPTIONS: ModuleOption[] = [
   {
     value: "er",
     label: "Emergency Room",
-    description: "ER registration, triage, treatment, and disposition workflows.",
+    description:
+      "ER registration, triage, treatment, and disposition workflows.",
   },
   {
     value: "pharmacy",
@@ -102,7 +102,7 @@ export const MODULE_OPTIONS: ModuleOption[] = [
     label: "Patient Experience",
     description: "View and respond to patient feedback.",
   },
-];
+]
 
 // Mirrors backend/core/auth.py's SUB_MODULES (same order, too). Selecting a
 // module alone grants full access to everything under it (all its
@@ -169,16 +169,16 @@ export const SUB_MODULES: Partial<Record<ModuleId, SubModuleOption[]>> = {
     { value: "access", label: "Manage Roles & Module Access" },
   ],
   patient_experience: [{ value: "feedback", label: "Respond to Feedback" }],
-};
+}
 
 export const DEFAULT_MODULE_ACCESS: ModuleId[] = [
   "dashboard",
   "patients",
   "symptom_ai",
-];
+]
 export const ALL_ASSIGNABLE_MODULES: ModuleId[] = MODULE_OPTIONS.map(
   (module) => module.value,
-);
+)
 
 export const ADMIN_PERMISSIONS: string[] = [
   "patients.read",
@@ -231,7 +231,7 @@ export const ADMIN_PERMISSIONS: string[] = [
   "patient_experience.write",
   "audit.read",
   "admin.use",
-];
+]
 
 // Base ("select whole module") permission set -- matches backend
 // MODULE_PERMISSION_MAP: the module's read permission plus every sub-item's
@@ -291,71 +291,70 @@ export const MODULE_PERMISSIONS: Record<ModuleId, string[]> = {
     "employees.access.write",
   ],
   patient_experience: ["patient_experience.read", "patient_experience.write"],
-};
+}
 
 // Maps a module + sub-item key to the specific permission(s) that sub-item
 // grants, for expanding a single "module.subitem" module_access entry.
-export const SUB_MODULE_PERMISSIONS: Partial<
-  Record<ModuleId, Record<string, string[]>>
-> = {
-  patients: {
-    directory: ["patients.write", "patients.delete"],
-    registration: ["patients.registration.write"],
-    consent_desk: ["patients.consent.write"],
-    insurance_desk: ["patients.insurance.write"],
-    appointments: ["patients.appointments.write"],
-    documents: ["patients.documents.write"],
-    clinical_records: ["patients.clinical.write"],
-    bulk_ai: ["patients.bulk_ai.write"],
-  },
-  op: {
-    schedules: ["op.schedules.write"],
-    doctors: ["op.doctors.write"],
-  },
-  beds: {
-    manage: ["beds.write"],
-  },
-  er: {
-    registration: ["er.registration.write"],
-    triage: ["er.triage.write"],
-    treatment: ["er.treatment.write"],
-    doctor_assignment: ["er.doctor_assignment.write"],
-    disposition: ["er.disposition.write"],
-    config: ["er.config.write"],
-  },
-  billing: {
-    invoices: ["billing.invoices.write"],
-    claims: ["billing.claims.write"],
-  },
-  pharmacy: {
-    inventory: ["pharmacy.inventory.write"],
-    sales: ["pharmacy.sales.write"],
-    suppliers: ["pharmacy.suppliers.write"],
-    purchases: ["pharmacy.purchases.write"],
-    prescriptions: ["pharmacy.prescriptions.write"],
-  },
-  hrms: {
-    departments: ["hr.departments.write"],
-    attendance: ["hr.attendance.write"],
-    payroll: ["hr.payroll.write"],
-    leaves: ["hr.leaves.write"],
-  },
-  accounts: {
-    ledger: ["accounts.ledger.write"],
-    vendor_payments: ["accounts.vendors.write"],
-    doctor_payouts: ["accounts.doctors.write"],
-  },
-  symptom_ai: {
-    documents: ["symptom_ai.documents.write"],
-  },
-  employees: {
-    profile: ["employees.profile.write"],
-    access: ["employees.access.write"],
-  },
-  patient_experience: {
-    feedback: ["patient_experience.write"],
-  },
-};
+export const SUB_MODULE_PERMISSIONS: Partial<Record<ModuleId, Record<string, string[]>>> =
+  {
+    patients: {
+      directory: ["patients.write", "patients.delete"],
+      registration: ["patients.registration.write"],
+      consent_desk: ["patients.consent.write"],
+      insurance_desk: ["patients.insurance.write"],
+      appointments: ["patients.appointments.write"],
+      documents: ["patients.documents.write"],
+      clinical_records: ["patients.clinical.write"],
+      bulk_ai: ["patients.bulk_ai.write"],
+    },
+    op: {
+      schedules: ["op.schedules.write"],
+      doctors: ["op.doctors.write"],
+    },
+    beds: {
+      manage: ["beds.write"],
+    },
+    er: {
+      registration: ["er.registration.write"],
+      triage: ["er.triage.write"],
+      treatment: ["er.treatment.write"],
+      doctor_assignment: ["er.doctor_assignment.write"],
+      disposition: ["er.disposition.write"],
+      config: ["er.config.write"],
+    },
+    billing: {
+      invoices: ["billing.invoices.write"],
+      claims: ["billing.claims.write"],
+    },
+    pharmacy: {
+      inventory: ["pharmacy.inventory.write"],
+      sales: ["pharmacy.sales.write"],
+      suppliers: ["pharmacy.suppliers.write"],
+      purchases: ["pharmacy.purchases.write"],
+      prescriptions: ["pharmacy.prescriptions.write"],
+    },
+    hrms: {
+      departments: ["hr.departments.write"],
+      attendance: ["hr.attendance.write"],
+      payroll: ["hr.payroll.write"],
+      leaves: ["hr.leaves.write"],
+    },
+    accounts: {
+      ledger: ["accounts.ledger.write"],
+      vendor_payments: ["accounts.vendors.write"],
+      doctor_payouts: ["accounts.doctors.write"],
+    },
+    symptom_ai: {
+      documents: ["symptom_ai.documents.write"],
+    },
+    employees: {
+      profile: ["employees.profile.write"],
+      access: ["employees.access.write"],
+    },
+    patient_experience: {
+      feedback: ["patient_experience.write"],
+    },
+  }
 
 export const NAV_ITEMS: NavItem[] = [
   // Overview: landing page, then the two most common patient lookups.
@@ -473,7 +472,8 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: "beds",
     label: "Bed Management",
-    subtitle: "See every room and bed at a glance, and admit or discharge patients.",
+    subtitle:
+      "See every room and bed at a glance, and admit or discharge patients.",
     group: "operations",
     permission: "beds.read",
     deniedHint: "Requires bed management access.",
@@ -590,8 +590,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: "settings",
     label: "Settings",
-    subtitle:
-      "Audit trail, WhatsApp Business API key, and message templates.",
+    subtitle: "Audit trail, WhatsApp Business API key, and message templates.",
     group: "admin",
     // Every other item in this "admin" group requires a specific permission;
     // Settings was the one exception with none, so it showed for every
@@ -603,13 +602,13 @@ export const NAV_ITEMS: NavItem[] = [
     permission: "admin.use",
     deniedHint: "Requires admin access.",
   },
-];
+]
 
 export const DOC_TYPES = [
   { value: "test_docs", label: "Test Documents" },
   { value: "xray_mri", label: "X-Ray / MRI" },
   { value: "prescriptions", label: "Prescription" },
-];
+]
 
 export const SUPPORTED_DOCUMENT_EXTENSIONS = [
   "pdf",
@@ -623,19 +622,19 @@ export const SUPPORTED_DOCUMENT_EXTENSIONS = [
   "gif",
   "heic",
   "heif",
-];
+]
 
-const SUPPORTED_DOCUMENT_EXTENSION_SET = new Set(SUPPORTED_DOCUMENT_EXTENSIONS);
+const SUPPORTED_DOCUMENT_EXTENSION_SET = new Set(SUPPORTED_DOCUMENT_EXTENSIONS)
 
 export const SUPPORTED_DOCUMENT_ACCEPT = SUPPORTED_DOCUMENT_EXTENSIONS.map(
   (ext) => `.${ext}`,
-).join(",");
+).join(",")
 
 export const isSupportedDocumentFile = (file: File) => {
-  const parts = file.name.toLowerCase().split(".");
-  const ext = parts.length > 1 ? parts[parts.length - 1] : "";
-  return SUPPORTED_DOCUMENT_EXTENSION_SET.has(ext);
-};
+  const parts = file.name.toLowerCase().split(".")
+  const ext = parts.length > 1 ? parts[parts.length - 1] : ""
+  return SUPPORTED_DOCUMENT_EXTENSION_SET.has(ext)
+}
 
 export const EMPTY_PATIENT_FORM: PatientForm = {
   name: "",
@@ -656,7 +655,7 @@ export const EMPTY_PATIENT_FORM: PatientForm = {
   blood_group: "",
   emergency_contact: "",
   aadhar_number: "",
-};
+}
 
 export const EMPTY_SIGNUP_FORM: SignupForm = {
   username: "",
@@ -670,7 +669,7 @@ export const EMPTY_SIGNUP_FORM: SignupForm = {
   department: "",
   address: "",
   emergency_contact: "",
-};
+}
 
 export const EMPTY_STATS = {
   total: 0,
@@ -678,4 +677,4 @@ export const EMPTY_STATS = {
   active_admissions: 0,
   documents: 0,
   readmitted_patients: 0,
-};
+}

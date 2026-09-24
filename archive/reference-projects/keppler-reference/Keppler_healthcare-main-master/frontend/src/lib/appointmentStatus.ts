@@ -1,10 +1,9 @@
-export type AppointmentStatusTone =
-  "scheduled" | "checked-in" | "in-consultation" | "completed" | "cancelled";
+export type AppointmentStatusTone = "scheduled" | "checked-in" | "in-consultation" | "completed" | "cancelled"
 
 type StatusMeta = {
-  label: string;
-  tone: AppointmentStatusTone;
-};
+  label: string
+  tone: AppointmentStatusTone
+}
 
 const STATUS_META: Record<string, StatusMeta> = {
   scheduled: { label: "Scheduled", tone: "scheduled" },
@@ -12,7 +11,7 @@ const STATUS_META: Record<string, StatusMeta> = {
   in_consultation: { label: "In Consultation", tone: "in-consultation" },
   completed: { label: "Completed", tone: "completed" },
   cancelled: { label: "Cancelled", tone: "cancelled" },
-};
+}
 
 export function getAppointmentStatusMeta(status: string): StatusMeta {
   return (
@@ -20,7 +19,7 @@ export function getAppointmentStatusMeta(status: string): StatusMeta {
       label: status.replace(/_/g, " "),
       tone: "scheduled",
     }
-  );
+  )
 }
 
 export const APPOINTMENT_STATUS_ORDER = [
@@ -29,4 +28,4 @@ export const APPOINTMENT_STATUS_ORDER = [
   "in_consultation",
   "completed",
   "cancelled",
-];
+]

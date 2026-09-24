@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react"
 import {
   FiActivity,
   FiClock,
   FiMessageSquare,
   FiShield,
   FiUser,
-} from "react-icons/fi";
-import { FaWhatsapp } from "react-icons/fa";
-import StatCard from "../components/StatCard";
+} from "react-icons/fi"
+import { FaWhatsapp } from "react-icons/fa"
+import StatCard from "../components/StatCard"
 import {
   Badge,
   Button,
@@ -24,35 +24,33 @@ import {
   Tabs,
   TabsTrigger,
   Textarea,
-} from "../components/ui";
-import { apiFetch } from "../lib/api";
-import { formatDateTime } from "../lib/format";
-import type { AuditLog, Stats, User } from "../types";
+} from "../components/ui"
+import { apiFetch } from "../lib/api"
+import { formatDateTime } from "../lib/format"
+import type { AuditLog, Stats, User } from "../types"
 
 type Props = {
-  stats: Stats;
-  user: User;
-  canReadAudit: boolean;
-  isAdmin: boolean;
-};
+  stats: Stats
+  user: User
+  canReadAudit: boolean
+  isAdmin: boolean
+}
 
 type WhatsappSettings = {
-  source: "database" | "environment" | "none";
-  account_sid: string;
-  auth_token_set: boolean;
-  whatsapp_from: string;
-  default_country_code: string;
-  updated_by: string | null;
-  updated_at: string | null;
-  encryption_configured: boolean;
-};
+  source: "database" | "environment" | "none"
+  account_sid: string
+  auth_token_set: boolean
+  whatsapp_from: string
+  default_country_code: string
+  updated_by: string | null
+  updated_at: string | null
+  encryption_configured: boolean
+}
 
-type SettingsTab = "overview" | "whatsapp" | "templates" | "audit";
+type SettingsTab = "overview" | "whatsapp" | "templates" | "audit"
 
 function labelize(value: string): string {
-  return value
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  return value.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
 export default function SettingsPage({
@@ -62,60 +60,61 @@ export default function SettingsPage({
   isAdmin,
 }: Props) {
   const tabs = useMemo(() => {
-    const list: { id: SettingsTab; label: string }[] = [
+    const list: { id: SettingsTab label: string }[] = [
       { id: "overview", label: "Overview" },
-    ];
-    if (isAdmin) list.push({ id: "whatsapp", label: "WhatsApp Business" });
+    ]
+    if (isAdmin) list.push({ id: "whatsapp", label: "WhatsApp Business" })
     if (canReadAudit) {
-      list.push({ id: "templates", label: "Message Templates" });
-      list.push({ id: "audit", label: "Audit Trail" });
+      list.push({ id: "templates", label: "Message Templates" })
+      list.push({ id: "audit", label: "Audit Trail" })
     }
-    return list;
-  }, [isAdmin, canReadAudit]);
-  const [activeTab, setActiveTab] = useState<SettingsTab>("overview");
+    return list
+  }, [isAdmin, canReadAudit])
+  const [activeTab, setActiveTab] = useState<SettingsTab>("overview")
 
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [auditModule, setAuditModule] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [auditModule, setAuditModule] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  const [templates, setTemplates] = useState<
-    { template_key: string; content: string }[]
-  >([]);
+  const [templates, setTemplates] = useState<{
+    template_key: string
+    content: string
+  }[]>([])
   const [editingTemplate, setEditingTemplate] = useState<{
-    template_key: string;
-    content: string;
-  } | null>(null);
-  const [templateLoading, setTemplateLoading] = useState(false);
-  const [templateNotice, setTemplateNotice] = useState("");
+    template_key: string
+    content: string
+  } | null>(null)
+  const [templateLoading, setTemplateLoading] = useState(false)
+  const [templateNotice, setTemplateNotice] = useState("")
 
-  const [waSettings, setWaSettings] = useState<WhatsappSettings | null>(null);
-  const [waAccountSid, setWaAccountSid] = useState("");
-  const [waAuthToken, setWaAuthToken] = useState("");
-  const [waFrom, setWaFrom] = useState("");
-  const [waCountryCode, setWaCountryCode] = useState("+91");
-  const [waSaving, setWaSaving] = useState(false);
+  const [waSettings, setWaSettings] = useState<WhatsappSettings | null>(null)
+  const [waAccountSid, setWaAccountSid] = useState("")
+  const [waAuthToken, setWaAuthToken] = useState("")
+  const [waFrom, setWaFrom] = useState("")
+  const [waCountryCode, setWaCountryCode] = useState("+91")
+  const [waSaving, setWaSaving] = useState(false)
   const [waNotice, setWaNotice] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+    type: "success" | "error"
+    text: string
+  } | null>(null)
 
   const loadWhatsappSettings = async () => {
     try {
-      const data = await apiFetch<WhatsappSettings>("/api/whatsapp/settings");
-      setWaSettings(data);
-      setWaAccountSid(data.account_sid || "");
-      setWaFrom(data.whatsapp_from || "");
-      setWaCountryCode(data.default_country_code || "+91");
-      setWaAuthToken("");
+      const data = await apiFetch<WhatsappSettings>("/api/whatsapp/settings")
+      setWaSettings(data)
+      setWaAccountSid(data.account_sid || "")
+      setWaFrom(data.whatsapp_from || "")
+      setWaCountryCode(data.default_country_code || "+91")
+      setWaAuthToken("")
     } catch (err) {
-      console.error("Failed to load WhatsApp settings", err);
+      console.error("Failed to load WhatsApp settings", err)
     }
-  };
+  }
 
   const saveWhatsappSettings = async () => {
-    setWaSaving(true);
-    setWaNotice(null);
+    setWaSaving(true)
+    setWaNotice(null)
     try {
       await apiFetch("/api/whatsapp/settings", {
         method: "PUT",
@@ -125,81 +124,81 @@ export default function SettingsPage({
           whatsapp_from: waFrom.trim(),
           default_country_code: waCountryCode.trim() || "+91",
         }),
-      });
+      })
       setWaNotice({
         type: "success",
         text: "WhatsApp Business API key saved.",
-      });
-      await loadWhatsappSettings();
+      })
+      await loadWhatsappSettings()
     } catch (err) {
-      const typedError = err as { message?: string };
+      const typedError = err as { message?: string }
       setWaNotice({
         type: "error",
         text: typedError.message || "Unable to save WhatsApp settings.",
-      });
+      })
     } finally {
-      setWaSaving(false);
+      setWaSaving(false)
     }
-  };
+  }
 
   const loadAuditLogs = async (moduleName = auditModule) => {
-    if (!canReadAudit) return;
-    setLoading(true);
-    setError("");
+    if (!canReadAudit) return
+    setLoading(true)
+    setError("")
     try {
-      const params = new URLSearchParams({ limit: "50" });
-      if (moduleName.trim()) params.set("module", moduleName.trim());
+      const params = new URLSearchParams({ limit: "50" })
+      if (moduleName.trim()) params.set("module", moduleName.trim())
       const data = await apiFetch<{ logs?: AuditLog[] }>(
         `/api/audit/logs?${params.toString()}`,
-      );
-      setLogs(data.logs || []);
+      )
+      setLogs(data.logs || [])
     } catch (loadError) {
-      const typedError = loadError as { message?: string; status?: number };
-      setError(typedError.message || "Unable to load audit logs.");
+      const typedError = loadError as { message?: string status?: number }
+      setError(typedError.message || "Unable to load audit logs.")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const loadTemplates = async () => {
     try {
       const data = await apiFetch<{ templates: any[] }>(
         "/api/whatsapp/templates",
-      );
-      setTemplates(data.templates || []);
+      )
+      setTemplates(data.templates || [])
     } catch (err) {
-      console.error("Failed to load templates", err);
+      console.error("Failed to load templates", err)
     }
-  };
+  }
 
   useEffect(() => {
     if (canReadAudit) {
-      void loadAuditLogs("");
-      void loadTemplates();
+      void loadAuditLogs("")
+      void loadTemplates()
     }
     if (isAdmin) {
-      void loadWhatsappSettings();
+      void loadWhatsappSettings()
     }
-  }, [canReadAudit, isAdmin]);
+  }, [canReadAudit, isAdmin])
 
   const saveTemplate = async () => {
-    if (!editingTemplate) return;
-    setTemplateLoading(true);
-    setTemplateNotice("");
+    if (!editingTemplate) return
+    setTemplateLoading(true)
+    setTemplateNotice("")
     try {
       await apiFetch("/api/whatsapp/templates", {
         method: "PUT",
         body: JSON.stringify(editingTemplate),
-      });
-      setTemplateNotice("Template saved.");
-      setEditingTemplate(null);
-      await loadTemplates();
+      })
+      setTemplateNotice("Template saved.")
+      setEditingTemplate(null)
+      await loadTemplates()
     } catch (err) {
-      setTemplateNotice("Failed to save template.");
+      setTemplateNotice("Failed to save template.")
     } finally {
-      setTemplateLoading(false);
+      setTemplateLoading(false)
     }
-  };
+  }
 
   const waStatusBadge = !waSettings ? null : waSettings.source ===
     "database" ? (
@@ -208,7 +207,7 @@ export default function SettingsPage({
     <Badge variant="secondary">Using server defaults</Badge>
   ) : (
     <Badge variant="outline">Not configured</Badge>
-  );
+  )
 
   return (
     <section className="module-page">
@@ -265,9 +264,7 @@ export default function SettingsPage({
                   </span>
                 </div>
                 <div>
-                  <span className="settings-account-label">
-                    Employee ID
-                  </span>
+                  <span className="settings-account-label">Employee ID</span>
                   <span>{user.employee_id || "-"}</span>
                 </div>
                 <div>
@@ -304,8 +301,8 @@ export default function SettingsPage({
                 {waStatusBadge}
               </div>
               <p className="muted">
-                Connect your Twilio WhatsApp Business number once here --
-                it's used app-wide for appointment reminders, sending
+                Connect your Twilio WhatsApp Business number once here -- it's
+                used app-wide for appointment reminders, sending
                 EMR/prescriptions, and every other WhatsApp message the app
                 sends. Visible to owners/admins only.
               </p>
@@ -321,7 +318,9 @@ export default function SettingsPage({
               {waSettings?.source === "database" && (
                 <p className="notice">
                   <FiShield aria-hidden="true" /> Stored encrypted
-                  {waSettings.updated_by ? ` -- last updated by ${waSettings.updated_by}` : ""}
+                  {waSettings.updated_by
+                    ? ` -- last updated by ${waSettings.updated_by}`
+                    : ""}
                   {waSettings.updated_at
                     ? ` on ${formatDateTime(waSettings.updated_at)}`
                     : ""}
@@ -336,7 +335,9 @@ export default function SettingsPage({
               )}
               {waNotice && (
                 <p
-                  className={`notice ${waNotice.type === "error" ? "error" : ""}`}
+                  className={`notice ${
+                    waNotice.type === "error" ? "error" : ""
+                  }`}
                 >
                   {waNotice.text}
                 </p>
@@ -382,9 +383,8 @@ export default function SettingsPage({
                 </Label>
               </div>
               <p className="muted" style={{ marginTop: "0.5rem" }}>
-                The country code is applied to phone numbers that don't
-                already have one (e.g. a 10-digit number saved as a patient's
-                contact).
+                The country code is applied to phone numbers that don't already
+                have one (e.g. a 10-digit number saved as a patient's contact).
               </p>
               <Button
                 onClick={saveWhatsappSettings}
@@ -417,7 +417,10 @@ export default function SettingsPage({
                   <div key={t.template_key} className="settings-template-card">
                     <h4>{labelize(t.template_key)}</h4>
                     <p>{t.content}</p>
-                    <Button variant="ghost" onClick={() => setEditingTemplate(t)}>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setEditingTemplate(t)}
+                    >
                       Edit
                     </Button>
                   </div>
@@ -516,8 +519,8 @@ export default function SettingsPage({
                   type="button"
                   variant="ghost"
                   onClick={() => {
-                    setAuditModule("");
-                    void loadAuditLogs("");
+                    setAuditModule("")
+                    void loadAuditLogs("")
                   }}
                 >
                   Clear
@@ -564,7 +567,8 @@ export default function SettingsPage({
                       >
                         <h4>{log.module_name || "Audit Event"}</h4>
                         <p>
-                          <strong>When:</strong> {formatDateTime(log.created_at)}
+                          <strong>When:</strong>{" "}
+                          {formatDateTime(log.created_at)}
                         </p>
                         <p>
                           <strong>Actor:</strong> {log.actor_username || "-"}
@@ -595,5 +599,5 @@ export default function SettingsPage({
         </p>
       )}
     </section>
-  );
+  )
 }

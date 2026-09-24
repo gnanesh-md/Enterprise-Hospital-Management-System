@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
-import DocumentUploadDropzone from "../components/DocumentUploadDropzone";
-import MarkdownReport from "../components/MarkdownReport";
+import { useEffect, useRef, useState } from "react"
+import type { Dispatch, ReactNode, SetStateAction } from "react"
+import DocumentUploadDropzone from "../components/DocumentUploadDropzone"
+import MarkdownReport from "../components/MarkdownReport"
 import {
   Badge,
   Button,
@@ -21,73 +21,73 @@ import {
   Tabs,
   TabsContent,
   TabsTrigger,
-} from "../components/ui";
+} from "../components/ui"
 import {
   API_BASE,
   SUPPORTED_DOCUMENT_ACCEPT,
   SUPPORTED_DOCUMENT_EXTENSIONS,
-} from "../lib/constants";
-import { apiFetch, reportError, withAuthHeaders } from "../lib/api";
-import { formatDateTime } from "../lib/format";
-import type { Notice } from "../types";
+} from "../lib/constants"
+import { apiFetch, reportError, withAuthHeaders } from "../lib/api"
+import { formatDateTime } from "../lib/format"
+import type { Notice } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+}
 
 type OcrJob = {
-  job_id: string;
-  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
-  progress: number;
-  error_message?: string | null;
-};
+  job_id: string
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED"
+  progress: number
+  error_message?: string | null
+}
 
 type OcrJobResult = {
-  filename: string;
-  combined_markdown: string;
-  entities: unknown[];
-  confidence_score: number | null;
-};
+  filename: string
+  combined_markdown: string
+  entities: unknown[]
+  confidence_score: number | null
+}
 
 type VaultDoc = {
-  id: number;
-  filename: string;
-  doc_category: string | null;
-  confidence_score: number | null;
-  extraction_date: string | null;
-};
+  id: number
+  filename: string
+  doc_category: string | null
+  confidence_score: number | null
+  extraction_date: string | null
+}
 
 type VaultDocDetail = {
-  id: number;
-  markdown: string;
-};
+  id: number
+  markdown: string
+}
 
 type KbDoc = {
-  doc_id: number;
-  filename: string;
-  category: string | null;
-  chunk_count: number;
-};
+  doc_id: number
+  filename: string
+  category: string | null
+  chunk_count: number
+}
 
 type ChatCitation = {
-  doc_id: number;
-  filename: string;
-  page_label?: string | null;
-  snippet?: string | null;
-};
+  doc_id: number
+  filename: string
+  page_label?: string | null
+  snippet?: string | null
+}
 
 type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-  citations?: ChatCitation[];
-};
+  role: "user" | "assistant"
+  content: string
+  citations?: ChatCitation[]
+}
 
-const EXPORT_FORMATS: { value: string; label: string }[] = [
+const EXPORT_FORMATS: { value: string label: string }[] = [
   { value: "md", label: "Markdown" },
   { value: "pdf", label: "PDF" },
   { value: "docx", label: "Word" },
   { value: "xlsx", label: "Excel" },
-];
+]
 
 const STROKE = {
   fill: "none",
@@ -95,14 +95,14 @@ const STROKE = {
   strokeWidth: 1.8,
   strokeLinecap: "round" as const,
   strokeLinejoin: "round" as const,
-};
+}
 
 function Icon({
   name,
   size = 18,
 }: {
-  name: "upload" | "folder" | "chat" | "file" | "check" | "clock" | "alert";
-  size?: number;
+  name: "upload" | "folder" | "chat" | "file" | "check" | "clock" | "alert"
+  size?: number
 }) {
   const paths: Record<string, ReactNode> = {
     upload: (
@@ -156,368 +156,371 @@ function Icon({
         <circle cx="12" cy="16.3" r="0.9" fill="currentColor" stroke="none" />
       </>
     ),
-  };
+  }
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
       {paths[name]}
     </svg>
-  );
+  )
 }
 
 function confidenceVariant(
   score: number | null,
 ): "default" | "secondary" | "destructive" {
-  if (score == null) return "secondary";
-  if (score >= 90) return "default";
-  if (score >= 70) return "secondary";
-  return "destructive";
+  if (score == null) return "secondary"
+  if (score >= 90) return "default"
+  if (score >= 70) return "secondary"
+  return "destructive"
 }
 
-function jobStatusMeta(status: OcrJob["status"]): {
-  label: string;
-  variant: "default" | "secondary" | "destructive";
-  icon: "clock" | "check" | "alert";
+function jobStatusMeta(
+  status: OcrJob["status"],
+): {
+  label: string
+  variant: "default" | "secondary" | "destructive"
+  icon: "clock" | "check" | "alert"
 } {
   switch (status) {
     case "COMPLETED":
-      return { label: "Completed", variant: "default", icon: "check" };
+      return { label: "Completed", variant: "default", icon: "check" }
     case "FAILED":
-      return { label: "Failed", variant: "destructive", icon: "alert" };
+      return { label: "Failed", variant: "destructive", icon: "alert" }
     case "PROCESSING":
-      return { label: "Processing", variant: "secondary", icon: "clock" };
+      return { label: "Processing", variant: "secondary", icon: "clock" }
     default:
-      return { label: "Queued", variant: "secondary", icon: "clock" };
+      return { label: "Queued", variant: "secondary", icon: "clock" }
   }
 }
 
 function downloadExport(path: string) {
-  window.open(`${API_BASE}${path}`, "_blank", "noopener,noreferrer");
+  window.open(`${API_BASE}${path}`, "_blank", "noopener,noreferrer")
 }
 
 export default function OcrPage({ setNotice }: Props) {
-  const [tab, setTab] = useState<"upload" | "vault" | "chat">("upload");
+  const [tab, setTab] = useState<"upload" | "vault" | "chat">("upload")
 
   // Upload & Scan
   const [blueprints, setBlueprints] = useState<string[]>([
     "Universal OCR (Any Text)",
-  ]);
+  ])
   const [selectedBlueprint, setSelectedBlueprint] = useState(
     "Universal OCR (Any Text)",
-  );
-  const [file, setFile] = useState<File | undefined>(undefined);
-  const [uploading, setUploading] = useState(false);
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
-  const [jobStatus, setJobStatus] = useState<OcrJob | null>(null);
-  const [jobResult, setJobResult] = useState<OcrJobResult | null>(null);
-  const pollTimeoutRef = useRef<number | null>(null);
+  )
+  const [file, setFile] = useState<File | undefined>(undefined)
+  const [uploading, setUploading] = useState(false)
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+  const [jobStatus, setJobStatus] = useState<OcrJob | null>(null)
+  const [jobResult, setJobResult] = useState<OcrJobResult | null>(null)
+  const pollTimeoutRef = useRef<number | null>(null)
 
   // My Documents (vault)
-  const [vaultLoaded, setVaultLoaded] = useState(false);
-  const [vaultDocs, setVaultDocs] = useState<VaultDoc[]>([]);
-  const [vaultDetail, setVaultDetail] = useState<VaultDocDetail | null>(null);
-  const [vaultDetailOpen, setVaultDetailOpen] = useState(false);
-  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [vaultLoaded, setVaultLoaded] = useState(false)
+  const [vaultDocs, setVaultDocs] = useState<VaultDoc[]>([])
+  const [vaultDetail, setVaultDetail] = useState<VaultDocDetail | null>(null)
+  const [vaultDetailOpen, setVaultDetailOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   // Ask AI (chat)
-  const [chatLoaded, setChatLoaded] = useState(false);
-  const [kbDocs, setKbDocs] = useState<KbDoc[]>([]);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
+  const [chatLoaded, setChatLoaded] = useState(false)
+  const [kbDocs, setKbDocs] = useState<KbDoc[]>([])
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState("")
+  const [chatLoading, setChatLoading] = useState(false)
 
   useEffect(() => {
     apiFetch<{ blueprints: string[] }>("/api/ocr-portal/blueprints")
       .then((data) => {
         if (data.blueprints?.length) {
-          setBlueprints(data.blueprints);
-          setSelectedBlueprint(data.blueprints[0]);
+          setBlueprints(data.blueprints)
+          setSelectedBlueprint(data.blueprints[0])
         }
       })
       .catch(() => {
         // Fall back to the default option already in state -- non-fatal.
-      });
-  }, []);
+      })
+  }, [])
 
   // ---- Upload & Scan ----------------------------------------------------
 
   const handleFileSelect = (selectedFile?: File) => {
-    setFile(selectedFile);
-    setActiveJobId(null);
-    setJobStatus(null);
-    setJobResult(null);
-  };
+    setFile(selectedFile)
+    setActiveJobId(null)
+    setJobStatus(null)
+    setJobResult(null)
+  }
 
   const handleUpload = async () => {
     if (!file) {
-      setNotice({ type: "warning", message: "Choose a file to scan first." });
-      return;
+      setNotice({ type: "warning", message: "Choose a file to scan first." })
+      return
     }
-    setUploading(true);
+    setUploading(true)
     try {
-      const body = new FormData();
-      body.append("file", file);
-      body.append("blueprint", selectedBlueprint);
+      const body = new FormData()
+      body.append("file", file)
+      body.append("blueprint", selectedBlueprint)
       const response = await fetch(`${API_BASE}/api/ocr-portal/upload`, {
         method: "POST",
         headers: withAuthHeaders({}, "POST"),
         body,
         credentials: "include",
-      });
-      const data = await response.json().catch(() => ({}));
+      })
+      const data = await response.json().catch(() => ({}))
       if (!response.ok) {
         throw Object.assign(new Error(data.error || "Upload failed."), {
           status: response.status,
-        });
+        })
       }
-      setJobResult(null);
-      setJobStatus({ job_id: data.job_id, status: "PENDING", progress: 0 });
-      setActiveJobId(data.job_id);
+      setJobResult(null)
+      setJobStatus({ job_id: data.job_id, status: "PENDING", progress: 0 })
+      setActiveJobId(data.job_id)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Failed to upload document.",
-      );
+      )
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    if (!activeJobId) return undefined;
-    let cancelled = false;
+    if (!activeJobId) return undefined
+    let cancelled = false
 
     const poll = async () => {
       try {
         const data = await apiFetch<OcrJob>(
           `/api/ocr-portal/jobs/${activeJobId}`,
-        );
-        if (cancelled) return;
-        setJobStatus(data);
+        )
+        if (cancelled) return
+        setJobStatus(data)
 
         if (data.status === "COMPLETED") {
           const result = await apiFetch<OcrJobResult>(
             `/api/ocr-portal/jobs/${activeJobId}/result`,
-          );
-          if (!cancelled) setJobResult(result);
-          return;
+          )
+          if (!cancelled) setJobResult(result)
+          return
         }
         if (data.status === "FAILED") {
           reportError(
             setNotice,
             { message: data.error_message || "OCR processing failed." },
             "OCR processing failed.",
-          );
-          return;
+          )
+          return
         }
-        pollTimeoutRef.current = window.setTimeout(poll, 2000);
+        pollTimeoutRef.current = window.setTimeout(poll, 2000)
       } catch (error) {
         if (!cancelled) {
           reportError(
             setNotice,
-            error as { message?: string; status?: number },
+            error as { message?: string status?: number },
             "Lost connection while checking job status.",
-          );
+          )
         }
       }
-    };
+    }
 
-    void poll();
+    void poll()
     return () => {
-      cancelled = true;
-      if (pollTimeoutRef.current) window.clearTimeout(pollTimeoutRef.current);
-    };
-  }, [activeJobId, setNotice]);
+      cancelled = true
+      if (pollTimeoutRef.current) window.clearTimeout(pollTimeoutRef.current)
+    }
+  }, [activeJobId, setNotice])
 
   const handleClear = () => {
-    setFile(undefined);
-    setActiveJobId(null);
-    setJobStatus(null);
-    setJobResult(null);
-  };
+    setFile(undefined)
+    setActiveJobId(null)
+    setJobStatus(null)
+    setJobResult(null)
+  }
 
   // ---- My Documents (vault) ----------------------------------------------
 
   const loadVault = async () => {
     try {
-      const data = await apiFetch<VaultDoc[]>("/api/ocr-portal/vault");
-      setVaultDocs(data);
+      const data = await apiFetch<VaultDoc[]>("/api/ocr-portal/vault")
+      setVaultDocs(data)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load your documents.",
-      );
+      )
     }
-  };
+  }
 
   const openVaultTab = () => {
-    setTab("vault");
+    setTab("vault")
     if (!vaultLoaded) {
-      setVaultLoaded(true);
-      void loadVault();
+      setVaultLoaded(true)
+      void loadVault()
     }
-  };
+  }
 
   const openVaultDetail = async (doc: VaultDoc) => {
     try {
       const data = await apiFetch<VaultDocDetail>(
         `/api/ocr-portal/vault/${doc.id}`,
-      );
-      setVaultDetail(data);
-      setVaultDetailOpen(true);
+      )
+      setVaultDetail(data)
+      setVaultDetailOpen(true)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load document.",
-      );
+      )
     }
-  };
+  }
 
   const handleDeleteConfirmed = async () => {
-    if (deleteTargetId == null) return;
-    setDeleting(true);
+    if (deleteTargetId == null) return
+    setDeleting(true)
     try {
       await apiFetch(`/api/ocr-portal/vault/${deleteTargetId}`, {
         method: "DELETE",
-      });
-      setVaultDocs((prev) => prev.filter((doc) => doc.id !== deleteTargetId));
-      setNotice({ type: "success", message: "Document deleted." });
+      })
+      setVaultDocs((prev) => prev.filter((doc) => doc.id !== deleteTargetId))
+      setNotice({ type: "success", message: "Document deleted." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete document.",
-      );
+      )
     } finally {
-      setDeleting(false);
-      setDeleteTargetId(null);
+      setDeleting(false)
+      setDeleteTargetId(null)
     }
-  };
+  }
 
   const handleAddToKnowledgeBase = async (doc: VaultDoc) => {
     try {
       await apiFetch("/api/ocr-portal/assistant/ingest", {
         method: "POST",
         body: JSON.stringify({ doc_ids: [doc.id] }),
-      });
+      })
       setNotice({
         type: "success",
         message: `${doc.filename} is being added to the knowledge base.`,
-      });
-      if (chatLoaded) void loadKb();
+      })
+      if (chatLoaded) void loadKb()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to add document to knowledge base.",
-      );
+      )
     }
-  };
+  }
 
   // ---- Ask AI (chat) -------------------------------------------------------
 
   const loadKb = async () => {
     try {
-      const data = await apiFetch<KbDoc[]>("/api/ocr-portal/assistant/kb");
-      setKbDocs(data);
+      const data = await apiFetch<KbDoc[]>("/api/ocr-portal/assistant/kb")
+      setKbDocs(data)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load knowledge base.",
-      );
+      )
     }
-  };
+  }
 
   const loadChatHistory = async () => {
     try {
-      const data = await apiFetch<
-        { role: "user" | "assistant"; content: string }[]
-      >("/api/ocr-portal/assistant/history");
-      setChatMessages(data);
+      const data = await apiFetch<{
+        role: "user" | "assistant"
+        content: string
+      }[]>("/api/ocr-portal/assistant/history")
+      setChatMessages(data)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load chat history.",
-      );
+      )
     }
-  };
+  }
 
   const openChatTab = () => {
-    setTab("chat");
+    setTab("chat")
     if (!chatLoaded) {
-      setChatLoaded(true);
-      void loadKb();
-      void loadChatHistory();
+      setChatLoaded(true)
+      void loadKb()
+      void loadChatHistory()
     }
-  };
+  }
 
   const handleRemoveFromKb = async (doc: KbDoc) => {
     try {
       await apiFetch(`/api/ocr-portal/assistant/kb/${doc.doc_id}`, {
         method: "DELETE",
-      });
-      setKbDocs((prev) => prev.filter((d) => d.doc_id !== doc.doc_id));
+      })
+      setKbDocs((prev) => prev.filter((d) => d.doc_id !== doc.doc_id))
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to remove document.",
-      );
+      )
     }
-  };
+  }
 
   const handleChatSend = async () => {
-    const message = chatInput.trim();
-    if (!message) return;
-    setChatMessages((prev) => [...prev, { role: "user", content: message }]);
-    setChatInput("");
-    setChatLoading(true);
+    const message = chatInput.trim()
+    if (!message) return
+    setChatMessages((prev) => [...prev, { role: "user", content: message }])
+    setChatInput("")
+    setChatLoading(true)
     try {
       const data = await apiFetch<{
-        role: "assistant";
-        content: string;
-        citations: ChatCitation[];
+        role: "assistant"
+        content: string
+        citations: ChatCitation[]
       }>("/api/ocr-portal/assistant/chat", {
         method: "POST",
         body: JSON.stringify({ message, session_id: "default" }),
-      });
+      })
       setChatMessages((prev) => [
         ...prev,
         { role: "assistant", content: data.content, citations: data.citations },
-      ]);
+      ])
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to reach the knowledge base.",
-      );
-      setChatMessages((prev) => prev.slice(0, -1));
-      setChatInput(message);
+      )
+      setChatMessages((prev) => prev.slice(0, -1))
+      setChatInput(message)
     } finally {
-      setChatLoading(false);
+      setChatLoading(false)
     }
-  };
+  }
 
   const handleClearChat = async () => {
     try {
-      await apiFetch("/api/ocr-portal/assistant/history", { method: "DELETE" });
-      setChatMessages([]);
-      setNotice({ type: "success", message: "Chat history cleared." });
+      await apiFetch("/api/ocr-portal/assistant/history", { method: "DELETE" })
+      setChatMessages([])
+      setNotice({ type: "success", message: "Chat history cleared." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to clear chat history.",
-      );
+      )
     }
-  };
+  }
 
-  const statusMeta = jobStatus ? jobStatusMeta(jobStatus.status) : null;
+  const statusMeta = jobStatus ? jobStatusMeta(jobStatus.status) : null
 
   return (
     <section className="page-section ocr-scanner-page">
@@ -886,8 +889,8 @@ export default function OcrPage({ setNotice }: Props) {
                     onChange={(event) => setChatInput(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" && !chatLoading) {
-                        event.preventDefault();
-                        void handleChatSend();
+                        event.preventDefault()
+                        void handleChatSend()
                       }
                     }}
                     disabled={chatLoading}
@@ -923,5 +926,5 @@ export default function OcrPage({ setNotice }: Props) {
         loading={deleting}
       />
     </section>
-  );
+  )
 }

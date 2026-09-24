@@ -66,7 +66,7 @@ type ObservationNoteRow = {
   note: string
   created_at: string
 }
-type AdmissionRow = { id: number; admission_date: string }
+type AdmissionRow = { id: number ;admission_date: string }
 type EmrSnapshot = {
   admissions: AdmissionRow[]
   vitals: VitalRow[]
@@ -98,7 +98,7 @@ type IoRow = {
   output_ml?: number | null
   recorded_at: string
 }
-type RassRow = { id: number; score: number; created_at: string }
+type RassRow = { id: number ;score: number ;created_at: string }
 type LabRow = {
   id: number
   test_name: string
@@ -177,7 +177,7 @@ function MiniTrend({
   data,
   color,
 }: {
-  data: { t: string; v: number }[]
+  data: { t: string ;v: number }[]
   color: string
 }) {
   if (data.length < 2)
@@ -272,7 +272,7 @@ function QuickAddForm({
   submitLabel,
   onSubmit,
 }: {
-  fields: { key: string; label: string; placeholder?: string }[]
+  fields: { key: string ;label: string ;placeholder?: string }[]
   submitLabel: string
   onSubmit: (values: Record<string, string>) => Promise<void>
 }) {
@@ -364,7 +364,7 @@ export default function ICU({
     ;(async () => {
       setLoading(true)
       try {
-        const res = await apiFetch<{ beds: Bed[]; summary: Summary }>(
+        const res = await apiFetch<{ beds: Bed[] ;summary: Summary }>(
           "/api/beds",
         )
         setBeds((res.beds || []).filter((b) => b.ward === "ICU"))

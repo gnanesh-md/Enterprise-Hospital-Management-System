@@ -1,36 +1,36 @@
-import { API_BASE } from "./constants";
-import type { Dispatch, SetStateAction } from "react";
-import type { Notice } from "../types";
+import { API_BASE } from "./constants"
+import type { Dispatch, SetStateAction } from "react"
+import type { Notice } from "../types"
 
-const HOSPITAL_CODE_KEY = "hospai_hospital_code";
-const DEFAULT_HOSPITAL_CODE = "hosp-default";
+const HOSPITAL_CODE_KEY = "hospai_hospital_code"
+const DEFAULT_HOSPITAL_CODE = "hosp-default"
 
 export function getHospitalCode(): string {
-  if (typeof window === "undefined") return DEFAULT_HOSPITAL_CODE;
-  const storage = window.localStorage as
-    { getItem?: (key: string) => string | null } | undefined;
+  if (typeof window === "undefined") return DEFAULT_HOSPITAL_CODE
+  const storage = window.localStorage as {
+    getItem?: (key: string) => string | null
+  } | undefined
   if (!storage || typeof storage.getItem !== "function")
-    return DEFAULT_HOSPITAL_CODE;
-  const stored = (storage.getItem(HOSPITAL_CODE_KEY) || "")
-    .trim()
-    .toLowerCase();
-  return stored || DEFAULT_HOSPITAL_CODE;
+    return DEFAULT_HOSPITAL_CODE
+  const stored = (storage.getItem(HOSPITAL_CODE_KEY) || "").trim().toLowerCase()
+  return stored || DEFAULT_HOSPITAL_CODE
 }
 
 export function setHospitalCode(hospitalCode: string): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return
   const normalized =
-    (hospitalCode || "").trim().toLowerCase() || DEFAULT_HOSPITAL_CODE;
-  const storage = window.localStorage as
-    { setItem?: (key: string, value: string) => void } | undefined;
-  if (!storage || typeof storage.setItem !== "function") return;
-  storage.setItem(HOSPITAL_CODE_KEY, normalized);
+    (hospitalCode || "").trim().toLowerCase() || DEFAULT_HOSPITAL_CODE
+  const storage = window.localStorage as {
+    setItem?: (key: string, value: string) => void
+  } | undefined
+  if (!storage || typeof storage.setItem !== "function") return
+  storage.setItem(HOSPITAL_CODE_KEY, normalized)
 }
 
 export function getCsrfToken(): string | undefined {
-  if (typeof document === "undefined") return undefined;
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : undefined;
+  if (typeof document === "undefined") return undefined
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : undefined
 }
 
 /**
@@ -43,23 +43,23 @@ export function withAuthHeaders(
   headers: HeadersInit = {},
   method = "POST",
 ): HeadersInit {
-  const csrfToken = getCsrfToken();
-  const upperMethod = method.toUpperCase();
+  const csrfToken = getCsrfToken()
+  const upperMethod = method.toUpperCase()
   return {
     "X-Hospital-Code": getHospitalCode(),
     ...(csrfToken && upperMethod !== "GET" && upperMethod !== "HEAD"
       ? { "X-CSRF-Token": csrfToken }
       : {}),
     ...headers,
-  };
+  }
 }
 
 export async function apiFetch<T = any>(
   path: string,
   options: RequestInit & { cache?: RequestCache } = {},
 ): Promise<T> {
-  const method = (options.method || "GET").toUpperCase();
-  const csrfToken = getCsrfToken();
+  const method = (options.method || "GET").toUpperCase()
+  const csrfToken = getCsrfToken()
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     "X-Hospital-Code": getHospitalCode(),
@@ -67,42 +67,42 @@ export async function apiFetch<T = any>(
       ? { "X-CSRF-Token": csrfToken }
       : {}),
     ...(options.headers || {}),
-  };
+  }
 
   const response = await fetch(`${API_BASE}${path}`, {
     headers,
     credentials: "include",
     cache: options.cache || (method === "GET" ? "no-store" : "default"),
     ...options,
-  });
+  })
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
+    const payload = await response.json().catch(() => ({}))
     if (
       response.status === 401 &&
       path !== "/api/auth/login" &&
       path !== "/api/auth/session"
     ) {
-      window.dispatchEvent(new Event("app:unauthorized"));
+      window.dispatchEvent(new Event("app:unauthorized"))
     }
-    const message = payload.error || payload.message || "Request failed";
+    const message = payload.error || payload.message || "Request failed"
     const error = new Error(message) as Error & {
-      payload?: any;
-      status?: number;
-    };
-    error.payload = payload;
-    error.status = response.status;
-    throw error;
+      payload?: any
+      status?: number
+    }
+    error.payload = payload
+    error.status = response.status
+    throw error
   }
 
-  return response.json();
+  return response.json()
 }
 
 export function reportError(
   setNotice?: Dispatch<SetStateAction<Notice | null>>,
-  error?: { status?: number; message?: string },
+  error?: { status?: number message?: string },
   fallbackMessage = "Request failed.",
 ): void {
-  if (error?.status === 401) return;
-  setNotice?.({ type: "error", message: error?.message || fallbackMessage });
+  if (error?.status === 401) return
+  setNotice?.({ type: "error", message: error?.message || fallbackMessage })
 }

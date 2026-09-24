@@ -1,7 +1,7 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
-import DocumentUploadDropzone from "../components/DocumentUploadDropzone";
-import MarkdownReport from "../components/MarkdownReport";
+import { Fragment, useEffect, useMemo, useState } from "react"
+import type { Dispatch, SetStateAction } from "react"
+import DocumentUploadDropzone from "../components/DocumentUploadDropzone"
+import MarkdownReport from "../components/MarkdownReport"
 import {
   Button,
   Checkbox,
@@ -16,69 +16,69 @@ import {
   Tabs,
   TabsTrigger,
   Textarea,
-} from "../components/ui";
+} from "../components/ui"
 import {
   API_BASE,
   DOC_TYPES,
   SUPPORTED_DOCUMENT_ACCEPT,
   SUPPORTED_DOCUMENT_EXTENSIONS,
   isSupportedDocumentFile,
-} from "../lib/constants";
-import { apiFetch, reportError, withAuthHeaders } from "../lib/api";
+} from "../lib/constants"
+import { apiFetch, reportError, withAuthHeaders } from "../lib/api"
 import {
   formatDateTimeIST,
   getISTDateTimeKey,
   getTimestamp,
   stripUploadTimestampPrefix,
-} from "../lib/format";
-import type { DocumentItem, Notice, Patient } from "../types";
+} from "../lib/format"
+import type { DocumentItem, Notice, Patient } from "../types"
 
 type ProfileUpdates = {
-  age: number | string;
-  weight: number | string;
-  height: number | string;
-  phone: string;
-  allergies: string;
-  symptoms: string;
-  gender: string;
-  pregnant: boolean;
-};
+  age: number | string
+  weight: number | string
+  height: number | string
+  phone: string
+  allergies: string
+  symptoms: string
+  gender: string
+  pregnant: boolean
+}
 
 type Props = {
-  onSelect: (patient: Patient) => void;
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  onReadmitComplete?: (patientId?: string) => Promise<void>;
-  ocrLanguage: string;
-};
+  onSelect: (patient: Patient) => void
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  onReadmitComplete?: (patientId?: string) => Promise<void>
+  ocrLanguage: string
+}
 
-type OcrResultMap = Record<string, { text?: string; file?: File }>;
+type OcrResultMap = Record<string, { text?: string file?: File }>
 
-const IMAGE_NAME_PATTERN = /\.(png|jpe?g|webp|bmp|gif|tiff?|heic|heif)$/i;
+const IMAGE_NAME_PATTERN = /\.(png|jpe?g|webp|bmp|gif|tiff?|heic|heif)$/i
 
 function OriginalDocumentPreview({ file }: { file?: File }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(null)
 
   useEffect(() => {
     if (!file) {
-      setUrl(null);
-      return;
+      setUrl(null)
+      return
     }
-    const objectUrl = URL.createObjectURL(file);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file]);
+    const objectUrl = URL.createObjectURL(file)
+    setUrl(objectUrl)
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [file])
 
   if (!file || !url) {
-    return <p className="muted">No source document available.</p>;
+    return <p className="muted">No source document available.</p>
   }
 
-  const mime = (file.type || "").toLowerCase();
-  const isPdf = mime === "application/pdf" || /\.pdf$/i.test(file.name);
+  const mime = (file.type || "").toLowerCase()
+  const isPdf = mime === "application/pdf" || /\.pdf$/i.test(file.name)
   const isImage =
-    mime.startsWith("image/") || IMAGE_NAME_PATTERN.test(file.name);
+    mime.startsWith("image/") || IMAGE_NAME_PATTERN.test(file.name)
 
   if (isImage) {
-    return <img className="ocr-source-image" src={url} alt={file.name} />;
+    return <img className="ocr-source-image" src={url} alt={file.name} />
   }
 
   if (isPdf) {
@@ -88,14 +88,14 @@ function OriginalDocumentPreview({ file }: { file?: File }) {
         src={url}
         title={`Preview ${file.name}`}
       />
-    );
+    )
   }
 
   return (
     <a className="link" href={url} target="_blank" rel="noreferrer">
       Open original document
     </a>
-  );
+  )
 }
 
 export default function ReadmitPage({
@@ -104,10 +104,10 @@ export default function ReadmitPage({
   onReadmitComplete,
   ocrLanguage,
 }: Props) {
-  const [query, setQuery] = useState("");
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [activePatient, setActivePatient] = useState<Patient | null>(null);
-  const [notes, setNotes] = useState("");
+  const [query, setQuery] = useState("")
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [activePatient, setActivePatient] = useState<Patient | null>(null)
+  const [notes, setNotes] = useState("")
   const [profileUpdates, setProfileUpdates] = useState<ProfileUpdates>({
     age: "",
     weight: "",
@@ -117,28 +117,24 @@ export default function ReadmitPage({
     symptoms: "",
     gender: "Female",
     pregnant: false,
-  });
-  const [docFiles, setDocFiles] = useState<Record<string, File>>({});
-  const [ocrResults, setOcrResults] = useState<OcrResultMap>({});
-  const [ocrStatus, setOcrStatus] = useState<Record<string, string>>({});
-  const [previousDocuments, setPreviousDocuments] = useState<DocumentItem[]>(
-    [],
-  );
+  })
+  const [docFiles, setDocFiles] = useState<Record<string, File>>({})
+  const [ocrResults, setOcrResults] = useState<OcrResultMap>({})
+  const [ocrStatus, setOcrStatus] = useState<Record<string, string>>({})
+  const [previousDocuments, setPreviousDocuments] = useState<DocumentItem[]>([])
   const [previousDocumentsLoading, setPreviousDocumentsLoading] =
-    useState(false);
-  const [submitting, setSubmitting] = useState(false);
+    useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   // -- UI-only state for the redesigned layout; none of the data/handler logic
   // below this line changed. --
-  const [activeTab, setActiveTab] = useState<"details" | "documents">(
-    "details",
-  );
+  const [activeTab, setActiveTab] = useState<"details" | "documents">("details")
   const [viewingDocument, setViewingDocument] = useState<DocumentItem | null>(
     null,
-  );
+  )
   const [previewingOcrType, setPreviewingOcrType] = useState<string | null>(
     null,
-  );
+  )
 
   const normalizeProfile = (patient: Patient): ProfileUpdates => ({
     age: patient?.age ?? "",
@@ -149,25 +145,25 @@ export default function ReadmitPage({
     symptoms: patient?.symptoms || "",
     gender: patient?.gender || "Female",
     pregnant: patient?.pregnant === 1 || patient?.pregnant === true,
-  });
+  })
 
   useEffect(() => {
     const loadPatients = async () => {
       try {
-        const data = await apiFetch<{ patients?: Patient[] }>("/api/patients");
-        setPatients(data.patients || []);
+        const data = await apiFetch<{ patients?: Patient[] }>("/api/patients")
+        setPatients(data.patients || [])
       } catch (error) {
         reportError(
           setNotice,
-          error as { message?: string; status?: number },
+          error as { message?: string status?: number },
           "Unable to load patients.",
-        );
+        )
       }
-    };
-    void loadPatients();
-  }, [setNotice]);
+    }
+    void loadPatients()
+  }, [setNotice])
 
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = query.trim().toLowerCase()
   const results = normalizedQuery
     ? patients.filter((patient) => {
         const fields = [
@@ -179,101 +175,101 @@ export default function ReadmitPage({
           patient.dob,
         ]
           .filter(Boolean)
-          .map((value) => String(value).toLowerCase());
-        return fields.some((value) => value.includes(normalizedQuery));
+          .map((value) => String(value).toLowerCase())
+        return fields.some((value) => value.includes(normalizedQuery))
       })
-    : patients;
+    : patients
 
   const previousDocumentGroups = useMemo(() => {
     const sorted = [...previousDocuments].sort(
       (a, b) => getTimestamp(b.created_at) - getTimestamp(a.created_at),
-    );
-    const groups = new Map<string, { label: string; items: DocumentItem[] }>();
+    )
+    const groups = new Map<string, { label: string items: DocumentItem[] }>()
     sorted.forEach((doc) => {
-      const key = getISTDateTimeKey(doc.created_at) || "unknown";
-      const label = formatDateTimeIST(doc.created_at);
+      const key = getISTDateTimeKey(doc.created_at) || "unknown"
+      const label = formatDateTimeIST(doc.created_at)
       if (!groups.has(key)) {
-        groups.set(key, { label, items: [] });
+        groups.set(key, { label, items: [] })
       }
-      groups.get(key)?.items.push(doc);
-    });
+      groups.get(key)?.items.push(doc)
+    })
     return Array.from(groups.entries()).map(([key, value]) => ({
       key,
       ...value,
-    }));
-  }, [previousDocuments]);
+    }))
+  }, [previousDocuments])
 
   const lastVisitLabel = useMemo(() => {
-    if (previousDocuments.length === 0) return null;
+    if (previousDocuments.length === 0) return null
     const mostRecent = previousDocuments.reduce((latest, doc) =>
       getTimestamp(doc.created_at) > getTimestamp(latest.created_at)
         ? doc
         : latest,
-    );
-    return formatDateTimeIST(mostRecent.created_at);
-  }, [previousDocuments]);
+    )
+    return formatDateTimeIST(mostRecent.created_at)
+  }, [previousDocuments])
 
   const loadPreviousDocuments = async (patientId: string) => {
-    setPreviousDocumentsLoading(true);
+    setPreviousDocumentsLoading(true)
     try {
       const data = await apiFetch<{ documents?: DocumentItem[] }>(
         `/api/patients/${patientId}/documents`,
-      );
-      setPreviousDocuments(data.documents || []);
+      )
+      setPreviousDocuments(data.documents || [])
     } catch {
-      setPreviousDocuments([]);
+      setPreviousDocuments([])
       setNotice({
         type: "warning",
         message: "Unable to load previous documents.",
-      });
+      })
     } finally {
-      setPreviousDocumentsLoading(false);
+      setPreviousDocumentsLoading(false)
     }
-  };
+  }
 
   const handleSelect = async (patient: Patient) => {
-    setActivePatient(patient);
-    setProfileUpdates(normalizeProfile(patient));
-    setDocFiles({});
-    setOcrResults({});
-    setOcrStatus({});
-    setPreviousDocuments([]);
-    setActiveTab("details");
-    setViewingDocument(null);
-    setPreviewingOcrType(null);
-    onSelect(patient);
-    void loadPreviousDocuments(patient.patient_id);
+    setActivePatient(patient)
+    setProfileUpdates(normalizeProfile(patient))
+    setDocFiles({})
+    setOcrResults({})
+    setOcrStatus({})
+    setPreviousDocuments([])
+    setActiveTab("details")
+    setViewingDocument(null)
+    setPreviewingOcrType(null)
+    onSelect(patient)
+    void loadPreviousDocuments(patient.patient_id)
     try {
       const detail = await apiFetch<{ patient?: Patient }>(
         `/api/patients/${patient.patient_id}`,
-      );
+      )
       if (detail?.patient) {
-        setActivePatient(detail.patient);
-        setProfileUpdates(normalizeProfile(detail.patient));
+        setActivePatient(detail.patient)
+        setProfileUpdates(normalizeProfile(detail.patient))
       }
     } catch {
       setNotice({
         type: "warning",
         message: "Loaded limited patient details for readmission edit.",
-      });
+      })
     }
-  };
+  }
 
   const handleFileSelect = (docType: string) => (file: File | null) => {
     if (!file) {
       setDocFiles((prev) => {
-        const next = { ...prev };
-        delete next[docType];
-        return next;
-      });
+        const next = { ...prev }
+        delete next[docType]
+        return next
+      })
       setOcrResults((prev) => {
-        if (!prev[docType]) return prev;
-        const next = { ...prev };
-        delete next[docType];
-        return next;
-      });
-      setOcrStatus((prev) => ({ ...prev, [docType]: "" }));
-      return;
+        if (!prev[docType]) return prev
+        const next = { ...prev }
+        delete next[docType]
+        return next
+      })
+      setOcrStatus((prev) => ({ ...prev, [docType]: "" }))
+      return
     }
 
     if (!isSupportedDocumentFile(file)) {
@@ -281,26 +277,26 @@ export default function ReadmitPage({
         ...prev,
         [docType]:
           "Unsupported file type. Use PDF, JPG, PNG, WEBP, TIFF, BMP, GIF, HEIC, or HEIF.",
-      }));
+      }))
       setDocFiles((prev) => {
-        const next = { ...prev };
-        delete next[docType];
-        return next;
-      });
-      return;
+        const next = { ...prev }
+        delete next[docType]
+        return next
+      })
+      return
     }
-    setOcrStatus((prev) => ({ ...prev, [docType]: "" }));
-    setDocFiles((prev) => ({ ...prev, [docType]: file }));
-  };
+    setOcrStatus((prev) => ({ ...prev, [docType]: "" }))
+    setDocFiles((prev) => ({ ...prev, [docType]: file }))
+  }
 
   const handleOCR = async (docType: string) => {
-    const file = docFiles[docType];
-    if (!file) return;
-    setOcrStatus((prev) => ({ ...prev, [docType]: "Processing OCR..." }));
-    const body = new FormData();
-    body.append("file", file);
-    body.append("language", ocrLanguage);
-    body.append("doc_type", docType);
+    const file = docFiles[docType]
+    if (!file) return
+    setOcrStatus((prev) => ({ ...prev, [docType]: "Processing OCR..." }))
+    const body = new FormData()
+    body.append("file", file)
+    body.append("language", ocrLanguage)
+    body.append("doc_type", docType)
 
     try {
       const response = await fetch(`${API_BASE}/api/ocr`, {
@@ -308,61 +304,59 @@ export default function ReadmitPage({
         headers: withAuthHeaders({}, "POST"),
         body,
         credentials: "include",
-      });
-      const data = await response.json();
+      })
+      const data = await response.json()
       setOcrResults((prev) => ({
         ...prev,
         [docType]: { text: data.text || "", file },
-      }));
+      }))
       setOcrStatus((prev) => ({
         ...prev,
         [docType]: "OCR complete. Text will be saved with readmission.",
-      }));
+      }))
     } catch {
-      setOcrStatus((prev) => ({ ...prev, [docType]: "OCR failed." }));
+      setOcrStatus((prev) => ({ ...prev, [docType]: "OCR failed." }))
     }
-  };
+  }
 
   const handleOcrTextChange =
     (docType: string) => (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = event.target.value;
+      const value = event.target.value
       setOcrResults((prev) => ({
         ...prev,
         [docType]: { ...prev[docType], text: value },
-      }));
-    };
+      }))
+    }
 
   const clearOcrEntry = (docType: string) => {
     setOcrResults((prev) => {
-      const next = { ...prev };
-      delete next[docType];
-      return next;
-    });
-  };
+      const next = { ...prev }
+      delete next[docType]
+      return next
+    })
+  }
 
   const handleProfileChange =
     (field: keyof ProfileUpdates) =>
     (
-      event: React.ChangeEvent<
-        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >,
+      event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
     ) => {
       const value =
         field === "pregnant"
           ? (event.target as HTMLInputElement).checked
-          : event.target.value;
-      setProfileUpdates((prev) => ({ ...prev, [field]: value }));
-    };
+          : event.target.value
+      setProfileUpdates((prev) => ({ ...prev, [field]: value }))
+    }
 
   const handleReadmit = async () => {
-    if (!activePatient) return;
-    setSubmitting(true);
+    if (!activePatient) return
+    setSubmitting(true)
     try {
       const numberOrNull = (value: number | string) => {
-        if (value === "" || value === null || value === undefined) return null;
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? parsed : null;
-      };
+        if (value === "" || value === null || value === undefined) return null
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? parsed : null
+      }
       await apiFetch(`/api/patients/${activePatient.patient_id}`, {
         method: "PUT",
         body: JSON.stringify({
@@ -376,28 +370,28 @@ export default function ReadmitPage({
           gender: profileUpdates.gender,
           pregnant: profileUpdates.pregnant,
         }),
-      });
+      })
       const data = await apiFetch<{ admission_id: string }>(
         `/api/patients/${activePatient.patient_id}/admissions`,
         {
           method: "POST",
           body: JSON.stringify({ notes }),
         },
-      );
+      )
 
       const docsToUpload = DOC_TYPES.filter((doc) => docFiles[doc.value]).map(
         (doc) => doc.value,
-      );
-      let uploadedCount = 0;
+      )
+      let uploadedCount = 0
       for (const docType of docsToUpload) {
-        const file = docFiles[docType];
-        if (!file) continue;
-        const body = new FormData();
-        body.append("file", file);
-        body.append("doc_type", docType);
-        body.append("admission_id", data.admission_id);
-        body.append("ocr_text", ocrResults[docType]?.text || "");
-        body.append("ocr_language", ocrLanguage);
+        const file = docFiles[docType]
+        if (!file) continue
+        const body = new FormData()
+        body.append("file", file)
+        body.append("doc_type", docType)
+        body.append("admission_id", data.admission_id)
+        body.append("ocr_text", ocrResults[docType]?.text || "")
+        body.append("ocr_language", ocrLanguage)
         const uploadResponse = await fetch(
           `${API_BASE}/api/patients/${activePatient.patient_id}/documents`,
           {
@@ -406,41 +400,43 @@ export default function ReadmitPage({
             body,
             credentials: "include",
           },
-        );
+        )
         if (!uploadResponse.ok) {
-          throw new Error("Unable to upload readmission document.");
+          throw new Error("Unable to upload readmission document.")
         }
-        uploadedCount += 1;
+        uploadedCount += 1
       }
 
       setNotice({
         type: "success",
         message: uploadedCount
-          ? `Re-admitted. Admission ${data.admission_id}. Uploaded ${uploadedCount} document${uploadedCount === 1 ? "" : "s"}.`
+          ? `Re-admitted. Admission ${data.admission_id}. Uploaded ${uploadedCount} document${
+              uploadedCount === 1 ? "" : "s"
+            }.`
           : `Re-admitted. Admission ${data.admission_id}.`,
-      });
-      setNotes("");
-      setDocFiles({});
-      setOcrResults({});
-      setOcrStatus({});
-      setPreviewingOcrType(null);
-      await loadPreviousDocuments(activePatient.patient_id);
+      })
+      setNotes("")
+      setDocFiles({})
+      setOcrResults({})
+      setOcrStatus({})
+      setPreviewingOcrType(null)
+      await loadPreviousDocuments(activePatient.patient_id)
       onSelect({
         ...activePatient,
         ...profileUpdates,
         admission_id: data.admission_id,
-      });
-      await onReadmitComplete?.(activePatient.patient_id);
+      })
+      await onReadmitComplete?.(activePatient.patient_id)
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to re-admit patient.",
-      );
+      )
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   return (
     <section className="panel">
@@ -454,8 +450,12 @@ export default function ReadmitPage({
       <div className="list-meta">
         <p className="muted">
           {query.trim()
-            ? `Showing ${results.length} search result${results.length === 1 ? "" : "s"}.`
-            : `Showing ${results.length} patient${results.length === 1 ? "" : "s"}.`}
+            ? `Showing ${results.length} search result${
+                results.length === 1 ? "" : "s"
+              }.`
+            : `Showing ${results.length} patient${
+                results.length === 1 ? "" : "s"
+              }.`}
         </p>
       </div>
       <div className="search-results">
@@ -469,7 +469,7 @@ export default function ReadmitPage({
             <TableCell>Actions</TableCell>
           </TableHead>
           {results.map((patient) => {
-            const expanded = activePatient?.patient_id === patient.patient_id;
+            const expanded = activePatient?.patient_id === patient.patient_id
             return (
               <Fragment key={patient.patient_id}>
                 <TableRow className={expanded ? "active" : ""}>
@@ -486,10 +486,10 @@ export default function ReadmitPage({
                       size="sm"
                       onClick={() => {
                         if (expanded) {
-                          setActivePatient(null);
-                          return;
+                          setActivePatient(null)
+                          return
                         }
-                        void handleSelect(patient);
+                        void handleSelect(patient)
                       }}
                     >
                       {expanded ? "Hide" : "Readmit"}
@@ -562,9 +562,7 @@ export default function ReadmitPage({
                             <Textarea
                               className="readmit-notes"
                               value={notes}
-                              onChange={(event) =>
-                                setNotes(event.target.value)
-                              }
+                              onChange={(event) => setNotes(event.target.value)}
                               rows={3}
                             />
                           </Label>
@@ -665,9 +663,8 @@ export default function ReadmitPage({
                                     {group.items.map((doc) => {
                                       const label =
                                         DOC_TYPES.find(
-                                          (item) =>
-                                            item.value === doc.doc_type,
-                                        )?.label || doc.doc_type;
+                                          (item) => item.value === doc.doc_type,
+                                        )?.label || doc.doc_type
                                       return (
                                         <div
                                           key={doc.id}
@@ -704,7 +701,7 @@ export default function ReadmitPage({
                                             </a>
                                           </div>
                                         </div>
-                                      );
+                                      )
                                     })}
                                   </div>
                                 </details>
@@ -714,8 +711,8 @@ export default function ReadmitPage({
 
                           <h4>Upload New Documents</h4>
                           <p className="muted">
-                            Choose per type, run OCR, review the extracted
-                            text, then confirm re-admission.
+                            Choose per type, run OCR, review the extracted text,
+                            then confirm re-admission.
                           </p>
                           <div className="doc-grid">
                             {DOC_TYPES.map((doc) => (
@@ -769,7 +766,7 @@ export default function ReadmitPage({
                   </div>
                 )}
               </Fragment>
-            );
+            )
           })}
         </Table>
       </div>
@@ -790,9 +787,7 @@ export default function ReadmitPage({
         }
       >
         {viewingDocument?.ocr_language && (
-          <p className="muted">
-            OCR Language: {viewingDocument.ocr_language}
-          </p>
+          <p className="muted">OCR Language: {viewingDocument.ocr_language}</p>
         )}
         {viewingDocument?.ocr_text ? (
           <div className="ocr-text-display">
@@ -836,7 +831,9 @@ export default function ReadmitPage({
               </div>
               <div className="ocr-preview">
                 <p className="muted">Markdown Preview</p>
-                <MarkdownReport text={ocrResults[previewingOcrType].text || ""} />
+                <MarkdownReport
+                  text={ocrResults[previewingOcrType].text || ""}
+                />
               </div>
             </div>
             <Textarea
@@ -849,16 +846,13 @@ export default function ReadmitPage({
                 variant="secondary"
                 type="button"
                 onClick={() => {
-                  clearOcrEntry(previewingOcrType);
-                  setPreviewingOcrType(null);
+                  clearOcrEntry(previewingOcrType)
+                  setPreviewingOcrType(null)
                 }}
               >
                 Clear
               </Button>
-              <Button
-                type="button"
-                onClick={() => setPreviewingOcrType(null)}
-              >
+              <Button type="button" onClick={() => setPreviewingOcrType(null)}>
                 Done
               </Button>
             </div>
@@ -866,5 +860,5 @@ export default function ReadmitPage({
         )}
       </Modal>
     </section>
-  );
+  )
 }

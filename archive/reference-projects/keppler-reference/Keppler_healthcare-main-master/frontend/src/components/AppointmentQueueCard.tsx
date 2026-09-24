@@ -1,16 +1,16 @@
-import type { ReactNode } from "react";
-import { FiClock, FiHome, FiTag, FiUser } from "react-icons/fi";
-import { formatDateTime } from "../lib/format";
-import { getAppointmentStatusMeta } from "../lib/appointmentStatus";
-import type { Appointment } from "../types";
+import type { ReactNode } from "react"
+import { FiClock, FiHome, FiTag, FiUser } from "react-icons/fi"
+import { formatDateTime } from "../lib/format"
+import { getAppointmentStatusMeta } from "../lib/appointmentStatus"
+import type { Appointment } from "../types"
 
 type Props = {
-  appointment: Appointment;
-  actions?: ReactNode;
-};
+  appointment: Appointment
+  actions?: ReactNode
+}
 
 export default function AppointmentQueueCard({ appointment, actions }: Props) {
-  const statusMeta = getAppointmentStatusMeta(appointment.status);
+  const statusMeta = getAppointmentStatusMeta(appointment.status)
 
   return (
     <article className={`queue-card queue-card-${statusMeta.tone}`}>
@@ -54,5 +54,5 @@ export default function AppointmentQueueCard({ appointment, actions }: Props) {
 
       {actions ? <div className="queue-card-actions">{actions}</div> : null}
     </article>
-  );
+  )
 }

@@ -134,6 +134,12 @@ export default function OpReportsPage({
   }, [activeRole])
 
   // ── 2. Filters State ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const mainEl = document.querySelector("main");
+    if (mainEl) mainEl.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, []);
+
   const [filters, setFilters] = useState<OpReportFilters>({
     dateRangePreset: "last30",
     department: "All",
@@ -737,7 +743,7 @@ export default function OpReportsPage({
             ))}
           </div>
         ) : reportData ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 animate-flow-in delay-75">
             {/* Card 1: Total OP Visits */}
             <div className="bg-white border border-[#DDE2EC] rounded-xl p-4 shadow-2xs hover:border-blue-300 transition group">
               <div className="flex items-center justify-between mb-2">
@@ -917,7 +923,7 @@ export default function OpReportsPage({
         ) : null}
 
         {/* ── 6. MAIN ANALYTICS SECTION (THREE-COLUMN LAYOUT) ──────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 animate-flow-in delay-150">
           {/* LEFT: OP Visits Trend (Line Chart) */}
           <div className="lg:col-span-5 bg-white border border-[#DDE2EC] rounded-xl p-5 shadow-2xs flex flex-col justify-between">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-100">
@@ -962,7 +968,11 @@ export default function OpReportsPage({
 
             <div className="h-40 w-full">
               {reportData && reportData.trendData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer
+                  key={`op_trend_${filters.dateRangePreset}_${trendSubPreset}`}
+                  width="100%"
+                  height="100%"
+                >
                   <LineChart
                     data={reportData.trendData}
                     margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
@@ -1005,6 +1015,10 @@ export default function OpReportsPage({
                       strokeWidth={2.5}
                       dot={{ r: 2, fill: "#1B4FD8" }}
                       activeDot={{ r: 4 }}
+                      isAnimationActive={true}
+                      animationDuration={1400}
+                      animationEasing="ease-out"
+                      animationBegin={150}
                     />
                     <Line
                       type="monotone"
@@ -1013,6 +1027,10 @@ export default function OpReportsPage({
                       stroke="#10B981"
                       strokeWidth={1.8}
                       dot={false}
+                      isAnimationActive={true}
+                      animationDuration={1400}
+                      animationEasing="ease-out"
+                      animationBegin={250}
                     />
                     <Line
                       type="monotone"
@@ -1021,6 +1039,10 @@ export default function OpReportsPage({
                       stroke="#6366F1"
                       strokeWidth={1.8}
                       dot={false}
+                      isAnimationActive={true}
+                      animationDuration={1400}
+                      animationEasing="ease-out"
+                      animationBegin={350}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -1059,7 +1081,11 @@ export default function OpReportsPage({
 
             <div className="h-40 w-full">
               {reportData && reportData.deptStats.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer
+                  key={`op_dept_${deptSubPreset}`}
+                  width="100%"
+                  height="100%"
+                >
                   <BarChart
                     data={reportData.deptStats.slice(0, 6)}
                     margin={{ top: 10, right: 10, left: -20, bottom: 10 }}
@@ -1094,7 +1120,15 @@ export default function OpReportsPage({
                       }}
                       formatter={(val: any) => [`${val} Visits`, "Count"]}
                     />
-                    <Bar dataKey="count" fill="#0284C7" radius={[4, 4, 0, 0]}>
+                    <Bar
+                      dataKey="count"
+                      fill="#0284C7"
+                      radius={[4, 4, 0, 0]}
+                      isAnimationActive={true}
+                      animationDuration={1300}
+                      animationEasing="ease-out"
+                      animationBegin={200}
+                    >
                       {reportData.deptStats.slice(0, 6).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -1125,7 +1159,11 @@ export default function OpReportsPage({
               {reportData &&
               reportData.visitTypeStats.some((s) => s.count > 0) ? (
                 <>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer
+                    key={`op_pie_${filters.dateRangePreset}`}
+                    width="100%"
+                    height="100%"
+                  >
                     <PieChart>
                       <Pie
                         data={reportData.visitTypeStats}
@@ -1135,6 +1173,10 @@ export default function OpReportsPage({
                         outerRadius={54}
                         paddingAngle={3}
                         dataKey="count"
+                        isAnimationActive={true}
+                        animationDuration={1200}
+                        animationEasing="ease-out"
+                        animationBegin={250}
                       >
                         {reportData.visitTypeStats.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />

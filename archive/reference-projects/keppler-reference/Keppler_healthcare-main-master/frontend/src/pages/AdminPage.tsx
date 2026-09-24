@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
-import type { Dispatch, FormEvent, SetStateAction } from "react";
+import { useEffect, useState } from "react"
+import type { Dispatch, FormEvent, SetStateAction } from "react"
 import {
   ALL_ASSIGNABLE_MODULES,
   DEFAULT_MODULE_ACCESS,
   MODULE_OPTIONS,
-} from "../lib/constants";
-import { apiFetch, reportError } from "../lib/api";
+} from "../lib/constants"
+import { apiFetch, reportError } from "../lib/api"
 import {
   Badge,
   Button,
@@ -17,23 +17,23 @@ import {
   TableCell,
   TableHead,
   TableRow,
-} from "../components/ui";
-import type { Employee, ModuleId, Notice, UserType } from "../types";
+} from "../components/ui"
+import type { Employee, ModuleId, Notice, UserType } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+}
 
 type AdminForm = {
-  username: string;
-  password: string;
-  full_name: string;
-  email: string;
-  phone: string;
-  department: string;
-  user_type: UserType;
-  module_access: ModuleId[];
-};
+  username: string
+  password: string
+  full_name: string
+  email: string
+  phone: string
+  department: string
+  user_type: UserType
+  module_access: ModuleId[]
+}
 
 const EMPTY_FORM: AdminForm = {
   username: "",
@@ -44,113 +44,113 @@ const EMPTY_FORM: AdminForm = {
   department: "Administration",
   user_type: "normal",
   module_access: [...DEFAULT_MODULE_ACCESS],
-};
+}
 
 export default function AdminPage({ setNotice }: Props) {
-  const [form, setForm] = useState<AdminForm>(EMPTY_FORM);
-  const [creating, setCreating] = useState(false);
-  const [authPassword, setAuthPassword] = useState("");
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authSubmitting, setAuthSubmitting] = useState(false);
-  const [authorized, setAuthorized] = useState(false);
-  const [configured, setConfigured] = useState(true);
-  const [users, setUsers] = useState<Employee[]>([]);
-  const [promotingId, setPromotingId] = useState<string | null>(null);
+  const [form, setForm] = useState<AdminForm>(EMPTY_FORM)
+  const [creating, setCreating] = useState(false)
+  const [authPassword, setAuthPassword] = useState("")
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authorized, setAuthorized] = useState(false)
+  const [configured, setConfigured] = useState(true)
+  const [users, setUsers] = useState<Employee[]>([])
+  const [promotingId, setPromotingId] = useState<string | null>(null)
 
   const toggleModule = (
     current: ModuleId[] | undefined,
     moduleName: ModuleId,
   ) => {
-    const set = new Set(current || []);
+    const set = new Set(current || [])
     if (set.has(moduleName)) {
-      set.delete(moduleName);
+      set.delete(moduleName)
     } else {
-      set.add(moduleName);
+      set.add(moduleName)
     }
-    return ALL_ASSIGNABLE_MODULES.filter((module) => set.has(module));
-  };
+    return ALL_ASSIGNABLE_MODULES.filter((module) => set.has(module))
+  }
 
   const loadAdminAuthState = async () => {
-    setAuthLoading(true);
+    setAuthLoading(true)
     try {
       const state = await apiFetch<{
-        authorized: boolean;
-        configured: boolean;
-      }>("/api/admin/auth/session");
-      setAuthorized(!!state.authorized);
-      setConfigured(!!state.configured);
+        authorized: boolean
+        configured: boolean
+      }>("/api/admin/auth/session")
+      setAuthorized(!!state.authorized)
+      setConfigured(!!state.configured)
     } catch {
-      setAuthorized(false);
-      setConfigured(false);
+      setAuthorized(false)
+      setConfigured(false)
     } finally {
-      setAuthLoading(false);
+      setAuthLoading(false)
     }
-  };
+  }
 
   const loadUsers = async () => {
     try {
-      const data = await apiFetch<{ users?: Employee[] }>("/api/admin/users");
-      setUsers(data.users || []);
+      const data = await apiFetch<{ users?: Employee[] }>("/api/admin/users")
+      setUsers(data.users || [])
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load users.",
-      );
+      )
     }
-  };
+  }
 
   useEffect(() => {
-    void loadAdminAuthState();
-  }, []);
+    void loadAdminAuthState()
+  }, [])
 
   useEffect(() => {
-    if (!authorized) return;
-    void loadUsers();
-  }, [authorized]);
+    if (!authorized) return
+    void loadUsers()
+  }, [authorized])
 
   const handleAdminAuthLogin = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (authSubmitting) return;
-    setAuthSubmitting(true);
+    event.preventDefault()
+    if (authSubmitting) return
+    setAuthSubmitting(true)
     try {
       await apiFetch("/api/admin/auth/login", {
         method: "POST",
         body: JSON.stringify({ password: authPassword }),
-      });
-      setAuthorized(true);
-      setAuthPassword("");
-      setNotice({ type: "success", message: "Admin route unlocked." });
+      })
+      setAuthorized(true)
+      setAuthPassword("")
+      setNotice({ type: "success", message: "Admin route unlocked." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Invalid admin route password.",
-      );
+      )
     } finally {
-      setAuthSubmitting(false);
+      setAuthSubmitting(false)
     }
-  };
+  }
 
   const handleAdminAuthLogout = async () => {
     try {
-      await apiFetch("/api/admin/auth/logout", { method: "POST" });
-      setAuthorized(false);
-      setUsers([]);
-      setNotice({ type: "success", message: "Admin route locked." });
+      await apiFetch("/api/admin/auth/logout", { method: "POST" })
+      setAuthorized(false)
+      setUsers([])
+      setNotice({ type: "success", message: "Admin route locked." })
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to lock admin route.",
-      );
+      )
     }
-  };
+  }
 
   const handleCreateUser = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (creating) return;
-    setCreating(true);
+    event.preventDefault()
+    if (creating) return
+    setCreating(true)
     try {
       const payload = {
         ...form,
@@ -162,69 +162,69 @@ export default function AdminPage({ setNotice }: Props) {
         job_role: form.user_type === "admin" ? "System Admin" : "Staff",
         address: "",
         emergency_contact: "",
-      };
+      }
       const response = await apiFetch<{
-        success?: boolean;
-        message?: string;
-        employee_id?: string;
+        success?: boolean
+        message?: string
+        employee_id?: string
       }>("/api/admin/users", {
         method: "POST",
         body: JSON.stringify(payload),
-      });
+      })
       if (response.success) {
         setNotice({
           type: "success",
           message: response.employee_id
             ? `User created (${response.employee_id}).`
             : response.message || "User created.",
-        });
-        setForm(EMPTY_FORM);
-        await loadUsers();
+        })
+        setForm(EMPTY_FORM)
+        await loadUsers()
       } else {
         setNotice({
           type: "error",
           message: response.message || "Unable to create user.",
-        });
+        })
       }
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to create user.",
-      );
+      )
     } finally {
-      setCreating(false);
+      setCreating(false)
     }
-  };
+  }
 
   const handlePromoteToAdmin = async (employeeId: string) => {
-    setPromotingId(employeeId);
+    setPromotingId(employeeId)
     try {
       await apiFetch(`/api/admin/users/${employeeId}/promote`, {
         method: "POST",
-      });
+      })
       setNotice({
         type: "success",
         message: `${employeeId} promoted to admin.`,
-      });
-      await loadUsers();
+      })
+      await loadUsers()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to promote user.",
-      );
+      )
     } finally {
-      setPromotingId(null);
+      setPromotingId(null)
     }
-  };
+  }
 
   if (authLoading) {
     return (
       <section className="panel admin-auth-panel">
         <p className="muted">Checking admin access...</p>
       </section>
-    );
+    )
   }
 
   if (!configured) {
@@ -238,7 +238,7 @@ export default function AdminPage({ setNotice }: Props) {
           restart the backend.
         </p>
       </section>
-    );
+    )
   }
 
   if (!authorized) {
@@ -264,7 +264,7 @@ export default function AdminPage({ setNotice }: Props) {
           </div>
         </form>
       </section>
-    );
+    )
   }
 
   return (
@@ -372,7 +372,7 @@ export default function AdminPage({ setNotice }: Props) {
                 Module Access
                 <div className="module-grid">
                   {MODULE_OPTIONS.map((module) => {
-                    const selected = form.module_access.includes(module.value);
+                    const selected = form.module_access.includes(module.value)
                     return (
                       <label key={module.value} className="checkbox-line">
                         <Checkbox
@@ -389,7 +389,7 @@ export default function AdminPage({ setNotice }: Props) {
                         />
                         <span>{module.label}</span>
                       </label>
-                    );
+                    )
                   })}
                 </div>
               </Label>
@@ -423,7 +423,7 @@ export default function AdminPage({ setNotice }: Props) {
                 <TableCell>Action</TableCell>
               </TableHead>
               {users.map((user) => {
-                const isAdmin = user.user_type === "admin";
+                const isAdmin = user.user_type === "admin"
                 return (
                   <TableRow key={user.employee_id}>
                     <TableCell>{user.employee_id}</TableCell>
@@ -451,12 +451,12 @@ export default function AdminPage({ setNotice }: Props) {
                       </Button>
                     </TableCell>
                   </TableRow>
-                );
+                )
               })}
             </Table>
           </div>
         </div>
       </div>
     </section>
-  );
+  )
 }

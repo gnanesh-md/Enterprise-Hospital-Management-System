@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { db, DBOPEncounter } from "../services/db";
-import { ACTIVE_DOCTORS } from "../services/doctorMaster";
+import { useEffect, useMemo, useState } from "react"
+import { db, DBOPEncounter } from "../services/db"
+import { ACTIVE_DOCTORS } from "../services/doctorMaster"
 
 /**
  * "Clinic by doctor" -- a section of OP Management.
@@ -25,9 +25,12 @@ const AWAITING_VITALS: DBOPEncounter["status"][] = [
   "AI Recommended",
   "Awaiting Doctor",
   "Doctor Assigned",
-];
+]
 
-const WITH_DOCTOR: DBOPEncounter["status"][] = ["In Queue", "Under Consultation"];
+const WITH_DOCTOR: DBOPEncounter["status"][] = [
+  "In Queue",
+  "Under Consultation",
+]
 
 const DONE: DBOPEncounter["status"][] = [
   "Consultation Completed",
@@ -36,74 +39,96 @@ const DONE: DBOPEncounter["status"][] = [
   "Billing Completed",
   "Awaiting Investigation",
   "OP Completed",
-];
+]
 
 export default function ClinicByDoctor({
   onOpenNurseStation,
 }: {
-  onOpenNurseStation?: () => void;
+  onOpenNurseStation?: () => void
 }) {
-  const [encounters, setEncounters] = useState<DBOPEncounter[]>(() => db.getEncounters());
-  const [specialty, setSpecialty] = useState<string>("All");
-  const [showAll, setShowAll] = useState(false);
+  const [encounters, setEncounters] = useState<DBOPEncounter[]>(() =>
+    db.getEncounters(),
+  )
+  const [specialty, setSpecialty] = useState<string>("All")
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
-    const unsub = db.subscribe(() => setEncounters(db.getEncounters()));
-    return () => { unsub(); };
-  }, []);
+    const unsub = db.subscribe(() => setEncounters(db.getEncounters()))
+    return () => {
+      unsub()
+    }
+  }, [])
 
   // Anything still moving through the clinic today.
   const live = useMemo(
-    () => encounters.filter(e => !DONE.includes(e.status)),
+    () => encounters.filter((e) => !DONE.includes(e.status)),
     [encounters],
-  );
+  )
 
   const specialties = useMemo(
-    () => ["All", ...Array.from(new Set(ACTIVE_DOCTORS.map(d => d.specialty as string))).sort()],
+    () => [
+      "All",
+      ...Array.from(
+        new Set(ACTIVE_DOCTORS.map((d) => d.specialty as string)),
+      ).sort(),
+    ],
     [],
-  );
+  )
 
   // One row per doctor who has somebody booked today, plus the doctors on the
   // roster for that specialty so an empty clinic is visible rather than absent.
   const byDoctor = useMemo(() => {
-    const roster = ACTIVE_DOCTORS.filter(d => specialty === "All" || d.specialty === specialty);
+    const roster = ACTIVE_DOCTORS.filter(
+      (d) => specialty === "All" || d.specialty === specialty,
+    )
     return roster
-      .map(doc => {
-        const mine = live.filter(e => e.assignedDoctor === doc.name);
+      .map((doc) => {
+        const mine = live.filter((e) => e.assignedDoctor === doc.name)
         return {
           doctor: doc,
           total: mine.length,
-          awaitingVitals: mine.filter(e => AWAITING_VITALS.includes(e.status)).length,
-          ready: mine.filter(e => e.status === "In Queue").length,
-          inRoom: mine.filter(e => e.status === "Under Consultation").length,
+          awaitingVitals: mine.filter((e) => AWAITING_VITALS.includes(e.status))
+            .length,
+          ready: mine.filter((e) => e.status === "In Queue").length,
+          inRoom: mine.filter((e) => e.status === "Under Consultation").length,
           patients: mine,
-        };
+        }
       })
-      .sort((a, b) => b.total - a.total || a.doctor.name.localeCompare(b.doctor.name));
-  }, [live, specialty]);
+      .sort(
+        (a, b) =>
+          b.total - a.total || a.doctor.name.localeCompare(b.doctor.name),
+      )
+  }, [live, specialty])
 
-  const active = byDoctor.filter(r => r.total > 0);
-  const rows = showAll ? byDoctor : active;
-  const hiddenCount = byDoctor.length - active.length;
+  const active = byDoctor.filter((r) => r.total > 0)
+  const rows = showAll ? byDoctor : active
+  const hiddenCount = byDoctor.length - active.length
 
-  const unassigned = live.filter(e => !e.assignedDoctor?.trim());
+  const unassigned = live.filter((e) => !e.assignedDoctor?.trim())
 
   return (
     <div className="bg-white border border-[#DDE2EC] rounded shadow-xs overflow-hidden">
       <div className="px-5 py-3.5 border-b border-[#DDE2EC] bg-[#F8FAFC] flex flex-wrap justify-between items-center gap-3">
         <div>
-          <h2 className="text-[14px] font-bold text-gray-900">Clinic by Doctor</h2>
+          <h2 className="text-[14px] font-bold text-gray-900">
+            Clinic by Doctor
+          </h2>
           <p className="text-[11.5px] text-[#64748B]">
-            Today's bookings per consultant. Booked at reception; vitals taken at the nurse station.
+            Today's bookings per consultant. Booked at reception; vitals taken
+            at the nurse station.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={specialty}
-            onChange={e => setSpecialty(e.target.value)}
+            onChange={(e) => setSpecialty(e.target.value)}
             className="border border-[#DDE2EC] rounded px-2.5 py-1.5 text-[12px] bg-white"
           >
-            {specialties.map(sp => <option key={sp} value={sp}>{sp}</option>)}
+            {specialties.map((sp) => (
+              <option key={sp} value={sp}>
+                {sp}
+              </option>
+            ))}
           </select>
           {onOpenNurseStation && (
             <button
@@ -121,12 +146,17 @@ export default function ClinicByDoctor({
         {unassigned.length > 0 && (
           <div className="rounded border border-[#FDE68A] bg-[#FFFBEB] px-4 py-2.5">
             <p className="text-[12px] font-semibold text-[#92400E]">
-              {unassigned.length} patient{unassigned.length === 1 ? "" : "s"} waiting with no doctor booked
+              {unassigned.length} patient{unassigned.length === 1 ? "" : "s"}{" "}
+              waiting with no doctor booked
             </p>
             <p className="text-[11.5px] text-[#B45309] mt-0.5">
-              {unassigned.slice(0, 6).map(e => e.patientName).join(", ")}
-              {unassigned.length > 6 ? ` +${unassigned.length - 6} more` : ""} — reception books the doctor, or a doctor
-              can claim them from their own workspace.
+              {unassigned
+                .slice(0, 6)
+                .map((e) => e.patientName)
+                .join(", ")}
+              {unassigned.length > 6 ? ` +${unassigned.length - 6} more` : ""} —
+              reception books the doctor, or a doctor can claim them from their
+              own workspace.
             </p>
           </div>
         )}
@@ -138,31 +168,63 @@ export default function ClinicByDoctor({
             <table className="w-full">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-[#DDE2EC]">
-                  {["Doctor", "Room", "Booked", "Awaiting vitals", "Ready", "In room", "Patients"].map(h => (
-                    <th key={h} className="text-left px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748B] whitespace-nowrap">
+                  {[
+                    "Doctor",
+                    "Room",
+                    "Booked",
+                    "Awaiting vitals",
+                    "Ready",
+                    "In room",
+                    "Patients",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748B] whitespace-nowrap"
+                    >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {rows.map(row => (
-                  <tr key={row.doctor.id} className={`border-b border-[#F1F5F9] ${row.total === 0 ? "opacity-55" : ""}`}>
+                {rows.map((row) => (
+                  <tr
+                    key={row.doctor.id}
+                    className={`border-b border-[#F1F5F9] ${
+                      row.total === 0 ? "opacity-55" : ""
+                    }`}
+                  >
                     <td className="px-4 py-2.5">
-                      <p className="text-[12.5px] font-semibold text-gray-900">{row.doctor.name}</p>
-                      <p className="text-[11px] text-[#64748B]">{row.doctor.specialty} · {row.doctor.section}</p>
+                      <p className="text-[12.5px] font-semibold text-gray-900">
+                        {row.doctor.name}
+                      </p>
+                      <p className="text-[11px] text-[#64748B]">
+                        {row.doctor.specialty} · {row.doctor.section}
+                      </p>
                     </td>
-                    <td className="px-4 py-2.5 text-[12px] font-mono text-[#475569]">{row.doctor.room}</td>
-                    <td className="px-4 py-2.5 text-[13px] font-bold font-mono text-gray-900">{row.total}</td>
-                    <td className="px-4 py-2.5 text-[13px] font-mono text-[#B45309]">{row.awaitingVitals || "—"}</td>
-                    <td className="px-4 py-2.5 text-[13px] font-mono text-[#15803D]">{row.ready || "—"}</td>
-                    <td className="px-4 py-2.5 text-[13px] font-mono text-[#1B4FD8]">{row.inRoom || "—"}</td>
+                    <td className="px-4 py-2.5 text-[12px] font-mono text-[#475569]">
+                      {row.doctor.room}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] font-bold font-mono text-gray-900">
+                      {row.total}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] font-mono text-[#B45309]">
+                      {row.awaitingVitals || "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] font-mono text-[#15803D]">
+                      {row.ready || "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] font-mono text-[#1B4FD8]">
+                      {row.inRoom || "—"}
+                    </td>
                     <td className="px-4 py-2.5">
                       {row.patients.length === 0 ? (
-                        <span className="text-[11.5px] text-[#94A3B8]">No appointments</span>
+                        <span className="text-[11.5px] text-[#94A3B8]">
+                          No appointments
+                        </span>
                       ) : (
                         <div className="flex flex-wrap gap-1">
-                          {row.patients.slice(0, 4).map(p => (
+                          {row.patients.slice(0, 4).map((p) => (
                             <span
                               key={p.id}
                               title={`${p.umr} · ${p.status}`}
@@ -178,7 +240,9 @@ export default function ClinicByDoctor({
                             </span>
                           ))}
                           {row.patients.length > 4 && (
-                            <span className="text-[10.5px] text-[#94A3B8]">+{row.patients.length - 4}</span>
+                            <span className="text-[10.5px] text-[#94A3B8]">
+                              +{row.patients.length - 4}
+                            </span>
                           )}
                         </div>
                       )}
@@ -191,26 +255,38 @@ export default function ClinicByDoctor({
           {hiddenCount > 0 && (
             <button
               type="button"
-              onClick={() => setShowAll(v => !v)}
+              onClick={() => setShowAll((v) => !v)}
               className="w-full px-4 py-2 border-t border-[#DDE2EC] text-[11.5px] font-semibold text-[#1B4FD8] hover:bg-[#F8FAFC] transition-colors cursor-pointer text-left"
             >
               {showAll
-                ? `Hide ${hiddenCount} consultant${hiddenCount === 1 ? "" : "s"} with no appointments today`
+                ? `Hide ${hiddenCount} consultant${
+                    hiddenCount === 1 ? "" : "s"
+                  } with no appointments today`
                 : `Show all ${byDoctor.length} consultants (${hiddenCount} with no appointments today)`}
             </button>
           )}
           {rows.length === 0 && (
             <p className="px-4 py-5 text-center text-[12px] text-[#94A3B8]">
-              No clinics running{specialty !== "All" ? ` in ${specialty}` : ""} right now.
+              No clinics running{specialty !== "All" ? ` in ${specialty}` : ""}{" "}
+              right now.
             </p>
           )}
           <div className="px-4 py-2 border-t border-[#DDE2EC] bg-[#F8FAFC] flex flex-wrap gap-3 text-[10.5px] text-[#64748B]">
-            <span><span className="inline-block w-2 h-2 rounded-full bg-[#D97706] mr-1" />Awaiting vitals</span>
-            <span><span className="inline-block w-2 h-2 rounded-full bg-[#16A34A] mr-1" />Vitals done, ready</span>
-            <span><span className="inline-block w-2 h-2 rounded-full bg-[#1B4FD8] mr-1" />In the consulting room</span>
+            <span>
+              <span className="inline-block w-2 h-2 rounded-full bg-[#D97706] mr-1" />
+              Awaiting vitals
+            </span>
+            <span>
+              <span className="inline-block w-2 h-2 rounded-full bg-[#16A34A] mr-1" />
+              Vitals done, ready
+            </span>
+            <span>
+              <span className="inline-block w-2 h-2 rounded-full bg-[#1B4FD8] mr-1" />
+              In the consulting room
+            </span>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

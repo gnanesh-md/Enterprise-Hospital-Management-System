@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useState, useEffect, useCallback, useRef } from "react"
+import type { Dispatch, SetStateAction } from "react"
 import {
   FiActivity,
   FiUsers,
@@ -28,67 +28,59 @@ import {
   FiFolder,
   FiExternalLink,
   FiCheck,
-} from "react-icons/fi";
-import { apiFetch, reportError } from "../lib/api";
-import { updateAppointmentStatus } from "../lib/appointments";
-import type { Appointment, Notice, User, OpPatientHistoryVisit } from "../types";
-import PrescriptionUploadModal from "../components/PrescriptionUploadModal";
-import { formatDateTime } from "../lib/format";
+} from "react-icons/fi"
+import { apiFetch, reportError } from "../lib/api"
+import { updateAppointmentStatus } from "../lib/appointments"
+import type { Appointment, Notice, User, OpPatientHistoryVisit } from "../types"
+import PrescriptionUploadModal from "../components/PrescriptionUploadModal"
+import { formatDateTime } from "../lib/format"
 
 /* ───── Types ─────────────────────────────────────────────── */
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  onNavigate?: (page: string) => void;
-  isAdmin?: boolean;
-  user?: User | null;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  onNavigate?: (page: string) => void
+  isAdmin?: boolean
+  user?: User | null
+}
 
-type Tab = "queue" | "chart" | "schedule" | "notes";
+type Tab = "queue" | "chart" | "schedule" | "notes"
 
 type ClinicalNote = {
-  id: string;
-  text: string;
-  treatment: string;
-  created_at: string;
-};
+  id: string
+  text: string
+  treatment: string
+  created_at: string
+}
 
 type LabResult = {
-  id: number;
-  test_name?: string;
-  result_value?: string;
-  status?: string;
-  created_at?: string;
-};
+  id: number
+  test_name?: string
+  result_value?: string
+  status?: string
+  created_at?: string
+}
 
 type Prescription = {
-  id: number;
-  uploaded_at?: string;
-  extracted_text?: string;
-  doc_type?: string;
-};
+  id: number
+  uploaded_at?: string
+  extracted_text?: string
+  doc_type?: string
+}
 
 type PatientChart = {
   patient?: {
-    name?: string;
-    age?: number | string;
-    gender?: string;
-    blood_group?: string;
-    phone?: string;
-    address?: string;
-    allergies?: string;
-  };
-  appointments?: Pick<
-    Appointment,
-    | "id"
-    | "appointment_date"
-    | "doctor_name"
-    | "visit_type"
-    | "status"
-    | "notes"
-  >[];
-  prescriptions?: Prescription[];
-  lab_results?: LabResult[];
-};
+    name?: string
+    age?: number | string
+    gender?: string
+    blood_group?: string
+    phone?: string
+    address?: string
+    allergies?: string
+  }
+  appointments?: Pick<Appointment, "id" | "appointment_date" | "doctor_name" | "visit_type" | "status" | "notes">[]
+  prescriptions?: Prescription[]
+  lab_results?: LabResult[]
+}
 
 /* ───── Design tokens ─────────────────────────────────────── */
 const C = {
@@ -116,7 +108,7 @@ const C = {
   text: "#0f172a",
   textMuted: "#475569",
   textFaint: "#94a3b8",
-};
+}
 
 /* ───── Shared micro-components ───────────────────────────── */
 function Pill({
@@ -124,9 +116,9 @@ function Pill({
   color,
   children,
 }: {
-  bg: string;
-  color: string;
-  children: React.ReactNode;
+  bg: string
+  color: string
+  children: React.ReactNode
 }) {
   return (
     <span
@@ -145,7 +137,7 @@ function Pill({
     >
       {children}
     </span>
-  );
+  )
 }
 
 function SectionHdr({
@@ -153,9 +145,9 @@ function SectionHdr({
   title,
   sub,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  sub?: string;
+  icon: React.ReactNode
+  title: string
+  sub?: string
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
@@ -182,15 +174,15 @@ function SectionHdr({
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function CardWrap({
   children,
   style,
 }: {
-  children: React.ReactNode;
-  style?: React.CSSProperties;
+  children: React.ReactNode
+  style?: React.CSSProperties
 }) {
   return (
     <div
@@ -207,15 +199,15 @@ function CardWrap({
     >
       {children}
     </div>
-  );
+  )
 }
 
 function CardHead({
   left,
   right,
 }: {
-  left: React.ReactNode;
-  right?: React.ReactNode;
+  left: React.ReactNode
+  right?: React.ReactNode
 }) {
   return (
     <div
@@ -235,7 +227,7 @@ function CardHead({
         </div>
       )}
     </div>
-  );
+  )
 }
 
 function Inp({ style, ...rest }: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -256,16 +248,16 @@ function Inp({ style, ...rest }: React.InputHTMLAttributes<HTMLInputElement>) {
         ...style,
       }}
       onFocus={(e) => {
-        e.currentTarget.style.borderColor = C.primaryMid;
-        e.currentTarget.style.boxShadow = `0 0 0 3px ${C.primaryLight}`;
+        e.currentTarget.style.borderColor = C.primaryMid
+        e.currentTarget.style.boxShadow = `0 0 0 3px ${C.primaryLight}`
       }}
       onBlur={(e) => {
-        e.currentTarget.style.borderColor = C.border;
-        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.borderColor = C.border
+        e.currentTarget.style.boxShadow = "none"
       }}
       {...rest}
     />
-  );
+  )
 }
 
 function Btn({
@@ -275,8 +267,8 @@ function Btn({
   style,
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "danger" | "success";
-  size?: "sm" | "md" | "lg";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "success"
+  size?: "sm" | "md" | "lg"
 }) {
   const base: React.CSSProperties = {
     border: "none",
@@ -290,14 +282,14 @@ function Btn({
     gap: "0.5rem",
     transition: "all 0.15s ease",
     ...style,
-  };
+  }
   const pad =
     size === "sm"
       ? "0.4rem 0.8rem"
       : size === "lg"
         ? "0.85rem 1.8rem"
-        : "0.55rem 1.1rem";
-  const fs = size === "sm" ? "0.8rem" : size === "lg" ? "1rem" : "0.875rem";
+        : "0.55rem 1.1rem"
+  const fs = size === "sm" ? "0.8rem" : size === "lg" ? "1rem" : "0.875rem"
   const variants: Record<string, React.CSSProperties> = {
     primary: {
       background: C.primary,
@@ -321,23 +313,23 @@ function Btn({
       color: "#fff",
       boxShadow: "0 1px 2px rgba(5, 150, 105, 0.05)",
     },
-  };
+  }
   return (
     <button
       style={{ ...base, ...variants[variant], padding: pad, fontSize: fs }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.opacity = "0.9";
-        e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.opacity = "0.9"
+        e.currentTarget.style.transform = "translateY(-1px)"
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.opacity = "1";
-        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.opacity = "1"
+        e.currentTarget.style.transform = "translateY(0)"
       }}
       {...rest}
     >
       {children}
     </button>
-  );
+  )
 }
 
 function EmptyState({
@@ -346,10 +338,10 @@ function EmptyState({
   hint,
   action,
 }: {
-  emoji: string;
-  title: string;
-  hint?: string;
-  action?: React.ReactNode;
+  emoji: string
+  title: string
+  hint?: string
+  action?: React.ReactNode
 }) {
   return (
     <div style={{ textAlign: "center", padding: "3.5rem 2rem" }}>
@@ -377,7 +369,7 @@ function EmptyState({
       )}
       {action}
     </div>
-  );
+  )
 }
 
 function VitalBox({
@@ -386,10 +378,10 @@ function VitalBox({
   value,
   color,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  color: string;
+  icon: React.ReactNode
+  label: string
+  value: string
+  color: string
 }) {
   return (
     <div
@@ -444,7 +436,7 @@ function VitalBox({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 /* ───── Main Page ─────────────────────────────────────────── */
@@ -455,94 +447,114 @@ export default function DoctorPrescriptionPage({
   user,
 }: Props) {
   /* — queue + consultation — */
-  const [activeAppts, setActiveAppts] = useState<Appointment[]>([]);
-  const [queue, setQueue] = useState<Appointment[]>([]);
-  const [seenToday, setSeenToday] = useState(0);
-  const [noShows, setNoShows] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [activeAppts, setActiveAppts] = useState<Appointment[]>([])
+  const [queue, setQueue] = useState<Appointment[]>([])
+  const [seenToday, setSeenToday] = useState(0)
+  const [noShows, setNoShows] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   /* — view mode — */
   const [viewMode, setViewMode] = useState<"active" | "queue_list" | "preview">(
     "active",
-  );
-  const [previewAppt, setPreviewAppt] = useState<Appointment | null>(null);
+  )
+  const [previewAppt, setPreviewAppt] = useState<Appointment | null>(null)
 
   /* — patient chart — */
-  const [chartPatientId, setChartPatientId] = useState<string | null>(null);
-  const [chartData, setChartData] = useState<PatientChart | null>(null);
-  const [chartLoading, setChartLoading] = useState(false);
-  const [chartTab, setChartTab] = useState<
-    "history" | "prescriptions" | "labs"
-  >("history");
+  const [chartPatientId, setChartPatientId] = useState<string | null>(null)
+  const [chartData, setChartData] = useState<PatientChart | null>(null)
+  const [chartLoading, setChartLoading] = useState(false)
+  const [chartTab, setChartTab] =
+    useState<"history" | "prescriptions" | "labs">("history")
 
   /* — clinical note — */
-  const [noteText, setNoteText] = useState("");
-  const [treatmentText, setTreatmentText] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
-  const [recentNotes, setRecentNotes] = useState<ClinicalNote[]>([]);
+  const [noteText, setNoteText] = useState("")
+  const [treatmentText, setTreatmentText] = useState("")
+  const [savingNote, setSavingNote] = useState(false)
+  const [recentNotes, setRecentNotes] = useState<ClinicalNote[]>([])
 
   /* — today schedule — */
-  const [todayAppts, setTodayAppts] = useState<Appointment[]>([]);
+  const [todayAppts, setTodayAppts] = useState<Appointment[]>([])
   const [scheduleDate, setScheduleDate] = useState(
     new Date().toLocaleDateString("en-CA"),
-  );
-  const [schedLoading, setSchedLoading] = useState(false);
+  )
+  const [schedLoading, setSchedLoading] = useState(false)
 
   /* — OP Structured Consultation State — */
-  const [consultationDiagnosis, setConsultationDiagnosis] = useState("");
-  const [consultationAdvice, setConsultationAdvice] = useState("");
-  const [consultationFollowUp, setConsultationFollowUp] = useState("");
-  const [consultationFurtherAction, setConsultationFurtherAction] = useState("none");
-  const [consultationFurtherNotes, setConsultationFurtherNotes] = useState("");
-  const [consultationMedicines, setConsultationMedicines] = useState<
-    Array<{ name: string; dosage: string; frequency: string; duration: string; instructions: string }>
-  >([
-    { name: "", dosage: "500mg", frequency: "1-0-1", duration: "5 days", instructions: "After food" },
-  ]);
-  const [consultationTests, setConsultationTests] = useState<string[]>([]);
-  const [testInput, setTestInput] = useState("");
-  const [savingConsultation, setSavingConsultation] = useState(false);
+  const [consultationDiagnosis, setConsultationDiagnosis] = useState("")
+  const [consultationAdvice, setConsultationAdvice] = useState("")
+  const [consultationFollowUp, setConsultationFollowUp] = useState("")
+  const [consultationFurtherAction, setConsultationFurtherAction] =
+    useState("none")
+  const [consultationFurtherNotes, setConsultationFurtherNotes] = useState("")
+  const [consultationMedicines, setConsultationMedicines] = useState<Array<{
+    name: string
+    dosage: string
+    frequency: string
+    duration: string
+    instructions: string
+  }>>([
+    {
+      name: "",
+      dosage: "500mg",
+      frequency: "1-0-1",
+      duration: "5 days",
+      instructions: "After food",
+    },
+  ])
+  const [consultationTests, setConsultationTests] = useState<string[]>([])
+  const [testInput, setTestInput] = useState("")
+  const [savingConsultation, setSavingConsultation] = useState(false)
 
   /* — Past OP History under UMR — */
-  const [patientOpHistory, setPatientOpHistory] = useState<OpPatientHistoryVisit[]>([]);
-  const [loadingOpHistory, setLoadingOpHistory] = useState(false);
-  const [showOpHistory, setShowOpHistory] = useState(false);
+  const [patientOpHistory, setPatientOpHistory] =
+    useState<OpPatientHistoryVisit[]>([])
+  const [loadingOpHistory, setLoadingOpHistory] = useState(false)
+  const [showOpHistory, setShowOpHistory] = useState(false)
 
   /* — prescription upload — */
   const [uploadTarget, setUploadTarget] = useState<{
-    id: string;
-    name: string;
-    doctorName?: string;
-    mode?: "ocr" | "manual";
-  } | null>(null);
+    id: string
+    name: string
+    doctorName?: string
+    mode?: "ocr" | "manual"
+  } | null>(null)
 
   /* — active tab — */
-  const [tab, setTab] = useState<Tab>("queue");
+  const [tab, setTab] = useState<Tab>("queue")
 
   /* — refresh timer ref — */
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadPatientOpHistory = useCallback(async (pid: string) => {
-    if (!pid) return;
-    setLoadingOpHistory(true);
+    if (!pid) return
+    setLoadingOpHistory(true)
     try {
-      const res = await apiFetch<{ visits: OpPatientHistoryVisit[] }>(`/api/op/patients/${encodeURIComponent(pid)}/history`);
-      setPatientOpHistory(res.visits || []);
+      const res = await apiFetch<{ visits: OpPatientHistoryVisit[] }>(
+        `/api/op/patients/${encodeURIComponent(pid)}/history`,
+      )
+      setPatientOpHistory(res.visits || [])
     } catch {
-      setPatientOpHistory([]);
+      setPatientOpHistory([])
     } finally {
-      setLoadingOpHistory(false);
+      setLoadingOpHistory(false)
     }
-  }, []);
+  }, [])
 
   const handleSaveOpConsultation = async (appt: Appointment) => {
-    const validMeds = consultationMedicines.filter((m) => m.name.trim());
-    if (!consultationDiagnosis.trim() && validMeds.length === 0 && !consultationAdvice.trim()) {
-      setNotice({ type: "warning", message: "Please enter a diagnosis, advice, or prescription medicines." });
-      return;
+    const validMeds = consultationMedicines.filter((m) => m.name.trim())
+    if (
+      !consultationDiagnosis.trim() &&
+      validMeds.length === 0 &&
+      !consultationAdvice.trim()
+    ) {
+      setNotice({
+        type: "warning",
+        message: "Please enter a diagnosis, advice, or prescription medicines.",
+      })
+      return
     }
-    setSavingConsultation(true);
+    setSavingConsultation(true)
     try {
       await apiFetch(`/api/op/visits/${appt.id}/consultation`, {
         method: "PUT",
@@ -555,44 +567,56 @@ export default function DoctorPrescriptionPage({
           medicines: validMeds.length > 0 ? validMeds : undefined,
           tests: consultationTests.length > 0 ? consultationTests : undefined,
         }),
-      });
+      })
       setNotice({
         type: "success",
         message: `Consultation recorded for OP #${appt.token_no} (${appt.patient_name}). Next Action: ${consultationFurtherAction.toUpperCase()}`,
-      });
-      setConsultationDiagnosis("");
-      setConsultationAdvice("");
-      setConsultationFollowUp("");
-      setConsultationFurtherAction("none");
-      setConsultationFurtherNotes("");
-      setConsultationMedicines([{ name: "", dosage: "500mg", frequency: "1-0-1", duration: "5 days", instructions: "After food" }]);
-      setConsultationTests([]);
-      await loadQueue(true);
+      })
+      setConsultationDiagnosis("")
+      setConsultationAdvice("")
+      setConsultationFollowUp("")
+      setConsultationFurtherAction("none")
+      setConsultationFurtherNotes("")
+      setConsultationMedicines([
+        {
+          name: "",
+          dosage: "500mg",
+          frequency: "1-0-1",
+          duration: "5 days",
+          instructions: "After food",
+        },
+      ])
+      setConsultationTests([])
+      await loadQueue(true)
       if (queue.length > 0) {
-        await updateAppointmentStatus(queue[0].id, "in_consultation");
+        await updateAppointmentStatus(queue[0].id, "in_consultation")
       }
     } catch (err) {
-      reportError(setNotice, err as { message?: string }, "Failed to save OP consultation.");
+      reportError(
+        setNotice,
+        err as { message?: string },
+        "Failed to save OP consultation.",
+      )
     } finally {
-      setSavingConsultation(false);
+      setSavingConsultation(false)
     }
-  };
+  }
 
   /* ── loaders ── */
   const loadQueue = useCallback(
     async (quiet = false) => {
-      if (!quiet) setLoading(true);
-      else setRefreshing(true);
+      if (!quiet) setLoading(true)
+      else setRefreshing(true)
       try {
-        const today = new Date().toLocaleDateString("en-CA");
+        const today = new Date().toLocaleDateString("en-CA")
         const data = await apiFetch<{ appointments?: Appointment[] }>(
           `/api/appointments?date=${today}`,
-        );
-        const appts = data?.appointments ?? [];
+        )
+        const appts = data?.appointments ?? []
         const inConsultation = appts.filter(
           (a) => a.status === "in_consultation",
-        );
-        setActiveAppts(inConsultation);
+        )
+        setActiveAppts(inConsultation)
         setQueue(
           appts.filter(
             (a) =>
@@ -601,61 +625,61 @@ export default function DoctorPrescriptionPage({
                 a.status === "in_consultation") &&
               (inConsultation.length === 0 || a.id !== inConsultation[0].id),
           ),
-        );
-        setSeenToday(appts.filter((a) => a.status === "completed").length);
-        setNoShows(appts.filter((a) => a.status === "no_show").length);
+        )
+        setSeenToday(appts.filter((a) => a.status === "completed").length)
+        setNoShows(appts.filter((a) => a.status === "no_show").length)
       } catch (err) {
         reportError(
           setNotice,
-          err as { message?: string; status?: number },
+          err as { message?: string status?: number },
           "Unable to load appointments.",
-        );
+        )
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        setLoading(false)
+        setRefreshing(false)
       }
     },
     [setNotice],
-  );
+  )
 
   const loadPatientChart = useCallback(async (pid: string) => {
-    setChartLoading(true);
-    setChartData(null);
+    setChartLoading(true)
+    setChartData(null)
     try {
-      const data = await apiFetch<PatientChart>(`/api/emr/${pid}`);
-      setChartData(data ?? null);
+      const data = await apiFetch<PatientChart>(`/api/emr/${pid}`)
+      setChartData(data ?? null)
     } catch {
-      setChartData(null);
+      setChartData(null)
     } finally {
-      setChartLoading(false);
+      setChartLoading(false)
     }
-  }, []);
+  }, [])
 
   const loadSchedule = useCallback(async () => {
-    setSchedLoading(true);
+    setSchedLoading(true)
     try {
       const data = await apiFetch<{ appointments?: Appointment[] }>(
         `/api/appointments?date=${scheduleDate}`,
-      );
-      setTodayAppts(data?.appointments ?? []);
+      )
+      setTodayAppts(data?.appointments ?? [])
     } catch {
-      setTodayAppts([]);
+      setTodayAppts([])
     } finally {
-      setSchedLoading(false);
+      setSchedLoading(false)
     }
-  }, [scheduleDate]);
+  }, [scheduleDate])
 
   useEffect(() => {
-    void loadQueue();
-    timerRef.current = setInterval(() => void loadQueue(true), 30000);
+    void loadQueue()
+    timerRef.current = setInterval(() => void loadQueue(true), 30000)
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [loadQueue]);
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [loadQueue])
 
   useEffect(() => {
-    if (tab === "schedule") void loadSchedule();
-  }, [tab, loadSchedule]);
+    if (tab === "schedule") void loadSchedule()
+  }, [tab, loadSchedule])
 
   /* pull chart whenever active consultation OR preview changes */
   useEffect(() => {
@@ -664,36 +688,36 @@ export default function DoctorPrescriptionPage({
         ? previewAppt
         : activeAppts.length > 0
           ? activeAppts[0]
-          : null;
-    const targetPatientId = targetAppt ? targetAppt.patient_id : null;
+          : null
+    const targetPatientId = targetAppt ? targetAppt.patient_id : null
 
     setChartPatientId((prev) => {
       if (prev !== targetPatientId) {
-        if (targetPatientId) void loadPatientChart(targetPatientId);
-        return targetPatientId;
+        if (targetPatientId) void loadPatientChart(targetPatientId)
+        return targetPatientId
       }
-      return prev;
-    });
-  }, [activeAppts, previewAppt, viewMode, loadPatientChart]);
+      return prev
+    })
+  }, [activeAppts, previewAppt, viewMode, loadPatientChart])
 
   /* ── WhatsApp notification on Call In ── */
   const sendWhatsAppCallIn = (appt: Appointment) => {
-    const phone = appt.patient_phone?.replace(/\D/g, "");
-    if (!phone) return; // no phone on record — skip silently
+    const phone = appt.patient_phone?.replace(/\D/g, "")
+    if (!phone) return // no phone on record — skip silently
 
-    const doctorName = appt.doctor_name || user?.full_name || "your doctor";
-    const hospitalName = "HospAI Medical Centre";
-    const tokenNo = appt.token_no ?? "";
-    const patientName = appt.patient_name ?? "Patient";
-    const visitType = appt.visit_type === "IP" ? "In-Patient" : "Out-Patient";
+    const doctorName = appt.doctor_name || user?.full_name || "your doctor"
+    const hospitalName = "HospAI Medical Centre"
+    const tokenNo = appt.token_no ?? ""
+    const patientName = appt.patient_name ?? "Patient"
+    const visitType = appt.visit_type === "IP" ? "In-Patient" : "Out-Patient"
     const departmentName = appt.department
       ? `• Dept       : ${appt.department}`
-      : null;
+      : null
     const now = new Date().toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
-    });
+    })
 
     const messageLines = [
       `🏥 *${hospitalName}*`,
@@ -706,8 +730,8 @@ export default function DoctorPrescriptionPage({
       `• Token No   : *#${tokenNo}*`,
       `• Visit Type : ${visitType}`,
       `• Doctor     : Dr. ${doctorName}`,
-    ];
-    if (departmentName) messageLines.push(departmentName);
+    ]
+    if (departmentName) messageLines.push(departmentName)
     messageLines.push(
       `• Called At  : ${now}`,
       ``,
@@ -715,83 +739,83 @@ export default function DoctorPrescriptionPage({
       ``,
       `Thank you for choosing ${hospitalName}.`,
       `_This is an automated notification._`,
-    );
-    const message = messageLines.join("\n");
+    )
+    const message = messageLines.join("\n")
 
     // Normalize phone — add country code if missing
     const e164 =
       phone.startsWith("91") || phone.startsWith("+91")
         ? phone.replace(/^\+/, "")
-        : `91${phone}`;
+        : `91${phone}`
 
-    const url = `https://wa.me/${e164}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
+    const url = `https://wa.me/${e164}?text=${encodeURIComponent(message)}`
+    window.open(url, "_blank", "noopener,noreferrer")
+  }
 
   /* ── appointment actions ── */
   const doStatus = async (id: number, status: Appointment["status"]) => {
     try {
-      await updateAppointmentStatus(id, status);
-      await loadQueue(true);
+      await updateAppointmentStatus(id, status)
+      await loadQueue(true)
       if (status === "in_consultation") {
         // Find the appointment we just called in from both queue and active lists
         const calledAppt =
           [...activeAppts, ...queue].find((a) => a.id === id) ??
-          [...queue].find((a) => a.id === id);
+          [...queue].find((a) => a.id === id)
         if (calledAppt) {
-          sendWhatsAppCallIn(calledAppt);
+          sendWhatsAppCallIn(calledAppt)
         }
         setNotice({
           type: "success",
           message: `Called in — WhatsApp message opened if phone is on record.`,
-        });
+        })
       } else {
         setNotice({
           type: "success",
           message: `Status → ${status.replace("_", " ")}`,
-        });
+        })
       }
     } catch (err) {
       reportError(
         setNotice,
-        err as { message?: string; status?: number },
+        err as { message?: string status?: number },
         "Failed to update status.",
-      );
+      )
     }
-  };
+  }
 
   const doCompleteAndNext = async (id: number) => {
     try {
-      await updateAppointmentStatus(id, "completed");
+      await updateAppointmentStatus(id, "completed")
       if (queue.length > 0) {
-        await updateAppointmentStatus(queue[0].id, "in_consultation");
+        await updateAppointmentStatus(queue[0].id, "in_consultation")
         setNotice({
           type: "success",
           message: `Called ${queue[0].patient_name}.`,
-        });
+        })
       } else {
         setNotice({
           type: "success",
           message: "Consultation done. Queue clear.",
-        });
+        })
       }
-      await loadQueue(true);
+      await loadQueue(true)
     } catch (err) {
       reportError(
         setNotice,
-        err as { message?: string; status?: number },
+        err as { message?: string status?: number },
         "Failed to advance queue.",
-      );
+      )
     }
-  };
+  }
 
   /* ── clinical note ── */
   const saveNote = async (appt: Appointment) => {
     if (!noteText.trim()) {
-      setNotice({ type: "error", message: "Note cannot be empty." });
-      return;
+      setNotice({ type: "error", message: "Note cannot be empty." })
+      return
     }
-    setSavingNote(true);
+    setSavingNote(true)
     try {
       await apiFetch("/api/patients/notes", {
         method: "POST",
@@ -801,17 +825,17 @@ export default function DoctorPrescriptionPage({
           note: noteText.trim(),
           treatment_plan: treatmentText.trim() || null,
         }),
-      });
-      setNotice({ type: "success", message: "Clinical note saved." });
+      })
+      setNotice({ type: "success", message: "Clinical note saved." })
       const newNote: ClinicalNote = {
         id: Date.now().toString(),
         text: noteText,
         treatment: treatmentText,
         created_at: new Date().toISOString(),
-      };
-      setRecentNotes((prev) => [newNote, ...prev]);
-      setNoteText("");
-      setTreatmentText("");
+      }
+      setRecentNotes((prev) => [newNote, ...prev])
+      setNoteText("")
+      setTreatmentText("")
     } catch {
       // Note endpoint may vary — save locally as fallback
       const newNote: ClinicalNote = {
@@ -819,22 +843,22 @@ export default function DoctorPrescriptionPage({
         text: noteText,
         treatment: treatmentText,
         created_at: new Date().toISOString(),
-      };
-      setRecentNotes((prev) => [newNote, ...prev]);
-      setNoteText("");
-      setTreatmentText("");
-      setNotice({ type: "success", message: "Note recorded locally." });
+      }
+      setRecentNotes((prev) => [newNote, ...prev])
+      setNoteText("")
+      setTreatmentText("")
+      setNotice({ type: "success", message: "Note recorded locally." })
     } finally {
-      setSavingNote(false);
+      setSavingNote(false)
     }
-  };
+  }
 
   /* ── helpers ── */
-  const doctorName = user?.full_name || "Doctor";
+  const doctorName = user?.full_name || "Doctor"
   const greeting = (() => {
-    const h = new Date().getHours();
-    return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-  })();
+    const h = new Date().getHours()
+    return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"
+  })()
 
   const tabStyle = (active: boolean): React.CSSProperties => ({
     padding: "0.45rem 1rem",
@@ -851,9 +875,9 @@ export default function DoctorPrescriptionPage({
     alignItems: "center",
     gap: "0.45rem",
     transition: "all 0.17s",
-  });
+  })
 
-  const activeAppt = activeAppts[0] ?? null;
+  const activeAppt = activeAppts[0] ?? null
 
   /* ══════════════════════════════════════════════════════════
      RENDER
@@ -1196,8 +1220,8 @@ export default function DoctorPrescriptionPage({
                             <Btn
                               variant="secondary"
                               onClick={() => {
-                                setPreviewAppt(appt);
-                                setViewMode("preview");
+                                setPreviewAppt(appt)
+                                setViewMode("preview")
                               }}
                             >
                               <FiFileText size={14} /> View
@@ -1205,8 +1229,8 @@ export default function DoctorPrescriptionPage({
                             <Btn
                               variant="primary"
                               onClick={() => {
-                                void doStatus(appt.id, "in_consultation");
-                                setViewMode("active");
+                                void doStatus(appt.id, "in_consultation")
+                                setViewMode("active")
                               }}
                             >
                               Call In
@@ -1219,8 +1243,8 @@ export default function DoctorPrescriptionPage({
                 </>
               ) : (
                 (() => {
-                  const isPreview = viewMode === "preview";
-                  const appt = isPreview ? previewAppt : activeAppt;
+                  const isPreview = viewMode === "preview"
+                  const appt = isPreview ? previewAppt : activeAppt
                   return (
                     <>
                       <CardHead
@@ -1313,7 +1337,9 @@ export default function DoctorPrescriptionPage({
                             title="No patient in consultation"
                             hint={
                               queue.length > 0
-                                ? `${queue.length} patient${queue.length > 1 ? "s" : ""} waiting — call one in.`
+                                ? `${queue.length} patient${
+                                    queue.length > 1 ? "s" : ""
+                                  } waiting — call one in.`
                                 : "Queue is clear. All caught up!"
                             }
                             action={
@@ -1479,7 +1505,9 @@ export default function DoctorPrescriptionPage({
                                     padding: "0.55rem 1.15rem",
                                     textAlign: "center",
                                     minWidth: 60,
-                                    border: `1px solid ${isPreview ? C.purpleMid : C.primaryMid}`,
+                                    border: `1px solid ${
+                                      isPreview ? C.purpleMid : C.primaryMid
+                                    }`,
                                   }}
                                 >
                                   <div
@@ -1673,47 +1701,150 @@ export default function DoctorPrescriptionPage({
 
                             {/* Previous OP Visits Under this UMR */}
                             {appt.patient_id && (
-                              <div style={{ background: "#f8fafc", borderRadius: "10px", border: `1px solid ${C.borderLight}`, padding: "1rem" }}>
+                              <div
+                                style={{
+                                  background: "#f8fafc",
+                                  borderRadius: "10px",
+                                  border: `1px solid ${C.borderLight}`,
+                                  padding: "1rem",
+                                }}
+                              >
                                 <div
-                                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
-                                  onClick={() => setShowOpHistory((prev) => !prev)}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    cursor: "pointer",
+                                  }}
+                                  onClick={() =>
+                                    setShowOpHistory((prev) => !prev)
+                                  }
                                 >
-                                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "0.85rem", color: C.text }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "0.5rem",
+                                      fontWeight: 700,
+                                      fontSize: "0.85rem",
+                                      color: C.text,
+                                    }}
+                                  >
                                     <FiFolder style={{ color: "#0284c7" }} />
-                                    <span>Past OP Encounters for UMR {appt.patient_id} ({patientOpHistory.length} previous visits)</span>
+                                    <span>
+                                      Past OP Encounters for UMR{" "}
+                                      {appt.patient_id} (
+                                      {patientOpHistory.length} previous visits)
+                                    </span>
                                   </div>
-                                  <span style={{ fontSize: "0.75rem", color: "#0284c7", fontWeight: 600 }}>
-                                    {showOpHistory ? "Hide History ▲" : "View History ▼"}
+                                  <span
+                                    style={{
+                                      fontSize: "0.75rem",
+                                      color: "#0284c7",
+                                      fontWeight: 600,
+                                    }}
+                                  >
+                                    {showOpHistory
+                                      ? "Hide History ▲"
+                                      : "View History ▼"}
                                   </span>
                                 </div>
 
                                 {showOpHistory && (
-                                  <div style={{ marginTop: "0.75rem", display: "grid", gap: "0.5rem" }}>
+                                  <div
+                                    style={{
+                                      marginTop: "0.75rem",
+                                      display: "grid",
+                                      gap: "0.5rem",
+                                    }}
+                                  >
                                     {loadingOpHistory ? (
-                                      <p style={{ fontSize: "0.8rem", color: C.textFaint }}>Loading visit history...</p>
+                                      <p
+                                        style={{
+                                          fontSize: "0.8rem",
+                                          color: C.textFaint,
+                                        }}
+                                      >
+                                        Loading visit history...
+                                      </p>
                                     ) : patientOpHistory.length === 0 ? (
-                                      <p style={{ fontSize: "0.8rem", color: C.textFaint }}>No previous OP visits recorded for this patient.</p>
+                                      <p
+                                        style={{
+                                          fontSize: "0.8rem",
+                                          color: C.textFaint,
+                                        }}
+                                      >
+                                        No previous OP visits recorded for this
+                                        patient.
+                                      </p>
                                     ) : (
                                       patientOpHistory.map((h) => (
-                                        <div key={h.appointment_id} style={{ background: "#ffffff", padding: "0.6rem 0.8rem", borderRadius: "6px", border: `1px solid ${C.border}` }}>
-                                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
-                                            <span style={{ fontWeight: 700, fontSize: "0.8rem", color: "#0f172a" }}>
-                                              OP #{h.token_no} · {formatDateTime(h.appointment_date)}
+                                        <div
+                                          key={h.appointment_id}
+                                          style={{
+                                            background: "#ffffff",
+                                            padding: "0.6rem 0.8rem",
+                                            borderRadius: "6px",
+                                            border: `1px solid ${C.border}`,
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              display: "flex",
+                                              justifyContent: "space-between",
+                                              alignItems: "center",
+                                              marginBottom: "0.25rem",
+                                            }}
+                                          >
+                                            <span
+                                              style={{
+                                                fontWeight: 700,
+                                                fontSize: "0.8rem",
+                                                color: "#0f172a",
+                                              }}
+                                            >
+                                              OP #{h.token_no} ·{" "}
+                                              {formatDateTime(
+                                                h.appointment_date,
+                                              )}
                                             </span>
-                                            <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.4rem", borderRadius: "4px", background: "#e0f2fe", color: "#0369a1", fontWeight: 600 }}>
-                                              Dr. {h.doctor_name || "General"} ({h.department || "OP"})
+                                            <span
+                                              style={{
+                                                fontSize: "0.7rem",
+                                                padding: "0.1rem 0.4rem",
+                                                borderRadius: "4px",
+                                                background: "#e0f2fe",
+                                                color: "#0369a1",
+                                                fontWeight: 600,
+                                              }}
+                                            >
+                                              Dr. {h.doctor_name || "General"} (
+                                              {h.department || "OP"})
                                             </span>
                                           </div>
                                           {h.chief_complaint && (
-                                            <div style={{ fontSize: "0.78rem", color: "#475569" }}>
-                                              <strong>Complaint:</strong> {h.chief_complaint}
+                                            <div
+                                              style={{
+                                                fontSize: "0.78rem",
+                                                color: "#475569",
+                                              }}
+                                            >
+                                              <strong>Complaint:</strong>{" "}
+                                              {h.chief_complaint}
                                             </div>
                                           )}
-                                          {h.diagnoses && h.diagnoses.length > 0 && (
-                                            <div style={{ fontSize: "0.78rem", color: "#059669" }}>
-                                              <strong>Diagnosis:</strong> {h.diagnoses.join(", ")}
-                                            </div>
-                                          )}
+                                          {h.diagnoses &&
+                                            h.diagnoses.length > 0 && (
+                                              <div
+                                                style={{
+                                                  fontSize: "0.78rem",
+                                                  color: "#059669",
+                                                }}
+                                              >
+                                                <strong>Diagnosis:</strong>{" "}
+                                                {h.diagnoses.join(", ")}
+                                              </div>
+                                            )}
                                         </div>
                                       ))
                                     )}
@@ -1723,34 +1854,94 @@ export default function DoctorPrescriptionPage({
                             )}
 
                             {/* Live Structured OP Consultation & Rx Builder */}
-                            <div style={{ background: "#ffffff", borderRadius: "10px", border: "1.5px solid #cbd5e1", padding: "1.25rem" }}>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", borderBottom: "1px solid #f1f5f9", paddingBottom: "0.5rem" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
+                            <div
+                              style={{
+                                background: "#ffffff",
+                                borderRadius: "10px",
+                                border: "1.5px solid #cbd5e1",
+                                padding: "1.25rem",
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  marginBottom: "1rem",
+                                  borderBottom: "1px solid #f1f5f9",
+                                  paddingBottom: "0.5rem",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "0.4rem",
+                                    fontWeight: 700,
+                                    fontSize: "0.95rem",
+                                    color: "#0f172a",
+                                  }}
+                                >
                                   <FiEdit3 style={{ color: "#059669" }} />
-                                  <span>Clinical Consultation & Prescription</span>
+                                  <span>
+                                    Clinical Consultation & Prescription
+                                  </span>
                                 </div>
-                                <span style={{ fontSize: "0.75rem", background: "#ecfdf5", color: "#065f46", padding: "0.15rem 0.5rem", borderRadius: "4px", fontWeight: 600 }}>
+                                <span
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    background: "#ecfdf5",
+                                    color: "#065f46",
+                                    padding: "0.15rem 0.5rem",
+                                    borderRadius: "4px",
+                                    fontWeight: 600,
+                                  }}
+                                >
                                   OP Encounter Active
                                 </span>
                               </div>
 
                               {/* Diagnosis */}
                               <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.3rem" }}>
+                                <label
+                                  style={{
+                                    display: "block",
+                                    fontSize: "0.8rem",
+                                    fontWeight: 700,
+                                    color: "#334155",
+                                    marginBottom: "0.3rem",
+                                  }}
+                                >
                                   Clinical Diagnosis / Impression
                                 </label>
                                 <Inp
                                   value={consultationDiagnosis}
-                                  onChange={(e) => setConsultationDiagnosis(e.target.value)}
+                                  onChange={(e) =>
+                                    setConsultationDiagnosis(e.target.value)
+                                  }
                                   placeholder="e.g. Acute Bronchitis, Essential Hypertension"
                                 />
                               </div>
 
                               {/* Prescriptions Medicines Table */}
                               <div style={{ marginBottom: "1rem" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
-                                  <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
-                                    Prescription Medications ({consultationMedicines.length})
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginBottom: "0.4rem",
+                                  }}
+                                >
+                                  <label
+                                    style={{
+                                      fontSize: "0.8rem",
+                                      fontWeight: 700,
+                                      color: "#334155",
+                                    }}
+                                  >
+                                    Prescription Medications (
+                                    {consultationMedicines.length})
                                   </label>
                                   <Button
                                     type="button"
@@ -1759,94 +1950,156 @@ export default function DoctorPrescriptionPage({
                                     onClick={() =>
                                       setConsultationMedicines((prev) => [
                                         ...prev,
-                                        { name: "", dosage: "500mg", frequency: "1-0-1", duration: "5 days", instructions: "After food" },
+                                        {
+                                          name: "",
+                                          dosage: "500mg",
+                                          frequency: "1-0-1",
+                                          duration: "5 days",
+                                          instructions: "After food",
+                                        },
                                       ])
                                     }
                                   >
-                                    <FiPlus style={{ marginRight: "3px" }} /> Add Drug
+                                    <FiPlus style={{ marginRight: "3px" }} />{" "}
+                                    Add Drug
                                   </Button>
                                 </div>
 
                                 <div style={{ display: "grid", gap: "0.5rem" }}>
                                   {consultationMedicines.map((med, idx) => (
-                                    <div key={idx} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1.5fr auto", gap: "0.4rem", alignItems: "center", background: "#f8fafc", padding: "0.5rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                                    <div
+                                      key={idx}
+                                      style={{
+                                        display: "grid",
+                                        gridTemplateColumns:
+                                          "2fr 1fr 1fr 1fr 1.5fr auto",
+                                        gap: "0.4rem",
+                                        alignItems: "center",
+                                        background: "#f8fafc",
+                                        padding: "0.5rem",
+                                        borderRadius: "6px",
+                                        border: "1px solid #e2e8f0",
+                                      }}
+                                    >
                                       <input
                                         placeholder="Medicine name (e.g. Amoxicillin)"
                                         value={med.name}
                                         onChange={(e) => {
-                                          const val = e.target.value;
+                                          const val = e.target.value
                                           setConsultationMedicines((prev) => {
-                                            const copy = [...prev];
-                                            copy[idx].name = val;
-                                            return copy;
-                                          });
+                                            const copy = [...prev]
+                                            copy[idx].name = val
+                                            return copy
+                                          })
                                         }}
-                                        style={{ padding: "0.4rem 0.6rem", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.8rem" }}
+                                        style={{
+                                          padding: "0.4rem 0.6rem",
+                                          borderRadius: "4px",
+                                          border: "1px solid #cbd5e1",
+                                          fontSize: "0.8rem",
+                                        }}
                                       />
                                       <input
                                         placeholder="Dose (500mg)"
                                         value={med.dosage}
                                         onChange={(e) => {
-                                          const val = e.target.value;
+                                          const val = e.target.value
                                           setConsultationMedicines((prev) => {
-                                            const copy = [...prev];
-                                            copy[idx].dosage = val;
-                                            return copy;
-                                          });
+                                            const copy = [...prev]
+                                            copy[idx].dosage = val
+                                            return copy
+                                          })
                                         }}
-                                        style={{ padding: "0.4rem 0.6rem", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.8rem" }}
+                                        style={{
+                                          padding: "0.4rem 0.6rem",
+                                          borderRadius: "4px",
+                                          border: "1px solid #cbd5e1",
+                                          fontSize: "0.8rem",
+                                        }}
                                       />
                                       <select
                                         value={med.frequency}
                                         onChange={(e) => {
-                                          const val = e.target.value;
+                                          const val = e.target.value
                                           setConsultationMedicines((prev) => {
-                                            const copy = [...prev];
-                                            copy[idx].frequency = val;
-                                            return copy;
-                                          });
+                                            const copy = [...prev]
+                                            copy[idx].frequency = val
+                                            return copy
+                                          })
                                         }}
-                                        style={{ padding: "0.4rem 0.6rem", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.8rem" }}
+                                        style={{
+                                          padding: "0.4rem 0.6rem",
+                                          borderRadius: "4px",
+                                          border: "1px solid #cbd5e1",
+                                          fontSize: "0.8rem",
+                                        }}
                                       >
-                                        <option value="1-0-1">1-0-1 (BD)</option>
-                                        <option value="1-1-1">1-1-1 (TDS)</option>
-                                        <option value="1-0-0">1-0-0 (OD)</option>
-                                        <option value="0-0-1">0-0-1 (Night)</option>
-                                        <option value="SOS">SOS (When needed)</option>
+                                        <option value="1-0-1">
+                                          1-0-1 (BD)
+                                        </option>
+                                        <option value="1-1-1">
+                                          1-1-1 (TDS)
+                                        </option>
+                                        <option value="1-0-0">
+                                          1-0-0 (OD)
+                                        </option>
+                                        <option value="0-0-1">
+                                          0-0-1 (Night)
+                                        </option>
+                                        <option value="SOS">
+                                          SOS (When needed)
+                                        </option>
                                       </select>
                                       <input
                                         placeholder="Duration (5d)"
                                         value={med.duration}
                                         onChange={(e) => {
-                                          const val = e.target.value;
+                                          const val = e.target.value
                                           setConsultationMedicines((prev) => {
-                                            const copy = [...prev];
-                                            copy[idx].duration = val;
-                                            return copy;
-                                          });
+                                            const copy = [...prev]
+                                            copy[idx].duration = val
+                                            return copy
+                                          })
                                         }}
-                                        style={{ padding: "0.4rem 0.6rem", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.8rem" }}
+                                        style={{
+                                          padding: "0.4rem 0.6rem",
+                                          borderRadius: "4px",
+                                          border: "1px solid #cbd5e1",
+                                          fontSize: "0.8rem",
+                                        }}
                                       />
                                       <input
                                         placeholder="Instructions (After food)"
                                         value={med.instructions}
                                         onChange={(e) => {
-                                          const val = e.target.value;
+                                          const val = e.target.value
                                           setConsultationMedicines((prev) => {
-                                            const copy = [...prev];
-                                            copy[idx].instructions = val;
-                                            return copy;
-                                          });
+                                            const copy = [...prev]
+                                            copy[idx].instructions = val
+                                            return copy
+                                          })
                                         }}
-                                        style={{ padding: "0.4rem 0.6rem", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.8rem" }}
+                                        style={{
+                                          padding: "0.4rem 0.6rem",
+                                          borderRadius: "4px",
+                                          border: "1px solid #cbd5e1",
+                                          fontSize: "0.8rem",
+                                        }}
                                       />
                                       {consultationMedicines.length > 1 && (
                                         <button
                                           type="button"
                                           onClick={() =>
-                                            setConsultationMedicines((prev) => prev.filter((_, i) => i !== idx))
+                                            setConsultationMedicines((prev) =>
+                                              prev.filter((_, i) => i !== idx),
+                                            )
                                           }
-                                          style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer" }}
+                                          style={{
+                                            background: "transparent",
+                                            border: "none",
+                                            color: "#ef4444",
+                                            cursor: "pointer",
+                                          }}
                                         >
                                           <FiTrash2 />
                                         </button>
@@ -1858,22 +2111,44 @@ export default function DoctorPrescriptionPage({
 
                               {/* Diagnostic Investigations */}
                               <div style={{ marginBottom: "1rem" }}>
-                                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.3rem" }}>
+                                <label
+                                  style={{
+                                    display: "block",
+                                    fontSize: "0.8rem",
+                                    fontWeight: 700,
+                                    color: "#334155",
+                                    marginBottom: "0.3rem",
+                                  }}
+                                >
                                   Order Diagnostic / Lab Tests
                                 </label>
                                 <div style={{ display: "flex", gap: "0.5rem" }}>
                                   <input
                                     placeholder="Add test (e.g. CBC, Lipid Profile, Chest X-Ray)..."
                                     value={testInput}
-                                    onChange={(e) => setTestInput(e.target.value)}
+                                    onChange={(e) =>
+                                      setTestInput(e.target.value)
+                                    }
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter" && testInput.trim()) {
-                                        e.preventDefault();
-                                        setConsultationTests((prev) => [...prev, testInput.trim()]);
-                                        setTestInput("");
+                                      if (
+                                        e.key === "Enter" &&
+                                        testInput.trim()
+                                      ) {
+                                        e.preventDefault()
+                                        setConsultationTests((prev) => [
+                                          ...prev,
+                                          testInput.trim(),
+                                        ])
+                                        setTestInput("")
                                       }
                                     }}
-                                    style={{ flex: 1, padding: "0.45rem 0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.825rem" }}
+                                    style={{
+                                      flex: 1,
+                                      padding: "0.45rem 0.75rem",
+                                      borderRadius: "6px",
+                                      border: "1px solid #cbd5e1",
+                                      fontSize: "0.825rem",
+                                    }}
                                   />
                                   <Button
                                     type="button"
@@ -1881,8 +2156,11 @@ export default function DoctorPrescriptionPage({
                                     variant="secondary"
                                     onClick={() => {
                                       if (testInput.trim()) {
-                                        setConsultationTests((prev) => [...prev, testInput.trim()]);
-                                        setTestInput("");
+                                        setConsultationTests((prev) => [
+                                          ...prev,
+                                          testInput.trim(),
+                                        ])
+                                        setTestInput("")
                                       }
                                     }}
                                   >
@@ -1890,14 +2168,44 @@ export default function DoctorPrescriptionPage({
                                   </Button>
                                 </div>
                                 {consultationTests.length > 0 && (
-                                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      gap: "0.4rem",
+                                      flexWrap: "wrap",
+                                      marginTop: "0.5rem",
+                                    }}
+                                  >
                                     {consultationTests.map((t, idx) => (
-                                      <span key={idx} style={{ background: "#e0e7ff", color: "#3730a3", fontSize: "0.75rem", padding: "0.2rem 0.5rem", borderRadius: "4px", display: "flex", alignItems: "center", gap: "0.3rem", fontWeight: 600 }}>
+                                      <span
+                                        key={idx}
+                                        style={{
+                                          background: "#e0e7ff",
+                                          color: "#3730a3",
+                                          fontSize: "0.75rem",
+                                          padding: "0.2rem 0.5rem",
+                                          borderRadius: "4px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "0.3rem",
+                                          fontWeight: 600,
+                                        }}
+                                      >
                                         {t}
                                         <button
                                           type="button"
-                                          onClick={() => setConsultationTests((prev) => prev.filter((_, i) => i !== idx))}
-                                          style={{ border: "none", background: "transparent", color: "#4338ca", cursor: "pointer", fontSize: "0.8rem" }}
+                                          onClick={() =>
+                                            setConsultationTests((prev) =>
+                                              prev.filter((_, i) => i !== idx),
+                                            )
+                                          }
+                                          style={{
+                                            border: "none",
+                                            background: "transparent",
+                                            color: "#4338ca",
+                                            cursor: "pointer",
+                                            fontSize: "0.8rem",
+                                          }}
                                         >
                                           ×
                                         </button>
@@ -1908,60 +2216,159 @@ export default function DoctorPrescriptionPage({
                               </div>
 
                               {/* Clinical Advice & Follow-up */}
-                              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: "2fr 1fr",
+                                  gap: "0.75rem",
+                                  marginBottom: "1rem",
+                                }}
+                              >
                                 <div>
-                                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.3rem" }}>
+                                  <label
+                                    style={{
+                                      display: "block",
+                                      fontSize: "0.8rem",
+                                      fontWeight: 700,
+                                      color: "#334155",
+                                      marginBottom: "0.3rem",
+                                    }}
+                                  >
                                     Clinical Advice / Dietary Instructions
                                   </label>
                                   <input
                                     value={consultationAdvice}
-                                    onChange={(e) => setConsultationAdvice(e.target.value)}
+                                    onChange={(e) =>
+                                      setConsultationAdvice(e.target.value)
+                                    }
                                     placeholder="e.g. Adequate rest, hydrate, low sodium diet"
-                                    style={{ width: "100%", padding: "0.45rem 0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.825rem", boxSizing: "border-box" }}
+                                    style={{
+                                      width: "100%",
+                                      padding: "0.45rem 0.75rem",
+                                      borderRadius: "6px",
+                                      border: "1px solid #cbd5e1",
+                                      fontSize: "0.825rem",
+                                      boxSizing: "border-box",
+                                    }}
                                   />
                                 </div>
                                 <div>
-                                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#334155", marginBottom: "0.3rem" }}>
+                                  <label
+                                    style={{
+                                      display: "block",
+                                      fontSize: "0.8rem",
+                                      fontWeight: 700,
+                                      color: "#334155",
+                                      marginBottom: "0.3rem",
+                                    }}
+                                  >
                                     Follow-up Timeline
                                   </label>
                                   <input
                                     value={consultationFollowUp}
-                                    onChange={(e) => setConsultationFollowUp(e.target.value)}
+                                    onChange={(e) =>
+                                      setConsultationFollowUp(e.target.value)
+                                    }
                                     placeholder="e.g. 5 days, 1 week"
-                                    style={{ width: "100%", padding: "0.45rem 0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.825rem", boxSizing: "border-box" }}
+                                    style={{
+                                      width: "100%",
+                                      padding: "0.45rem 0.75rem",
+                                      borderRadius: "6px",
+                                      border: "1px solid #cbd5e1",
+                                      fontSize: "0.825rem",
+                                      boxSizing: "border-box",
+                                    }}
                                   />
                                 </div>
                               </div>
 
                               {/* Further Action Routing */}
-                              <div style={{ background: "#f1f5f9", padding: "0.85rem", borderRadius: "8px", marginBottom: "1.25rem" }}>
-                                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.4rem" }}>
+                              <div
+                                style={{
+                                  background: "#f1f5f9",
+                                  padding: "0.85rem",
+                                  borderRadius: "8px",
+                                  marginBottom: "1.25rem",
+                                }}
+                              >
+                                <label
+                                  style={{
+                                    display: "block",
+                                    fontSize: "0.8rem",
+                                    fontWeight: 700,
+                                    color: "#0f172a",
+                                    marginBottom: "0.4rem",
+                                  }}
+                                >
                                   Post-Consultation Routing & Further Action
                                 </label>
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+                                <div
+                                  style={{
+                                    display: "grid",
+                                    gridTemplateColumns: "1fr 1fr",
+                                    gap: "0.6rem",
+                                  }}
+                                >
                                   <select
                                     value={consultationFurtherAction}
-                                    onChange={(e) => setConsultationFurtherAction(e.target.value)}
-                                    style={{ padding: "0.5rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", fontWeight: 600 }}
+                                    onChange={(e) =>
+                                      setConsultationFurtherAction(
+                                        e.target.value,
+                                      )
+                                    }
+                                    style={{
+                                      padding: "0.5rem",
+                                      borderRadius: "6px",
+                                      border: "1px solid #cbd5e1",
+                                      fontSize: "0.85rem",
+                                      fontWeight: 600,
+                                    }}
                                   >
-                                    <option value="none">None (OP Encounter Completed)</option>
-                                    <option value="pharmacy">Route to Pharmacy (Collect Rx)</option>
-                                    <option value="laboratory">Route to Laboratory (Sample Collection)</option>
-                                    <option value="imaging">Route to Imaging / Radiology</option>
-                                    <option value="referral">Specialist Referral</option>
-                                    <option value="admission">Admit to Inpatient Ward (IP)</option>
+                                    <option value="none">
+                                      None (OP Encounter Completed)
+                                    </option>
+                                    <option value="pharmacy">
+                                      Route to Pharmacy (Collect Rx)
+                                    </option>
+                                    <option value="laboratory">
+                                      Route to Laboratory (Sample Collection)
+                                    </option>
+                                    <option value="imaging">
+                                      Route to Imaging / Radiology
+                                    </option>
+                                    <option value="referral">
+                                      Specialist Referral
+                                    </option>
+                                    <option value="admission">
+                                      Admit to Inpatient Ward (IP)
+                                    </option>
                                   </select>
                                   <input
                                     value={consultationFurtherNotes}
-                                    onChange={(e) => setConsultationFurtherNotes(e.target.value)}
+                                    onChange={(e) =>
+                                      setConsultationFurtherNotes(
+                                        e.target.value,
+                                      )
+                                    }
                                     placeholder="Optional instructions for next department..."
-                                    style={{ padding: "0.5rem 0.75rem", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.825rem" }}
+                                    style={{
+                                      padding: "0.5rem 0.75rem",
+                                      borderRadius: "6px",
+                                      border: "1px solid #cbd5e1",
+                                      fontSize: "0.825rem",
+                                    }}
                                   />
                                 </div>
                               </div>
 
                               {/* Submit Consultation Button */}
-                              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "flex-end",
+                                  gap: "0.75rem",
+                                }}
+                              >
                                 <Btn
                                   variant="secondary"
                                   size="md"
@@ -1979,11 +2386,18 @@ export default function DoctorPrescriptionPage({
                                 <Btn
                                   variant="success"
                                   size="md"
-                                  style={{ background: "#059669", padding: "0.6rem 1.4rem" }}
-                                  onClick={() => void handleSaveOpConsultation(appt)}
+                                  style={{
+                                    background: "#059669",
+                                    padding: "0.6rem 1.4rem",
+                                  }}
+                                  onClick={() =>
+                                    void handleSaveOpConsultation(appt)
+                                  }
                                   disabled={savingConsultation}
                                 >
-                                  {savingConsultation ? "Saving..." : "💾 Complete Consultation & Route Action"}
+                                  {savingConsultation
+                                    ? "Saving..."
+                                    : "💾 Complete Consultation & Route Action"}
                                 </Btn>
                               </div>
                             </div>
@@ -2005,8 +2419,8 @@ export default function DoctorPrescriptionPage({
                                     justifyContent: "center",
                                   }}
                                   onClick={() => {
-                                    void doStatus(appt.id, "in_consultation");
-                                    setViewMode("active");
+                                    void doStatus(appt.id, "in_consultation")
+                                    setViewMode("active")
                                   }}
                                 >
                                   <FiArrowRightCircle size={18} /> Call In{" "}
@@ -2025,11 +2439,12 @@ export default function DoctorPrescriptionPage({
                                       variant="secondary"
                                       style={{ justifyContent: "center" }}
                                       onClick={async () => {
-                                        await doStatus(appt.id, "completed");
-                                        onNavigate?.("pharmacy");
+                                        await doStatus(appt.id, "completed")
+                                        onNavigate?.("pharmacy")
                                       }}
                                     >
-                                      <FiCheckCircle size={14} /> Finish Consultation
+                                      <FiCheckCircle size={14} /> Finish
+                                      Consultation
                                     </Btn>
                                     <Btn
                                       variant="success"
@@ -2063,7 +2478,7 @@ export default function DoctorPrescriptionPage({
                         )}
                       </div>
                     </>
-                  );
+                  )
                 })()
               )}
             </CardWrap>
@@ -2148,7 +2563,9 @@ export default function DoctorPrescriptionPage({
                   <SectionHdr
                     icon={<FiUsers color={C.purple} size={16} />}
                     title="Waiting Queue"
-                    sub={`${queue.length} patient${queue.length !== 1 ? "s" : ""} waiting`}
+                    sub={`${queue.length} patient${
+                      queue.length !== 1 ? "s" : ""
+                    } waiting`}
                   />
                 }
                 right={
@@ -2414,7 +2831,7 @@ export default function DoctorPrescriptionPage({
               >
                 {(() => {
                   const targetAppt =
-                    viewMode === "preview" ? previewAppt : activeAppt;
+                    viewMode === "preview" ? previewAppt : activeAppt
                   if (!targetAppt)
                     return (
                       <EmptyState
@@ -2422,7 +2839,7 @@ export default function DoctorPrescriptionPage({
                         title="No patient selected"
                         hint="Select a patient to view history."
                       />
-                    );
+                    )
                   if (chartLoading)
                     return (
                       <div
@@ -2442,7 +2859,7 @@ export default function DoctorPrescriptionPage({
                         />
                         Loading history…
                       </div>
-                    );
+                    )
                   return (
                     <>
                       <div
@@ -2718,7 +3135,8 @@ export default function DoctorPrescriptionPage({
                                     })
                                   }
                                 >
-                                  <FiPlus size={13} /> Upload Scanned Prescription
+                                  <FiPlus size={13} /> Upload Scanned
+                                  Prescription
                                 </Btn>
                               </div>
                             )}
@@ -2907,7 +3325,7 @@ export default function DoctorPrescriptionPage({
                         )}
                       </div>
                     </>
-                  );
+                  )
                 })()}
               </CardWrap>
             )}
@@ -3152,7 +3570,9 @@ export default function DoctorPrescriptionPage({
                 <SectionHdr
                   icon={<FiFileText color={C.teal} size={16} />}
                   title="This Session's Notes"
-                  sub={`${recentNotes.length} note${recentNotes.length !== 1 ? "s" : ""} written`}
+                  sub={`${recentNotes.length} note${
+                    recentNotes.length !== 1 ? "s" : ""
+                  } written`}
                 />
               }
             />
@@ -3344,14 +3764,14 @@ export default function DoctorPrescriptionPage({
                           in_consultation: C.primary,
                           no_show: C.red,
                           checked_in: C.amber,
-                        }[a.status] ?? C.textFaint;
+                        }[a.status] ?? C.textFaint
                       const statusBg =
                         {
                           completed: C.greenLight,
                           in_consultation: C.primaryLight,
                           no_show: C.redLight,
                           checked_in: C.amberLight,
-                        }[a.status] ?? "#f1f5f9";
+                        }[a.status] ?? "#f1f5f9"
                       return (
                         <div
                           key={a.id}
@@ -3359,7 +3779,11 @@ export default function DoctorPrescriptionPage({
                             background: C.surface,
                             borderRadius: "12px",
                             padding: "1rem 1.1rem",
-                            border: `1px solid ${a.status === "in_consultation" ? C.primaryMid : C.border}`,
+                            border: `1px solid ${
+                              a.status === "in_consultation"
+                                ? C.primaryMid
+                                : C.border
+                            }`,
                             boxShadow:
                               a.status === "in_consultation"
                                 ? `0 0 0 2px ${C.primaryMid}`
@@ -3435,7 +3859,7 @@ export default function DoctorPrescriptionPage({
                             </div>
                           )}
                         </div>
-                      );
+                      )
                     })}
                   </div>
                 </>
@@ -3482,5 +3906,5 @@ export default function DoctorPrescriptionPage({
       {/* ── Keyframes ── */}
       <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
-  );
+  )
 }

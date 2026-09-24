@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import type { Dispatch, FormEvent, SetStateAction } from "react";
-import StatCard from "../components/StatCard";
+import { useEffect, useState } from "react"
+import type { Dispatch, FormEvent, SetStateAction } from "react"
+import StatCard from "../components/StatCard"
 import {
   Button,
   Input,
@@ -9,58 +9,58 @@ import {
   TableCell,
   TableHead,
   TableRow,
-} from "../components/ui";
-import { apiFetch, reportError } from "../lib/api";
-import type { Notice, OpSummary } from "../types";
+} from "../components/ui"
+import { apiFetch, reportError } from "../lib/api"
+import type { Notice, OpSummary } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  canEdit: boolean;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  canEdit: boolean
+}
 
 type Department = {
-  id: number;
-  department_name?: string;
-};
+  id: number
+  department_name?: string
+}
 
 type Doctor = {
-  id: number;
-  doctor_name: string;
-  department: string;
-  consultation_fee: number;
-  review_fee: number;
-  status: string;
-  source?: string;
-};
+  id: number
+  doctor_name: string
+  department: string
+  consultation_fee: number
+  review_fee: number
+  status: string
+  source?: string
+}
 
 type DoctorForm = {
-  id: string;
-  doctor_name: string;
-  department: string;
-  consultation_fee: string;
-  review_fee: string;
-  status: string;
-};
+  id: string
+  doctor_name: string
+  department: string
+  consultation_fee: string
+  review_fee: string
+  status: string
+}
 
 type Patient = {
-  patient_id: string;
-  name: string;
-  last_name: string;
-  phone?: string;
-  gender?: string;
-};
+  patient_id: string
+  name: string
+  last_name: string
+  phone?: string
+  gender?: string
+}
 
 type QueueEntry = {
-  id: number;
-  patient_id: string;
-  patient_name: string;
-  token_no: number;
-  doctor_name?: string;
-  department?: string;
-  status: string;
-  chief_complaint?: string;
-  symptoms?: string;
-};
+  id: number
+  patient_id: string
+  patient_name: string
+  token_no: number
+  doctor_name?: string
+  department?: string
+  status: string
+  chief_complaint?: string
+  symptoms?: string
+}
 
 const EMPTY_SUMMARY: OpSummary = {
   date: "",
@@ -70,7 +70,7 @@ const EMPTY_SUMMARY: OpSummary = {
   no_shows: 0,
   reminders_sent: 0,
   available_doctors: 0,
-};
+}
 
 const DEFAULT_DOCTOR_FORM: DoctorForm = {
   id: "",
@@ -79,116 +79,131 @@ const DEFAULT_DOCTOR_FORM: DoctorForm = {
   consultation_fee: "0",
   review_fee: "0",
   status: "available",
-};
+}
 
 export default function DoctorSchedulingPage({ setNotice, canEdit }: Props) {
-  const [summary, setSummary] = useState<OpSummary>(EMPTY_SUMMARY);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [summary, setSummary] = useState<OpSummary>(EMPTY_SUMMARY)
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [doctorForm, setDoctorForm] = useState<DoctorForm>(DEFAULT_DOCTOR_FORM);
-  const [savingDoctor, setSavingDoctor] = useState(false);
+  const [doctorForm, setDoctorForm] = useState<DoctorForm>(DEFAULT_DOCTOR_FORM)
+  const [savingDoctor, setSavingDoctor] = useState(false)
 
-  const [departmentInput, setDepartmentInput] = useState("");
+  const [departmentInput, setDepartmentInput] = useState("")
   const [selectedDate, setSelectedDate] = useState(
     new Date().toLocaleDateString("en-CA"),
-  );
-  const [selectedDoctor, setSelectedDoctor] = useState("");
-  const [savingDepartment, setSavingDepartment] = useState(false);
-  const [patientQuery, setPatientQuery] = useState("");
-  const [patientSuggestions, setPatientSuggestions] = useState<Patient[]>([]);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [newPatient, setNewPatient] = useState({ name: "", last_name: "", phone: "", gender: "", dob: "" });
-  const [opDetails, setOpDetails] = useState({ date: new Date().toLocaleDateString("en-CA"), department: "", chief_complaint: "", symptoms: "" });
-  const [registeringVisit, setRegisteringVisit] = useState(false);
-  const [queue, setQueue] = useState<QueueEntry[]>([]);
+  )
+  const [selectedDoctor, setSelectedDoctor] = useState("")
+  const [savingDepartment, setSavingDepartment] = useState(false)
+  const [patientQuery, setPatientQuery] = useState("")
+  const [patientSuggestions, setPatientSuggestions] = useState<Patient[]>([])
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
+  const [newPatient, setNewPatient] = useState({
+    name: "",
+    last_name: "",
+    phone: "",
+    gender: "",
+    dob: "",
+  })
+  const [opDetails, setOpDetails] = useState({
+    date: new Date().toLocaleDateString("en-CA"),
+    department: "",
+    chief_complaint: "",
+    symptoms: "",
+  })
+  const [registeringVisit, setRegisteringVisit] = useState(false)
+  const [queue, setQueue] = useState<QueueEntry[]>([])
 
   useEffect(() => {
-    const query = patientQuery.trim();
+    const query = patientQuery.trim()
     if (query.length < 2 || selectedPatient) {
-      setPatientSuggestions([]);
-      return;
+      setPatientSuggestions([])
+      return
     }
     const timer = window.setTimeout(() => {
-      void apiFetch<{ patients?: Patient[] }>(`/api/patients?q=${encodeURIComponent(query)}`)
+      void apiFetch<{ patients?: Patient[] }>(
+        `/api/patients?q=${encodeURIComponent(query)}`,
+      )
         .then((data) => setPatientSuggestions(data.patients || []))
-        .catch(() => setPatientSuggestions([]));
-    }, 300);
-    return () => window.clearTimeout(timer);
-  }, [patientQuery, selectedPatient]);
+        .catch(() => setPatientSuggestions([]))
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [patientQuery, selectedPatient])
 
   const loadData = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const [summaryData, deptData, doctorsData, queueData] = await Promise.all([
-        apiFetch<OpSummary>(`/api/op/summary?date=${selectedDate}`),
-        apiFetch<{ departments?: Department[] }>(
-          "/api/registration/departments",
-        ),
-        apiFetch<{ doctors?: Doctor[] }>("/api/op/doctors"),
-        apiFetch<{ queue?: QueueEntry[] }>(`/api/queue?date=${selectedDate}`),
-      ]);
-      setSummary({ ...EMPTY_SUMMARY, ...summaryData });
-      setDepartments(deptData.departments || []);
-      setDoctors(doctorsData.doctors || []);
-      setQueue(queueData.queue || []);
+      const [summaryData, deptData, doctorsData, queueData] = await Promise.all(
+        [
+          apiFetch<OpSummary>(`/api/op/summary?date=${selectedDate}`),
+          apiFetch<{ departments?: Department[] }>(
+            "/api/registration/departments",
+          ),
+          apiFetch<{ doctors?: Doctor[] }>("/api/op/doctors"),
+          apiFetch<{ queue?: QueueEntry[] }>(`/api/queue?date=${selectedDate}`),
+        ],
+      )
+      setSummary({ ...EMPTY_SUMMARY, ...summaryData })
+      setDepartments(deptData.departments || [])
+      setDoctors(doctorsData.doctors || [])
+      setQueue(queueData.queue || [])
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to load data.",
-      );
+      )
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    void loadData();
-  }, []);
+    void loadData()
+  }, [])
 
   const handleAddDepartment = async () => {
     if (!departmentInput.trim()) {
-      setNotice({ type: "error", message: "Department name is required." });
-      return;
+      setNotice({ type: "error", message: "Department name is required." })
+      return
     }
-    setSavingDepartment(true);
+    setSavingDepartment(true)
     try {
       await apiFetch("/api/registration/departments", {
         method: "POST",
         body: JSON.stringify({ department_name: departmentInput.trim() }),
-      });
-      setNotice({ type: "success", message: "Department added." });
-      setDepartmentInput("");
+      })
+      setNotice({ type: "success", message: "Department added." })
+      setDepartmentInput("")
       const deptData = await apiFetch<{ departments?: Department[] }>(
         "/api/registration/departments",
-      );
-      setDepartments(deptData.departments || []);
+      )
+      setDepartments(deptData.departments || [])
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to add department.",
-      );
+      )
     } finally {
-      setSavingDepartment(false);
+      setSavingDepartment(false)
     }
-  };
+  }
 
   const handleDoctorSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+    event.preventDefault()
     if (!doctorForm.doctor_name.trim() || !doctorForm.department.trim()) {
       setNotice({
         type: "error",
         message: "Doctor name and department are required.",
-      });
-      return;
+      })
+      return
     }
-    setSavingDoctor(true);
+    setSavingDoctor(true)
     try {
-      const doctorId = Number(doctorForm.id);
-      const path = doctorId ? `/api/op/doctors/${doctorId}` : "/api/op/doctors";
+      const doctorId = Number(doctorForm.id)
+      const path = doctorId ? `/api/op/doctors/${doctorId}` : "/api/op/doctors"
       await apiFetch(path, {
         method: doctorId ? "PUT" : "POST",
         body: JSON.stringify({
@@ -198,26 +213,26 @@ export default function DoctorSchedulingPage({ setNotice, canEdit }: Props) {
           review_fee: Number(doctorForm.review_fee) || 0,
           status: doctorForm.status,
         }),
-      });
-      setDoctorForm(DEFAULT_DOCTOR_FORM);
+      })
+      setDoctorForm(DEFAULT_DOCTOR_FORM)
       setNotice({
         type: "success",
         message: doctorId ? "Doctor updated." : "Doctor added.",
-      });
+      })
       const doctorsData = await apiFetch<{ doctors?: Doctor[] }>(
         "/api/op/doctors",
-      );
-      setDoctors(doctorsData.doctors || []);
+      )
+      setDoctors(doctorsData.doctors || [])
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to save doctor.",
-      );
+      )
     } finally {
-      setSavingDoctor(false);
+      setSavingDoctor(false)
     }
-  };
+  }
 
   const handleEditDoctor = (doc: Doctor) => {
     setDoctorForm({
@@ -227,82 +242,111 @@ export default function DoctorSchedulingPage({ setNotice, canEdit }: Props) {
       consultation_fee: String(doc.consultation_fee || 0),
       review_fee: String(doc.review_fee || 0),
       status: doc.status || "available",
-    });
-  };
+    })
+  }
 
   const handleDeleteDoctor = async (doctorId: number) => {
-    if (!confirm("Are you sure you want to delete this doctor?")) return;
+    if (!confirm("Are you sure you want to delete this doctor?")) return
     try {
-      await apiFetch(`/api/op/doctors/${doctorId}`, { method: "DELETE" });
-      setNotice({ type: "success", message: "Doctor deleted." });
+      await apiFetch(`/api/op/doctors/${doctorId}`, { method: "DELETE" })
+      setNotice({ type: "success", message: "Doctor deleted." })
       const doctorsData = await apiFetch<{ doctors?: Doctor[] }>(
         "/api/op/doctors",
-      );
-      setDoctors(doctorsData.doctors || []);
+      )
+      setDoctors(doctorsData.doctors || [])
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to delete doctor.",
-      );
+      )
     }
-  };
+  }
 
   const updateQueueStatus = async (entry: QueueEntry, status: string) => {
     try {
       await apiFetch(`/api/op/visits/${entry.id}/status`, {
         method: "POST",
         body: JSON.stringify({ status }),
-      });
+      })
       setNotice({
         type: "success",
         message: `${entry.patient_name} moved to ${status.replace(/_/g, " ")}.`,
-      });
-      await loadData();
+      })
+      await loadData()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to update OP status.",
-      );
+      )
     }
-  };
+  }
 
   const handleRegisterVisit = async () => {
-    if (!selectedPatient && (!newPatient.name.trim() || !newPatient.last_name.trim())) {
-      setNotice({ type: "error", message: "Select an existing patient or enter a new patient's first and last name." });
-      return;
+    if (
+      !selectedPatient &&
+      (!newPatient.name.trim() || !newPatient.last_name.trim())
+    ) {
+      setNotice({
+        type: "error",
+        message:
+          "Select an existing patient or enter a new patient's first and last name.",
+      })
+      return
     }
     if (!opDetails.chief_complaint.trim() && !opDetails.symptoms.trim()) {
-      setNotice({ type: "error", message: "Capture the patient's chief complaint or symptoms." });
-      return;
+      setNotice({
+        type: "error",
+        message: "Capture the patient's chief complaint or symptoms.",
+      })
+      return
     }
-    setRegisteringVisit(true);
+    setRegisteringVisit(true)
     try {
-      const result = await apiFetch<{ patient_id: string; op_number: number }>("/api/op/visits", {
-        method: "POST",
-        body: JSON.stringify({
-          patient_id: selectedPatient?.patient_id,
-          patient: selectedPatient ? undefined : newPatient,
-          appointment: { appointment_date: opDetails.date, department: opDetails.department, chief_complaint: opDetails.chief_complaint, symptoms: opDetails.symptoms },
-        }),
-      });
-      setNotice({ type: "success", message: `OP ${result.op_number} registered for UMR ${result.patient_id}.` });
-      setPatientQuery("");
-      setPatientSuggestions([]);
-      setSelectedPatient(null);
-      setNewPatient({ name: "", last_name: "", phone: "", gender: "", dob: "" });
-      setOpDetails((current) => ({ ...current, chief_complaint: "", symptoms: "" }));
-      await loadData();
+      const result = await apiFetch<{ patient_id: string op_number: number }>(
+        "/api/op/visits",
+        {
+          method: "POST",
+          body: JSON.stringify({
+            patient_id: selectedPatient?.patient_id,
+            patient: selectedPatient ? undefined : newPatient,
+            appointment: {
+              appointment_date: opDetails.date,
+              department: opDetails.department,
+              chief_complaint: opDetails.chief_complaint,
+              symptoms: opDetails.symptoms,
+            },
+          }),
+        },
+      )
+      setNotice({
+        type: "success",
+        message: `OP ${result.op_number} registered for UMR ${result.patient_id}.`,
+      })
+      setPatientQuery("")
+      setPatientSuggestions([])
+      setSelectedPatient(null)
+      setNewPatient({ name: "", last_name: "", phone: "", gender: "", dob: "" })
+      setOpDetails((current) => ({
+        ...current,
+        chief_complaint: "",
+        symptoms: "",
+      }))
+      await loadData()
     } catch (error) {
-      reportError(setNotice, error as { message?: string; status?: number }, "Unable to register OP visit.");
+      reportError(
+        setNotice,
+        error as { message?: string status?: number },
+        "Unable to register OP visit.",
+      )
     } finally {
-      setRegisteringVisit(false);
+      setRegisteringVisit(false)
     }
-  };
+  }
 
   if (loading && !summary.total_appointments) {
-    return <div className="page-loading">Loading scheduling data...</div>;
+    return <div className="page-loading">Loading scheduling data...</div>
   }
 
   return (
@@ -338,43 +382,210 @@ export default function DoctorSchedulingPage({ setNotice, canEdit }: Props) {
         <StatCard label="NO-SHOWS" value={summary.no_shows} />
       </div>
 
-      <div className="panel" style={{ marginTop: "1.5rem", padding: "1.25rem" }}>
-
-              <div className="panel" style={{ marginTop: "1.5rem" }}>
-                <div className="module-panel-head"><h4>Today&apos;s OP Queue</h4><span className="muted">{queue.length} active visits</span></div>
-                <Table>
-                  <TableHead><TableRow><TableCell>Token</TableCell><TableCell>Patient / UMR</TableCell><TableCell>Complaint</TableCell><TableCell>Doctor</TableCell><TableCell>Status</TableCell><TableCell>Action</TableCell></TableRow></TableHead>
-                  {queue.map((entry) => <TableRow key={entry.id}>
-                    <TableCell>OP{String(entry.token_no).padStart(3, "0")}</TableCell>
-                    <TableCell><strong>{entry.patient_name}</strong><br /><span className="muted">{entry.patient_id}</span></TableCell>
-                    <TableCell>{entry.chief_complaint || entry.symptoms || "Not captured"}</TableCell>
-                    <TableCell>{entry.doctor_name || "Awaiting assignment"}</TableCell>
-                    <TableCell>{entry.status.replace(/_/g, " ")}</TableCell>
-                    <TableCell>{entry.status === "scheduled" && <Button type="button" onClick={() => void updateQueueStatus(entry, "checked_in")}>Check in</Button>}{entry.status === "checked_in" && <Button type="button" onClick={() => void updateQueueStatus(entry, "in_consultation")}>Start</Button>}{entry.status === "in_consultation" && <Button type="button" onClick={() => void updateQueueStatus(entry, "completed")}>Complete</Button>}</TableCell>
-                  </TableRow>)}
-                </Table>
-                {!queue.length && <p className="muted">No active OP visits for this date.</p>}
-              </div>
-        <div className="module-panel-head" style={{ borderBottom: "none", padding: 0 }}>
+      <div
+        className="panel"
+        style={{ marginTop: "1.5rem", padding: "1.25rem" }}
+      >
+        <div className="panel" style={{ marginTop: "1.5rem" }}>
+          <div className="module-panel-head">
+            <h4>Today&apos;s OP Queue</h4>
+            <span className="muted">{queue.length} active visits</span>
+          </div>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Token</TableCell>
+                <TableCell>Patient / UMR</TableCell>
+                <TableCell>Complaint</TableCell>
+                <TableCell>Doctor</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Action</TableCell>
+              </TableRow>
+            </TableHead>
+            {queue.map((entry) => (
+              <TableRow key={entry.id}>
+                <TableCell>
+                  OP{String(entry.token_no).padStart(3, "0")}
+                </TableCell>
+                <TableCell>
+                  <strong>{entry.patient_name}</strong>
+                  <br />
+                  <span className="muted">{entry.patient_id}</span>
+                </TableCell>
+                <TableCell>
+                  {entry.chief_complaint || entry.symptoms || "Not captured"}
+                </TableCell>
+                <TableCell>
+                  {entry.doctor_name || "Awaiting assignment"}
+                </TableCell>
+                <TableCell>{entry.status.replace(/_/g, " ")}</TableCell>
+                <TableCell>
+                  {entry.status === "scheduled" && (
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        void updateQueueStatus(entry, "checked_in")
+                      }
+                    >
+                      Check in
+                    </Button>
+                  )}
+                  {entry.status === "checked_in" && (
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        void updateQueueStatus(entry, "in_consultation")
+                      }
+                    >
+                      Start
+                    </Button>
+                  )}
+                  {entry.status === "in_consultation" && (
+                    <Button
+                      type="button"
+                      onClick={() => void updateQueueStatus(entry, "completed")}
+                    >
+                      Complete
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </Table>
+          {!queue.length && (
+            <p className="muted">No active OP visits for this date.</p>
+          )}
+        </div>
+        <div
+          className="module-panel-head"
+          style={{ borderBottom: "none", padding: 0 }}
+        >
           <div>
             <h4>OP Registration</h4>
-            <p className="muted">One patient keeps one UMR. Each visit receives a new OP number.</p>
+            <p className="muted">
+              One patient keeps one UMR. Each visit receives a new OP number.
+            </p>
           </div>
-          {selectedPatient && <strong>UMR: {selectedPatient.patient_id}</strong>}
+          {selectedPatient && (
+            <strong>UMR: {selectedPatient.patient_id}</strong>
+          )}
         </div>
-        <div style={{ display: "grid", gap: "0.75rem", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: "0.75rem",
+            gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          }}
+        >
           <div style={{ gridColumn: "span 2", position: "relative" }}>
             <label>Search existing patient</label>
-            <Input value={selectedPatient ? `${selectedPatient.name} ${selectedPatient.last_name}` : patientQuery} placeholder="Name, phone, or patient ID" onChange={(event) => { setSelectedPatient(null); setPatientQuery(event.target.value); }} />
-            {patientSuggestions.length > 0 && <div className="panel" style={{ position: "absolute", zIndex: 2, width: "100%", padding: "0.5rem" }}>{patientSuggestions.map((patient) => <button type="button" key={patient.patient_id} className="table-button" onClick={() => { setSelectedPatient(patient); setPatientQuery(""); setPatientSuggestions([]); }}>{patient.name} {patient.last_name} · {patient.patient_id} · {patient.phone || "no phone"}</button>)}</div>}
+            <Input
+              value={
+                selectedPatient
+                  ? `${selectedPatient.name} ${selectedPatient.last_name}`
+                  : patientQuery
+              }
+              placeholder="Name, phone, or patient ID"
+              onChange={(event) => {
+                setSelectedPatient(null)
+                setPatientQuery(event.target.value)
+              }}
+            />
+            {patientSuggestions.length > 0 && (
+              <div
+                className="panel"
+                style={{
+                  position: "absolute",
+                  zIndex: 2,
+                  width: "100%",
+                  padding: "0.5rem",
+                }}
+              >
+                {patientSuggestions.map((patient) => (
+                  <button
+                    type="button"
+                    key={patient.patient_id}
+                    className="table-button"
+                    onClick={() => {
+                      setSelectedPatient(patient)
+                      setPatientQuery("")
+                      setPatientSuggestions([])
+                    }}
+                  >
+                    {patient.name} {patient.last_name} · {patient.patient_id} ·{" "}
+                    {patient.phone || "no phone"}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <Input type="date" value={opDetails.date} onChange={(event) => setOpDetails({ ...opDetails, date: event.target.value })} />
-          <Input placeholder="Department" value={opDetails.department} onChange={(event) => setOpDetails({ ...opDetails, department: event.target.value })} />
-          {!selectedPatient && <><Input placeholder="First name" value={newPatient.name} onChange={(event) => setNewPatient({ ...newPatient, name: event.target.value })} /><Input placeholder="Last name" value={newPatient.last_name} onChange={(event) => setNewPatient({ ...newPatient, last_name: event.target.value })} /><Input placeholder="Phone" value={newPatient.phone} onChange={(event) => setNewPatient({ ...newPatient, phone: event.target.value })} /></>}
-          <Input placeholder="Chief complaint" value={opDetails.chief_complaint} onChange={(event) => setOpDetails({ ...opDetails, chief_complaint: event.target.value })} />
-          <Input placeholder="Symptoms and duration" value={opDetails.symptoms} onChange={(event) => setOpDetails({ ...opDetails, symptoms: event.target.value })} />
+          <Input
+            type="date"
+            value={opDetails.date}
+            onChange={(event) =>
+              setOpDetails({ ...opDetails, date: event.target.value })
+            }
+          />
+          <Input
+            placeholder="Department"
+            value={opDetails.department}
+            onChange={(event) =>
+              setOpDetails({ ...opDetails, department: event.target.value })
+            }
+          />
+          {!selectedPatient && (
+            <>
+              <Input
+                placeholder="First name"
+                value={newPatient.name}
+                onChange={(event) =>
+                  setNewPatient({ ...newPatient, name: event.target.value })
+                }
+              />
+              <Input
+                placeholder="Last name"
+                value={newPatient.last_name}
+                onChange={(event) =>
+                  setNewPatient({
+                    ...newPatient,
+                    last_name: event.target.value,
+                  })
+                }
+              />
+              <Input
+                placeholder="Phone"
+                value={newPatient.phone}
+                onChange={(event) =>
+                  setNewPatient({ ...newPatient, phone: event.target.value })
+                }
+              />
+            </>
+          )}
+          <Input
+            placeholder="Chief complaint"
+            value={opDetails.chief_complaint}
+            onChange={(event) =>
+              setOpDetails({
+                ...opDetails,
+                chief_complaint: event.target.value,
+              })
+            }
+          />
+          <Input
+            placeholder="Symptoms and duration"
+            value={opDetails.symptoms}
+            onChange={(event) =>
+              setOpDetails({ ...opDetails, symptoms: event.target.value })
+            }
+          />
         </div>
-        <Button type="button" disabled={registeringVisit} onClick={() => void handleRegisterVisit()}>{registeringVisit ? "Registering..." : "Register OP Visit"}</Button>
+        <Button
+          type="button"
+          disabled={registeringVisit}
+          onClick={() => void handleRegisterVisit()}
+        >
+          {registeringVisit ? "Registering..." : "Register OP Visit"}
+        </Button>
       </div>
 
       <div
@@ -798,5 +1009,5 @@ export default function DoctorSchedulingPage({ setNotice, canEdit }: Props) {
         </div>
       </div>
     </section>
-  );
+  )
 }

@@ -1,51 +1,51 @@
-import { API_BASE } from "./constants";
+import { API_BASE } from "./constants"
 
-import type { Notice } from "../types";
+import type { Notice } from "../types"
 
-import { ErDatabase } from "../services/erDb";
+import { ErDatabase } from "../services/erDb"
 
-import { BedDatabase } from "../services/bedDb";
+import { BedDatabase } from "../services/bedDb"
 
-import { db } from "../services/db";
+import { db } from "../services/db"
 
-import { BillingDatabase } from "../services/billingDb";
+import { BillingDatabase } from "../services/billingDb"
 
-import { RoleDatabase } from "../services/roleDb";
+import { RoleDatabase } from "../services/roleDb"
 
 import {
   GeneralReportsService,
   DateRangePreset,
-} from "../services/generalReportsDb";
+} from "../services/generalReportsDb"
 
-const HOSPITAL_CODE_KEY = "hospai_hospital_code";
+const HOSPITAL_CODE_KEY = "hospai_hospital_code"
 
-const DEFAULT_HOSPITAL_CODE = "hosp-default";
+const DEFAULT_HOSPITAL_CODE = "hosp-default"
 
 export function getHospitalCode(): string {
-  if (typeof window === "undefined") return DEFAULT_HOSPITAL_CODE;
+  if (typeof window === "undefined") return DEFAULT_HOSPITAL_CODE
 
   const stored = (window.localStorage.getItem(HOSPITAL_CODE_KEY) || "")
     .trim()
-    .toLowerCase();
+    .toLowerCase()
 
-  return stored || DEFAULT_HOSPITAL_CODE;
+  return stored || DEFAULT_HOSPITAL_CODE
 }
 
 export function setHospitalCode(hospitalCode: string): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return
 
   const normalized =
-    (hospitalCode || "").trim().toLowerCase() || DEFAULT_HOSPITAL_CODE;
+    (hospitalCode || "").trim().toLowerCase() || DEFAULT_HOSPITAL_CODE
 
-  window.localStorage.setItem(HOSPITAL_CODE_KEY, normalized);
+  window.localStorage.setItem(HOSPITAL_CODE_KEY, normalized)
 }
 
 export function getCsrfToken(): string | undefined {
-  if (typeof document === "undefined") return undefined;
+  if (typeof document === "undefined") return undefined
 
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)
 
-  return match ? decodeURIComponent(match[1]) : undefined;
+  return match ? decodeURIComponent(match[1]) : undefined
 }
 
 /**
@@ -56,64 +56,64 @@ async function handleLocalErMock<T = any>(
   path: string,
   options: RequestInit = {},
 ): Promise<T | null> {
-  const method = (options.method || "GET").toUpperCase();
+  const method = (options.method || "GET").toUpperCase()
 
-  const url = new URL(path, "http://localhost");
+  const url = new URL(path, "http://localhost")
 
-  const pathname = url.pathname;
+  const pathname = url.pathname
 
   const body = options.body
     ? typeof options.body === "string"
       ? JSON.parse(options.body)
       : options.body
-    : {};
+    : {}
 
   // GET /api/reports/:reportType
 
   if (pathname.startsWith("/api/reports") && method === "GET") {
-    const reportType = pathname.replace(/^\/api\/reports\/?/, "") || "overview";
+    const reportType = pathname.replace(/^\/api\/reports\/?/, "") || "overview"
 
     const preset = (url.searchParams.get("preset") ||
       url.searchParams.get("dateRangePreset") ||
-      "last30") as DateRangePreset;
+      "last30") as DateRangePreset
 
     const customStart =
       url.searchParams.get("from") ||
       url.searchParams.get("customStartDate") ||
-      undefined;
+      undefined
 
     const customEnd =
       url.searchParams.get("to") ||
       url.searchParams.get("customEndDate") ||
-      undefined;
+      undefined
 
-    const department = url.searchParams.get("department") || undefined;
+    const department = url.searchParams.get("department") || undefined
 
-    const doctor = url.searchParams.get("doctor") || undefined;
+    const doctor = url.searchParams.get("doctor") || undefined
 
-    const status = url.searchParams.get("status") || undefined;
+    const status = url.searchParams.get("status") || undefined
 
-    const visitType = url.searchParams.get("visitType") || undefined;
+    const visitType = url.searchParams.get("visitType") || undefined
 
-    const search = url.searchParams.get("search") || undefined;
+    const search = url.searchParams.get("search") || undefined
 
-    const page = parseInt(url.searchParams.get("page") || "1", 10);
+    const page = parseInt(url.searchParams.get("page") || "1", 10)
 
-    const limit = parseInt(url.searchParams.get("limit") || "10", 10);
+    const limit = parseInt(url.searchParams.get("limit") || "10", 10)
 
-    const revenueSource = url.searchParams.get("revenueSource") || undefined;
+    const revenueSource = url.searchParams.get("revenueSource") || undefined
 
-    const paymentMethod = url.searchParams.get("paymentMethod") || undefined;
+    const paymentMethod = url.searchParams.get("paymentMethod") || undefined
 
-    const paymentStatus = url.searchParams.get("paymentStatus") || undefined;
+    const paymentStatus = url.searchParams.get("paymentStatus") || undefined
 
-    const supplier = url.searchParams.get("supplier") || undefined;
+    const supplier = url.searchParams.get("supplier") || undefined
 
-    const medicine = url.searchParams.get("medicine") || undefined;
+    const medicine = url.searchParams.get("medicine") || undefined
 
-    const category = url.searchParams.get("category") || undefined;
+    const category = url.searchParams.get("category") || undefined
 
-    const reason = url.searchParams.get("reason") || undefined;
+    const reason = url.searchParams.get("reason") || undefined
 
     const payload = GeneralReportsService.getReportPayload(reportType, {
       preset,
@@ -149,59 +149,59 @@ async function handleLocalErMock<T = any>(
       category,
 
       reason,
-    });
+    })
 
-    return payload as T;
+    return payload as T
   }
 
   // GET /api/er/triage-config
 
   if (pathname === "/api/er/triage-config" && method === "GET") {
-    return { categories: ErDatabase.getCategories() } as T;
+    return { categories: ErDatabase.getCategories() } as T
   }
 
   // POST /api/er/triage-config
 
   if (pathname === "/api/er/triage-config" && method === "POST") {
-    const cat = ErDatabase.saveCategory(body);
+    const cat = ErDatabase.saveCategory(body)
 
-    return { category: cat } as T;
+    return { category: cat } as T
   }
 
   // GET /api/er/visits
 
   if (pathname === "/api/er/visits" && method === "GET") {
-    const activeOnly = url.searchParams.get("active_only") === "true";
+    const activeOnly = url.searchParams.get("active_only") === "true"
 
-    const status = url.searchParams.get("status");
+    const status = url.searchParams.get("status")
 
     const filter = activeOnly
       ? "active"
       : status === "closed"
         ? "closed"
-        : "all";
+        : "all"
 
-    return { visits: ErDatabase.getVisits(filter) } as T;
+    return { visits: ErDatabase.getVisits(filter) } as T
   }
 
   // GET /api/er/visits/:id
 
-  const visitDetailMatch = pathname.match(/^\/api\/er\/visits\/(\d+)$/);
+  const visitDetailMatch = pathname.match(/^\/api\/er\/visits\/(\d+)$/)
 
   if (visitDetailMatch && method === "GET") {
-    const visitId = parseInt(visitDetailMatch[1]);
+    const visitId = parseInt(visitDetailMatch[1])
 
-    let visit = ErDatabase.getVisit(visitId);
+    let visit = ErDatabase.getVisit(visitId)
 
     if (!visit) {
-      const allVisits = ErDatabase.getVisits("all");
+      const allVisits = ErDatabase.getVisits("all")
 
       if (allVisits.length > 0) {
-        visit = ErDatabase.getVisit(allVisits[0].id);
+        visit = ErDatabase.getVisit(allVisits[0].id)
       }
     }
 
-    return (visit || null) as T;
+    return (visit || null) as T
   }
 
   // POST /api/er/register-patient (Direct ER Patient Registration)
@@ -212,7 +212,7 @@ async function handleLocalErMock<T = any>(
       visit: vData,
       complaint: cData,
       vitals: vtData,
-    } = body;
+    } = body
 
     const res = await ErDatabase.createVisit({
       patientDetails: pData,
@@ -242,7 +242,7 @@ async function handleLocalErMock<T = any>(
       caseCategory: cData?.[0]?.case_category,
 
       vitals: vtData,
-    });
+    })
 
     return {
       patient_id: res.patient?.patient_id || `P-${res.visit.id}`,
@@ -250,7 +250,7 @@ async function handleLocalErMock<T = any>(
       patient: res.patient,
 
       visit: { id: res.visit.id, visit_no: res.visit.visit_no },
-    } as T;
+    } as T
   }
 
   // POST /api/er/visits (Existing or Unknown Patient)
@@ -288,31 +288,31 @@ async function handleLocalErMock<T = any>(
       assignedDoctorName: body.assigned_doctor_name,
 
       assignedSpecialty: body.assigned_specialty,
-    });
+    })
 
-    return { id: res.visit.id, visit_no: res.visit.visit_no } as T;
+    return { id: res.visit.id, visit_no: res.visit.visit_no } as T
   }
 
   // GET /api/er/patients/:patientId/history
 
   const patientHistoryMatch = pathname.match(
     /^\/api\/er\/patients\/([^/]+)\/history$/,
-  );
+  )
 
   if (patientHistoryMatch && method === "GET") {
-    const patientId = decodeURIComponent(patientHistoryMatch[1]);
+    const patientId = decodeURIComponent(patientHistoryMatch[1])
 
-    const erVisits = ErDatabase.getVisitsByPatient(patientId);
+    const erVisits = ErDatabase.getVisitsByPatient(patientId)
 
-    const opEncounters = db.getEncountersForPatient(patientId);
+    const opEncounters = db.getEncountersForPatient(patientId)
 
     const erPatient = ErDatabase.getPatients().find(
       (p) =>
         (p.patient_id || "").trim().toUpperCase() ===
         patientId.trim().toUpperCase(),
-    );
+    )
 
-    const corePatient = db.getPatientByUmr(patientId);
+    const corePatient = db.getPatientByUmr(patientId)
 
     return {
       er_visits: erVisits,
@@ -344,41 +344,41 @@ async function handleLocalErMock<T = any>(
               created_at: new Date().toISOString(),
             }
           : null),
-    } as T;
+    } as T
   }
 
   // POST /api/er/visits/:id/complaints
 
   const complaintsMatch = pathname.match(
     /^\/api\/er\/visits\/(\d+)\/complaints$/,
-  );
+  )
 
   if (complaintsMatch && method === "POST") {
-    const visitId = parseInt(complaintsMatch[1]);
+    const visitId = parseInt(complaintsMatch[1])
 
-    const c = ErDatabase.addComplaint(visitId, body);
+    const c = ErDatabase.addComplaint(visitId, body)
 
-    return { complaint_id: c.id } as T;
+    return { complaint_id: c.id } as T
   }
 
   // POST /api/er/visits/:id/vitals
 
-  const vitalsMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/vitals$/);
+  const vitalsMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/vitals$/)
 
   if (vitalsMatch && method === "POST") {
-    const visitId = parseInt(vitalsMatch[1]);
+    const visitId = parseInt(vitalsMatch[1])
 
-    const v = ErDatabase.addVitals(visitId, body);
+    const v = ErDatabase.addVitals(visitId, body)
 
-    return { vitals_id: v.id } as T;
+    return { vitals_id: v.id } as T
   }
 
   // POST /api/er/visits/:id/triage
 
-  const triageMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/triage$/);
+  const triageMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/triage$/)
 
   if (triageMatch && method === "POST") {
-    const visitId = parseInt(triageMatch[1]);
+    const visitId = parseInt(triageMatch[1])
 
     ErDatabase.setTriage(visitId, {
       category: body.category,
@@ -386,280 +386,278 @@ async function handleLocalErMock<T = any>(
       reason: body.reason,
 
       bedLabel: body.triage_bed_label || body.bedLabel,
-    });
+    })
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // POST /api/er/visits/:id/assign-doctor
 
   const assignDocMatch = pathname.match(
     /^\/api\/er\/visits\/(\d+)\/assign-doctor$/,
-  );
+  )
 
   if (assignDocMatch && method === "POST") {
-    const visitId = parseInt(assignDocMatch[1]);
+    const visitId = parseInt(assignDocMatch[1])
 
-    ErDatabase.assignDoctor(visitId, body);
+    ErDatabase.assignDoctor(visitId, body)
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // POST /api/er/visits/:id/accept
 
-  const acceptDocMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/accept$/);
+  const acceptDocMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/accept$/)
 
   if (acceptDocMatch && method === "POST") {
-    const visitId = parseInt(acceptDocMatch[1]);
+    const visitId = parseInt(acceptDocMatch[1])
 
-    ErDatabase.acceptDoctor(visitId);
+    ErDatabase.acceptDoctor(visitId)
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // POST /api/er/visits/:id/treatments
 
-  const treatMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/treatments$/);
+  const treatMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/treatments$/)
 
   if (treatMatch && method === "POST") {
-    const visitId = parseInt(treatMatch[1]);
+    const visitId = parseInt(treatMatch[1])
 
-    const t = ErDatabase.addTreatment(visitId, body);
+    const t = ErDatabase.addTreatment(visitId, body)
 
-    return { treatment_id: t.id } as T;
+    return { treatment_id: t.id } as T
   }
 
   // POST /api/er/visits/:id/notes
 
   const notesMatch = pathname.match(
     /^\/api\/er\/visits\/(\d+)\/(notes|clinical-notes)$/,
-  );
+  )
 
   if (notesMatch && method === "POST") {
-    const visitId = parseInt(notesMatch[1]);
+    const visitId = parseInt(notesMatch[1])
 
-    const n = ErDatabase.addClinicalNote(visitId, body);
+    const n = ErDatabase.addClinicalNote(visitId, body)
 
-    return { note_id: n.id } as T;
+    return { note_id: n.id } as T
   }
 
   // POST /api/er/visits/:id/investigations
 
-  const invMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/investigations$/);
+  const invMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/investigations$/)
 
   if (invMatch && method === "POST") {
-    const visitId = parseInt(invMatch[1]);
+    const visitId = parseInt(invMatch[1])
 
-    const inv = ErDatabase.addInvestigation(visitId, body);
+    const inv = ErDatabase.addInvestigation(visitId, body)
 
-    return { investigation_id: inv.id } as T;
+    return { investigation_id: inv.id } as T
   }
 
   // POST /api/er/visits/:id/bed-requests
 
-  const bedReqMatch = pathname.match(
-    /^\/api\/er\/visits\/(\d+)\/bed-requests$/,
-  );
+  const bedReqMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/bed-requests$/)
 
   if (bedReqMatch && method === "POST") {
-    const visitId = parseInt(bedReqMatch[1]);
+    const visitId = parseInt(bedReqMatch[1])
 
-    const b = ErDatabase.createBedRequest(visitId, body);
+    const b = ErDatabase.createBedRequest(visitId, body)
 
-    return { bed_request_id: b.id } as T;
+    return { bed_request_id: b.id } as T
   }
 
   // GET /api/er/visits/:id/consents
 
   const consentsGetMatch = pathname.match(
     /^\/api\/er\/visits\/(\d+)\/consents$/,
-  );
+  )
 
   if (consentsGetMatch && method === "GET") {
-    const visitId = parseInt(consentsGetMatch[1]);
+    const visitId = parseInt(consentsGetMatch[1])
 
-    const visit = ErDatabase.getVisit(visitId);
+    const visit = ErDatabase.getVisit(visitId)
 
-    return { consents: visit?.consents || [] } as T;
+    return { consents: visit?.consents || [] } as T
   }
 
   // POST /api/er/visits/:id/consents
 
   if (consentsGetMatch && method === "POST") {
-    const visitId = parseInt(consentsGetMatch[1]);
+    const visitId = parseInt(consentsGetMatch[1])
 
-    const c = ErDatabase.addConsent(visitId, body);
+    const c = ErDatabase.addConsent(visitId, body)
 
-    return { consent_id: c.id } as T;
+    return { consent_id: c.id } as T
   }
 
   // POST /api/er/visits/:id/lama
 
-  const lamaMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/lama$/);
+  const lamaMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/lama$/)
 
   if (lamaMatch && method === "POST") {
-    const visitId = parseInt(lamaMatch[1]);
+    const visitId = parseInt(lamaMatch[1])
 
-    ErDatabase.recordLama(visitId, body);
+    ErDatabase.recordLama(visitId, body)
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // POST /api/er/visits/:id/disposition
 
-  const dispMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/disposition$/);
+  const dispMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/disposition$/)
 
   if (dispMatch && method === "POST") {
-    const visitId = parseInt(dispMatch[1]);
+    const visitId = parseInt(dispMatch[1])
 
-    const d = ErDatabase.recordDisposition(visitId, body);
+    const d = ErDatabase.recordDisposition(visitId, body)
 
-    return { disposition: d } as T;
+    return { disposition: d } as T
   }
 
   // POST /api/er/patients/:id (Update patient info & allergies)
 
-  const patientUpdateMatch = pathname.match(/^\/api\/er\/patients\/(.+)$/);
+  const patientUpdateMatch = pathname.match(/^\/api\/er\/patients\/(.+)$/)
 
   if (patientUpdateMatch && method === "POST") {
-    const pId = patientUpdateMatch[1];
+    const pId = patientUpdateMatch[1]
 
-    const updated = ErDatabase.updatePatient(pId, body);
+    const updated = ErDatabase.updatePatient(pId, body)
 
-    return { patient: updated, success: true } as T;
+    return { patient: updated, success: true } as T
   }
 
   // GET /api/er/bed-requests
 
   if (pathname === "/api/er/bed-requests" && method === "GET") {
-    const status = url.searchParams.get("status") || undefined;
+    const status = url.searchParams.get("status") || undefined
 
-    const reqs = ErDatabase.getBedRequests(status);
+    const reqs = ErDatabase.getBedRequests(status)
 
-    return { bed_requests: reqs } as T;
+    return { bed_requests: reqs } as T
   }
 
   // POST /api/er/bed-requests/:id/allocate
 
   const allocReqMatch = pathname.match(
     /^\/api\/er\/bed-requests\/(\d+)\/allocate$/,
-  );
+  )
 
   if (allocReqMatch && method === "POST") {
-    const reqId = parseInt(allocReqMatch[1]);
+    const reqId = parseInt(allocReqMatch[1])
 
-    const { bed_id, notes } = body;
+    const { bed_id, notes } = body
 
-    BedDatabase.allocateBedFromEr(bed_id, reqId, notes);
+    BedDatabase.allocateBedFromEr(bed_id, reqId, notes)
 
-    ErDatabase.allocateBedRequest(reqId, bed_id, notes);
+    ErDatabase.allocateBedRequest(reqId, bed_id, notes)
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // POST /api/er/bed-requests/:id/lama
 
-  const lamaReqMatch = pathname.match(/^\/api\/er\/bed-requests\/(\d+)\/lama$/);
+  const lamaReqMatch = pathname.match(/^\/api\/er\/bed-requests\/(\d+)\/lama$/)
 
   if (lamaReqMatch && method === "POST") {
-    const reqId = parseInt(lamaReqMatch[1]);
+    const reqId = parseInt(lamaReqMatch[1])
 
-    ErDatabase.cancelBedRequest(reqId, body.reason);
+    ErDatabase.cancelBedRequest(reqId, body.reason)
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // GET /api/beds
 
   if (pathname === "/api/beds" && method === "GET") {
-    const beds = BedDatabase.getBeds();
+    const beds = BedDatabase.getBeds()
 
-    const summary = BedDatabase.getSummary();
+    const summary = BedDatabase.getSummary()
 
-    return { beds, summary } as T;
+    return { beds, summary } as T
   }
 
   // POST /api/beds/bulk
 
   if (pathname === "/api/beds/bulk" && method === "POST") {
-    const created = BedDatabase.createBedsBulk(body);
+    const created = BedDatabase.createBedsBulk(body)
 
-    return { created_count: created.length, beds: created } as T;
+    return { created_count: created.length, beds: created } as T
   }
 
   // POST /api/beds/:id/assign
 
-  const assignBedMatch = pathname.match(/^\/api\/beds\/(\d+)\/assign$/);
+  const assignBedMatch = pathname.match(/^\/api\/beds\/(\d+)\/assign$/)
 
   if (assignBedMatch && method === "POST") {
-    const bedId = parseInt(assignBedMatch[1]);
+    const bedId = parseInt(assignBedMatch[1])
 
     const bed = BedDatabase.assignBed(
       bedId,
       body.patient || body,
       body.notes,
       body.expected_los_days,
-    );
+    )
 
-    return { bed } as T;
+    return { bed } as T
   }
 
   // POST /api/beds/:id/transfer
 
-  const transferBedMatch = pathname.match(/^\/api\/beds\/(\d+)\/transfer$/);
+  const transferBedMatch = pathname.match(/^\/api\/beds\/(\d+)\/transfer$/)
 
   if (transferBedMatch && method === "POST") {
-    const fromBedId = parseInt(transferBedMatch[1]);
+    const fromBedId = parseInt(transferBedMatch[1])
 
-    const targetBedId = body.to_bed_id || body.target_bed_id || body.toBedId;
+    const targetBedId = body.to_bed_id || body.target_bed_id || body.toBedId
 
-    const bed = BedDatabase.transferBed(fromBedId, targetBedId, body.reason);
+    const bed = BedDatabase.transferBed(fromBedId, targetBedId, body.reason)
 
-    return { bed } as T;
+    return { bed } as T
   }
 
   // POST /api/beds/:id/release
 
-  const releaseBedMatch = pathname.match(/^\/api\/beds\/(\d+)\/release$/);
+  const releaseBedMatch = pathname.match(/^\/api\/beds\/(\d+)\/release$/)
 
   if (releaseBedMatch && method === "POST") {
-    const bedId = parseInt(releaseBedMatch[1]);
+    const bedId = parseInt(releaseBedMatch[1])
 
     const bed = BedDatabase.releaseBed(
       bedId,
       body.discharge_override_reason || body.reason,
       body.room_charge_total,
-    );
+    )
 
-    return { bed } as T;
+    return { bed } as T
   }
 
   // GET /api/beds/discharged
 
   if (pathname === "/api/beds/discharged" && method === "GET") {
-    const list = BedDatabase.getDischargedPatients();
+    const list = BedDatabase.getDischargedPatients()
 
-    return { discharged_patients: list } as T;
+    return { discharged_patients: list } as T
   }
 
   // GET /api/beds/transfer-notifications
 
   if (pathname === "/api/beds/transfer-notifications" && method === "GET") {
-    const list = BedDatabase.getTransferNotifications();
+    const list = BedDatabase.getTransferNotifications()
 
     return {
       notifications: list,
       unread_count: list.filter((n) => !n.is_read && n.status !== "dismissed")
         .length,
-    } as T;
+    } as T
   }
 
   // POST /api/beds/transfer-notifications
 
   if (pathname === "/api/beds/transfer-notifications" && method === "POST") {
-    const notif = BedDatabase.addTransferNotification(body);
+    const notif = BedDatabase.addTransferNotification(body)
 
-    return { notification: notif } as T;
+    return { notification: notif } as T
   }
 
   // POST /api/beds/transfer-notifications/read-all
@@ -668,82 +666,82 @@ async function handleLocalErMock<T = any>(
     pathname === "/api/beds/transfer-notifications/read-all" &&
     method === "POST"
   ) {
-    BedDatabase.markAllNotificationsRead();
+    BedDatabase.markAllNotificationsRead()
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // POST /api/beds/transfer-notifications/:id/read
 
   const readNotifMatch = pathname.match(
     /^\/api\/beds\/transfer-notifications\/(.+)\/read$/,
-  );
+  )
 
   if (readNotifMatch && method === "POST") {
-    const notifId = readNotifMatch[1];
+    const notifId = readNotifMatch[1]
 
-    BedDatabase.markNotificationRead(notifId);
+    BedDatabase.markNotificationRead(notifId)
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // POST /api/beds/transfer-notifications/:id/status
 
   const statusNotifMatch = pathname.match(
     /^\/api\/beds\/transfer-notifications\/(.+)\/status$/,
-  );
+  )
 
   if (statusNotifMatch && method === "POST") {
-    const notifId = statusNotifMatch[1];
+    const notifId = statusNotifMatch[1]
 
     BedDatabase.updateNotificationStatus(
       notifId,
       body.status,
       body.bed_id,
       body.bed_label,
-    );
+    )
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // DELETE /api/beds/transfer-notifications/:id
 
   const deleteNotifMatch = pathname.match(
     /^\/api\/beds\/transfer-notifications\/(.+)$/,
-  );
+  )
 
   if (deleteNotifMatch && method === "DELETE") {
-    const notifId = deleteNotifMatch[1];
+    const notifId = deleteNotifMatch[1]
 
-    BedDatabase.dismissNotification(notifId);
+    BedDatabase.dismissNotification(notifId)
 
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // GET /api/beds/:id/discharge-checklist
 
   const checklistMatch = pathname.match(
     /^\/api\/beds\/(\d+)\/discharge-checklist$/,
-  );
+  )
 
   if (checklistMatch && method === "GET") {
-    const bedId = parseInt(checklistMatch[1]);
+    const bedId = parseInt(checklistMatch[1])
 
-    const bed = BedDatabase.getBed(bedId);
+    const bed = BedDatabase.getBed(bedId)
 
     const clearance = BillingDatabase.getInpatientFinancialClearance(
       bed?.patient_id || bedId,
 
       bed?.patient_name || undefined,
-    );
+    )
 
-    const billingOk = clearance.isCleared;
+    const billingOk = clearance.isCleared
 
     const pendingInvoices = (clearance.pendingInvoices || []).map((p) => ({
       invoice_no: p.invoiceNo,
 
       due_amount: p.dueAmount,
-    }));
+    }))
 
     return {
       billing: { ok: billingOk, pending_invoices: pendingInvoices },
@@ -773,41 +771,41 @@ async function handleLocalErMock<T = any>(
       },
 
       clear: billingOk,
-    } as T;
+    } as T
   }
 
   // POST /api/beds/:id (Edit/Update) & DELETE
 
-  const updateBedMatch = pathname.match(/^\/api\/beds\/(\d+)$/);
+  const updateBedMatch = pathname.match(/^\/api\/beds\/(\d+)$/)
 
   if (updateBedMatch && (method === "POST" || method === "PUT")) {
-    const bedId = parseInt(updateBedMatch[1]);
+    const bedId = parseInt(updateBedMatch[1])
 
-    const bed = BedDatabase.updateBed(bedId, body);
+    const bed = BedDatabase.updateBed(bedId, body)
 
-    return { bed } as T;
+    return { bed } as T
   }
 
   if (updateBedMatch && method === "DELETE") {
-    return { success: true } as T;
+    return { success: true } as T
   }
 
   // POST /api/er/consents/:id/document (Document upload simulation)
 
   const consentDocMatch = pathname.match(
     /^\/api\/er\/consents\/(\d+)\/document$/,
-  );
+  )
 
   if (consentDocMatch && method === "POST") {
-    return { success: true, message: "Document uploaded successfully" } as T;
+    return { success: true, message: "Document uploaded successfully" } as T
   }
 
   // POST /api/auth/login
 
   if (pathname === "/api/auth/login" && method === "POST") {
-    const auth = RoleDatabase.authenticate(body.username, body.password);
+    const auth = RoleDatabase.authenticate(body.username, body.password)
 
-    if (!auth) throw new Error("Invalid credentials.");
+    if (!auth) throw new Error("Invalid credentials.")
 
     return {
       user: {
@@ -823,7 +821,7 @@ async function handleLocalErMock<T = any>(
 
         permissions: auth.role.allowedModules,
       },
-    } as T;
+    } as T
   }
 
   // GET /api/auth/session
@@ -832,7 +830,7 @@ async function handleLocalErMock<T = any>(
     return {
       authenticated: true,
       user: { id: "ADM-001", role: "admin", name: "Administrator" },
-    } as T;
+    } as T
   }
 
   // GET /api/doctors & /api/doctors/directory & /api/op/doctors
@@ -899,61 +897,61 @@ async function handleLocalErMock<T = any>(
           available: true,
         },
       ],
-    } as T;
+    } as T
   }
 
   // POST /api/er/visits/:id/close or preview
 
-  const closeMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/close$/);
+  const closeMatch = pathname.match(/^\/api\/er\/visits\/(\d+)\/close$/)
 
   if (closeMatch && method === "POST") {
-    const visitId = parseInt(closeMatch[1]);
+    const visitId = parseInt(closeMatch[1])
 
     const res = ErDatabase.closeVisit(
       visitId,
       body.total || body.consultation_fee,
-    );
+    )
 
-    return res as T;
+    return res as T
   }
 
   // GET /api/patients
 
   if (pathname === "/api/patients" && method === "GET") {
-    const q = (url.searchParams.get("q") || "").toLowerCase().trim();
+    const q = (url.searchParams.get("q") || "").toLowerCase().trim()
 
-    const careType = (url.searchParams.get("care_type") || "all").toLowerCase();
+    const careType = (url.searchParams.get("care_type") || "all").toLowerCase()
 
     // 1. OP Patients from db
 
-    const opPatients = db.getPatients();
+    const opPatients = db.getPatients()
 
-    const opEncounters = db.getEncounters();
+    const opEncounters = db.getEncounters()
 
     // 2. ER Patients & Visits from ErDatabase
 
-    const erPatients = ErDatabase.getPatients();
+    const erPatients = ErDatabase.getPatients()
 
-    const erVisits = ErDatabase.getVisits("all");
+    const erVisits = ErDatabase.getVisits("all")
 
     // 3. Inpatient & ICU Beds from BedDatabase
 
-    const beds = BedDatabase.getBeds();
+    const beds = BedDatabase.getBeds()
 
     // Build unified PatientRow list
 
-    const patientRows: any[] = [];
+    const patientRows: any[] = []
 
-    const seenIds = new Set<string>();
+    const seenIds = new Set<string>()
 
     // Add Inpatient / ICU patients
 
     for (const bed of beds) {
       if (bed.status === "Occupied" && (bed.patient_name || bed.patient_id)) {
-        const pId = bed.patient_id || `IP-${bed.id}`;
+        const pId = bed.patient_id || `IP-${bed.id}`
 
         if (!seenIds.has(pId)) {
-          seenIds.add(pId);
+          seenIds.add(pId)
 
           patientRows.push({
             patient_id: pId,
@@ -975,7 +973,7 @@ async function handleLocalErMock<T = any>(
             appointment_dept: bed.ward,
 
             appointment_doctor: "Dr. Rajesh Sharma",
-          });
+          })
         }
       }
     }
@@ -983,12 +981,12 @@ async function handleLocalErMock<T = any>(
     // Add ER Active Visits
 
     for (const visit of erVisits) {
-      const p = erPatients.find((ep) => ep.patient_id === visit.patient_id);
+      const p = erPatients.find((ep) => ep.patient_id === visit.patient_id)
 
-      const pId = visit.patient_id || `ER-${visit.id}`;
+      const pId = visit.patient_id || `ER-${visit.id}`
 
       if (!seenIds.has(pId)) {
-        seenIds.add(pId);
+        seenIds.add(pId)
 
         patientRows.push({
           patient_id: pId,
@@ -1016,21 +1014,21 @@ async function handleLocalErMock<T = any>(
           appointment_doctor: visit.assigned_doctor_name || "Dr. Anita Roy",
 
           appointment_dept: "Emergency Medicine",
-        });
+        })
       }
     }
 
     // Add OP Patients
 
     for (const p of opPatients) {
-      const pEnc = opEncounters.filter((e) => e.umr === p.umr);
+      const pEnc = opEncounters.filter((e) => e.umr === p.umr)
 
-      const latestEnc = pEnc[0];
+      const latestEnc = pEnc[0]
 
-      const pId = p.umr;
+      const pId = p.umr
 
       if (!seenIds.has(pId)) {
-        seenIds.add(pId);
+        seenIds.add(pId)
 
         patientRows.push({
           patient_id: pId,
@@ -1052,7 +1050,7 @@ async function handleLocalErMock<T = any>(
           appointment_doctor: latestEnc?.assignedDoctor || "Dr. Rajesh Sharma",
 
           appointment_dept: latestEnc?.dept || "General Medicine",
-        });
+        })
       }
     }
 
@@ -1060,7 +1058,7 @@ async function handleLocalErMock<T = any>(
 
     for (const ep of erPatients) {
       if (!seenIds.has(ep.patient_id)) {
-        seenIds.add(ep.patient_id);
+        seenIds.add(ep.patient_id)
 
         patientRows.push({
           patient_id: ep.patient_id,
@@ -1080,13 +1078,13 @@ async function handleLocalErMock<T = any>(
           appointment_dept: "Emergency",
 
           appointment_doctor: "Dr. Anita Roy",
-        });
+        })
       }
     }
 
     // Filter by search query if present
 
-    let filtered = patientRows;
+    let filtered = patientRows
 
     if (q) {
       filtered = filtered.filter(
@@ -1099,17 +1097,17 @@ async function handleLocalErMock<T = any>(
           (p.appointment_dept || "").toLowerCase().includes(q) ||
           (p.active_bed || "").toLowerCase().includes(q) ||
           (p.active_er_visit_no || "").toLowerCase().includes(q),
-      );
+      )
     }
 
     // Filter by care stream
 
     if (careType === "op") {
-      filtered = filtered.filter((p) => p.care_stream === "OP");
+      filtered = filtered.filter((p) => p.care_stream === "OP")
     } else if (careType === "ip") {
-      filtered = filtered.filter((p) => p.care_stream === "IP");
+      filtered = filtered.filter((p) => p.care_stream === "IP")
     } else if (careType === "er") {
-      filtered = filtered.filter((p) => p.care_stream === "ER");
+      filtered = filtered.filter((p) => p.care_stream === "ER")
     }
 
     const counts = {
@@ -1120,50 +1118,49 @@ async function handleLocalErMock<T = any>(
       ip: patientRows.filter((p) => p.care_stream === "IP").length,
 
       er: patientRows.filter((p) => p.care_stream === "ER").length,
-    };
+    }
 
-    return { patients: filtered, counts } as T;
+    return { patients: filtered, counts } as T
   }
 
   // GET /api/emr/:id
 
-  const emrMatch = pathname.match(/^\/api\/emr\/(.+)$/);
+  const emrMatch = pathname.match(/^\/api\/emr\/(.+)$/)
 
   if (emrMatch && method === "GET") {
-    const pId = decodeURIComponent(emrMatch[1]);
+    const pId = decodeURIComponent(emrMatch[1])
 
-    const opP = db.getPatientByUmr(pId);
+    const opP = db.getPatientByUmr(pId)
 
-    const opEnc = db.getEncounters().filter((e) => e.umr === pId);
+    const opEnc = db.getEncounters().filter((e) => e.umr === pId)
 
-    const erP = ErDatabase.getPatients().find((p) => p.patient_id === pId);
+    const erP = ErDatabase.getPatients().find((p) => p.patient_id === pId)
 
     const erVisits = ErDatabase.getVisits("all").filter(
       (v) => v.patient_id === pId,
-    );
+    )
 
-    const bed = BedDatabase.getBeds().find((b) => b.patient_id === pId);
+    const bed = BedDatabase.getBeds().find((b) => b.patient_id === pId)
 
     const claims = BillingDatabase.getClaims().filter(
       (c) =>
         c.mrn === pId ||
         c.patientName === opP?.name ||
         c.patientName === erP?.name,
-    );
+    )
 
-    const name =
-      opP?.name || erP?.name || bed?.patient_name || "Patient Record";
+    const name = opP?.name || erP?.name || bed?.patient_name || "Patient Record"
 
-    const age = opP?.age || erP?.age || bed?.patient_age || 42;
+    const age = opP?.age || erP?.age || bed?.patient_age || 42
 
-    const gender = opP?.sex || erP?.gender || bed?.patient_gender || "Male";
+    const gender = opP?.sex || erP?.gender || bed?.patient_gender || "Male"
 
     const phone =
-      opP?.phone || erP?.phone || bed?.patient_phone || "(617) 555-0100";
+      opP?.phone || erP?.phone || bed?.patient_phone || "(617) 555-0100"
 
-    const address = opP?.address || erP?.address || "Main Street, Boston, MA";
+    const address = opP?.address || erP?.address || "Main Street, Boston, MA"
 
-    const bloodGroup = opP?.bloodGroup || erP?.blood_group || "O+";
+    const bloodGroup = opP?.bloodGroup || erP?.blood_group || "O+"
 
     const patientObj = {
       id: 1,
@@ -1193,7 +1190,7 @@ async function handleLocalErMock<T = any>(
       created_at: opP?.createdAt || erP?.created_at || new Date().toISOString(),
 
       status: "Active",
-    };
+    }
 
     const notes = opEnc.map((e, idx) => ({
       id: idx + 1,
@@ -1205,7 +1202,7 @@ async function handleLocalErMock<T = any>(
       follow_up: "In 7 days if symptoms persist",
 
       created_at: new Date(Date.now() - (idx + 1) * 86400000).toISOString(),
-    }));
+    }))
 
     const vitals = opEnc.map((e, idx) => ({
       id: idx + 1,
@@ -1217,7 +1214,7 @@ async function handleLocalErMock<T = any>(
       temperature: e.vitals?.temp || "98.6 °F",
 
       created_at: new Date(Date.now() - (idx + 1) * 86400000).toISOString(),
-    }));
+    }))
 
     if (vitals.length === 0) {
       vitals.push({
@@ -1230,7 +1227,7 @@ async function handleLocalErMock<T = any>(
         temperature: "98.4 °F",
 
         created_at: new Date().toISOString(),
-      });
+      })
     }
 
     const diagnoses = opEnc.map((e, idx) => ({
@@ -1239,7 +1236,7 @@ async function handleLocalErMock<T = any>(
       diagnosis_name: `${e.diagnosis} (${e.icd10 || "R07.9"})`,
 
       created_at: new Date(Date.now() - (idx + 1) * 86400000).toISOString(),
-    }));
+    }))
 
     const observation_notes = [
       {
@@ -1270,7 +1267,7 @@ async function handleLocalErMock<T = any>(
 
         role: "nurse",
       },
-    ];
+    ]
 
     const prescriptions = (opEnc[0]?.prescription || []).map((rx, idx) => ({
       prescription_id: idx + 1,
@@ -1288,7 +1285,7 @@ async function handleLocalErMock<T = any>(
       created_at: new Date().toISOString(),
 
       fulfilled_at: new Date().toISOString(),
-    }));
+    }))
 
     const medication_schedules = prescriptions.map((p, idx) => ({
       id: idx + 1,
@@ -1302,7 +1299,7 @@ async function handleLocalErMock<T = any>(
       administered: true,
 
       notes: "Given with food",
-    }));
+    }))
 
     const labs = (
       opEnc[0]?.investigations || ["Complete Blood Count (CBC)", "Lipid Panel"]
@@ -1318,7 +1315,7 @@ async function handleLocalErMock<T = any>(
       doctor_name: opEnc[0]?.assignedDoctor || "Dr. Rajesh Sharma",
 
       created_at: new Date().toISOString(),
-    }));
+    }))
 
     const invoices = claims.map((c, idx) => ({
       id: idx + 1,
@@ -1336,7 +1333,7 @@ async function handleLocalErMock<T = any>(
       payment_status: c.status === "Paid" ? "Paid" : "Pending",
 
       created_at: c.dateOfService || new Date().toISOString(),
-    }));
+    }))
 
     const invoice_payments = claims.flatMap((c) =>
       c.payments.map((p, pIdx) => ({
@@ -1350,7 +1347,7 @@ async function handleLocalErMock<T = any>(
 
         created_at: p.paymentDate,
       })),
-    );
+    )
 
     const insurance_claims = claims.map((c, idx) => ({
       id: idx + 1,
@@ -1366,7 +1363,7 @@ async function handleLocalErMock<T = any>(
       claim_status: c.status,
 
       submitted_at: c.dateOfService || new Date().toISOString(),
-    }));
+    }))
 
     const documents = [
       {
@@ -1384,7 +1381,7 @@ async function handleLocalErMock<T = any>(
 
         has_ocr_text: true,
       },
-    ];
+    ]
 
     const certificates = [
       {
@@ -1400,7 +1397,7 @@ async function handleLocalErMock<T = any>(
 
         created_at: new Date().toISOString(),
       },
-    ];
+    ]
 
     const admissions = bed
       ? [
@@ -1418,7 +1415,7 @@ async function handleLocalErMock<T = any>(
               `Admitted to ${bed.ward} Bed ${bed.bed_no}`,
           },
         ]
-      : [];
+      : []
 
     return {
       patient: patientObj,
@@ -1462,7 +1459,9 @@ async function handleLocalErMock<T = any>(
       icu_lab_results: [],
 
       icu_consults: [],
-    } as T;
+      clinical_orders: [],
+      care_plan: null,
+    } as T
   }
 
   // GET /api/registration/departments
@@ -1488,15 +1487,15 @@ async function handleLocalErMock<T = any>(
 
         { department_name: "Obstetrics & Gynecology" },
       ],
-    } as T;
+    } as T
   }
 
   // POST /api/symptom-ai/triage
 
   if (pathname === "/api/symptom-ai/triage" && method === "POST") {
-    const symptoms = body.symptoms || "";
+    const symptoms = body.symptoms || ""
 
-    const evalRes = await ErDatabase.evaluateClinicalTriage(symptoms, {});
+    const evalRes = await ErDatabase.evaluateClinicalTriage(symptoms, {})
 
     return {
       department: evalRes.suggestedDepartment,
@@ -1510,52 +1509,52 @@ async function handleLocalErMock<T = any>(
       suggested_treatment: evalRes.suggestedTreatments[0] || null,
 
       suggested_treatments: evalRes.suggestedTreatments,
-    } as T;
+    } as T
   }
 
-  return null;
+  return null
 }
 
 /** Default per-request budget. Overridable via options.timeoutMs. */
 
-export const DEFAULT_TIMEOUT_MS = 15000;
+export const DEFAULT_TIMEOUT_MS = 15000
 
-let isBackendOnline = true;
+let isBackendOnline = true
 
-let lastBackendProbeTime = 0;
+let lastBackendProbeTime = 0
 
-const PROBE_INTERVAL_MS = 30000;
+const PROBE_INTERVAL_MS = 30000
 
 export async function apiFetch<T = any>(
   path: string,
 
-  options: RequestInit & { cache?: RequestCache; timeoutMs?: number } = {},
+  options: RequestInit & { cache?: RequestCache ;timeoutMs?: number } = {},
 ): Promise<T> {
-  const method = (options.method || "GET").toUpperCase();
+  const method = (options.method || "GET").toUpperCase()
 
   // Serve reports directly from live database service
 
   if (path.startsWith("/api/reports")) {
-    const reportResult = await handleLocalErMock<T>(path, options);
+    const reportResult = await handleLocalErMock<T>(path, options)
 
     if (reportResult !== null) {
-      return reportResult as T;
+      return reportResult as T
     }
   }
 
   // If backend was already found unreachable within probe interval, serve via local mock handler directly
 
-  const now = Date.now();
+  const now = Date.now()
 
   if (!isBackendOnline && now - lastBackendProbeTime < PROBE_INTERVAL_MS) {
-    const cachedLocalResult = await handleLocalErMock<T>(path, options);
+    const cachedLocalResult = await handleLocalErMock<T>(path, options)
 
     if (cachedLocalResult !== null) {
-      return cachedLocalResult as T;
+      return cachedLocalResult as T
     }
   }
 
-  const csrfToken = getCsrfToken();
+  const csrfToken = getCsrfToken()
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -1567,7 +1566,7 @@ export async function apiFetch<T = any>(
       : {}),
 
     ...(options.headers || {}),
-  };
+  }
 
   // Pulled out of the spread below: `...options` used to land after `headers`
 
@@ -1581,10 +1580,10 @@ export async function apiFetch<T = any>(
     timeoutMs,
     cache,
     ...rest
-  } = options;
+  } = options
 
   try {
-    const controller = new AbortController();
+    const controller = new AbortController()
 
     // A fetch() that loses the race for one of the browser's ~6 connections per
 
@@ -1597,14 +1596,14 @@ export async function apiFetch<T = any>(
     const timeoutId = setTimeout(
       () => controller.abort(),
       timeoutMs ?? DEFAULT_TIMEOUT_MS,
-    );
+    )
 
     if (callerSignal) {
-      if (callerSignal.aborted) controller.abort();
+      if (callerSignal.aborted) controller.abort()
       else
         callerSignal.addEventListener("abort", () => controller.abort(), {
           once: true,
-        });
+        })
     }
 
     const response = await fetch(`${API_BASE}${path}`, {
@@ -1617,60 +1616,60 @@ export async function apiFetch<T = any>(
       cache: cache || (method === "GET" ? "no-store" : "default"),
 
       signal: controller.signal,
-    });
+    })
 
-    clearTimeout(timeoutId);
+    clearTimeout(timeoutId)
 
-    isBackendOnline = true;
+    isBackendOnline = true
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => ({}));
+      const payload = await response.json().catch(() => ({}))
 
       if (
         response.status === 401 &&
         path !== "/api/auth/login" &&
         path !== "/api/auth/session"
       ) {
-        window.dispatchEvent(new Event("app:unauthorized"));
+        window.dispatchEvent(new Event("app:unauthorized"))
       }
 
       // If endpoint not implemented or error on backend, fallback to local ER store
 
-      const localResult = await handleLocalErMock<T>(path, options);
+      const localResult = await handleLocalErMock<T>(path, options)
 
-      if (localResult !== null) return localResult as T;
+      if (localResult !== null) return localResult as T
 
-      const message = payload.error || payload.message || "Request failed";
+      const message = payload.error || payload.message || "Request failed"
 
       const error = new Error(message) as Error & {
-        payload?: any;
-        status?: number;
-      };
+        payload?: any
+        status?: number
+      }
 
-      error.payload = payload;
+      error.payload = payload
 
-      error.status = response.status;
+      error.status = response.status
 
-      throw error;
+      throw error
     }
 
-    return response.json();
+    return response.json()
   } catch (err: any) {
     // Mark backend offline so subsequent calls don't spam failed HTTP requests
 
-    isBackendOnline = false;
+    isBackendOnline = false
 
-    lastBackendProbeTime = Date.now();
+    lastBackendProbeTime = Date.now()
 
     // Graceful offline fallback to Local ER Store
 
-    const localResult = await handleLocalErMock<T>(path, options);
+    const localResult = await handleLocalErMock<T>(path, options)
 
     if (localResult !== null) {
-      return localResult as T;
+      return localResult as T
     }
 
-    throw err;
+    throw err
   }
 }
 
@@ -1678,7 +1677,7 @@ export function withAuthHeaders(
   headers: Record<string, string> = {},
   method = "GET",
 ): HeadersInit {
-  const csrfToken = getCsrfToken();
+  const csrfToken = getCsrfToken()
 
   return {
     "X-Hospital-Code": getHospitalCode(),
@@ -1688,17 +1687,17 @@ export function withAuthHeaders(
       : {}),
 
     ...headers,
-  };
+  }
 }
 
 export function reportError(
   setNotice?: (notice: Notice | null) => void,
 
-  error?: { status?: number; message?: string },
+  error?: { status?: number ;message?: string },
 
   fallbackMessage = "Request failed.",
 ): void {
-  if (error?.status === 401) return;
+  if (error?.status === 401) return
 
-  setNotice?.({ type: "error", message: error?.message || fallbackMessage });
+  setNotice?.({ type: "error", message: error?.message || fallbackMessage })
 }

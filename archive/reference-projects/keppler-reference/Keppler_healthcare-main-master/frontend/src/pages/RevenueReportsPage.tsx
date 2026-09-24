@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useState, useEffect } from "react"
+import type { Dispatch, SetStateAction } from "react"
 import {
   Button,
   Card,
@@ -11,24 +11,24 @@ import {
   Table,
   TableRow,
   TableCell,
-} from "../components/ui";
-import { apiFetch, reportError } from "../lib/api";
-import type { Notice } from "../types";
+} from "../components/ui"
+import { apiFetch, reportError } from "../lib/api"
+import type { Notice } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  onNavigate?: (page: string) => void;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  onNavigate?: (page: string) => void
+}
 
 // Simulated patient revenue records — starts empty (real system would fetch from API)
 type RevenueRecord = {
-  id: string;
-  patientName: string;
-  category: string;
-  amount: number;
-  date: string;
-  status: "Paid" | "Pending";
-};
+  id: string
+  patientName: string
+  category: string
+  amount: number
+  date: string
+  status: "Paid" | "Pending"
+}
 
 const CATEGORIES = [
   { label: "OP / Billing", icon: "🧮", color: "#2563eb" },
@@ -37,20 +37,20 @@ const CATEGORIES = [
   { label: "Monthly Revenue", icon: "📅", color: "#8b5cf6" },
   { label: "Pending Payments", icon: "⚠️", color: "#ef4444" },
   { label: "Doctor Payout Ready", icon: "👨‍⚕️", color: "#10b981" },
-];
+]
 
 export default function RevenueReportsPage({ setNotice, onNavigate }: Props) {
-  const [records, setRecords] = useState<RevenueRecord[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [records, setRecords] = useState<RevenueRecord[]>([])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState("")
 
   const fetchRecords = async () => {
     // Fetched independently -- a permission/hospital-scope error on one
     // (previously silently swallowed by an unchecked `.ok` check, which just
     // rendered ₹0 with no indication why) must not blank out the other.
-    let invoiceRecords: RevenueRecord[] = [];
+    let invoiceRecords: RevenueRecord[] = []
     try {
-      const data = await apiFetch<{ invoices: any[] }>("/api/billing/invoices");
+      const data = await apiFetch<{ invoices: any[] }>("/api/billing/invoices")
       invoiceRecords = (data.invoices || [])
         .filter((inv) => inv.module === "OP" || inv.module === "IP")
         .map((inv) => ({
@@ -63,14 +63,14 @@ export default function RevenueReportsPage({ setNotice, onNavigate }: Props) {
             (inv.created_at || "").split(" ")[0] ||
             "",
           status: inv.payment_status === "paid" ? "Paid" : "Pending",
-        }));
+        }))
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to load billing invoices.");
+      reportError(setNotice, error, "Failed to load billing invoices.")
     }
 
-    let pharmacyRecords: RevenueRecord[] = [];
+    let pharmacyRecords: RevenueRecord[] = []
     try {
-      const data = await apiFetch<{ sales: any[] }>("/api/pharmacy/sales");
+      const data = await apiFetch<{ sales: any[] }>("/api/pharmacy/sales")
       pharmacyRecords = (data.sales || []).map((sale) => ({
         id: `pharmacy-${sale.id}`,
         patientName: sale.patient_name || sale.patient_id || "Walk-in",
@@ -81,48 +81,45 @@ export default function RevenueReportsPage({ setNotice, onNavigate }: Props) {
           (sale.sold_at || "").split(" ")[0] ||
           "",
         status: "Paid",
-      }));
+      }))
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to load pharmacy sales.");
+      reportError(setNotice, error, "Failed to load pharmacy sales.")
     }
 
-    setRecords([...invoiceRecords, ...pharmacyRecords]);
-  };
+    setRecords([...invoiceRecords, ...pharmacyRecords])
+  }
 
   useEffect(() => {
-    fetchRecords();
-  }, []);
+    fetchRecords()
+  }, [])
 
   const getRecordsFor = (category: string) =>
-    records.filter((r) => r.category === category);
+    records.filter((r) => r.category === category)
 
   const getTotalFor = (category: string) =>
-    getRecordsFor(category).reduce((s, r) => s + r.amount, 0);
+    getRecordsFor(category).reduce((s, r) => s + r.amount, 0)
 
-  const formatCurrency = (val: number) => `₹${val.toLocaleString("en-IN")}`;
+  const formatCurrency = (val: number) => `₹${val.toLocaleString("en-IN")}`
 
   const openModal = (category: string) => {
-    setSelectedCategory(category);
-    setIsModalOpen(true);
-  };
+    setSelectedCategory(category)
+    setIsModalOpen(true)
+  }
 
-  const totalRevenue = records.reduce((s, r) => s + r.amount, 0);
+  const totalRevenue = records.reduce((s, r) => s + r.amount, 0)
   const outstanding = records
     .filter((r) => r.status === "Pending")
-    .reduce((s, r) => s + r.amount, 0);
+    .reduce((s, r) => s + r.amount, 0)
 
   const collectionBars = [
     { label: "OP / Billing", color: "#2563eb" },
     { label: "IP / Bed Charges", color: "#f59e0b" },
     { label: "Pharmacy", color: "#3b82f6" },
-  ];
+  ]
 
-  const maxVal = Math.max(
-    ...collectionBars.map((b) => getTotalFor(b.label)),
-    1,
-  );
+  const maxVal = Math.max(...collectionBars.map((b) => getTotalFor(b.label)), 1)
 
-  const filteredRecords = getRecordsFor(selectedCategory);
+  const filteredRecords = getRecordsFor(selectedCategory)
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -256,8 +253,8 @@ export default function RevenueReportsPage({ setNotice, onNavigate }: Props) {
               }}
             >
               {collectionBars.map((bar, idx) => {
-                const total = getTotalFor(bar.label);
-                const pct = Math.round((total / maxVal) * 100);
+                const total = getTotalFor(bar.label)
+                const pct = Math.round((total / maxVal) * 100)
                 return (
                   <div
                     key={bar.label}
@@ -331,7 +328,7 @@ export default function RevenueReportsPage({ setNotice, onNavigate }: Props) {
                       ›
                     </span>
                   </div>
-                );
+                )
               })}
             </div>
           </div>
@@ -606,12 +603,12 @@ export default function RevenueReportsPage({ setNotice, onNavigate }: Props) {
               {Object.values(
                 filteredRecords.reduce(
                   (acc, r) => {
-                    const key = r.patientName;
-                    if (!acc[key]) acc[key] = { ...r, amount: 0 };
-                    acc[key].amount += Number(r.amount);
-                    return acc;
+                    const key = r.patientName
+                    if (!acc[key]) acc[key] = { ...r, amount: 0 }
+                    acc[key].amount += Number(r.amount)
+                    return acc
                   },
-                  {} as Record<string, (typeof filteredRecords)[0]>,
+                  {} as Record<string, typeof filteredRecords[0]>,
                 ),
               ).map((r, i) => (
                 <TableRow key={r.id}>
@@ -648,5 +645,5 @@ export default function RevenueReportsPage({ setNotice, onNavigate }: Props) {
         )}
       </Modal>
     </div>
-  );
+  )
 }

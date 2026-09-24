@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import type { FormEvent } from "react";
-import { Button, Input, Label } from "./ui";
+import React, { useState } from "react"
+import type { FormEvent } from "react"
+import { Button, Input, Label } from "./ui"
 import {
   FiUsers,
   FiFileText,
@@ -14,33 +14,35 @@ import {
   FiLoader,
   FiActivity,
   FiPlusSquare,
-} from "react-icons/fi";
+} from "react-icons/fi"
 
 type Props = {
-  onLogin: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
-  initialHospitalCode: string;
-};
+  onLogin: (event: FormEvent<HTMLFormElement>) => void | Promise<void>
+  initialHospitalCode: string
+}
 
-type LoginType = "staff" | "doctor" | "pharmacist" | "admin";
+type LoginType = "staff" | "doctor" | "pharmacist" | "admin"
 
 const FEATURES = [
   { icon: FiUsers, label: "Patient Management" },
   { icon: FiFileText, label: "OCR & Smart Documentation" },
   { icon: FiBarChart2, label: "Billing & Analytics" },
   { icon: FiShield, label: "Secure & Compliant" },
-];
+]
 
-const LOGIN_TABS: { type: LoginType; label: string; icon: typeof FiUser }[] = [
+const LOGIN_TABS: { type: LoginType label: string icon: typeof FiUser }[] = [
   { type: "staff", label: "Staff", icon: FiUser },
   { type: "doctor", label: "Doctor", icon: FiActivity },
   { type: "pharmacist", label: "Pharmacy", icon: FiPlusSquare },
   { type: "admin", label: "Admin", icon: FiShield },
-];
+]
 
-const LOGIN_COPY: Record<
-  LoginType,
-  { heading: string; subtext: string; placeholder: string; submitLabel: string }
-> = {
+const LOGIN_COPY: Record<LoginType, {
+  heading: string
+  subtext: string
+  placeholder: string
+  submitLabel: string
+}> = {
   staff: {
     heading: "Welcome Back",
     subtext: "Sign in to continue to HospAI",
@@ -66,18 +68,18 @@ const LOGIN_COPY: Record<
     placeholder: "hospital.admin",
     submitLabel: "Login as Administrator",
   },
-};
+}
 
 export default function AuthView({ onLogin, initialHospitalCode }: Props) {
-  const [loginType, setLoginType] = useState<LoginType>("staff");
-  const [showPassword, setShowPassword] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const copy = LOGIN_COPY[loginType];
+  const [loginType, setLoginType] = useState<LoginType>("staff")
+  const [showPassword, setShowPassword] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const copy = LOGIN_COPY[loginType]
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    setSubmitting(true);
-    Promise.resolve(onLogin(event)).finally(() => setSubmitting(false));
-  };
+    setSubmitting(true)
+    Promise.resolve(onLogin(event)).finally(() => setSubmitting(false))
+  }
 
   return (
     <div className="auth-page auth-page-split">
@@ -220,5 +222,5 @@ export default function AuthView({ onLogin, initialHospitalCode }: Props) {
         </div>
       </div>
     </div>
-  );
+  )
 }

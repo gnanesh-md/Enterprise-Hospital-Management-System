@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useState, useEffect, useMemo } from "react"
+import type { Dispatch, SetStateAction } from "react"
 import {
   Button,
   Card,
@@ -14,40 +14,40 @@ import {
   Table,
   TableRow,
   TableCell,
-} from "../components/ui";
-import { apiFetch, reportError } from "../lib/api";
-import type { Notice } from "../types";
+} from "../components/ui"
+import { apiFetch, reportError } from "../lib/api"
+import type { Notice } from "../types"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  onNavigate?: (page: string) => void;
-};
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  onNavigate?: (page: string) => void
+}
 
 type Transaction = {
-  id: string;
-  patientId: string;
-  patientName: string;
-  paymentFor: string;
-  amount: number;
-  mode: string;
-  date: string;
-  gatewayRef: string;
-};
+  id: string
+  patientId: string
+  patientName: string
+  paymentFor: string
+  amount: number
+  mode: string
+  date: string
+  gatewayRef: string
+}
 
 type DueInvoice = {
-  id: number;
-  invoice_no?: string;
-  patient_id?: string;
-  module?: string;
-  due_amount?: number;
-};
+  id: number
+  invoice_no?: string
+  patient_id?: string
+  module?: string
+  due_amount?: number
+}
 
 const PAYMENT_MODES = [
   { name: "Cash", icon: "💵" },
   { name: "Card", icon: "💳" },
   { name: "UPI", icon: "📱" },
   { name: "Bank Transfer", icon: "🏦" },
-];
+]
 
 // This page's own field values ("Cash"/"Card"/"UPI"/"Bank Transfer") vs. what
 // the backend actually stores in invoice_payments.payment_mode -- keeps the
@@ -57,23 +57,23 @@ const PAYMENT_MODE_TO_BACKEND: Record<string, string> = {
   Card: "card",
   UPI: "upi",
   "Bank Transfer": "bank_transfer",
-};
+}
 
 export default function PaymentCollectionPage({
   setNotice,
   onNavigate,
 }: Props) {
   // Form State
-  const [dueInvoices, setDueInvoices] = useState<DueInvoice[]>([]);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
-  const [dueAmount, setDueAmount] = useState("");
-  const [paymentMode, setPaymentMode] = useState("Cash");
-  const [gatewayRef, setGatewayRef] = useState("");
-  const [recording, setRecording] = useState(false);
+  const [dueInvoices, setDueInvoices] = useState<DueInvoice[]>([])
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState("")
+  const [dueAmount, setDueAmount] = useState("")
+  const [paymentMode, setPaymentMode] = useState("Cash")
+  const [gatewayRef, setGatewayRef] = useState("")
+  const [recording, setRecording] = useState(false)
   const [selectDate, setSelectDate] = useState(
     new Date().toISOString().split("T")[0],
-  );
-  const [period, setPeriod] = useState<"Daily" | "Monthly">("Daily");
+  )
+  const [period, setPeriod] = useState<"Daily" | "Monthly">("Daily")
 
   // Revenue Summary (all-time totals -- the top stat cards) and Transactions
   // (actual recorded payments -- everything below) are two different data
@@ -82,17 +82,17 @@ export default function PaymentCollectionPage({
   // transactions comes from invoice_payments (only what's actually been
   // collected). Neither is derived from the other.
   const [summary, setSummary] = useState<{
-    total_billed: number;
-    total_collected: number;
-    total_due: number;
-    total_advance: number;
-    total_refunded: number;
-  } | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+    total_billed: number
+    total_collected: number
+    total_due: number
+    total_advance: number
+    total_refunded: number
+  } | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
 
   // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedMethod, setSelectedMethod] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedMethod, setSelectedMethod] = useState("")
 
   const normalizeMode = (mode: string): string => {
     const map: Record<string, string> = {
@@ -101,13 +101,13 @@ export default function PaymentCollectionPage({
       upi: "UPI",
       bank_transfer: "Bank Transfer",
       bank: "Bank Transfer",
-    };
-    return map[(mode || "").toLowerCase()] || mode || "Cash";
-  };
+    }
+    return map[(mode || "").toLowerCase()] || mode || "Cash"
+  }
 
   const fetchTransactions = async () => {
     try {
-      const data = await apiFetch<{ payments: any[] }>("/api/billing/payments");
+      const data = await apiFetch<{ payments: any[] }>("/api/billing/payments")
       setTransactions(
         (data.payments || []).map((p) => ({
           id: String(p.id),
@@ -119,66 +119,73 @@ export default function PaymentCollectionPage({
           date: p.date || "",
           gatewayRef: p.gateway_ref || "",
         })),
-      );
+      )
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to load recorded payments.");
+      reportError(setNotice, error, "Failed to load recorded payments.")
     }
-  };
+  }
 
   const fetchSummary = async () => {
     try {
       const data = await apiFetch<{
-        total_billed: number;
-        total_collected: number;
-        total_due: number;
-        total_advance: number;
-        total_refunded: number;
-      }>("/api/billing/revenue-summary");
-      setSummary(data);
+        total_billed: number
+        total_collected: number
+        total_due: number
+        total_advance: number
+        total_refunded: number
+      }>("/api/billing/revenue-summary")
+      setSummary(data)
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to load revenue summary.");
+      reportError(setNotice, error, "Failed to load revenue summary.")
     }
-  };
+  }
 
   const fetchDueInvoices = async () => {
     try {
-      const data = await apiFetch<{ invoices: DueInvoice[] }>("/api/billing/invoices");
-      setDueInvoices((data.invoices || []).filter((inv) => (inv.due_amount || 0) > 0));
+      const data = await apiFetch<{ invoices: DueInvoice[] }>(
+        "/api/billing/invoices",
+      )
+      setDueInvoices(
+        (data.invoices || []).filter((inv) => (inv.due_amount || 0) > 0),
+      )
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to load due invoices.");
+      reportError(setNotice, error, "Failed to load due invoices.")
     }
-  };
+  }
 
   useEffect(() => {
-    fetchTransactions();
-    fetchSummary();
-    fetchDueInvoices();
-  }, []);
+    fetchTransactions()
+    fetchSummary()
+    fetchDueInvoices()
+  }, [])
 
-  const selectedInvoice = dueInvoices.find((inv) => String(inv.id) === selectedInvoiceId);
+  const selectedInvoice = dueInvoices.find(
+    (inv) => String(inv.id) === selectedInvoiceId,
+  )
 
   // Period-filtered view for the "Payment Summary" card below -- the top
   // stat cards stay all-time (from `summary`); this is specifically what the
   // Daily/Monthly + date picker controls, so changing them visibly changes
   // something instead of being decorative.
   const periodTransactions = useMemo(() => {
-    if (!selectDate) return transactions;
-    const bucketKey = period === "Monthly" ? selectDate.slice(0, 7) : selectDate;
+    if (!selectDate) return transactions
+    const bucketKey = period === "Monthly" ? selectDate.slice(0, 7) : selectDate
     return transactions.filter((t) => {
-      if (!t.date) return false;
-      const parsed = new Date(t.date);
-      if (Number.isNaN(parsed.getTime())) return false;
-      const key = period === "Monthly"
-        ? parsed.toISOString().slice(0, 7)
-        : parsed.toISOString().slice(0, 10);
-      return key === bucketKey;
-    });
-  }, [transactions, selectDate, period]);
+      if (!t.date) return false
+      const parsed = new Date(t.date)
+      if (Number.isNaN(parsed.getTime())) return false
+      const key =
+        period === "Monthly"
+          ? parsed.toISOString().slice(0, 7)
+          : parsed.toISOString().slice(0, 10)
+      return key === bucketKey
+    })
+  }, [transactions, selectDate, period])
 
   const periodCollected = useMemo(
     () => periodTransactions.reduce((sum, t) => sum + t.amount, 0),
     [periodTransactions],
-  );
+  )
 
   const metrics = {
     totalBilled: summary?.total_billed ?? 0,
@@ -186,21 +193,21 @@ export default function PaymentCollectionPage({
     pendingDue: summary?.total_due ?? 0,
     advances: summary?.total_advance ?? 0,
     refunds: summary?.total_refunded ?? 0,
-  };
+  }
 
   const handleRecordPayment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const invoiceId = Number(selectedInvoiceId);
-    const amount = parseFloat(dueAmount);
+    e.preventDefault()
+    const invoiceId = Number(selectedInvoiceId)
+    const amount = parseFloat(dueAmount)
     if (!invoiceId) {
-      setNotice({ type: "error", message: "Select a due invoice first." });
-      return;
+      setNotice({ type: "error", message: "Select a due invoice first." })
+      return
     }
     if (isNaN(amount) || amount <= 0) {
-      setNotice({ type: "error", message: "Please enter a valid amount." });
-      return;
+      setNotice({ type: "error", message: "Please enter a valid amount." })
+      return
     }
-    setRecording(true);
+    setRecording(true)
     try {
       await apiFetch(`/api/billing/invoices/${invoiceId}/payments`, {
         method: "POST",
@@ -209,41 +216,44 @@ export default function PaymentCollectionPage({
           payment_mode: PAYMENT_MODE_TO_BACKEND[paymentMode] || "cash",
           gateway_ref: gatewayRef.trim() || undefined,
         }),
-      });
+      })
       setNotice({
         type: "success",
         message: `Payment of ₹${amount.toLocaleString("en-IN")} recorded via ${paymentMode}.`,
-      });
-      setSelectedInvoiceId("");
-      setDueAmount("");
-      setGatewayRef("");
-      await Promise.all([fetchTransactions(), fetchSummary(), fetchDueInvoices()]);
+      })
+      setSelectedInvoiceId("")
+      setDueAmount("")
+      setGatewayRef("")
+      await Promise.all([
+        fetchTransactions(),
+        fetchSummary(),
+        fetchDueInvoices(),
+      ])
     } catch (error: any) {
-      reportError(setNotice, error, "Failed to record payment.");
+      reportError(setNotice, error, "Failed to record payment.")
     } finally {
-      setRecording(false);
+      setRecording(false)
     }
-  };
+  }
 
   const getAmountForMode = (mode: string) =>
     periodTransactions
       .filter((t) => t.mode === mode)
-      .reduce((s, t) => s + t.amount, 0);
+      .reduce((s, t) => s + t.amount, 0)
 
-  const formatCurrency = (val: number) => `₹${val.toLocaleString("en-IN")}`;
+  const formatCurrency = (val: number) => `₹${val.toLocaleString("en-IN")}`
 
   const openBreakdownModal = (mode: string) => {
-    setSelectedMethod(mode);
-    setIsModalOpen(true);
-  };
+    setSelectedMethod(mode)
+    setIsModalOpen(true)
+  }
 
   const filteredTransactions = periodTransactions.filter(
     (t) => t.mode === selectedMethod,
-  );
+  )
 
   // Filter by period
-  const periodLabel =
-    period === "Monthly" ? "Monthly Revenue" : "Daily Revenue";
+  const periodLabel = period === "Monthly" ? "Monthly Revenue" : "Daily Revenue"
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -306,7 +316,8 @@ export default function PaymentCollectionPage({
         <CardHeader>
           <CardTitle>Record Payment</CardTitle>
           <CardDescription>
-            Select the due invoice this payment is against, then enter the amount and mode.
+            Select the due invoice this payment is against, then enter the
+            amount and mode.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -334,18 +345,24 @@ export default function PaymentCollectionPage({
                   id="dueInvoice"
                   value={selectedInvoiceId}
                   onChange={(e) => {
-                    const invoiceId = e.target.value;
-                    setSelectedInvoiceId(invoiceId);
-                    const inv = dueInvoices.find((d) => String(d.id) === invoiceId);
-                    setDueAmount(inv ? String(inv.due_amount ?? "") : "");
+                    const invoiceId = e.target.value
+                    setSelectedInvoiceId(invoiceId)
+                    const inv = dueInvoices.find(
+                      (d) => String(d.id) === invoiceId,
+                    )
+                    setDueAmount(inv ? String(inv.due_amount ?? "") : "")
                   }}
                 >
                   <option value="">
-                    {dueInvoices.length === 0 ? "No due invoices" : "Select a due invoice..."}
+                    {dueInvoices.length === 0
+                      ? "No due invoices"
+                      : "Select a due invoice..."}
                   </option>
                   {dueInvoices.map((inv) => (
                     <option key={inv.id} value={inv.id}>
-                      {inv.invoice_no || `INV-${inv.id}`} — {inv.patient_id || "Unknown"} ({inv.module || "General"}) — ₹{(inv.due_amount || 0).toLocaleString("en-IN")} due
+                      {inv.invoice_no || `INV-${inv.id}`} —{" "}
+                      {inv.patient_id || "Unknown"} ({inv.module || "General"})
+                      — ₹{(inv.due_amount || 0).toLocaleString("en-IN")} due
                     </option>
                   ))}
                 </Select>
@@ -620,10 +637,10 @@ export default function PaymentCollectionPage({
             }}
           >
             {PAYMENT_MODES.map((mode, idx) => {
-              const amount = getAmountForMode(mode.name);
+              const amount = getAmountForMode(mode.name)
               const txCount = periodTransactions.filter(
                 (t) => t.mode === mode.name,
-              ).length;
+              ).length
               return (
                 <div
                   key={mode.name}
@@ -719,7 +736,7 @@ export default function PaymentCollectionPage({
                     </span>
                   </div>
                 </div>
-              );
+              )
             })}
           </div>
 
@@ -816,12 +833,12 @@ export default function PaymentCollectionPage({
               {Object.values(
                 filteredTransactions.reduce(
                   (acc, tx) => {
-                    const key = tx.patientId || tx.patientName;
-                    if (!acc[key]) acc[key] = { ...tx, amount: 0 };
-                    acc[key].amount += Number(tx.amount);
-                    return acc;
+                    const key = tx.patientId || tx.patientName
+                    if (!acc[key]) acc[key] = { ...tx, amount: 0 }
+                    acc[key].amount += Number(tx.amount)
+                    return acc
                   },
-                  {} as Record<string, (typeof filteredTransactions)[0]>,
+                  {} as Record<string, typeof filteredTransactions[0]>,
                 ),
               ).map((tx, i) => (
                 <TableRow key={tx.id}>
@@ -849,5 +866,5 @@ export default function PaymentCollectionPage({
         )}
       </Modal>
     </div>
-  );
+  )
 }

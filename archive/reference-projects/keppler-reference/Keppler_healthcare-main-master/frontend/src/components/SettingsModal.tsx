@@ -1,12 +1,12 @@
-import { Label, Modal, Select } from "./ui";
+import { Label, Modal, Select } from "./ui"
 
 type Props = {
-  open: boolean;
-  onClose: () => void;
-  languages: Record<string, string>;
-  ocrLanguage: string;
-  onOcrLanguageChange: (value: string) => void;
-};
+  open: boolean
+  onClose: () => void
+  languages: Record<string, string>
+  ocrLanguage: string
+  onOcrLanguageChange: (value: string) => void
+}
 
 export default function SettingsModal({
   open,
@@ -43,5 +43,5 @@ export default function SettingsModal({
         </div>
       </div>
     </Modal>
-  );
+  )
 }

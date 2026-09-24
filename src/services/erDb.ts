@@ -3,489 +3,468 @@
  * Provides full offline/local storage fallback and data persistence for ER & Bed workflows.
  */
 
-import { db } from "./db";
+import { db } from "./db"
 
 export interface ErPatientMedicalProfile {
-  chronic_conditions: string[];
+  chronic_conditions: string[]
 
-  past_medical_history: string;
+  past_medical_history: string
 
-  past_surgeries: string;
+  past_surgeries: string
 
-  family_history: string;
+  family_history: string
 
   current_medications: Array<{
-    name: string;
+    name: string
 
-    dosage: string;
+    dosage: string
 
-    frequency: string;
+    frequency: string
 
-    indication: string;
-  }>;
+    indication: string
+  }>
 }
 
 export interface ErPatient {
-  patient_id: string;
+  patient_id: string
 
-  name: string;
+  name: string
 
-  last_name: string;
+  last_name: string
 
-  gender: string;
+  gender: string
 
-  age: number;
+  age: number
 
-  dob?: string;
+  dob?: string
 
-  phone: string;
+  phone: string
 
-  emergency_contact: string;
+  emergency_contact: string
 
-  emergency_contact_name?: string;
+  emergency_contact_name?: string
 
-  emergency_contact_relation?: string;
+  emergency_contact_relation?: string
 
-  guardian_name?: string;
+  guardian_name?: string
 
-  guardian_relation?: string;
+  guardian_relation?: string
 
-  address?: string;
+  address?: string
 
-  allergies?: string;
+  allergies?: string
 
-  blood_group?: string;
+  blood_group?: string
 
-  created_at: string;
+  created_at: string
 
-  medical_profile?: ErPatientMedicalProfile;
+  medical_profile?: ErPatientMedicalProfile
 }
 
 export interface ErComplaintItem {
-  id: number;
+  id: number
 
-  complaint: string;
+  complaint: string
 
-  severity: string | null;
+  severity: string | null
 
-  case_category: string | null;
+  case_category: string | null
 
-  duration: string | null;
+  duration: string | null
 
-  reported_by: string | null;
+  reported_by: string | null
 
-  created_at: string;
+  created_at: string
 }
 
 export interface ErVitalsItem {
-  id: number;
+  id: number
 
-  recorded_at: string;
+  recorded_at: string
 
-  recorded_by: string | null;
+  recorded_by: string | null
 
-  heart_rate: number | null;
+  heart_rate: number | null
 
-  bp_systolic: number | null;
+  bp_systolic: number | null
 
-  bp_diastolic: number | null;
+  bp_diastolic: number | null
 
-  respiratory_rate: number | null;
+  respiratory_rate: number | null
 
-  spo2: number | null;
+  spo2: number | null
 
-  temperature: number | null;
+  temperature: number | null
 
-  consciousness_level: string | null;
+  consciousness_level: string | null
 
-  blood_glucose: number | null;
+  blood_glucose: number | null
 
-  pain_score: number | null;
+  pain_score: number | null
 
-  gcs: number | null;
+  gcs: number | null
 
-  notes: string | null;
+  notes: string | null
 }
 
 export interface ErTriageItem {
-  category: string;
+  category: string
 
-  triage_bed_label: string | null;
+  triage_bed_label: string | null
 
-  reason: string | null;
+  reason: string | null
 
-  triaged_at: string;
+  triaged_at: string
 
-  assigned_by: string | null;
+  assigned_by: string | null
 }
 
 export interface ErTreatmentItem {
-  id: number;
+  id: number
 
-  intervention_type: string;
+  intervention_type: string
 
-  description: string | null;
+  description: string | null
 
-  performed_at: string;
+  performed_at: string
 
-  administered_by: string | null;
+  administered_by: string | null
 }
 
 export interface ErClinicalNoteItem {
-  id: number;
+  id: number
 
-  note_type: string;
+  note_type: string
 
-  author: string | null;
+  author: string | null
 
-  content: string;
+  content: string
 
-  created_at: string;
+  created_at: string
 }
 
 export interface ErDispositionItem {
-  outcome: string;
+  outcome: string
 
-  required_specialty: string | null;
+  required_specialty: string | null
 
-  clinical_reason: string;
+  clinical_reason: string
 
-  decided_by: string | null;
+  decided_by: string | null
 
-  decided_at: string;
+  decided_at: string
 
-  priority: string | null;
+  priority: string | null
 }
 
 export interface ErBedRequestItem {
-  id: number;
+  id: number
 
-  status: string;
+  status: string
 
-  requested_level_of_care: string;
+  requested_level_of_care: string
 
-  requested_specialty: string | null;
+  requested_specialty: string | null
 
-  requested_at: string;
+  requested_at: string
 
-  allocated_bed_id: number | null;
+  allocated_bed_id: number | null
 
-  allocated_admission_id: number | null;
+  allocated_admission_id: number | null
 
-  allocated_at: string | null;
+  allocated_at: string | null
 }
 
 export interface ErConsentItem {
-  id: number;
+  id: number
 
-  hospital_id?: number;
+  hospital_id?: number
 
-  patient_id?: string;
+  patient_id?: string
 
-  patient_name: string;
+  patient_name: string
 
-  consent_type: string;
+  consent_type: string
 
-  signed_by: string;
+  signed_by: string
 
-  relation_to_patient?: string;
+  relation_to_patient?: string
 
-  status: string;
+  status: string
 
-  witness_doctor?: string;
+  witness_doctor?: string
 
-  signed_by_phone?: string;
+  signed_by_phone?: string
 
-  refusal_reason?: string;
+  refusal_reason?: string
 
-  legal_waiver_acknowledged: boolean;
+  legal_waiver_acknowledged: boolean
 
-  er_visit_id?: number;
+  er_visit_id?: number
 
-  notes?: string;
+  notes?: string
 
-  signed_at?: string;
+  signed_at?: string
 
-  document_filename?: string | null;
+  document_filename?: string | null
 
-  document_mime_type?: string | null;
+  document_mime_type?: string | null
 }
 
 export interface ErInvestigationItem {
-  id: number;
+  id: number
 
-  test_name: string;
+  test_name: string
 
-  category: string;
+  category: string
 
-  priority: string;
+  priority: string
 
-  ordered_at: string;
+  ordered_at: string
 
-  ordered_by: string;
+  ordered_by: string
 
-  status: "Completed" | "In Progress" | "Ordered" | "Sample Collected";
+  status: "Completed" | "In Progress" | "Ordered" | "Sample Collected"
 
-  result: string | null;
+  result: string | null
 
-  result_summary?: string | null;
+  result_summary?: string | null
 
-  verified_at?: string | null;
+  verified_at?: string | null
 }
 
-export type ErTimelineEventType =
-  | "patient_arrived"
-  | "bed_assigned"
-  | "initial_vitals"
-  | "medication_given"
-  | "intervention_given"
-  | "investigation_ordered"
-  | "followup_vitals"
-  | "patient_stabilized"
-  | "doctor_assigned"
-  | "doctor_arrived"
-  | "doctor_assessment_completed"
-  | "destination_assigned"
-  | "destination_bed_assigned"
-  | "patient_transferred";
+export type ErTimelineEventType = "patient_arrived" | "bed_assigned" | "initial_vitals" | "medication_given" | "intervention_given" | "investigation_ordered" | "followup_vitals" | "patient_stabilized" | "doctor_assigned" | "doctor_arrived" | "doctor_assessment_completed" | "destination_assigned" | "destination_bed_assigned" | "patient_transferred"
 
 export interface ErTimelineEventItem {
-  id: number;
+  id: number
 
-  event_type: ErTimelineEventType;
+  event_type: ErTimelineEventType
 
-  event_name: string;
+  event_name: string
 
-  timestamp: string; // ISO string
+  timestamp: string // ISO string
 
-  logged_by: string; // e.g. "Staff Nurse Jessica Carter, RN"
+  logged_by: string // e.g. "Staff Nurse Jessica Carter, RN"
 
-  visit_id: number;
+  visit_id: number
 
-  visit_no: string;
+  visit_no: string
 
-  patient_id?: string | null;
+  patient_id?: string | null
 
-  location?: string | null;
+  location?: string | null
 
-  bed?: string | null;
+  bed?: string | null
 
-  notes?: string | null;
+  notes?: string | null
 
   vitals_data?: {
-    bp_systolic?: number | null;
+    bp_systolic?: number | null
 
-    bp_diastolic?: number | null;
+    bp_diastolic?: number | null
 
-    heart_rate?: number | null;
+    heart_rate?: number | null
 
-    spo2?: number | null;
+    spo2?: number | null
 
-    respiratory_rate?: number | null;
+    respiratory_rate?: number | null
 
-    temperature?: number | null;
+    temperature?: number | null
 
-    blood_glucose?: number | null;
+    blood_glucose?: number | null
 
-    pain_score?: number | null;
+    pain_score?: number | null
 
-    gcs?: number | null;
+    gcs?: number | null
 
-    notes?: string | null;
-  };
+    notes?: string | null
+  }
 
   medication_data?: {
-    drug_name: string;
+    drug_name: string
 
-    dosage: string;
+    dosage: string
 
-    route: string;
+    route: string
 
-    response?: string;
+    response?: string
 
-    notes?: string;
-  };
+    notes?: string
+  }
 
   intervention_data?: {
-    intervention_type: string;
+    intervention_type: string
 
-    details?: string;
+    details?: string
 
-    patient_response?: string;
+    patient_response?: string
 
-    notes?: string;
-  };
+    notes?: string
+  }
 
   investigation_data?: {
-    test_name: string;
+    test_name: string
 
-    priority?: string;
+    priority?: string
 
-    category?: string;
+    category?: string
 
-    notes?: string;
-  };
+    notes?: string
+  }
 
   stabilization_data?: {
-    status: string;
+    status: string
 
-    clinical_notes?: string;
-  };
+    clinical_notes?: string
+  }
 
   doctor_data?: {
-    doctor_name: string;
+    doctor_name: string
 
-    specialty: string;
+    specialty: string
 
-    assignment_method: "Manual by Nurse" | "AI Recommended & Nurse Confirmed";
+    assignment_method: "Manual by Nurse" | "AI Recommended & Nurse Confirmed"
 
-    notes?: string;
-  };
+    notes?: string
+  }
 
   assessment_data?: {
-    doctor_name: string;
+    doctor_name: string
 
-    clinical_impression?: string;
+    clinical_impression?: string
 
-    acute_condition?: string;
+    acute_condition?: string
 
-    care_plan?: string;
-  };
+    care_plan?: string
+  }
 
   destination_data?: {
-    destination:
-      | "Ward"
-      | "ICU"
-      | "HDU"
-      | "Specialty Ward"
-      | "Observation"
-      | "Operating Theatre"
-      | "Discharge";
+    destination: "Ward" | "ICU" | "HDU" | "Specialty Ward" | "Observation" | "Operating Theatre" | "Discharge"
 
-    clinical_reason?: string;
+    clinical_reason?: string
 
-    doctor_name?: string;
+    doctor_name?: string
 
-    ai_recommendation_notes?: string;
-  };
+    ai_recommendation_notes?: string
+  }
 
   destination_bed_data?: {
-    department: string;
+    department: string
 
-    bed_id_or_label: string;
+    bed_id_or_label: string
 
-    allocated_by?: string;
-  };
+    allocated_by?: string
+  }
 
   transfer_data?: {
-    source_location: string;
+    source_location: string
 
-    target_destination: string;
+    target_destination: string
 
-    target_bed: string;
+    target_bed: string
 
-    transfer_status: "Transfer Completed" | "In Transit";
+    transfer_status: "Transfer Completed" | "In Transit"
 
-    escorting_staff?: string;
+    escorting_staff?: string
 
-    handover_notes?: string;
-  };
+    handover_notes?: string
+  }
 }
 
 export interface ErVisitRecord {
-  id: number;
+  id: number
 
-  visit_no: string;
+  visit_no: string
 
-  patient_id: string | null;
+  patient_id: string | null
 
-  is_unknown_patient: boolean;
+  is_unknown_patient: boolean
 
-  unknown_patient_label: string | null;
+  unknown_patient_label: string | null
 
-  arrival_mode: string | null;
+  arrival_mode: string | null
 
-  brought_by?: string | null;
+  brought_by?: string | null
 
-  attendant_name?: string | null;
+  attendant_name?: string | null
 
-  attendant_relation?: string | null;
+  attendant_relation?: string | null
 
-  condition_at_arrival: string | null;
+  condition_at_arrival: string | null
 
-  consciousness?: string | null;
+  consciousness?: string | null
 
-  info_provided_by?: string | null;
+  info_provided_by?: string | null
 
-  arrival_at: string | null;
+  arrival_at: string | null
 
-  status: string;
+  status: string
 
-  assigned_doctor_name: string | null;
+  assigned_doctor_name: string | null
 
-  assigned_specialty: string | null;
+  assigned_specialty: string | null
 
-  doctor_assigned_at: string | null;
+  doctor_assigned_at: string | null
 
-  doctor_accepted_at: string | null;
+  doctor_accepted_at: string | null
 
-  triage_category: string | null;
+  triage_category: string | null
 
-  triage_bed_label: string | null;
+  triage_bed_label: string | null
 
-  closed_at: string | null;
+  closed_at: string | null
 
-  police_involved?: boolean;
+  police_involved?: boolean
 
-  patient_name?: string | null;
+  patient_name?: string | null
 
-  patient_last_name?: string | null;
+  patient_last_name?: string | null
 
-  patient_gender?: string | null;
+  patient_gender?: string | null
 
-  patient_age?: number | null;
+  patient_age?: number | null
 
-  patient_phone?: string | null;
+  patient_phone?: string | null
 
-  patient_emergency_contact?: string | null;
+  patient_emergency_contact?: string | null
 
-  patient?: ErPatient | null;
+  patient?: ErPatient | null
 
-  prior_visits_count?: number;
+  prior_visits_count?: number
 
-  complaints: ErComplaintItem[];
+  complaints: ErComplaintItem[]
 
-  vitals: ErVitalsItem[];
+  vitals: ErVitalsItem[]
 
-  triage: ErTriageItem | null;
+  triage: ErTriageItem | null
 
-  treatments: ErTreatmentItem[];
+  treatments: ErTreatmentItem[]
 
-  clinical_notes: ErClinicalNoteItem[];
+  clinical_notes: ErClinicalNoteItem[]
 
-  investigations?: ErInvestigationItem[];
+  investigations?: ErInvestigationItem[]
 
-  disposition: ErDispositionItem | null;
+  disposition: ErDispositionItem | null
 
-  bed_requests: ErBedRequestItem[];
+  bed_requests: ErBedRequestItem[]
 
-  consents: ErConsentItem[];
+  consents: ErConsentItem[]
 
-  timeline_events?: ErTimelineEventItem[];
+  timeline_events?: ErTimelineEventItem[]
 }
 
 export interface TriageCategoryConfig {
-  id: number;
+  id: number
 
-  category_code: string;
+  category_code: string
 
-  category_label: string;
+  category_label: string
 
-  description: string | null;
+  description: string | null
 
-  color: string | null;
+  color: string | null
 
-  sort_order: number;
+  sort_order: number
 }
 
 const DEFAULT_TRIAGE_CATEGORIES: TriageCategoryConfig[] = [
@@ -547,7 +526,7 @@ const DEFAULT_TRIAGE_CATEGORIES: TriageCategoryConfig[] = [
     color: "#1E293B",
     sort_order: 6,
   },
-];
+]
 
 const INITIAL_PATIENTS: ErPatient[] = [
   {
@@ -705,7 +684,7 @@ const INITIAL_PATIENTS: ErPatient[] = [
 
     created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
   },
-];
+]
 
 const INITIAL_VISITS: ErVisitRecord[] = [
   // ── CASE 1: CARDIAC STEMI / CHEST PAIN (Immediate / Resuscitation - B1) ──
@@ -4467,20 +4446,20 @@ const INITIAL_VISITS: ErVisitRecord[] = [
 
     consents: [],
   },
-];
+]
 
-const ER_STORAGE_KEY_PATIENTS = "hospai_er_patients_v8";
+const ER_STORAGE_KEY_PATIENTS = "hospai_er_patients_v8"
 
-const ER_STORAGE_KEY_VISITS = "hospai_er_visits_v8";
+const ER_STORAGE_KEY_VISITS = "hospai_er_visits_v8"
 
-const ER_STORAGE_KEY_CATEGORIES = "hospai_er_categories_v8";
+const ER_STORAGE_KEY_CATEGORIES = "hospai_er_categories_v8"
 
 export class ErDatabase {
-  private static load<T>(key: string, fallback: T): T {
+  private static load<T,>(key: string, fallback: T): T {
     try {
-      if (typeof window === "undefined") return fallback;
+      if (typeof window === "undefined") return fallback
 
-      const data = window.localStorage.getItem(key);
+      const data = window.localStorage.getItem(key)
 
       if (!data) {
         // If v8 is missing, check if v7 or v6 has user-created visits
@@ -4488,82 +4467,80 @@ export class ErDatabase {
         if (key === ER_STORAGE_KEY_VISITS) {
           const oldV =
             window.localStorage.getItem("hospai_er_visits_v7") ||
-            window.localStorage.getItem("hospai_er_visits_v6");
+            window.localStorage.getItem("hospai_er_visits_v6")
 
           if (oldV) {
             try {
-              const oldVisits: ErVisitRecord[] = JSON.parse(oldV);
+              const oldVisits: ErVisitRecord[] = JSON.parse(oldV)
 
-              const fallbackVisits = fallback as unknown as ErVisitRecord[];
+              const fallbackVisits = fallback as unknown as ErVisitRecord[]
 
-              const fallbackIds = new Set(fallbackVisits.map((v) => v.id));
+              const fallbackIds = new Set(fallbackVisits.map((v) => v.id))
 
-              const userVisits = oldVisits.filter(
-                (v) => !fallbackIds.has(v.id),
-              );
+              const userVisits = oldVisits.filter((v) => !fallbackIds.has(v.id))
 
-              const merged = [...fallbackVisits, ...userVisits];
+              const merged = [...fallbackVisits, ...userVisits]
 
-              window.localStorage.setItem(key, JSON.stringify(merged));
+              window.localStorage.setItem(key, JSON.stringify(merged))
 
-              return merged as unknown as T;
+              return merged as unknown as T
             } catch {}
           }
         }
 
-        window.localStorage.setItem(key, JSON.stringify(fallback));
+        window.localStorage.setItem(key, JSON.stringify(fallback))
 
-        return fallback;
+        return fallback
       }
 
-      const parsed = JSON.parse(data);
+      const parsed = JSON.parse(data)
 
       // Ensure all prior closed visits from initial seeds exist in visits store
 
       if (key === ER_STORAGE_KEY_VISITS && Array.isArray(parsed)) {
-        const fallbackVisits = fallback as unknown as ErVisitRecord[];
+        const fallbackVisits = fallback as unknown as ErVisitRecord[]
 
-        const currentIds = new Set(parsed.map((v: any) => v.id));
+        const currentIds = new Set(parsed.map((v: any) => v.id))
 
         const missingPrior = fallbackVisits.filter(
           (v) => v.status === "closed" && !currentIds.has(v.id),
-        );
+        )
 
         if (missingPrior.length > 0) {
-          const updated = [...parsed, ...missingPrior];
+          const updated = [...parsed, ...missingPrior]
 
-          window.localStorage.setItem(key, JSON.stringify(updated));
+          window.localStorage.setItem(key, JSON.stringify(updated))
 
-          return updated as unknown as T;
+          return updated as unknown as T
         }
       }
 
-      return parsed;
+      return parsed
     } catch {
-      return fallback;
+      return fallback
     }
   }
 
-  private static save<T>(key: string, data: T): void {
+  private static save<T,>(key: string, data: T): void {
     try {
       if (typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.setItem(key, JSON.stringify(data));
+        window.localStorage.setItem(key, JSON.stringify(data))
       }
     } catch (e) {
-      console.error("ErDatabase save error:", e);
+      console.error("ErDatabase save error:", e)
     }
   }
 
   // Patients
 
   static getPatients(): ErPatient[] {
-    return this.load<ErPatient[]>(ER_STORAGE_KEY_PATIENTS, INITIAL_PATIENTS);
+    return this.load<ErPatient[]>(ER_STORAGE_KEY_PATIENTS, INITIAL_PATIENTS)
   }
 
   static searchPatients(query: string): ErPatient[] {
-    const q = (query || "").trim().toLowerCase();
+    const q = (query || "").trim().toLowerCase()
 
-    if (!q) return [];
+    if (!q) return []
 
     return this.getPatients().filter(
       (p) =>
@@ -4571,27 +4548,27 @@ export class ErDatabase {
         (p.last_name || "").toLowerCase().includes(q) ||
         (p.patient_id || "").toLowerCase().includes(q) ||
         (p.phone || "").includes(q),
-    );
+    )
   }
 
   static getPatient(patientId: string): ErPatient | null {
-    const pId = (patientId || "").trim().toUpperCase();
+    const pId = (patientId || "").trim().toUpperCase()
 
     return (
       this.getPatients().find(
         (p) => (p.patient_id || "").trim().toUpperCase() === pId,
       ) || null
-    );
+    )
   }
 
   static addPatient(patientData: Partial<ErPatient>): ErPatient {
-    const patients = this.getPatients();
+    const patients = this.getPatients()
 
-    const cleanPhone = (patientData.phone || "").replace(/\D/g, "");
+    const cleanPhone = (patientData.phone || "").replace(/\D/g, "")
 
-    const cleanName = (patientData.name || "").trim().toLowerCase();
+    const cleanName = (patientData.name || "").trim().toLowerCase()
 
-    const cleanLastName = (patientData.last_name || "").trim().toLowerCase();
+    const cleanLastName = (patientData.last_name || "").trim().toLowerCase()
 
     const existing = patientData.patient_id
       ? patients.find(
@@ -4609,26 +4586,26 @@ export class ErDatabase {
                 (p.name || "").trim().toLowerCase() === cleanName &&
                 (p.last_name || "").trim().toLowerCase() === cleanLastName,
             )
-          : null;
+          : null
 
     if (existing) {
-      Object.assign(existing, patientData);
+      Object.assign(existing, patientData)
 
-      this.save(ER_STORAGE_KEY_PATIENTS, patients);
+      this.save(ER_STORAGE_KEY_PATIENTS, patients)
 
-      return existing;
+      return existing
     }
 
     const nextId =
       patients.length > 0
         ? Math.max(
             ...patients.map((p) => {
-              const num = parseInt(p.patient_id.replace(/\D/g, ""), 10);
+              const num = parseInt(p.patient_id.replace(/\D/g, ""), 10)
 
-              return isNaN(num) ? 0 : num;
+              return isNaN(num) ? 0 : num
             }),
           ) + 1
-        : 100100;
+        : 100100
 
     const newPatient: ErPatient = {
       patient_id:
@@ -4656,64 +4633,64 @@ export class ErDatabase {
       blood_group: patientData.blood_group || "O+",
 
       created_at: new Date().toISOString(),
-    };
+    }
 
-    patients.push(newPatient);
+    patients.push(newPatient)
 
-    this.save(ER_STORAGE_KEY_PATIENTS, patients);
+    this.save(ER_STORAGE_KEY_PATIENTS, patients)
 
-    return newPatient;
+    return newPatient
   }
 
   static updatePatient(
     patientId: string,
     updates: Partial<ErPatient>,
   ): ErPatient {
-    const list = this.getPatients();
+    const list = this.getPatients()
 
-    const idx = list.findIndex((p) => p.patient_id === patientId);
+    const idx = list.findIndex((p) => p.patient_id === patientId)
 
     if (idx >= 0) {
-      list[idx] = { ...list[idx], ...updates };
+      list[idx] = { ...list[idx], ...updates }
 
-      this.save(ER_STORAGE_KEY_PATIENTS, list);
+      this.save(ER_STORAGE_KEY_PATIENTS, list)
 
       // Also sync existing visits for this patient
 
-      const visits = this.getVisits("all");
+      const visits = this.getVisits("all")
 
-      let changed = false;
+      let changed = false
 
       visits.forEach((v) => {
         if (v.patient_id === patientId) {
-          if (updates.name) v.patient_name = updates.name;
+          if (updates.name) v.patient_name = updates.name
 
           if (updates.last_name !== undefined)
-            v.patient_last_name = updates.last_name;
+            v.patient_last_name = updates.last_name
 
-          if (updates.gender) v.patient_gender = updates.gender;
+          if (updates.gender) v.patient_gender = updates.gender
 
-          if (updates.age !== undefined) v.patient_age = updates.age;
+          if (updates.age !== undefined) v.patient_age = updates.age
 
-          if (updates.phone) v.patient_phone = updates.phone;
+          if (updates.phone) v.patient_phone = updates.phone
 
           if (updates.emergency_contact)
-            v.patient_emergency_contact = updates.emergency_contact;
+            v.patient_emergency_contact = updates.emergency_contact
 
-          changed = true;
+          changed = true
         }
-      });
+      })
 
       if (changed) {
-        this.save(ER_STORAGE_KEY_VISITS, visits);
+        this.save(ER_STORAGE_KEY_VISITS, visits)
       }
 
-      return list[idx];
+      return list[idx]
     }
 
-    const newPat = this.addPatient({ patient_id: patientId, ...updates });
+    const newPat = this.addPatient({ patient_id: patientId, ...updates })
 
-    return newPat;
+    return newPat
   }
 
   // Triage Categories
@@ -4722,24 +4699,24 @@ export class ErDatabase {
     return this.load<TriageCategoryConfig[]>(
       ER_STORAGE_KEY_CATEGORIES,
       DEFAULT_TRIAGE_CATEGORIES,
-    );
+    )
   }
 
   static saveCategory(
     cat: Partial<TriageCategoryConfig>,
   ): TriageCategoryConfig {
-    const list = this.getCategories();
+    const list = this.getCategories()
 
     const idx = list.findIndex(
       (c) => c.category_code === cat.category_code || c.id === cat.id,
-    );
+    )
 
     if (idx >= 0) {
-      list[idx] = { ...list[idx], ...cat };
+      list[idx] = { ...list[idx], ...cat }
 
-      this.save(ER_STORAGE_KEY_CATEGORIES, list);
+      this.save(ER_STORAGE_KEY_CATEGORIES, list)
 
-      return list[idx];
+      return list[idx]
     } else {
       const newCat: TriageCategoryConfig = {
         id: list.length + 1,
@@ -4753,13 +4730,13 @@ export class ErDatabase {
         color: cat.color || "#16A34A",
 
         sort_order: cat.sort_order || list.length + 1,
-      };
+      }
 
-      list.push(newCat);
+      list.push(newCat)
 
-      this.save(ER_STORAGE_KEY_CATEGORIES, list);
+      this.save(ER_STORAGE_KEY_CATEGORIES, list)
 
-      return newCat;
+      return newCat
     }
   }
 
@@ -4769,13 +4746,13 @@ export class ErDatabase {
     const visits = this.load<ErVisitRecord[]>(
       ER_STORAGE_KEY_VISITS,
       INITIAL_VISITS,
-    );
+    )
 
-    if (filter === "active") return visits.filter((v) => v.status !== "closed");
+    if (filter === "active") return visits.filter((v) => v.status !== "closed")
 
-    if (filter === "closed") return visits.filter((v) => v.status === "closed");
+    if (filter === "closed") return visits.filter((v) => v.status === "closed")
 
-    return visits;
+    return visits
   }
 
   static getVisitsByPatient(
@@ -4783,20 +4760,20 @@ export class ErDatabase {
     patientName?: string,
     phone?: string,
   ): ErVisitRecord[] {
-    if (!patientId && !patientName && !phone) return [];
+    if (!patientId && !patientName && !phone) return []
 
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
-    const targetPid = (patientId || "").trim().toUpperCase();
+    const targetPid = (patientId || "").trim().toUpperCase()
 
-    const targetName = (patientName || "").trim().toLowerCase();
+    const targetName = (patientName || "").trim().toLowerCase()
 
-    const targetPhone = (phone || "").replace(/\D/g, "");
+    const targetPhone = (phone || "").replace(/\D/g, "")
 
     const matched = visits.filter((v) => {
       const vPid = (v.patient_id || v.patient?.patient_id || "")
         .trim()
-        .toUpperCase();
+        .toUpperCase()
 
       if (
         targetPid &&
@@ -4804,7 +4781,7 @@ export class ErDatabase {
         (vPid === targetPid ||
           vPid.replace(/[-_]/g, "") === targetPid.replace(/[-_]/g, ""))
       )
-        return true;
+        return true
 
       const vName = (
         v.patient_name ||
@@ -4813,7 +4790,7 @@ export class ErDatabase {
           : "")
       )
         .trim()
-        .toLowerCase();
+        .toLowerCase()
 
       if (
         targetName &&
@@ -4821,12 +4798,12 @@ export class ErDatabase {
         (vName === targetName ||
           (targetName.length >= 4 && vName.includes(targetName)))
       )
-        return true;
+        return true
 
       const vPhone = (v.patient_phone || v.patient?.phone || "").replace(
         /\D/g,
         "",
-      );
+      )
 
       if (
         targetPhone &&
@@ -4837,21 +4814,21 @@ export class ErDatabase {
             vPhone.length === 10 &&
             vPhone === targetPhone))
       )
-        return true;
+        return true
 
-      return false;
-    });
+      return false
+    })
 
-    return matched;
+    return matched
   }
 
   static getPatientMedicalProfile(
     patientId: string,
     patientName?: string,
   ): ErPatientMedicalProfile | null {
-    const pId = (patientId || "").trim().toUpperCase();
+    const pId = (patientId || "").trim().toUpperCase()
 
-    const name = (patientName || "").trim().toLowerCase();
+    const name = (patientName || "").trim().toLowerCase()
 
     // 1. Built-in profiles for hospital and ER patients
 
@@ -5170,41 +5147,41 @@ export class ErDatabase {
           },
         ],
       },
-    };
+    }
 
-    if (PROFILES[pId]) return PROFILES[pId];
+    if (PROFILES[pId]) return PROFILES[pId]
 
-    return null;
+    return null
   }
 
   static getVisit(id: number): ErVisitRecord | null {
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
-    const v = visits.find((item) => item.id === Number(id));
+    const v = visits.find((item) => item.id === Number(id))
 
-    if (!v) return null;
+    if (!v) return null
 
     // Attach patient details and prior visit count
 
     if (v.patient_id) {
-      const normalizedPid = v.patient_id.trim().toUpperCase();
+      const normalizedPid = v.patient_id.trim().toUpperCase()
 
       const priorCount = visits.filter(
         (other) =>
           other.id !== v.id &&
           (other.patient_id || "").trim().toUpperCase() === normalizedPid,
-      ).length;
+      ).length
 
-      v.prior_visits_count = priorCount;
+      v.prior_visits_count = priorCount
 
       if (!v.patient) {
         let p = this.getPatients().find(
           (item) =>
             (item.patient_id || "").trim().toUpperCase() === normalizedPid,
-        );
+        )
 
         if (!p) {
-          const core = db.getPatientByUmr(v.patient_id);
+          const core = db.getPatientByUmr(v.patient_id)
 
           if (core) {
             p = {
@@ -5227,59 +5204,59 @@ export class ErDatabase {
               blood_group: "O+",
 
               created_at: new Date().toISOString(),
-            };
+            }
           }
         }
 
-        if (p) v.patient = p;
+        if (p) v.patient = p
       }
     } else {
-      v.prior_visits_count = 0;
+      v.prior_visits_count = 0
     }
 
-    return v;
+    return v
   }
 
   static async createVisit(visitData: {
-    patientId?: string;
+    patientId?: string
 
-    patientDetails?: Partial<ErPatient>;
+    patientDetails?: Partial<ErPatient>
 
-    isUnknown?: boolean;
+    isUnknown?: boolean
 
-    unknownLabel?: string;
+    unknownLabel?: string
 
-    arrivalDate?: string;
+    arrivalDate?: string
 
-    arrivalTime?: string;
+    arrivalTime?: string
 
-    arrivalMode?: string;
+    arrivalMode?: string
 
-    broughtBy?: string;
+    broughtBy?: string
 
-    attendantName?: string;
+    attendantName?: string
 
-    attendantRelation?: string;
+    attendantRelation?: string
 
-    conditionAtArrival?: string;
+    conditionAtArrival?: string
 
-    consciousness?: string;
+    consciousness?: string
 
-    infoProvidedBy?: string;
+    infoProvidedBy?: string
 
-    policeInvolved?: boolean;
+    policeInvolved?: boolean
 
-    complaintText?: string;
+    complaintText?: string
 
-    caseCategory?: string;
+    caseCategory?: string
 
-    vitals?: Partial<ErVitalsItem>;
+    vitals?: Partial<ErVitalsItem>
 
-    assignedDoctorName?: string;
+    assignedDoctorName?: string
 
-    assignedSpecialty?: string;
-  }): Promise<{ visit: ErVisitRecord; patient: ErPatient | null }> {
-    let patient: ErPatient | null = null;
+    assignedSpecialty?: string
+  }): Promise<{ visit: ErVisitRecord ;patient: ErPatient | null }> {
+    let patient: ErPatient | null = null
 
     if (visitData.patientId) {
       patient =
@@ -5287,12 +5264,12 @@ export class ErDatabase {
           (p) =>
             (p.patient_id || "").trim().toUpperCase() ===
             visitData.patientId!.trim().toUpperCase(),
-        ) || null;
+        ) || null
 
       if (!patient) {
         // Fall back to hospital core database (db.ts)
 
-        const corePatient = db.getPatientByUmr(visitData.patientId);
+        const corePatient = db.getPatientByUmr(visitData.patientId)
 
         if (corePatient) {
           patient = this.addPatient({
@@ -5313,13 +5290,13 @@ export class ErDatabase {
             address: corePatient.address || "",
 
             blood_group: "O+",
-          });
+          })
         } else if (visitData.patientDetails) {
           patient = this.addPatient({
             ...visitData.patientDetails,
 
             patient_id: visitData.patientId,
-          });
+          })
         }
       } else if (visitData.patientDetails) {
         // Sync any incoming details
@@ -5330,39 +5307,39 @@ export class ErDatabase {
           ...visitData.patientDetails,
 
           patient_id: patient.patient_id,
-        });
+        })
       }
     } else if (
       visitData.patientDetails &&
       (visitData.patientDetails.name || visitData.patientDetails.phone)
     ) {
-      patient = this.addPatient(visitData.patientDetails);
+      patient = this.addPatient(visitData.patientDetails)
     }
 
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
     const nextId =
-      visits.length > 0 ? Math.max(...visits.map((v) => v.id)) + 1 : 101;
+      visits.length > 0 ? Math.max(...visits.map((v) => v.id)) + 1 : 101
 
-    const visitNo = `ER-${new Date().getFullYear()}-${String(nextId).padStart(5, "0")}`;
+    const visitNo = `ER-${new Date().getFullYear()}-${String(nextId).padStart(5, "0")}`
 
-    let arrivalTimestamp = new Date().toISOString();
+    let arrivalTimestamp = new Date().toISOString()
 
     if (visitData.arrivalDate) {
       try {
-        const timePart = visitData.arrivalTime || "12:00";
+        const timePart = visitData.arrivalTime || "12:00"
 
         arrivalTimestamp = new Date(
           `${visitData.arrivalDate}T${timePart}`,
-        ).toISOString();
+        ).toISOString()
       } catch (e) {
-        arrivalTimestamp = new Date().toISOString();
+        arrivalTimestamp = new Date().toISOString()
       }
     }
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
-    const complaintsList: ErComplaintItem[] = [];
+    const complaintsList: ErComplaintItem[] = []
 
     if (visitData.complaintText && visitData.complaintText.trim()) {
       complaintsList.push({
@@ -5379,10 +5356,10 @@ export class ErDatabase {
         reported_by: visitData.infoProvidedBy || "Intake Nurse / EMS",
 
         created_at: now,
-      });
+      })
     }
 
-    const vitalsList: ErVitalsItem[] = [];
+    const vitalsList: ErVitalsItem[] = []
 
     if (visitData.vitals && Object.keys(visitData.vitals).length > 0) {
       vitalsList.push({
@@ -5416,7 +5393,7 @@ export class ErDatabase {
         gcs: visitData.vitals.gcs || 15,
 
         notes: visitData.vitals.notes || null,
-      });
+      })
     }
 
     // Run smart clinical triage logic using Qwen / fallback to rules
@@ -5424,21 +5401,21 @@ export class ErDatabase {
     const triageCalc = await this.evaluateClinicalTriage(
       visitData.complaintText || "",
       visitData.vitals || {},
-    );
+    )
 
     const finalDoctorName =
-      visitData.assignedDoctorName || triageCalc.suggestedDoctor || null;
+      visitData.assignedDoctorName || triageCalc.suggestedDoctor || null
 
     const finalSpecialty =
       visitData.assignedSpecialty ||
       triageCalc.suggestedDepartment ||
-      "Emergency";
+      "Emergency"
 
-    const effectivePid = patient?.patient_id || visitData.patientId;
+    const effectivePid = patient?.patient_id || visitData.patientId
 
     const priorVisits = effectivePid
       ? this.getVisitsByPatient(effectivePid, patient?.name, patient?.phone)
-      : [];
+      : []
 
     const newRecord: ErVisitRecord = {
       id: nextId,
@@ -5536,41 +5513,41 @@ export class ErDatabase {
       bed_requests: [],
 
       consents: [],
-    };
+    }
 
-    visits.unshift(newRecord);
+    visits.unshift(newRecord)
 
-    this.save(ER_STORAGE_KEY_VISITS, visits);
+    this.save(ER_STORAGE_KEY_VISITS, visits)
 
-    return { visit: newRecord, patient };
+    return { visit: newRecord, patient }
   }
 
   static updateVisit(
     id: number,
     updates: Partial<ErVisitRecord>,
   ): ErVisitRecord {
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
-    const idx = visits.findIndex((v) => v.id === Number(id));
+    const idx = visits.findIndex((v) => v.id === Number(id))
 
     if (idx >= 0) {
-      visits[idx] = { ...visits[idx], ...updates };
+      visits[idx] = { ...visits[idx], ...updates }
 
-      this.save(ER_STORAGE_KEY_VISITS, visits);
+      this.save(ER_STORAGE_KEY_VISITS, visits)
 
-      return visits[idx];
+      return visits[idx]
     }
 
-    throw new Error(`Visit ${id} not found`);
+    throw new Error(`Visit ${id} not found`)
   }
 
   static addComplaint(
     visitId: number,
-    complaint: { complaint: string; case_category?: string },
+    complaint: { complaint: string ;case_category?: string },
   ): ErComplaintItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     const newItem: ErComplaintItem = {
       id: visit.complaints.length + 1,
@@ -5586,22 +5563,22 @@ export class ErDatabase {
       reported_by: "Clinical Staff",
 
       created_at: new Date().toISOString(),
-    };
+    }
 
-    visit.complaints.push(newItem);
+    visit.complaints.push(newItem)
 
-    this.updateVisit(visitId, { complaints: visit.complaints });
+    this.updateVisit(visitId, { complaints: visit.complaints })
 
-    return newItem;
+    return newItem
   }
 
   static addVitals(
     visitId: number,
     vitals: Partial<ErVitalsItem>,
   ): ErVitalsItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     const newItem: ErVitalsItem = {
       id: visit.vitals.length + 1,
@@ -5631,22 +5608,22 @@ export class ErDatabase {
       gcs: vitals.gcs ?? 15,
 
       notes: vitals.notes ?? null,
-    };
+    }
 
-    visit.vitals.push(newItem);
+    visit.vitals.push(newItem)
 
-    this.updateVisit(visitId, { vitals: visit.vitals });
+    this.updateVisit(visitId, { vitals: visit.vitals })
 
-    return newItem;
+    return newItem
   }
 
   static setTriage(
     visitId: number,
-    triage: { category: string; reason?: string; bedLabel?: string },
+    triage: { category: string ;reason?: string ;bedLabel?: string },
   ): ErTriageItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     const newTriage: ErTriageItem = {
       category: triage.category,
@@ -5666,7 +5643,7 @@ export class ErDatabase {
       triaged_at: new Date().toISOString(),
 
       assigned_by: "ED Medical Officer",
-    };
+    }
 
     this.updateVisit(visitId, {
       triage: newTriage,
@@ -5676,18 +5653,18 @@ export class ErDatabase {
       triage_bed_label: newTriage.triage_bed_label,
 
       status: visit.status === "registered" ? "triaged" : visit.status,
-    });
+    })
 
-    return newTriage;
+    return newTriage
   }
 
   static assignDoctor(
     visitId: number,
-    data: { doctor_name?: string; specialty?: string },
+    data: { doctor_name?: string ;specialty?: string },
   ): void {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     this.updateVisit(visitId, {
       assigned_doctor_name:
@@ -5699,7 +5676,7 @@ export class ErDatabase {
       doctor_assigned_at: new Date().toISOString(),
 
       status: "doctor_assigned",
-    });
+    })
   }
 
   static acceptDoctor(visitId: number): void {
@@ -5707,16 +5684,16 @@ export class ErDatabase {
       doctor_accepted_at: new Date().toISOString(),
 
       status: "under_treatment",
-    });
+    })
   }
 
   static addTreatment(
     visitId: number,
-    data: { intervention_type: string; description?: string },
+    data: { intervention_type: string ;description?: string },
   ): ErTreatmentItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     const newItem: ErTreatmentItem = {
       id: visit.treatments.length + 1,
@@ -5728,26 +5705,26 @@ export class ErDatabase {
       performed_at: new Date().toISOString(),
 
       administered_by: "ER Attending Staff",
-    };
+    }
 
-    visit.treatments.push(newItem);
+    visit.treatments.push(newItem)
 
     this.updateVisit(visitId, {
       treatments: visit.treatments,
 
       status: "under_treatment",
-    });
+    })
 
-    return newItem;
+    return newItem
   }
 
   static addClinicalNote(
     visitId: number,
-    data: { note_type?: string; author?: string; content: string },
+    data: { note_type?: string ;author?: string ;content: string },
   ): ErClinicalNoteItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     const newItem: ErClinicalNoteItem = {
       id: visit.clinical_notes.length + 1,
@@ -5759,22 +5736,22 @@ export class ErDatabase {
       content: data.content,
 
       created_at: new Date().toISOString(),
-    };
+    }
 
-    visit.clinical_notes.push(newItem);
+    visit.clinical_notes.push(newItem)
 
-    this.updateVisit(visitId, { clinical_notes: visit.clinical_notes });
+    this.updateVisit(visitId, { clinical_notes: visit.clinical_notes })
 
-    return newItem;
+    return newItem
   }
 
   static addInvestigation(
     visitId: number,
-    data: { name: string; priority?: string; category?: string },
+    data: { name: string ;priority?: string ;category?: string },
   ): ErInvestigationItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     const newItem: ErInvestigationItem = {
       id: (visit.investigations || []).length + 1,
@@ -5792,22 +5769,22 @@ export class ErDatabase {
       status: "Ordered",
 
       result: "Sample Dispatched / In Progress",
-    };
+    }
 
-    visit.investigations = [...(visit.investigations || []), newItem];
+    visit.investigations = [...(visit.investigations || []), newItem]
 
-    this.updateVisit(visitId, { investigations: visit.investigations });
+    this.updateVisit(visitId, { investigations: visit.investigations })
 
-    return newItem;
+    return newItem
   }
 
   static createBedRequest(
     visitId: number,
-    data: { requested_level_of_care?: string; requested_specialty?: string },
+    data: { requested_level_of_care?: string ;requested_specialty?: string },
   ): ErBedRequestItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     const newItem: ErBedRequestItem = {
       id: visit.bed_requests.length + 1,
@@ -5829,23 +5806,23 @@ export class ErDatabase {
       allocated_admission_id: null,
 
       allocated_at: null,
-    };
+    }
 
-    visit.bed_requests.push(newItem);
+    visit.bed_requests.push(newItem)
 
     this.updateVisit(visitId, {
       bed_requests: visit.bed_requests,
 
       status: "bed_requested",
-    });
+    })
 
-    return newItem;
+    return newItem
   }
 
   static addConsent(visitId: number, data: any): ErConsentItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     const newItem: ErConsentItem = {
       id: (visit.consents || []).length + 1,
@@ -5871,19 +5848,19 @@ export class ErDatabase {
       signed_at: new Date().toISOString(),
 
       notes: data.notes,
-    };
+    }
 
-    const updated = [...(visit.consents || []), newItem];
+    const updated = [...(visit.consents || []), newItem]
 
-    this.updateVisit(visitId, { consents: updated });
+    this.updateVisit(visitId, { consents: updated })
 
-    return newItem;
+    return newItem
   }
 
   static recordLama(visitId: number, data: any): void {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
     this.updateVisit(visitId, {
       disposition: {
@@ -5906,50 +5883,50 @@ export class ErDatabase {
       closed_at: new Date().toISOString(),
 
       status: "closed",
-    });
+    })
   }
 
   static dispatchBedTransferAlert(notifData: {
-    patient_id?: string | null;
+    patient_id?: string | null
 
-    patient_name: string;
+    patient_name: string
 
-    patient_last_name?: string;
+    patient_last_name?: string
 
-    patient_age?: number | null;
+    patient_age?: number | null
 
-    patient_gender?: string | null;
+    patient_gender?: string | null
 
-    patient_phone?: string | null;
+    patient_phone?: string | null
 
-    source_department: string;
+    source_department: string
 
-    target_destination: string;
+    target_destination: string
 
-    target_bed_type: "ICU" | "General" | "Semi-Private" | "Private";
+    target_bed_type: "ICU" | "General" | "Semi-Private" | "Private"
 
-    target_ward?: string;
+    target_ward?: string
 
-    priority: "Stat / Emergency" | "High Priority" | "Urgent" | "Routine";
+    priority: "Stat / Emergency" | "High Priority" | "Urgent" | "Routine"
 
-    clinical_reason: string;
+    clinical_reason: string
 
-    sent_by?: string | null;
+    sent_by?: string | null
 
-    er_visit_id?: number;
+    er_visit_id?: number
 
-    er_bed_request_id?: number;
+    er_bed_request_id?: number
   }) {
-    if (typeof window === "undefined" || !window.localStorage) return;
+    if (typeof window === "undefined" || !window.localStorage) return
 
     try {
-      const key = "hospai_bed_transfer_notifications_v3";
+      const key = "hospai_bed_transfer_notifications_v3"
 
-      const existing = JSON.parse(window.localStorage.getItem(key) || "[]");
+      const existing = JSON.parse(window.localStorage.getItem(key) || "[]")
 
       const isIcu =
         notifData.target_destination.toLowerCase().includes("icu") ||
-        notifData.target_bed_type === "ICU";
+        notifData.target_bed_type === "ICU"
 
       const newNotif = {
         id: `NOTIF-TR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -5996,11 +5973,11 @@ export class ErDatabase {
         er_bed_request_id: notifData.er_bed_request_id,
 
         is_read: false,
-      };
+      }
 
-      existing.unshift(newNotif);
+      existing.unshift(newNotif)
 
-      window.localStorage.setItem(key, JSON.stringify(existing));
+      window.localStorage.setItem(key, JSON.stringify(existing))
 
       window.dispatchEvent(
         new CustomEvent("bed:transfer_notification_updated", {
@@ -6011,24 +5988,24 @@ export class ErDatabase {
             notifications: existing,
           },
         }),
-      );
+      )
 
       window.dispatchEvent(
         new CustomEvent("bed:new_transfer_alert", {
           detail: newNotif,
         }),
-      );
+      )
     } catch (err) {
-      console.error("Failed to dispatch bed transfer alert", err);
+      console.error("Failed to dispatch bed transfer alert", err)
     }
   }
 
   static recordDisposition(visitId: number, data: any): ErDispositionItem {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
-    const outcome = data.outcome || "discharge";
+    const outcome = data.outcome || "discharge"
 
     const isAdmission =
       outcome.includes("admit") ||
@@ -6037,13 +6014,13 @@ export class ErDatabase {
       outcome === "admit_inpatient" ||
       outcome === "admit_icu" ||
       outcome === "transfer_ot" ||
-      outcome === "transfer_facility";
+      outcome === "transfer_facility"
 
     const isIcu =
       outcome.includes("icu") ||
-      (data.required_specialty || "").toLowerCase().includes("icu");
+      (data.required_specialty || "").toLowerCase().includes("icu")
 
-    const reqLoc = isIcu ? "ICU" : data.required_specialty || "General Ward";
+    const reqLoc = isIcu ? "ICU" : data.required_specialty || "General Ward"
 
     const disp: ErDispositionItem = {
       outcome: outcome,
@@ -6064,19 +6041,19 @@ export class ErDatabase {
       decided_at: new Date().toISOString(),
 
       priority: data.priority || (isIcu ? "Stat / Emergency" : "Routine"),
-    };
+    }
 
-    let createdBedReqId: number | undefined;
+    let createdBedReqId: number | undefined
 
     // Auto-create or ensure bed request when disposition is admission or ICU
 
     if (isAdmission) {
       const existingPendingReq = (visit.bed_requests || []).find(
         (r) => r.status === "pending",
-      );
+      )
 
       if (!existingPendingReq) {
-        createdBedReqId = (visit.bed_requests || []).length + 1;
+        createdBedReqId = (visit.bed_requests || []).length + 1
 
         const newReq: ErBedRequestItem = {
           id: createdBedReqId,
@@ -6098,11 +6075,11 @@ export class ErDatabase {
           allocated_admission_id: null,
 
           allocated_at: null,
-        };
+        }
 
-        visit.bed_requests = [...(visit.bed_requests || []), newReq];
+        visit.bed_requests = [...(visit.bed_requests || []), newReq]
       } else {
-        createdBedReqId = existingPendingReq.id;
+        createdBedReqId = existingPendingReq.id
       }
 
       // Dispatch Transfer Notification to Bed Board
@@ -6147,14 +6124,14 @@ export class ErDatabase {
         er_visit_id: visit.id,
 
         er_bed_request_id: createdBedReqId,
-      });
+      })
     }
 
     const newStatus = isAdmission
       ? "bed_requested"
       : outcome === "discharge" || outcome === "death"
         ? "closed"
-        : "awaiting_disposition";
+        : "awaiting_disposition"
 
     this.updateVisit(visitId, {
       disposition: disp,
@@ -6167,21 +6144,21 @@ export class ErDatabase {
         outcome === "discharge" || outcome === "death"
           ? new Date().toISOString()
           : null,
-    });
+    })
 
-    return disp;
+    return disp
   }
 
   static getBedRequests(statusFilter?: string): any[] {
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
-    const results: any[] = [];
+    const results: any[] = []
 
     for (const v of visits) {
-      if (!v.bed_requests || v.bed_requests.length === 0) continue;
+      if (!v.bed_requests || v.bed_requests.length === 0) continue
 
       for (const r of v.bed_requests) {
-        if (statusFilter && r.status !== statusFilter) continue;
+        if (statusFilter && r.status !== statusFilter) continue
 
         results.push({
           id: r.id,
@@ -6209,11 +6186,11 @@ export class ErDatabase {
           requested_at: r.requested_at,
 
           status: r.status,
-        });
+        })
       }
     }
 
-    return results;
+    return results
   }
 
   static allocateBedRequest(
@@ -6221,17 +6198,17 @@ export class ErDatabase {
     bedId: number,
     notes?: string,
   ): void {
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
     for (const v of visits) {
-      const req = (v.bed_requests || []).find((r) => r.id === bedRequestId);
+      const req = (v.bed_requests || []).find((r) => r.id === bedRequestId)
 
       if (req) {
-        req.status = "allocated";
+        req.status = "allocated"
 
-        req.allocated_bed_id = bedId;
+        req.allocated_bed_id = bedId
 
-        req.allocated_at = new Date().toISOString();
+        req.allocated_at = new Date().toISOString()
 
         this.updateVisit(v.id, {
           bed_requests: v.bed_requests,
@@ -6239,64 +6216,64 @@ export class ErDatabase {
           status: "closed",
 
           closed_at: new Date().toISOString(),
-        });
+        })
 
-        break;
+        break
       }
     }
   }
 
   static cancelBedRequest(bedRequestId: number, reason?: string): void {
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
     for (const v of visits) {
-      const req = (v.bed_requests || []).find((r) => r.id === bedRequestId);
+      const req = (v.bed_requests || []).find((r) => r.id === bedRequestId)
 
       if (req) {
-        req.status = "cancelled";
+        req.status = "cancelled"
 
         this.updateVisit(v.id, {
           bed_requests: v.bed_requests,
-        });
+        })
 
-        break;
+        break
       }
     }
   }
 
   static getTimelineEvents(visitId: number): ErTimelineEventItem[] {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) return [];
+    if (!visit) return []
 
     return (visit.timeline_events || [])
       .slice()
       .sort(
         (a, b) =>
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      );
+      )
   }
 
   static addTimelineEvent(
     visitId: number,
     eventData: Partial<ErTimelineEventItem>,
   ): ErTimelineEventItem {
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
-    const idx = visits.findIndex((v) => v.id === Number(visitId));
+    const idx = visits.findIndex((v) => v.id === Number(visitId))
 
-    if (idx < 0) throw new Error("Visit not found");
+    if (idx < 0) throw new Error("Visit not found")
 
-    const v = visits[idx];
+    const v = visits[idx]
 
-    if (!v.timeline_events) v.timeline_events = [];
+    if (!v.timeline_events) v.timeline_events = []
 
     const newId =
       v.timeline_events.length > 0
         ? Math.max(...v.timeline_events.map((e) => e.id)) + 1
-        : 1;
+        : 1
 
-    const now = new Date().toISOString();
+    const now = new Date().toISOString()
 
     const fullEvent: ErTimelineEventItem = {
       id: newId,
@@ -6338,11 +6315,11 @@ export class ErDatabase {
       destination_bed_data: eventData.destination_bed_data,
 
       transfer_data: eventData.transfer_data,
-    };
+    }
 
     // Add to chronological timeline
 
-    v.timeline_events.push(fullEvent);
+    v.timeline_events.push(fullEvent)
 
     // Sync corresponding subsystems:
 
@@ -6351,7 +6328,7 @@ export class ErDatabase {
       fullEvent.event_type === "followup_vitals"
     ) {
       if (fullEvent.vitals_data) {
-        if (!v.vitals) v.vitals = [];
+        if (!v.vitals) v.vitals = []
 
         v.vitals.push({
           id: v.vitals.length + 1,
@@ -6384,13 +6361,13 @@ export class ErDatabase {
               : "Alert (A)",
 
           notes: fullEvent.vitals_data.notes || null,
-        });
+        })
       }
     } else if (
       fullEvent.event_type === "medication_given" &&
       fullEvent.medication_data
     ) {
-      if (!v.treatments) v.treatments = [];
+      if (!v.treatments) v.treatments = []
 
       v.treatments.push({
         id: v.treatments.length + 1,
@@ -6402,12 +6379,12 @@ export class ErDatabase {
         performed_at: fullEvent.timestamp,
 
         administered_by: fullEvent.logged_by,
-      });
+      })
     } else if (
       fullEvent.event_type === "intervention_given" &&
       fullEvent.intervention_data
     ) {
-      if (!v.treatments) v.treatments = [];
+      if (!v.treatments) v.treatments = []
 
       v.treatments.push({
         id: v.treatments.length + 1,
@@ -6423,21 +6400,21 @@ export class ErDatabase {
         performed_at: fullEvent.timestamp,
 
         administered_by: fullEvent.logged_by,
-      });
+      })
     } else if (
       fullEvent.event_type === "doctor_assigned" &&
       fullEvent.doctor_data
     ) {
-      v.assigned_doctor_name = fullEvent.doctor_data.doctor_name;
+      v.assigned_doctor_name = fullEvent.doctor_data.doctor_name
 
-      v.assigned_specialty = fullEvent.doctor_data.specialty;
+      v.assigned_specialty = fullEvent.doctor_data.specialty
 
-      v.doctor_assigned_at = fullEvent.timestamp;
+      v.doctor_assigned_at = fullEvent.timestamp
     } else if (
       fullEvent.event_type === "doctor_arrived" &&
       fullEvent.assessment_data
     ) {
-      v.doctor_accepted_at = fullEvent.timestamp;
+      v.doctor_accepted_at = fullEvent.timestamp
     } else if (
       fullEvent.event_type === "destination_assigned" &&
       fullEvent.destination_data
@@ -6456,7 +6433,7 @@ export class ErDatabase {
         "Operating Theatre": "transfer_ot",
 
         Discharge: "discharge",
-      };
+      }
 
       v.disposition = {
         outcome:
@@ -6477,27 +6454,27 @@ export class ErDatabase {
         decided_at: fullEvent.timestamp,
 
         priority: "High Priority",
-      };
+      }
     } else if (
       fullEvent.event_type === "destination_bed_assigned" &&
       fullEvent.destination_bed_data
     ) {
-      v.triage_bed_label = `${fullEvent.destination_bed_data.department} (${fullEvent.destination_bed_data.bed_id_or_label})`;
+      v.triage_bed_label = `${fullEvent.destination_bed_data.department} (${fullEvent.destination_bed_data.bed_id_or_label})`
     } else if (
       fullEvent.event_type === "patient_transferred" &&
       fullEvent.transfer_data
     ) {
-      v.status = "closed";
+      v.status = "closed"
 
-      v.closed_at = fullEvent.timestamp;
+      v.closed_at = fullEvent.timestamp
 
-      v.triage_bed_label = `${fullEvent.transfer_data.target_destination} (${fullEvent.transfer_data.target_bed})`;
+      v.triage_bed_label = `${fullEvent.transfer_data.target_destination} (${fullEvent.transfer_data.target_bed})`
 
       // Dispatch Transfer Notification to Bed Board
 
       const isIcu = (fullEvent.transfer_data.target_destination || "")
         .toLowerCase()
-        .includes("icu");
+        .includes("icu")
 
       ErDatabase.dispatchBedTransferAlert({
         patient_id: v.patient_id,
@@ -6533,66 +6510,63 @@ export class ErDatabase {
         sent_by: fullEvent.logged_by || "Staff Nurse",
 
         er_visit_id: v.id,
-      });
+      })
     }
 
-    this.save(ER_STORAGE_KEY_VISITS, visits);
+    this.save(ER_STORAGE_KEY_VISITS, visits)
 
-    return fullEvent;
+    return fullEvent
   }
 
   static clearTimeline(visitId: number): void {
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
-    const idx = visits.findIndex((v) => v.id === Number(visitId));
+    const idx = visits.findIndex((v) => v.id === Number(visitId))
 
-    if (idx < 0) throw new Error("Visit not found");
+    if (idx < 0) throw new Error("Visit not found")
 
-    visits[idx].timeline_events = [];
+    visits[idx].timeline_events = []
 
-    this.save(ER_STORAGE_KEY_VISITS, visits);
+    this.save(ER_STORAGE_KEY_VISITS, visits)
   }
 
   static deleteTimelineEvent(visitId: number, eventId: number): void {
-    const visits = this.getVisits("all");
+    const visits = this.getVisits("all")
 
-    const idx = visits.findIndex((v) => v.id === Number(visitId));
+    const idx = visits.findIndex((v) => v.id === Number(visitId))
 
-    if (idx < 0) throw new Error("Visit not found");
+    if (idx < 0) throw new Error("Visit not found")
 
     if (visits[idx].timeline_events) {
       visits[idx].timeline_events = visits[idx].timeline_events!.filter(
         (e) => e.id !== eventId,
-      );
+      )
 
-      this.save(ER_STORAGE_KEY_VISITS, visits);
+      this.save(ER_STORAGE_KEY_VISITS, visits)
     }
   }
 
-  static closeVisit(
-    visitId: number,
-    consultationFee?: number,
-  ): {
-    invoice_id: number;
-    total: number;
+  static closeVisit(visitId: number, consultationFee?: number): {
+    invoice_id: number
+    total: number
   } {
-    const visit = this.getVisit(visitId);
+    const visit = this.getVisit(visitId)
 
-    if (!visit) throw new Error("Visit not found");
+    if (!visit) throw new Error("Visit not found")
 
-    const baseFee = consultationFee || 100;
+    const baseFee = consultationFee || 100
 
-    const treatFee = (visit.treatments || []).length * 40;
+    const treatFee = (visit.treatments || []).length * 40
 
-    const total = baseFee + treatFee;
+    const total = baseFee + treatFee
 
     this.updateVisit(visitId, {
       status: "closed",
 
       closed_at: new Date().toISOString(),
-    });
+    })
 
-    return { invoice_id: 1000 + visitId, total };
+    return { invoice_id: 1000 + visitId, total }
   }
 
   // Clinical Rule-Based Smart AI Triage Engine with Qwen Integration
@@ -6602,44 +6576,44 @@ export class ErDatabase {
 
     vitals: Partial<ErVitalsItem>,
   ): Promise<{
-    categoryCode: string;
+    categoryCode: string
 
-    urgency: string;
+    urgency: string
 
-    reasoning: string;
+    reasoning: string
 
-    suggestedDepartment: string;
+    suggestedDepartment: string
 
-    suggestedDoctor: string;
+    suggestedDoctor: string
 
-    triageBedLabel: string;
+    triageBedLabel: string
 
-    suggestedTreatments: { intervention_type: string; description: string }[];
+    suggestedTreatments: { intervention_type: string ;description: string }[]
   }> {
-    const c = (complaints || "").toLowerCase();
+    const c = (complaints || "").toLowerCase()
 
     // Fallback rule-based logic function
 
     const runRuleBasedFallback = () => {
-      const hr = vitals.heart_rate || 0;
+      const hr = vitals.heart_rate || 0
 
-      const sys = vitals.bp_systolic || 0;
+      const sys = vitals.bp_systolic || 0
 
-      const dia = vitals.bp_diastolic || 0;
+      const dia = vitals.bp_diastolic || 0
 
-      const spo2 = vitals.spo2 || 100;
+      const spo2 = vitals.spo2 || 100
 
-      const rr = vitals.respiratory_rate || 16;
+      const rr = vitals.respiratory_rate || 16
 
-      const temp = vitals.temperature || 98.6;
+      const temp = vitals.temperature || 98.6
 
-      const gcs = vitals.gcs || 15;
+      const gcs = vitals.gcs || 15
 
-      const grbs = vitals.blood_glucose || 100;
+      const grbs = vitals.blood_glucose || 100
 
-      const pain = vitals.pain_score || 0;
+      const pain = vitals.pain_score || 0
 
-      const cons = (vitals.consciousness_level || "").toLowerCase();
+      const cons = (vitals.consciousness_level || "").toLowerCase()
 
       // Critical Priority (B1 - Red)
 
@@ -6689,7 +6663,7 @@ export class ErDatabase {
               description: "Stat ECG, cardiac loading doses / airway standby",
             },
           ],
-        };
+        }
       }
 
       // High Emergent Priority (B2 - Orange)
@@ -6747,7 +6721,7 @@ export class ErDatabase {
               description: "Immediate symptomatic relief per protocol",
             },
           ],
-        };
+        }
       }
 
       // Moderate Urgent (B3 - Yellow)
@@ -6788,7 +6762,7 @@ export class ErDatabase {
                 "IV Paracetamol 1g / Ondansetron 4mg for acute symptom control",
             },
           ],
-        };
+        }
       }
 
       return {
@@ -6811,17 +6785,17 @@ export class ErDatabase {
             description: "Standard clinical evaluation and vitals monitoring",
           },
         ],
-      };
-    };
+      }
+    }
 
     // Attempt to use Qwen LLM
 
     try {
       const apiUrl =
         (import.meta as any).env?.VITE_QWEN_API_URL ||
-        "http://localhost:11434/v1/chat/completions";
+        "http://localhost:11434/v1/chat/completions"
 
-      const apiKey = (import.meta as any).env?.VITE_QWEN_API_KEY || "ollama";
+      const apiKey = (import.meta as any).env?.VITE_QWEN_API_KEY || "ollama"
 
       const prompt = `You are an AI Triage Assistant in an Emergency Room.
 Based on the patient's symptoms and vitals, evaluate the clinical triage.
@@ -6842,7 +6816,7 @@ Respond ONLY with a valid JSON object matching this schema:
   "suggestedTreatments": [
     { "intervention_type": "string", "description": "string" }
   ]
-}`;
+}`
 
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -6862,22 +6836,22 @@ Respond ONLY with a valid JSON object matching this schema:
 
           response_format: { type: "json_object" },
         }),
-      });
+      })
 
       if (!response.ok) {
-        throw new Error("LLM API returned an error");
+        throw new Error("LLM API returned an error")
       }
 
-      const data = await response.json();
+      const data = await response.json()
 
-      const content = data.choices[0].message.content;
+      const content = data.choices[0].message.content
 
-      const parsed = JSON.parse(content);
+      const parsed = JSON.parse(content)
 
       // Basic validation
 
       if (!parsed.categoryCode || !parsed.suggestedDepartment) {
-        throw new Error("Invalid schema returned by LLM");
+        throw new Error("Invalid schema returned by LLM")
       }
 
       // Fallback logic for hallucinations
@@ -6892,10 +6866,10 @@ Respond ONLY with a valid JSON object matching this schema:
         "Neurology",
         "Pediatrics",
         "Obstetrics & Gynecology",
-      ];
+      ]
 
       if (!validDepts.includes(parsed.suggestedDepartment)) {
-        parsed.suggestedDepartment = "General Medicine";
+        parsed.suggestedDepartment = "General Medicine"
       }
 
       if (
@@ -6916,21 +6890,21 @@ Respond ONLY with a valid JSON object matching this schema:
           Neurology: "Dr. Meenakshi Rao (Neurology)",
 
           "General Surgery": "Dr. Priya Deshmukh (General Surgery)",
-        };
+        }
 
         parsed.suggestedDoctor =
           docMap[parsed.suggestedDepartment] ||
-          "Dr. Rajesh Sharma (General Medicine)";
+          "Dr. Rajesh Sharma (General Medicine)"
       }
 
-      return parsed;
+      return parsed
     } catch (err) {
       console.warn(
         "AI Triage via Qwen failed, falling back to rule-based engine:",
         err,
-      );
+      )
 
-      return runRuleBasedFallback();
+      return runRuleBasedFallback()
     }
   }
 }

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { useEffect, useMemo, useState } from "react"
+import type { Dispatch, ReactNode, SetStateAction } from "react"
 import {
   FiActivity,
   FiCheckCircle,
@@ -8,28 +8,28 @@ import {
   FiUserCheck,
   FiUsers,
   FiXCircle,
-} from "react-icons/fi";
-import { Button, Select } from "../components/ui";
-import { apiFetch, reportError } from "../lib/api";
-import { updateAppointmentStatus } from "../lib/appointments";
-import { getAppointmentStatusMeta } from "../lib/appointmentStatus";
-import type { Appointment, Notice } from "../types";
+} from "react-icons/fi"
+import { Button, Select } from "../components/ui"
+import { apiFetch, reportError } from "../lib/api"
+import { updateAppointmentStatus } from "../lib/appointments"
+import { getAppointmentStatusMeta } from "../lib/appointmentStatus"
+import type { Appointment, Notice } from "../types"
 
-import AppointmentQueueCard from "../components/AppointmentQueueCard";
+import AppointmentQueueCard from "../components/AppointmentQueueCard"
 
 type Props = {
-  setNotice: Dispatch<SetStateAction<Notice | null>>;
-  onNavigate?: (page: string) => void;
+  setNotice: Dispatch<SetStateAction<Notice | null>>
+  onNavigate?: (page: string) => void
   /** Completing/cancelling a consultation is a clinical hand-off action --
    * restricted to the clinician running it (or an admin), not just hidden
    * from receptionists. Front-desk check-in/start-consultation stays open
    * to everyone regardless of this flag. */
-  canManageConsultation?: boolean;
-};
+  canManageConsultation?: boolean
+}
 
-const ACTIVE_STATUSES = ["scheduled", "checked_in", "in_consultation"];
+const ACTIVE_STATUSES = ["scheduled", "checked_in", "in_consultation"]
 
-const STAT_CARDS: { status: string; label: string; icon: ReactNode }[] = [
+const STAT_CARDS: { status: string label: string icon: ReactNode }[] = [
   { status: "scheduled", label: "Waiting", icon: <FiClock aria-hidden /> },
   {
     status: "checked_in",
@@ -47,51 +47,51 @@ const STAT_CARDS: { status: string; label: string; icon: ReactNode }[] = [
     icon: <FiCheckCircle aria-hidden />,
   },
   { status: "cancelled", label: "Cancelled", icon: <FiXCircle aria-hidden /> },
-];
+]
 
 export default function QueuePage({
   setNotice,
   onNavigate,
   canManageConsultation,
 }: Props) {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [doctorFilter, setDoctorFilter] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [loading, setLoading] = useState(false)
+  const [doctorFilter, setDoctorFilter] = useState("")
+  const [departmentFilter, setDepartmentFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState("")
 
   const loadAppointments = async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+    if (!isBackground) setLoading(true)
     try {
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      const now = new Date()
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
       const data = await apiFetch<{ appointments?: Appointment[] }>(
         `/api/appointments?date=${today}`,
-      );
-      setAppointments(data.appointments || []);
+      )
+      setAppointments(data.appointments || [])
     } catch (error) {
       if (!isBackground) {
         reportError(
           setNotice,
-          error as { message?: string; status?: number },
+          error as { message?: string status?: number },
           "Unable to load the queue.",
-        );
+        )
       }
     } finally {
-      if (!isBackground) setLoading(false);
+      if (!isBackground) setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    void loadAppointments();
+    void loadAppointments()
 
     // Auto-refresh the queue every 15 seconds
     const interval = setInterval(() => {
-      void loadAppointments(true);
-    }, 15000);
+      void loadAppointments(true)
+    }, 15000)
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => clearInterval(interval)
+  }, [])
 
   const doctorOptions = useMemo(
     () =>
@@ -103,7 +103,7 @@ export default function QueuePage({
         ),
       ).sort(),
     [appointments],
-  );
+  )
   const departmentOptions = useMemo(
     () =>
       Array.from(
@@ -114,48 +114,48 @@ export default function QueuePage({
         ),
       ).sort(),
     [appointments],
-  );
+  )
 
   const filteredAppointments = useMemo(
     () =>
       appointments.filter((item) => {
         if (doctorFilter && (item.doctor_name || "").trim() !== doctorFilter)
-          return false;
+          return false
         if (
           departmentFilter &&
           (item.department || "").trim() !== departmentFilter
         )
-          return false;
-        if (statusFilter && item.status !== statusFilter) return false;
-        return true;
+          return false
+        if (statusFilter && item.status !== statusFilter) return false
+        return true
       }),
     [appointments, doctorFilter, departmentFilter, statusFilter],
-  );
+  )
 
   const waitingCount = useMemo(
     () =>
       appointments.filter((item) => ACTIVE_STATUSES.includes(item.status))
         .length,
     [appointments],
-  );
+  )
 
   const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const counts: Record<string, number> = {}
     appointments.forEach((item) => {
-      counts[item.status] = (counts[item.status] || 0) + 1;
-    });
-    return counts;
-  }, [appointments]);
+      counts[item.status] = (counts[item.status] || 0) + 1
+    })
+    return counts
+  }, [appointments])
 
   const hasActiveFilters = Boolean(
     doctorFilter || departmentFilter || statusFilter,
-  );
+  )
 
   const clearFilters = () => {
-    setDoctorFilter("");
-    setDepartmentFilter("");
-    setStatusFilter("");
-  };
+    setDoctorFilter("")
+    setDepartmentFilter("")
+    setStatusFilter("")
+  }
 
   const handleStatusChange = async (
     appointment: Appointment,
@@ -163,71 +163,71 @@ export default function QueuePage({
   ) => {
     // If completing, immediately trigger WhatsApp for next patient to bypass popup blockers
     if (status === "completed") {
-      handleCallNext(appointment, true);
+      handleCallNext(appointment, true)
     }
     try {
-      await updateAppointmentStatus(appointment.id, status);
-      await loadAppointments();
+      await updateAppointmentStatus(appointment.id, status)
+      await loadAppointments()
       setNotice({
         type: "success",
         message: `Token status updated to ${status.replace("_", " ")}.`,
-      });
+      })
       // Check-in and cancellation keep the patient in this desk's queue; consultation
       // start/finish hand the patient off to the next desk, so follow them there.
       if (status === "in_consultation") {
-        onNavigate?.("doctor-prescription");
+        onNavigate?.("doctor-prescription")
       } else if (status === "completed") {
-        onNavigate?.("appointment-out");
+        onNavigate?.("appointment-out")
       }
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string; status?: number },
+        error as { message?: string status?: number },
         "Unable to update appointment status.",
-      );
+      )
     }
-  };
+  }
 
   const handleCallNext = (currentAppt: Appointment, silent = false) => {
     const nextAppt = appointments.find(
       (a) =>
         a.status === "checked_in" && a.doctor_name === currentAppt.doctor_name,
-    );
+    )
     if (!nextAppt) {
       if (!silent)
         setNotice({
           type: "warning",
           message: "No more patients waiting in queue for this doctor.",
-        });
-      return;
+        })
+      return
     }
     if (!nextAppt.patient_phone) {
       setNotice({
         type: "warning",
         message: `Next patient (${nextAppt.patient_name}) does not have a registered phone number. The receptionist can send them in and update their status.`,
-      });
-      return;
+      })
+      return
     }
-    const phone = nextAppt.patient_phone.replace(/\D/g, "");
+    const phone = nextAppt.patient_phone.replace(/\D/g, "")
     const docName = nextAppt.doctor_name
       ? `Dr. ${nextAppt.doctor_name.replace(/^Dr\.?\s*/i, "")}`
-      : "The Doctor";
+      : "The Doctor"
     const deptInfo = nextAppt.department
       ? `${nextAppt.department}`
-      : "General Consultation";
+      : "General Consultation"
     const timeStr = nextAppt.appointment_date
       ? new Date(nextAppt.appointment_date).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         })
-      : "Now";
+      : "Now"
 
-    const msg = `🏥 *Keppler Healthcare*\n\nDear *${nextAppt.patient_name}*,\n\nThe doctor is ready to see you now. Please proceed to the consultation room.\n\n👨‍⚕️ *Doctor:* ${docName}\n🩺 *Department:* ${deptInfo}\n⏰ *Time:* ${timeStr}\n\n_Thank you for your patience!_`;
+    const msg = `🏥 *Keppler Healthcare*\n\nDear *${nextAppt.patient_name}*,\n\nThe doctor is ready to see you now. Please proceed to the consultation room.\n\n👨‍⚕️ *Doctor:* ${docName}\n🩺 *Department:* ${deptInfo}\n⏰ *Time:* ${timeStr}\n\n_Thank you for your patience!_`
     window.open(
       `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`,
       "_blank",
-    );
-  };
+    )
+  }
 
   return (
     <section className="module-page">
@@ -239,7 +239,7 @@ export default function QueuePage({
 
       <div className="queue-stats">
         {STAT_CARDS.map((card) => {
-          const tone = getAppointmentStatusMeta(card.status).tone;
+          const tone = getAppointmentStatusMeta(card.status).tone
           return (
             <div className="queue-stat-card" key={card.status}>
               <span className={`queue-stat-icon queue-stat-icon-${tone}`}>
@@ -252,7 +252,7 @@ export default function QueuePage({
                 <span className="queue-stat-label">{card.label}</span>
               </span>
             </div>
-          );
+          )
         })}
       </div>
 
@@ -422,5 +422,5 @@ export default function QueuePage({
         ) : null}
       </div>
     </section>
-  );
+  )
 }

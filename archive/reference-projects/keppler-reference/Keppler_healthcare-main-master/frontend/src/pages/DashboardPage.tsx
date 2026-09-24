@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import StatCard from "../components/StatCard";
+import { useMemo } from "react"
+import StatCard from "../components/StatCard"
 import {
   Button,
   Card,
@@ -12,27 +12,27 @@ import {
   TableRow,
   TableCell,
   Badge,
-} from "../components/ui";
-import { Skeleton } from "../components/ui/Skeleton";
+} from "../components/ui"
+import { Skeleton } from "../components/ui/Skeleton"
 import type {
   DashboardAnalytics,
   DistributionItem,
   HospitalSummary,
   Patient,
   Stats,
-} from "../types";
-import { formatDateTimeIST } from "../lib/format";
-import { FiEye } from "react-icons/fi";
+} from "../types"
+import { formatDateTimeIST } from "../lib/format"
+import { FiEye } from "react-icons/fi"
 
 type Props = {
-  stats: Stats;
-  recentPatients: Patient[];
-  analytics: DashboardAnalytics | null;
-  hospitalSummary: HospitalSummary | null;
-  analyticsLoading: boolean;
-  onNavigate: (page: string) => void;
-  permissions: string[];
-};
+  stats: Stats
+  recentPatients: Patient[]
+  analytics: DashboardAnalytics | null
+  hospitalSummary: HospitalSummary | null
+  analyticsLoading: boolean
+  onNavigate: (page: string) => void
+  permissions: string[]
+}
 
 const CHART_COLORS = [
   "#0e7490",
@@ -42,30 +42,30 @@ const CHART_COLORS = [
   "#be123c",
   "#7c3aed",
   "#334155",
-];
+]
 
 function toPercent(value: number, total: number) {
-  if (!total) return 0;
-  return Math.round((value / total) * 100);
+  if (!total) return 0
+  return Math.round((value / total) * 100)
 }
 
 function shortDateLabel(value: string) {
-  const parsed = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return value;
+  const parsed = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return value
   return parsed.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
-  });
+  })
 }
 
 function TrendBars({
   title,
   points,
 }: {
-  title: string;
-  points: { date: string; count: number }[];
+  title: string
+  points: { date: string count: number }[]
 }) {
-  const max = Math.max(1, ...points.map((item) => item.count));
+  const max = Math.max(1, ...points.map((item) => item.count))
 
   return (
     <Card className="panel dashboard-analytics-card">
@@ -98,32 +98,32 @@ function TrendBars({
         )}
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function DonutChart({
   title,
   items,
 }: {
-  title: string;
-  items: DistributionItem[];
+  title: string
+  items: DistributionItem[]
 }) {
-  const total = items.reduce((sum, item) => sum + item.count, 0);
+  const total = items.reduce((sum, item) => sum + item.count, 0)
 
   const background = useMemo(() => {
     if (!total || items.length === 0) {
-      return "conic-gradient(#dce8f1 0deg 360deg)";
+      return "conic-gradient(#dce8f1 0deg 360deg)"
     }
-    let start = 0;
+    let start = 0
     const slices = items.map((item, index) => {
-      const angle = (item.count / total) * 360;
-      const end = start + angle;
-      const chunk = `${CHART_COLORS[index % CHART_COLORS.length]} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`;
-      start = end;
-      return chunk;
-    });
-    return `conic-gradient(${slices.join(", ")})`;
-  }, [items, total]);
+      const angle = (item.count / total) * 360
+      const end = start + angle
+      const chunk = `${CHART_COLORS[index % CHART_COLORS.length]} ${start.toFixed(2)}deg ${end.toFixed(2)}deg`
+      start = end
+      return chunk
+    })
+    return `conic-gradient(${slices.join(", ")})`
+  }, [items, total])
 
   return (
     <Card className="panel dashboard-analytics-card">
@@ -161,7 +161,7 @@ function DonutChart({
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }
 
 function formatCurrency(amount?: number) {
@@ -169,7 +169,7 @@ function formatCurrency(amount?: number) {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
-  }).format(amount || 0);
+  }).format(amount || 0)
 }
 
 export default function DashboardPage({
@@ -183,15 +183,15 @@ export default function DashboardPage({
 }: Props) {
   const canViewBilling =
     permissions.includes("billing.read") ||
-    permissions.includes("accounts.read");
-  const canViewPharmacy = permissions.includes("pharmacy.read");
-  const canViewBeds = permissions.includes("beds.read");
-  const bedOccupancy = hospitalSummary?.bed_occupancy;
-  const paymentModes = hospitalSummary?.revenue?.payment_mode_breakdown || [];
+    permissions.includes("accounts.read")
+  const canViewPharmacy = permissions.includes("pharmacy.read")
+  const canViewBeds = permissions.includes("beds.read")
+  const bedOccupancy = hospitalSummary?.bed_occupancy
+  const paymentModes = hospitalSummary?.revenue?.payment_mode_breakdown || []
   const maxPaymentMode = Math.max(
     1,
     ...paymentModes.map((item) => item.count || 0),
-  );
+  )
 
   return (
     <section className="fade-in page-container">
@@ -224,10 +224,10 @@ export default function DashboardPage({
                   </TableHead>
                   {recentPatients.map((patient) => {
                     const isCompleted =
-                      patient.status?.toLowerCase() === "completed";
+                      patient.status?.toLowerCase() === "completed"
                     const isConsultation = patient.status
                       ?.toLowerCase()
-                      .includes("consultation");
+                      .includes("consultation")
                     return (
                       <TableRow
                         key={patient.patient_id}
@@ -274,7 +274,7 @@ export default function DashboardPage({
                           </div>
                         </TableCell>
                       </TableRow>
-                    );
+                    )
                   })}
                 </Table>
               </div>
@@ -413,19 +413,25 @@ export default function DashboardPage({
                 {bedOccupancy.available > 0 && (
                   <span
                     className="bed-occupancy-segment bed-occupancy-segment-available"
-                    style={{ width: `${(bedOccupancy.available / (bedOccupancy.total || 1)) * 100}%` }}
+                    style={{
+                      width: `${(bedOccupancy.available / (bedOccupancy.total || 1)) * 100}%`,
+                    }}
                   />
                 )}
                 {bedOccupancy.occupied > 0 && (
                   <span
                     className="bed-occupancy-segment bed-occupancy-segment-occupied"
-                    style={{ width: `${(bedOccupancy.occupied / (bedOccupancy.total || 1)) * 100}%` }}
+                    style={{
+                      width: `${(bedOccupancy.occupied / (bedOccupancy.total || 1)) * 100}%`,
+                    }}
                   />
                 )}
                 {bedOccupancy.maintenance > 0 && (
                   <span
                     className="bed-occupancy-segment bed-occupancy-segment-maintenance"
-                    style={{ width: `${(bedOccupancy.maintenance / (bedOccupancy.total || 1)) * 100}%` }}
+                    style={{
+                      width: `${(bedOccupancy.maintenance / (bedOccupancy.total || 1)) * 100}%`,
+                    }}
                   />
                 )}
               </div>
@@ -532,5 +538,5 @@ export default function DashboardPage({
         <p className="muted">Refreshing analytics...</p>
       ) : null}
     </section>
-  );
+  )
 }

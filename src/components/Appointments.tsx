@@ -1,17 +1,20 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { StatusBadge, Btn, Card } from "./shared";
-import { Icon } from "./icons";
-import { db, DBOPEncounter } from "../services/db";
-import { bookAppointment, type AppointmentBooking } from "../services/appointmentBooking";
-import { 
-  getDoctorMaster, 
-  pickDoctorForSpecialty, 
-  availabilityOf, 
-  getDoctorByName, 
+import React, { useState, useEffect, useMemo } from "react"
+import { StatusBadge, Btn, Card } from "./shared"
+import { Icon } from "./icons"
+import { db, DBOPEncounter } from "../services/db"
+import {
+  bookAppointment,
+  type AppointmentBooking,
+} from "../services/appointmentBooking"
+import {
+  getDoctorMaster,
+  pickDoctorForSpecialty,
+  availabilityOf,
+  getDoctorByName,
   doctorsForSpecialty,
-  MasterDoctor 
-} from "../services/doctorMaster";
-import PatientJourneyModal from "./PatientJourneyModal";
+  MasterDoctor,
+} from "../services/doctorMaster"
+import PatientJourneyModal from "./PatientJourneyModal"
 
 const DEPARTMENTS = [
   "All Departments",
@@ -22,146 +25,228 @@ const DEPARTMENTS = [
   "Neurology",
   "Dermatology",
   "ENT",
-  "Emergency / Casualty"
-];
+  "Emergency / Casualty",
+]
 
-const DAYS = ["Mon\nAug 19", "Tue\nAug 20", "Wed\nAug 21", "Thu\nAug 22", "Fri\nAug 23", "Sat\nAug 24", "Sun\nAug 25"];
-const SELECTED_DAY = 4;
+const DAYS = [
+  "Mon\nAug 19",
+  "Tue\nAug 20",
+  "Wed\nAug 21",
+  "Thu\nAug 22",
+  "Fri\nAug 23",
+  "Sat\nAug 24",
+  "Sun\nAug 25",
+]
+const SELECTED_DAY = 4
 
-const SYMPTOM_RULES: { pattern: RegExp; specialty: string; urgency: string }[] = [
-  { pattern: /\b(chest|heart|palpitat|breathless|cardio|angina|tachycardia|ecg|hypertens|bp\b|pressure)\b/i, specialty: "Cardiology", urgency: "High - Same Day" },
-  { pattern: /\b(knee|bone|fractur|joint|sprain|ortho|spine|back pain|arthritis|ligament|swollen ankle|shoulder)\b/i, specialty: "Orthopedics", urgency: "Moderate" },
-  { pattern: /\b(pregnan|prenatal|period|menstrua|gynec|pelvic|ovary|uterus|delivery|obstetric)\b/i, specialty: "Gynecology", urgency: "Routine" },
-  { pattern: /\b(child|infant|baby|paediatric|pediatric|toddler|newborn|immunis|immuniz|vaccin)\b/i, specialty: "Pediatrics", urgency: "Moderate" },
-  { pattern: /\b(ear|nose|throat|sinus|tonsil|hearing|deaf|vertigo|snor|hoarse)\b/i, specialty: "ENT", urgency: "Routine" },
-  { pattern: /\b(diabet|sugar|insulin|thyroid|hba1c|glycem)\b/i, specialty: "Diabetology", urgency: "Moderate" },
-  { pattern: /\b(tumor|tumour|cancer|oncolog|lump|biopsy|malignan)\b/i, specialty: "Surgical Oncology", urgency: "High - Same Day" },
-  { pattern: /\b(hernia|appendic|gallbladder|piles|fistula|abscess|surgical)\b/i, specialty: "General Surgery", urgency: "Moderate" },
-  { pattern: /\b(scan|x-ray|xray|mri|ct\b|ultrasound|imaging|radiolog)\b/i, specialty: "Radiology", urgency: "Routine" },
-  { pattern: /\b(fever|cold|cough|weakness|fatigue|infect|body pain|chill|viral|malaise|typhoid|malaria|headache|vomit|diarrhea|nausea|dizz)\b/i, specialty: "General Medicine", urgency: "Moderate" },
-];
+const SYMPTOM_RULES: { pattern: RegExp ;specialty: string ;urgency: string }[] = [
+  {
+    pattern:
+      /\b(chest|heart|palpitat|breathless|cardio|angina|tachycardia|ecg|hypertens|bp\b|pressure)\b/i,
+    specialty: "Cardiology",
+    urgency: "High - Same Day",
+  },
+  {
+    pattern:
+      /\b(knee|bone|fractur|joint|sprain|ortho|spine|back pain|arthritis|ligament|swollen ankle|shoulder)\b/i,
+    specialty: "Orthopedics",
+    urgency: "Moderate",
+  },
+  {
+    pattern:
+      /\b(pregnan|prenatal|period|menstrua|gynec|pelvic|ovary|uterus|delivery|obstetric)\b/i,
+    specialty: "Gynecology",
+    urgency: "Routine",
+  },
+  {
+    pattern:
+      /\b(child|infant|baby|paediatric|pediatric|toddler|newborn|immunis|immuniz|vaccin)\b/i,
+    specialty: "Pediatrics",
+    urgency: "Moderate",
+  },
+  {
+    pattern:
+      /\b(ear|nose|throat|sinus|tonsil|hearing|deaf|vertigo|snor|hoarse)\b/i,
+    specialty: "ENT",
+    urgency: "Routine",
+  },
+  {
+    pattern: /\b(diabet|sugar|insulin|thyroid|hba1c|glycem)\b/i,
+    specialty: "Diabetology",
+    urgency: "Moderate",
+  },
+  {
+    pattern: /\b(tumor|tumour|cancer|oncolog|lump|biopsy|malignan)\b/i,
+    specialty: "Surgical Oncology",
+    urgency: "High - Same Day",
+  },
+  {
+    pattern:
+      /\b(hernia|appendic|gallbladder|piles|fistula|abscess|surgical)\b/i,
+    specialty: "General Surgery",
+    urgency: "Moderate",
+  },
+  {
+    pattern: /\b(scan|x-ray|xray|mri|ct\b|ultrasound|imaging|radiolog)\b/i,
+    specialty: "Radiology",
+    urgency: "Routine",
+  },
+  {
+    pattern:
+      /\b(fever|cold|cough|weakness|fatigue|infect|body pain|chill|viral|malaise|typhoid|malaria|headache|vomit|diarrhea|nausea|dizz)\b/i,
+    specialty: "General Medicine",
+    urgency: "Moderate",
+  },
+]
 
 const detectDepartmentFromSymptoms = (
   text: string,
   load: (doctorName: string) => number,
-): { dept: string; doc: string; urgency: string; onRequest: boolean; note?: string } | null => {
-  if (!text || text.trim().length < 2) return null;
+): {
+  dept: string
+  doc: string
+  urgency: string
+  onRequest: boolean
+  note?: string
+} | null => {
+  if (!text || text.trim().length < 2) return null
 
-  const matched = SYMPTOM_RULES.find(r => r.pattern.test(text));
-  const specialty = matched?.specialty || "General Medicine";
-  const urgency = matched?.urgency || "Routine";
+  const matched = SYMPTOM_RULES.find((r) => r.pattern.test(text))
+  const specialty = matched?.specialty || "General Medicine"
+  const urgency = matched?.urgency || "Routine"
 
-  const direct = pickDoctorForSpecialty(specialty, load);
+  const direct = pickDoctorForSpecialty(specialty, load)
   if (direct) {
     return {
       dept: specialty,
       doc: direct.name,
       urgency,
       onRequest: availabilityOf(direct).onRequest,
-    };
+    }
   }
 
-  const fallback = pickDoctorForSpecialty("General Medicine", load);
-  if (!fallback) return null;
+  const fallback = pickDoctorForSpecialty("General Medicine", load)
+  if (!fallback) return null
   return {
     dept: "General Medicine",
     doc: fallback.name,
     urgency,
     onRequest: availabilityOf(fallback).onRequest,
     note: `No bookable ${specialty} consultant on the current doctor master -- routed to General Medicine.`,
-  };
-};
+  }
+}
 
 export function AppointmentBookingModal({
   initialEncounter,
   onClose,
   onSchedule,
-  onGoToBilling
+  onGoToBilling,
 }: {
-  initialEncounter?: DBOPEncounter | null;
-  onClose: () => void;
-  onSchedule: (appt: any) => void;
-  onGoToBilling?: () => void;
+  initialEncounter?: DBOPEncounter | null
+  onClose: () => void
+  onSchedule: (appt: any) => void
+  onGoToBilling?: () => void
 }) {
-  const [bookingMode, setBookingMode] = useState<"direct" | "ai">("direct");
-  const [registryType, setRegistryType] = useState<"OP" | "IP">("OP");
-  const [patient, setPatient] = useState(initialEncounter?.patientName || "");
-  const [age, setAge] = useState(initialEncounter?.age ? String(initialEncounter.age) : "");
-  const [gender, setGender] = useState(initialEncounter?.sex || "Male");
-  const [phone, setPhone] = useState(initialEncounter?.phone || "");
-  const [complaint, setComplaint] = useState(initialEncounter?.chiefComplaint || "");
-  const [symptoms, setSymptoms] = useState("");
-  const [symptomDuration, setSymptomDuration] = useState("");
-  const [symptomSeverity, setSymptomSeverity] = useState("moderate");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [bookingMode, setBookingMode] = useState<"direct" | "ai">("direct")
+  const [registryType, setRegistryType] = useState<"OP" | "IP">("OP")
+  const [patient, setPatient] = useState(initialEncounter?.patientName || "")
+  const [age, setAge] = useState(
+    initialEncounter?.age ? String(initialEncounter.age) : "",
+  )
+  const [gender, setGender] = useState(initialEncounter?.sex || "Male")
+  const [phone, setPhone] = useState(initialEncounter?.phone || "")
+  const [complaint, setComplaint] = useState(
+    initialEncounter?.chiefComplaint || "",
+  )
+  const [symptoms, setSymptoms] = useState("")
+  const [symptomDuration, setSymptomDuration] = useState("")
+  const [symptomSeverity, setSymptomSeverity] = useState("moderate")
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   // Direct Doctor & Specialty Selection
-  const allDoctors = getDoctorMaster().filter(d => d.verified);
-  const allSpecialties = Array.from(new Set(allDoctors.map(d => d.specialty).filter(Boolean))) as string[];
-  
+  const allDoctors = getDoctorMaster().filter((d) => d.verified)
+  const allSpecialties = Array.from(
+    new Set(allDoctors.map((d) => d.specialty).filter(Boolean)),
+  ) as string[]
+
   const [selectedSpecialty, setSelectedSpecialty] = useState<string>(
     initialEncounter?.dept && allSpecialties.includes(initialEncounter.dept)
       ? initialEncounter.dept
-      : allSpecialties[0] || "General Medicine"
-  );
-  const [selectedDoctorName, setSelectedDoctorName] = useState<string>("");
+      : allSpecialties[0] || "General Medicine",
+  )
+  const [selectedDoctorName, setSelectedDoctorName] = useState<string>("")
 
-  const doctorsForSelectedDept = doctorsForSpecialty(selectedSpecialty);
+  const doctorsForSelectedDept = doctorsForSpecialty(selectedSpecialty)
 
   useEffect(() => {
     if (doctorsForSelectedDept.length > 0) {
-      const match = doctorsForSelectedDept.find(d => d.name === initialEncounter?.assignedDoctor) || doctorsForSelectedDept[0];
-      setSelectedDoctorName(match.name);
+      const match =
+        doctorsForSelectedDept.find(
+          (d) => d.name === initialEncounter?.assignedDoctor,
+        ) || doctorsForSelectedDept[0]
+      setSelectedDoctorName(match.name)
     } else {
-      setSelectedDoctorName("");
+      setSelectedDoctorName("")
     }
-  }, [selectedSpecialty]);
+  }, [selectedSpecialty])
 
-  const [result, setResult] = useState<{ dept: string; doc: string; urgency: string; onRequest?: boolean; note?: string } | null>(null);
+  const [result, setResult] = useState<{
+    dept: string
+    doc: string
+    urgency: string
+    onRequest?: boolean
+    note?: string
+  } | null>(null)
 
   // Auto-set result in direct mode
   useEffect(() => {
     if (bookingMode === "direct" && selectedSpecialty && selectedDoctorName) {
-      const docObj = getDoctorByName(selectedDoctorName);
+      const docObj = getDoctorByName(selectedDoctorName)
       setResult({
         dept: selectedSpecialty,
         doc: selectedDoctorName,
         urgency: "Routine",
         onRequest: docObj ? availabilityOf(docObj).onRequest : false,
-      });
+      })
     }
-  }, [bookingMode, selectedSpecialty, selectedDoctorName]);
+  }, [bookingMode, selectedSpecialty, selectedDoctorName])
 
   const handleAnalyzeAI = () => {
-    if (!symptoms && !complaint) return;
-    setIsAnalyzing(true);
-    setResult(null);
+    if (!symptoms && !complaint) return
+    setIsAnalyzing(true)
+    setResult(null)
 
     setTimeout(() => {
-      const combined = `${complaint} ${symptoms}`;
-      const open = db.getEncounters().filter(
-        e => e.status !== "OP Completed" && e.status !== "Consultation Completed"
-      );
-      const load = (doctorName: string) => open.filter(e => e.assignedDoctor === doctorName).length;
+      const combined = `${complaint} ${symptoms}`
+      const open = db
+        .getEncounters()
+        .filter(
+          (e) =>
+            e.status !== "OP Completed" &&
+            e.status !== "Consultation Completed",
+        )
+      const load = (doctorName: string) =>
+        open.filter((e) => e.assignedDoctor === doctorName).length
 
-      const res = detectDepartmentFromSymptoms(combined, load);
+      const res = detectDepartmentFromSymptoms(combined, load)
       if (!res) {
-        setIsAnalyzing(false);
-        return;
+        setIsAnalyzing(false)
+        return
       }
       if (registryType === "IP") {
-         res.urgency = res.urgency === "Routine" ? "Ward Admission" : "ICU Admission";
+        res.urgency =
+          res.urgency === "Routine" ? "Ward Admission" : "ICU Admission"
       }
-      setResult(res);
-      setIsAnalyzing(false);
-    }, 800);
-  };
+      setResult(res)
+      setIsAnalyzing(false)
+    }, 800)
+  }
 
   const handleSchedule = () => {
-    if (!result || !patient) return;
-    
-    const now = new Date();
-    const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    if (!result || !patient) return
+
+    const now = new Date()
+    const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
 
     onSchedule({
       encounterId: initialEncounter?.id,
@@ -174,14 +259,13 @@ export function AppointmentBookingModal({
       dept: result.dept,
       doctor: result.doc,
       registryType,
-    });
-    onClose();
-  };
+    })
+    onClose()
+  }
 
   return (
     <div className="fixed inset-0 bg-slate-900/75 backdrop-blur-xs z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-none shadow-2xl border-2 border-[#CBD5E1] w-full max-w-2xl flex flex-col overflow-hidden max-h-[92vh]">
-        
         {/* Header */}
         <div className="px-6 py-4 border-b border-[#DDE2EC] flex items-center justify-between bg-[#0F172A] text-white">
           <div>
@@ -189,21 +273,32 @@ export function AppointmentBookingModal({
               <span>📅</span> Doctor Appointment & Consultation Booking
             </h2>
             <p className="text-[12px] text-slate-300">
-              {initialEncounter ? `Booking appointment for registered patient: ${initialEncounter.patientName} (${initialEncounter.umr})` : "Book doctor appointment directly or use AI symptom triage"}
+              {initialEncounter
+                ? `Booking appointment for registered patient: ${initialEncounter.patientName} (${initialEncounter.umr})`
+                : "Book doctor appointment directly or use AI symptom triage"}
             </p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white text-xl cursor-pointer">✕</button>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-white text-xl cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Mode Switcher Banner */}
         <div className="bg-[#EFF6FF] border-b border-blue-200 px-6 py-2.5 flex items-center justify-between gap-4">
-          <span className="text-[12px] font-bold text-[#1B4FD8]">Booking Method:</span>
+          <span className="text-[12px] font-bold text-[#1B4FD8]">
+            Booking Method:
+          </span>
           <div className="flex bg-white p-1 rounded-none border border-blue-200 gap-1">
             <button
               type="button"
               onClick={() => setBookingMode("direct")}
               className={`px-3 py-1 text-[12px] font-bold rounded-none transition-colors cursor-pointer ${
-                bookingMode === "direct" ? "bg-[#1B4FD8] text-white" : "text-gray-700 hover:bg-gray-100"
+                bookingMode === "direct"
+                  ? "bg-[#1B4FD8] text-white"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               👨‍⚕️ Direct Doctor Roster
@@ -212,7 +307,9 @@ export function AppointmentBookingModal({
               type="button"
               onClick={() => setBookingMode("ai")}
               className={`px-3 py-1 text-[12px] font-bold rounded-none transition-colors cursor-pointer ${
-                bookingMode === "ai" ? "bg-[#1B4FD8] text-white" : "text-gray-700 hover:bg-gray-100"
+                bookingMode === "ai"
+                  ? "bg-[#1B4FD8] text-white"
+                  : "text-gray-700 hover:bg-gray-100"
               }`}
             >
               ✨ AI Symptom Triage
@@ -221,26 +318,31 @@ export function AppointmentBookingModal({
         </div>
 
         <div className="p-6 overflow-y-auto space-y-4 flex-1">
-          
           {/* Patient Details */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[12px] font-semibold text-gray-700 mb-1">Patient Full Name*</label>
-              <input 
-                value={patient} 
-                onChange={e => setPatient(e.target.value)} 
-                className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]" 
-                placeholder="e.g. Suresh Bapatla" 
+              <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                Patient Full Name*
+              </label>
+              <input
+                value={patient}
+                onChange={(e) => setPatient(e.target.value)}
+                className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]"
+                placeholder="e.g. Suresh Bapatla"
               />
             </div>
             <div>
-              <label className="block text-[12px] font-semibold text-gray-700 mb-1">Phone Number</label>
+              <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                Phone Number
+              </label>
               <input
                 type="tel"
                 inputMode="numeric"
                 maxLength={10}
                 value={phone}
-                onChange={e => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                onChange={(e) =>
+                  setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                }
                 className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]"
                 placeholder="e.g. 9876543210"
               />
@@ -249,28 +351,60 @@ export function AppointmentBookingModal({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-[12px] font-semibold text-gray-700 mb-1">Age</label>
-              <input 
-                type="number" 
-                value={age} 
-                onChange={e => setAge(e.target.value)} 
-                className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]" 
-                placeholder="27" 
+              <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                Age
+              </label>
+              <input
+                type="number"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+                className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]"
+                placeholder="27"
               />
             </div>
             <div>
-              <label className="block text-[12px] font-semibold text-gray-700 mb-1">Gender</label>
-              <select value={gender} onChange={e => setGender(e.target.value as "Male" | "Female" | "Other")} className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]">
+              <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                Gender
+              </label>
+              <select
+                value={gender}
+                onChange={(e) =>
+                  setGender(e.target.value as "Male" | "Female" | "Other")
+                }
+                className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]"
+              >
                 <option>Male</option>
                 <option>Female</option>
                 <option>Other</option>
               </select>
             </div>
             <div>
-              <label className="block text-[12px] font-semibold text-gray-700 mb-1">Registry Type</label>
+              <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                Registry Type
+              </label>
               <div className="flex bg-[#F0F2F5] p-0.5 rounded-none h-9">
-                <button type="button" onClick={() => setRegistryType("OP")} className={`flex-1 text-[11px] font-bold rounded-none ${registryType === "OP" ? "bg-white text-[#1B4FD8]" : "text-[#64748B]"}`}>OP Clinic</button>
-                <button type="button" onClick={() => setRegistryType("IP")} className={`flex-1 text-[11px] font-bold rounded-none ${registryType === "IP" ? "bg-[#1B4FD8] text-white" : "text-[#64748B]"}`}>IP Admission</button>
+                <button
+                  type="button"
+                  onClick={() => setRegistryType("OP")}
+                  className={`flex-1 text-[11px] font-bold rounded-none ${
+                    registryType === "OP"
+                      ? "bg-white text-[#1B4FD8]"
+                      : "text-[#64748B]"
+                  }`}
+                >
+                  OP Clinic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRegistryType("IP")}
+                  className={`flex-1 text-[11px] font-bold rounded-none ${
+                    registryType === "IP"
+                      ? "bg-[#1B4FD8] text-white"
+                      : "text-[#64748B]"
+                  }`}
+                >
+                  IP Admission
+                </button>
               </div>
             </div>
           </div>
@@ -280,33 +414,42 @@ export function AppointmentBookingModal({
             <div className="bg-[#F8FAFC] border border-[#DDE2EC] p-4 rounded-none space-y-4">
               <h3 className="text-[13px] font-bold text-gray-900 border-b border-[#DDE2EC] pb-2 flex items-center justify-between">
                 <span>👨‍⚕️ Select Medical Specialty & Attending Doctor</span>
-                <span className="text-[11px] text-[#64748B] font-normal">{allDoctors.length} doctors on roster</span>
+                <span className="text-[11px] text-[#64748B] font-normal">
+                  {allDoctors.length} doctors on roster
+                </span>
               </h3>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[12px] font-semibold text-gray-700 mb-1">Specialty / Department*</label>
+                  <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                    Specialty / Department*
+                  </label>
                   <select
                     value={selectedSpecialty}
-                    onChange={e => setSelectedSpecialty(e.target.value)}
+                    onChange={(e) => setSelectedSpecialty(e.target.value)}
                     className="w-full h-10 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] font-semibold focus:outline-none focus:border-[#1B4FD8] cursor-pointer"
                   >
-                    {allSpecialties.map(spec => (
-                      <option key={spec} value={spec}>{spec}</option>
+                    {allSpecialties.map((spec) => (
+                      <option key={spec} value={spec}>
+                        {spec}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-[12px] font-semibold text-gray-700 mb-1">Attending Doctor*</label>
+                  <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                    Attending Doctor*
+                  </label>
                   <select
                     value={selectedDoctorName}
-                    onChange={e => setSelectedDoctorName(e.target.value)}
+                    onChange={(e) => setSelectedDoctorName(e.target.value)}
                     className="w-full h-10 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] font-semibold focus:outline-none focus:border-[#1B4FD8] cursor-pointer"
                   >
-                    {doctorsForSelectedDept.map(doc => (
+                    {doctorsForSelectedDept.map((doc) => (
                       <option key={doc.id} value={doc.name}>
-                        {doc.name} ({doc.qualification}) — {doc.room} [{doc.section}]
+                        {doc.name} ({doc.qualification}) — {doc.room} [
+                        {doc.section}]
                       </option>
                     ))}
                   </select>
@@ -317,9 +460,13 @@ export function AppointmentBookingModal({
               {selectedDoctorName && (
                 <div className="bg-white p-3 border border-blue-200 rounded-none flex items-center justify-between">
                   <div>
-                    <div className="text-[13px] font-bold text-gray-900">{selectedDoctorName}</div>
+                    <div className="text-[13px] font-bold text-gray-900">
+                      {selectedDoctorName}
+                    </div>
                     <div className="text-[11.5px] text-[#64748B]">
-                      {getDoctorByName(selectedDoctorName)?.qualification} • {getDoctorByName(selectedDoctorName)?.room} ({getDoctorByName(selectedDoctorName)?.section} Consultant)
+                      {getDoctorByName(selectedDoctorName)?.qualification} •{" "}
+                      {getDoctorByName(selectedDoctorName)?.room} (
+                      {getDoctorByName(selectedDoctorName)?.section} Consultant)
                     </div>
                   </div>
                   <span className="bg-[#DCFCE7] text-[#15803D] text-[11px] font-bold px-2.5 py-1 rounded-none border border-emerald-200">
@@ -334,24 +481,39 @@ export function AppointmentBookingModal({
           {bookingMode === "ai" && (
             <div className="space-y-3">
               <div>
-                <label className="block text-[12px] font-semibold text-gray-700 mb-1">Chief Complaint / Symptoms Narrative*</label>
-                <textarea 
-                  rows={2} 
-                  value={complaint} 
-                  onChange={e => setComplaint(e.target.value)} 
-                  className="w-full bg-white border border-[#DDE2EC] rounded-none p-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]" 
+                <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                  Chief Complaint / Symptoms Narrative*
+                </label>
+                <textarea
+                  rows={2}
+                  value={complaint}
+                  onChange={(e) => setComplaint(e.target.value)}
+                  className="w-full bg-white border border-[#DDE2EC] rounded-none p-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]"
                   placeholder="e.g. Sharp chest pain, difficulty breathing, sweating since yesterday..."
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] font-semibold text-gray-700 mb-1">Symptom Duration</label>
-                  <input value={symptomDuration} onChange={e => setSymptomDuration(e.target.value)} className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]" placeholder="e.g. 2 days" />
+                  <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                    Symptom Duration
+                  </label>
+                  <input
+                    value={symptomDuration}
+                    onChange={(e) => setSymptomDuration(e.target.value)}
+                    className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]"
+                    placeholder="e.g. 2 days"
+                  />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-semibold text-gray-700 mb-1">Severity</label>
-                  <select value={symptomSeverity} onChange={e => setSymptomSeverity(e.target.value)} className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]">
+                  <label className="block text-[12px] font-semibold text-gray-700 mb-1">
+                    Severity
+                  </label>
+                  <select
+                    value={symptomSeverity}
+                    onChange={(e) => setSymptomSeverity(e.target.value)}
+                    className="w-full h-9 bg-white border border-[#DDE2EC] rounded-none px-3 text-[13px] focus:outline-none focus:border-[#1B4FD8]"
+                  >
                     <option value="mild">Mild</option>
                     <option value="moderate">Moderate</option>
                     <option value="severe">Severe</option>
@@ -360,13 +522,19 @@ export function AppointmentBookingModal({
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={handleAnalyzeAI}
                 disabled={isAnalyzing || (!symptoms && !complaint)}
                 className="w-full h-10 bg-[#EFF6FF] text-[#1B4FD8] font-bold text-[13px] rounded-none border border-[#BFDBFE] hover:bg-[#DBEAFE] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
-                {isAnalyzing ? <div className="w-4 h-4 border-2 border-[#1B4FD8] border-t-transparent rounded-full animate-spin"></div> : <span>✨</span>}
-                {isAnalyzing ? "Analyzing Symptoms with AI..." : "Run AI Specialty Recommendation"}
+                {isAnalyzing ? (
+                  <div className="w-4 h-4 border-2 border-[#1B4FD8] border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <span>✨</span>
+                )}
+                {isAnalyzing
+                  ? "Analyzing Symptoms with AI..."
+                  : "Run AI Specialty Recommendation"}
               </button>
             </div>
           )}
@@ -375,19 +543,31 @@ export function AppointmentBookingModal({
             <div className="bg-[#F8FAFC] border border-[#DDE2EC] rounded-none p-4">
               <h3 className="text-[12.5px] font-bold text-gray-900 mb-2 border-b border-[#DDE2EC] pb-1.5 flex items-center justify-between">
                 <span>Appointment Allocation Confirmation</span>
-                <span className="text-[11px] font-mono text-[#1B4FD8]">{result.dept}</span>
+                <span className="text-[11px] font-mono text-[#1B4FD8]">
+                  {result.dept}
+                </span>
               </h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <div className="text-[11px] text-[#64748B] mb-0.5">Assigned Specialty</div>
-                  <div className="text-[13px] font-semibold text-[#1B4FD8]">{result.dept}</div>
+                  <div className="text-[11px] text-[#64748B] mb-0.5">
+                    Assigned Specialty
+                  </div>
+                  <div className="text-[13px] font-semibold text-[#1B4FD8]">
+                    {result.dept}
+                  </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-[#64748B] mb-0.5">Assigned Physician</div>
-                  <div className="text-[13px] font-semibold text-gray-900">{result.doc}</div>
+                  <div className="text-[11px] text-[#64748B] mb-0.5">
+                    Assigned Physician
+                  </div>
+                  <div className="text-[13px] font-semibold text-gray-900">
+                    {result.doc}
+                  </div>
                 </div>
                 <div>
-                  <div className="text-[11px] text-[#64748B] mb-0.5">Consultation Priority</div>
+                  <div className="text-[11px] text-[#64748B] mb-0.5">
+                    Consultation Priority
+                  </div>
                   <div className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-none inline-block border border-emerald-200">
                     {result.urgency}
                   </div>
@@ -403,16 +583,16 @@ export function AppointmentBookingModal({
             Consultation fee is collected once the doctor is assigned.
           </div>
           <div className="flex gap-2">
-            <button 
-              type="button" 
-              onClick={onClose} 
+            <button
+              type="button"
+              onClick={onClose}
               className="px-4 py-2 border border-[#CBD5E1] bg-white text-gray-700 text-[12.5px] font-bold hover:bg-gray-100 cursor-pointer"
             >
               Cancel
             </button>
-            <button 
-              type="button" 
-              disabled={!result || !patient} 
+            <button
+              type="button"
+              disabled={!result || !patient}
               onClick={handleSchedule}
               className="px-4 py-2 bg-[#1B4FD8] hover:bg-[#1740B4] text-white text-[12.5px] font-bold shadow-xs cursor-pointer disabled:opacity-50"
             >
@@ -422,7 +602,7 @@ export function AppointmentBookingModal({
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default function Appointments({
@@ -430,112 +610,128 @@ export default function Appointments({
   onSelect,
   onGoToBilling,
   onNavigateToOPWorkflow,
-  onNavigateToDoctorWorkflow
+  onNavigateToDoctorWorkflow,
 }: {
-  initialEncounterId?: string | null;
-  onSelect?: () => void;
-  onGoToBilling?: () => void;
-  onNavigateToOPWorkflow?: (encId: string, step?: number) => void;
-  onNavigateToDoctorWorkflow?: (encId: string) => void;
+  initialEncounterId?: string | null
+  onSelect?: () => void
+  onGoToBilling?: () => void
+  onNavigateToOPWorkflow?: (encId: string, step?: number) => void
+  onNavigateToDoctorWorkflow?: (encId: string) => void
 }) {
-  const [encounters, setEncounters] = useState<DBOPEncounter[]>([]);
-  const [selectedDept, setSelectedDept] = useState<string>("All Departments");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [view, setView] = useState<"day" | "week" | "list">("day");
-  
-  const [justBooked, setJustBooked] = useState<
-    { name: string; umr: string; doctor: string; dept: string; room: string } | null
-  >(null);
-  const [activeDay, setActiveDay] = useState(SELECTED_DAY);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [targetEncounter, setTargetEncounter] = useState<DBOPEncounter | null>(null);
+  const [encounters, setEncounters] = useState<DBOPEncounter[]>([])
+  const [selectedDept, setSelectedDept] = useState<string>("All Departments")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [view, setView] = useState<"day" | "week" | "list">("day")
+
+  const [justBooked, setJustBooked] = useState<{
+    name: string
+    umr: string
+    doctor: string
+    dept: string
+    room: string
+  } | null>(null)
+  const [activeDay, setActiveDay] = useState(SELECTED_DAY)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [targetEncounter, setTargetEncounter] = useState<DBOPEncounter | null>(
+    null,
+  )
 
   // Journey Modal state
-  const [selectedJourneyEncounter, setSelectedJourneyEncounter] = useState<DBOPEncounter | null>(null);
+  const [selectedJourneyEncounter, setSelectedJourneyEncounter] =
+    useState<DBOPEncounter | null>(null)
 
   // Open modal automatically if initialEncounterId passed
   useEffect(() => {
     if (initialEncounterId) {
-      const enc = db.getEncounterById(initialEncounterId);
+      const enc = db.getEncounterById(initialEncounterId)
       if (enc) {
-        setTargetEncounter(enc);
-        setIsModalOpen(true);
+        setTargetEncounter(enc)
+        setIsModalOpen(true)
       }
     }
-  }, [initialEncounterId]);
+  }, [initialEncounterId])
 
   // Sync with live database encounters
   useEffect(() => {
     const syncWithDb = () => {
-      const dbEncs = db.getEncounters();
-      setEncounters(dbEncs);
-    };
+      const dbEncs = db.getEncounters()
+      setEncounters(dbEncs)
+    }
 
-    syncWithDb();
-    const unsub = db.subscribe(syncWithDb);
+    syncWithDb()
+    const unsub = db.subscribe(syncWithDb)
     return () => {
-      unsub();
-    };
-  }, []);
+      unsub()
+    }
+  }, [])
 
   // Filtered encounters based on department and search query
   const filteredEncounters = useMemo(() => {
-    return encounters.filter(enc => {
+    return encounters.filter((enc) => {
       // Dept filter
       if (selectedDept !== "All Departments") {
-        const d1 = (enc.dept || "").toLowerCase();
-        const d2 = selectedDept.toLowerCase();
-        if (!d1.includes(d2) && !d2.includes(d1)) return false;
+        const d1 = (enc.dept || "").toLowerCase()
+        const d2 = selectedDept.toLowerCase()
+        if (!d1.includes(d2) && !d2.includes(d1)) return false
       }
       // Search query
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const name = (enc.patientName || "").toLowerCase();
-        const umr = (enc.umr || "").toLowerCase();
-        const op = (enc.opNumber || "").toLowerCase();
-        const doc = (enc.assignedDoctor || "").toLowerCase();
-        const complaint = (enc.chiefComplaint || "").toLowerCase();
+        const q = searchQuery.toLowerCase().trim()
+        const name = (enc.patientName || "").toLowerCase()
+        const umr = (enc.umr || "").toLowerCase()
+        const op = (enc.opNumber || "").toLowerCase()
+        const doc = (enc.assignedDoctor || "").toLowerCase()
+        const complaint = (enc.chiefComplaint || "").toLowerCase()
         return (
           name.includes(q) ||
           umr.includes(q) ||
           op.includes(q) ||
           doc.includes(q) ||
           complaint.includes(q)
-        );
+        )
       }
-      return true;
-    });
-  }, [encounters, selectedDept, searchQuery]);
+      return true
+    })
+  }, [encounters, selectedDept, searchQuery])
 
   // Metric counts
-  const totalCount = encounters.length;
-  const completedCount = encounters.filter(e => e.status === "Consultation Completed" || e.status === "OP Completed").length;
-  const inProgressCount = encounters.filter(e => e.status === "Under Consultation" || e.status === "Doctor Assigned").length;
-  const waitingCount = encounters.filter(e => e.status !== "Consultation Completed" && e.status !== "OP Completed" && e.status !== "Under Consultation" && e.status !== "Doctor Assigned").length;
-  const activeDoctorsCount = getDoctorMaster().filter(d => d.verified).length;
+  const totalCount = encounters.length
+  const completedCount = encounters.filter(
+    (e) => e.status === "Consultation Completed" || e.status === "OP Completed",
+  ).length
+  const inProgressCount = encounters.filter(
+    (e) => e.status === "Under Consultation" || e.status === "Doctor Assigned",
+  ).length
+  const waitingCount = encounters.filter(
+    (e) =>
+      e.status !== "Consultation Completed" &&
+      e.status !== "OP Completed" &&
+      e.status !== "Under Consultation" &&
+      e.status !== "Doctor Assigned",
+  ).length
+  const activeDoctorsCount = getDoctorMaster().filter((d) => d.verified).length
 
   const handleAddAppointment = (booking: AppointmentBooking) => {
-    const booked = bookAppointment(booking);
+    const booked = bookAppointment(booking)
     setJustBooked({
       name: booked.name,
       umr: booked.umr,
       doctor: booked.doctor,
       dept: booked.dept,
       room: booked.room,
-    });
-  };
+    })
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F0F2F5] overflow-hidden">
-      
       {/* Modals */}
       {isModalOpen && (
-        <AppointmentBookingModal 
+        <AppointmentBookingModal
           initialEncounter={targetEncounter}
           onClose={() => {
-            setIsModalOpen(false);
-            setTargetEncounter(null);
-          }} 
+            setIsModalOpen(false)
+            setTargetEncounter(null)
+          }}
           onSchedule={handleAddAppointment}
           onGoToBilling={onGoToBilling}
         />
@@ -556,7 +752,8 @@ export default function Appointments({
             <span>📅</span> Appointments Schedule & Doctor Allocation
           </h1>
           <p className="text-[11.5px] text-[#64748B]">
-            Manage doctor appointments, patient check-ins, and outpatient clinical care handoffs.
+            Manage doctor appointments, patient check-ins, and outpatient
+            clinical care handoffs.
           </p>
         </div>
 
@@ -566,24 +763,33 @@ export default function Appointments({
             <input
               type="text"
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search patient, UMR, doctor..."
               className="w-full h-9 bg-[#F8FAFC] border border-[#CBD5E1] rounded-none pl-8 pr-3 text-[12px] focus:outline-none focus:border-[#1B4FD8] focus:bg-white"
             />
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+              🔍
+            </span>
             {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600">✕</button>
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
             )}
           </div>
 
           {/* View Mode Switcher */}
           <div className="flex border border-[#DDE2EC] rounded-none overflow-hidden">
-            {(["day", "week", "list"] as const).map(v => (
-              <button 
-                key={v} 
+            {(["day", "week", "list"] as const).map((v) => (
+              <button
+                key={v}
                 onClick={() => setView(v)}
                 className={`px-3 py-1.5 text-[12px] font-bold capitalize transition-colors cursor-pointer ${
-                  view === v ? "bg-[#1B4FD8] text-white" : "bg-white text-[#64748B] hover:bg-[#F8FAFC]"
+                  view === v
+                    ? "bg-[#1B4FD8] text-white"
+                    : "bg-white text-[#64748B] hover:bg-[#F8FAFC]"
                 }`}
               >
                 {v}
@@ -595,8 +801,8 @@ export default function Appointments({
           <button
             type="button"
             onClick={() => {
-              setTargetEncounter(null);
-              setIsModalOpen(true);
+              setTargetEncounter(null)
+              setIsModalOpen(true)
             }}
             className="px-3.5 py-2 bg-[#1B4FD8] hover:bg-[#1740B4] text-white text-[12.5px] font-bold rounded-none shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
@@ -613,7 +819,8 @@ export default function Appointments({
               🎉 Appointment Booked — {justBooked.name} with {justBooked.doctor}
             </p>
             <p className="text-[11.5px] text-[#15803D] mt-0.5">
-              UMR: {justBooked.umr} · {justBooked.dept} · {justBooked.room}. Collect the consultation fee, then direct patient for vitals.
+              UMR: {justBooked.umr} · {justBooked.dept} · {justBooked.room}.
+              Collect the consultation fee, then direct patient for vitals.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -640,40 +847,70 @@ export default function Appointments({
       {/* KPI Metric Summary Strip */}
       <div className="px-6 py-3 bg-[#F8FAFC] border-b border-[#DDE2EC] grid grid-cols-2 sm:grid-cols-5 gap-3 flex-shrink-0">
         <div className="bg-white border border-[#CBD5E1] border-l-4 border-l-blue-600 p-2.5 rounded-none shadow-2xs">
-          <span className="text-[10.5px] uppercase font-bold text-[#64748B] block">Total Bookings</span>
-          <span className="font-mono text-lg font-extrabold text-blue-900">{totalCount}</span>
-          <span className="text-[10px] text-gray-500 block">Registered today</span>
+          <span className="text-[10.5px] uppercase font-bold text-[#64748B] block">
+            Total Bookings
+          </span>
+          <span className="font-mono text-lg font-extrabold text-blue-900">
+            {totalCount}
+          </span>
+          <span className="text-[10px] text-gray-500 block">
+            Registered today
+          </span>
         </div>
 
         <div className="bg-white border border-[#CBD5E1] border-l-4 border-l-amber-500 p-2.5 rounded-none shadow-2xs">
-          <span className="text-[10.5px] uppercase font-bold text-amber-800 block">Scheduled / Queue</span>
-          <span className="font-mono text-lg font-extrabold text-amber-950">{waitingCount}</span>
-          <span className="text-[10px] text-amber-700 block">Awaiting doctor</span>
+          <span className="text-[10.5px] uppercase font-bold text-amber-800 block">
+            Scheduled / Queue
+          </span>
+          <span className="font-mono text-lg font-extrabold text-amber-950">
+            {waitingCount}
+          </span>
+          <span className="text-[10px] text-amber-700 block">
+            Awaiting doctor
+          </span>
         </div>
 
         <div className="bg-white border border-[#CBD5E1] border-l-4 border-l-sky-500 p-2.5 rounded-none shadow-2xs">
-          <span className="text-[10.5px] uppercase font-bold text-sky-800 block">In Progress</span>
-          <span className="font-mono text-lg font-extrabold text-sky-950">{inProgressCount}</span>
-          <span className="text-[10px] text-sky-700 block">Under consultation</span>
+          <span className="text-[10.5px] uppercase font-bold text-sky-800 block">
+            In Progress
+          </span>
+          <span className="font-mono text-lg font-extrabold text-sky-950">
+            {inProgressCount}
+          </span>
+          <span className="text-[10px] text-sky-700 block">
+            Under consultation
+          </span>
         </div>
 
         <div className="bg-white border border-[#CBD5E1] border-l-4 border-l-emerald-600 p-2.5 rounded-none shadow-2xs">
-          <span className="text-[10.5px] uppercase font-bold text-emerald-800 block">Completed</span>
-          <span className="font-mono text-lg font-extrabold text-emerald-950">{completedCount}</span>
-          <span className="text-[10px] text-emerald-700 block">Visits completed</span>
+          <span className="text-[10.5px] uppercase font-bold text-emerald-800 block">
+            Completed
+          </span>
+          <span className="font-mono text-lg font-extrabold text-emerald-950">
+            {completedCount}
+          </span>
+          <span className="text-[10px] text-emerald-700 block">
+            Visits completed
+          </span>
         </div>
 
         <div className="bg-white border border-[#CBD5E1] border-l-4 border-l-indigo-600 p-2.5 rounded-none shadow-2xs">
-          <span className="text-[10.5px] uppercase font-bold text-indigo-800 block">Onboarded Consultants</span>
-          <span className="font-mono text-lg font-extrabold text-indigo-950">{activeDoctorsCount}</span>
-          <span className="text-[10px] text-indigo-700 block">Active doctor master</span>
+          <span className="text-[10.5px] uppercase font-bold text-indigo-800 block">
+            Onboarded Consultants
+          </span>
+          <span className="font-mono text-lg font-extrabold text-indigo-950">
+            {activeDoctorsCount}
+          </span>
+          <span className="text-[10px] text-indigo-700 block">
+            Active doctor master
+          </span>
         </div>
       </div>
 
       {/* Department Filter Bar */}
       <div className="bg-white border-b border-[#DDE2EC] px-6 py-2 flex items-center gap-1.5 overflow-x-auto flex-shrink-0">
-        {DEPARTMENTS.map(d => {
-          const isSel = selectedDept === d;
+        {DEPARTMENTS.map((d) => {
+          const isSel = selectedDept === d
           return (
             <button
               key={d}
@@ -687,23 +924,39 @@ export default function Appointments({
             >
               {d}
             </button>
-          );
+          )
         })}
       </div>
 
       {/* Main Appointments Workspace */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        
         {view === "week" && (
           <div className="bg-white border border-[#DDE2EC] rounded-none overflow-hidden mb-4 shadow-2xs">
-            <div className="grid border-b border-[#DDE2EC]" style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}>
+            <div
+              className="grid border-b border-[#DDE2EC]"
+              style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
+            >
               <div className="bg-[#F8FAFC] border-r border-[#DDE2EC]" />
               {DAYS.map((d, i) => (
-                <button key={i} onClick={() => { setActiveDay(i); setView("day"); }}
+                <button
+                  key={i}
+                  onClick={() => {
+                    setActiveDay(i)
+                    setView("day")
+                  }}
                   className={`px-2 py-2.5 text-center border-r border-[#DDE2EC] last:border-r-0 transition-colors cursor-pointer
-                    ${i === activeDay ? "bg-[#EFF6FF] text-[#1B4FD8]" : "hover:bg-[#F8FAFC] text-[#64748B]"}`}>
-                  <div className="text-[11px] font-bold whitespace-pre-line">{d}</div>
-                  {i === SELECTED_DAY && <div className="w-1.5 h-1.5 bg-[#1B4FD8] rounded-full mx-auto mt-1" />}
+                    ${
+                      i === activeDay
+                        ? "bg-[#EFF6FF] text-[#1B4FD8]"
+                        : "hover:bg-[#F8FAFC] text-[#64748B]"
+                    }`}
+                >
+                  <div className="text-[11px] font-bold whitespace-pre-line">
+                    {d}
+                  </div>
+                  {i === SELECTED_DAY && (
+                    <div className="w-1.5 h-1.5 bg-[#1B4FD8] rounded-full mx-auto mt-1" />
+                  )}
                 </button>
               ))}
             </div>
@@ -715,19 +968,24 @@ export default function Appointments({
 
         {/* List & Day Workspace */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
           {/* Main Appointment Table / Cards Column */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-white border-2 border-[#CBD5E1] rounded-none shadow-2xs overflow-hidden">
               <div className="px-5 py-3.5 bg-[#F8FAFC] border-b border-[#DDE2EC] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-[13.5px] font-bold text-gray-900">Booked Patient Appointments</h2>
+                  <h2 className="text-[13.5px] font-bold text-gray-900">
+                    Booked Patient Appointments
+                  </h2>
                   <span className="font-mono text-[11px] font-bold bg-blue-100 text-[#1B4FD8] px-2 py-0.5 rounded-none border border-blue-200">
                     {filteredEncounters.length} Patients
                   </span>
                 </div>
                 <div className="text-[11.5px] text-[#64748B]">
-                  Click <strong className="text-[#1B4FD8]">✨ Clinical Journey</strong> to view full patient timeline
+                  Click{" "}
+                  <strong className="text-[#1B4FD8]">
+                    ✨ Clinical Journey
+                  </strong>{" "}
+                  to view full patient timeline
                 </div>
               </div>
 
@@ -738,25 +996,34 @@ export default function Appointments({
               ) : (
                 <div className="divide-y divide-[#E2E8F0]">
                   {filteredEncounters.map((enc) => {
-                    const statusColor = 
-                      enc.status === "Consultation Completed" || enc.status === "OP Completed"
+                    const statusColor =
+                      enc.status === "Consultation Completed" ||
+                      enc.status === "OP Completed"
                         ? "bg-emerald-50 text-emerald-800 border-emerald-300"
                         : enc.status === "Under Consultation"
-                        ? "bg-blue-50 text-blue-800 border-blue-300"
-                        : "bg-amber-50 text-amber-800 border-amber-300";
+                          ? "bg-blue-50 text-blue-800 border-blue-300"
+                          : "bg-amber-50 text-amber-800 border-amber-300"
 
                     return (
-                      <div key={enc.id} className="p-4 hover:bg-[#F8FAFC] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        
+                      <div
+                        key={enc.id}
+                        className="p-4 hover:bg-[#F8FAFC] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      >
                         {/* Patient & Doctor Details */}
                         <div className="space-y-1.5 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-[14px] text-gray-900">{enc.patientName}</span>
-                            <span className="text-[11.5px] text-[#64748B]">({enc.age} yrs · {enc.sex})</span>
+                            <span className="font-bold text-[14px] text-gray-900">
+                              {enc.patientName}
+                            </span>
+                            <span className="text-[11.5px] text-[#64748B]">
+                              ({enc.age} yrs · {enc.sex})
+                            </span>
                             <span className="font-mono text-[11px] font-bold bg-blue-50 text-[#1B4FD8] px-2 py-0.5 rounded-none border border-blue-200">
                               {enc.umr}
                             </span>
-                            <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-none border ${statusColor}`}>
+                            <span
+                              className={`text-[10.5px] font-bold px-2 py-0.5 rounded-none border ${statusColor}`}
+                            >
                               {enc.status}
                             </span>
                           </div>
@@ -764,11 +1031,19 @@ export default function Appointments({
                           <div className="text-[12px] text-[#64748B] flex items-center gap-2 flex-wrap">
                             {/* Height-matched unified Specialty and Room badge */}
                             <span className="bg-[#0F172A] text-white px-2 py-0.5 rounded-none text-[10.5px] font-bold uppercase tracking-wide h-5 flex items-center leading-none">
-                              {(enc.dept || "CARDIOLOGY").toUpperCase()} | {enc.room || "ROOM 107"}
+                              {(enc.dept || "CARDIOLOGY").toUpperCase()} |{" "}
+                              {enc.room || "ROOM 107"}
                             </span>
-                            <span className="font-semibold text-gray-900">{enc.assignedDoctor || "Dr. Arjun Mehta"}</span>
+                            <span className="font-semibold text-gray-900">
+                              {enc.assignedDoctor || "Dr. Arjun Mehta"}
+                            </span>
                             <span>·</span>
-                            <span>Reg: <strong className="font-mono text-gray-800">{enc.registrationTime}</strong></span>
+                            <span>
+                              Reg:{" "}
+                              <strong className="font-mono text-gray-800">
+                                {enc.registrationTime}
+                              </strong>
+                            </span>
                           </div>
 
                           {enc.chiefComplaint && (
@@ -800,9 +1075,8 @@ export default function Appointments({
                             </button>
                           )}
                         </div>
-
                       </div>
-                    );
+                    )
                   })}
                 </div>
               )}
@@ -822,26 +1096,34 @@ export default function Appointments({
               </div>
 
               <div className="p-3 space-y-2 max-h-[550px] overflow-y-auto">
-                {getDoctorMaster().filter(d => d.verified).map(doc => (
-                  <div key={doc.id} className="p-3 border border-[#E2E8F0] rounded-none bg-[#F8FAFC] text-[12px] hover:border-blue-300 transition-colors">
-                    <div className="font-bold text-[#0F172A] flex items-center justify-between">
-                      <span>{doc.name}</span>
-                      <span className="text-[10px] font-mono font-bold text-[#1B4FD8] bg-blue-50 px-2 py-0.5 rounded-none border border-blue-200">{doc.room}</span>
+                {getDoctorMaster()
+                  .filter((d) => d.verified)
+                  .map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="p-3 border border-[#E2E8F0] rounded-none bg-[#F8FAFC] text-[12px] hover:border-blue-300 transition-colors"
+                    >
+                      <div className="font-bold text-[#0F172A] flex items-center justify-between">
+                        <span>{doc.name}</span>
+                        <span className="text-[10px] font-mono font-bold text-[#1B4FD8] bg-blue-50 px-2 py-0.5 rounded-none border border-blue-200">
+                          {doc.room}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[#64748B] mt-0.5 flex items-center justify-between">
+                        <span>
+                          {doc.specialty} • {doc.qualification}
+                        </span>
+                        <span className="text-[10px] text-emerald-700 font-bold">
+                          Available
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-[11px] text-[#64748B] mt-0.5 flex items-center justify-between">
-                      <span>{doc.specialty} • {doc.qualification}</span>
-                      <span className="text-[10px] text-emerald-700 font-bold">Available</span>
-                    </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           </div>
-
         </div>
-
       </div>
-
     </div>
-  );
+  )
 }

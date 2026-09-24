@@ -1,5 +1,5 @@
 interface LayoutProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 // The module used to render its own dark sidebar and its own 64px header
@@ -12,5 +12,5 @@ export default function Layout({ children }: LayoutProps) {
     <div className="pharmacy-module flex h-full flex-col overflow-hidden bg-[#F4F6F9]">
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
-  );
+  )
 }

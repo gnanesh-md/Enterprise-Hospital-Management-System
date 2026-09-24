@@ -1,19 +1,19 @@
-import React, { useState } from "react";
-import { apiFetch } from "../lib/api";
-import { AuditDatabase } from "../services/auditDb";
-import { DOCTOR_ROSTER } from "../services/doctorPortalDb";
-import { RoleDatabase } from "../services/roleDb";
-import { credentialsForRole } from "../lib/demoCredentials";
+import React, { useState } from "react"
+import { apiFetch } from "../lib/api"
+import { AuditDatabase } from "../services/auditDb"
+import { DOCTOR_ROSTER } from "../services/doctorPortalDb"
+import { RoleDatabase } from "../services/roleDb"
+import { credentialsForRole } from "../lib/demoCredentials"
 
 interface LoginProps {
   onLogin: (userData: {
-    user: string;
-    role: string;
-    staffId: string;
-    permissions: string[];
+    user: string
+    role: string
+    staffId: string
+    permissions: string[]
     /** Which physician signed in -- each doctor gets their own portal. */
-    doctorId?: string;
-  }) => void;
+    doctorId?: string
+  }) => void
 }
 
 const ROLES_LIST = [
@@ -25,35 +25,38 @@ const ROLES_LIST = [
   { value: "reception", label: "Receptionist", sub: "Front Desk & OPD" },
   { value: "billing", label: "Billing Specialist", sub: "Revenue Cycle" },
   { value: "superadmin", label: "Super Admin", sub: "Executive Suite" },
-];
+]
 
 export default function Login({ onLogin }: LoginProps) {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [openRoleDropdown, setOpenRoleDropdown] = useState(false);
+  const [user, setUser] = useState("")
+  const [pass, setPass] = useState("")
+  const [openRoleDropdown, setOpenRoleDropdown] = useState(false)
   // A doctor signs in as themselves, not as "the doctor role" -- the portal they
   // land on shows only the patients appointed to this physician.
-  const [doctorId, setDoctorId] = useState(DOCTOR_ROSTER[0].id);
+  const [doctorId, setDoctorId] = useState(DOCTOR_ROSTER[0].id)
 
-  const activeRole = ROLES_LIST.find((r) => r.value === user);
-  const isDoctorLogin = user.trim().toLowerCase().startsWith("doctor");
+  const activeRole = ROLES_LIST.find((r) => r.value === user)
+  const isDoctorLogin = user.trim().toLowerCase().startsWith("doctor")
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !pass) { setError("Please select a role or enter your credentials."); return; }
-    setError("");
-    setLoading(true);
+    e.preventDefault()
+    if (!user || !pass) {
+      setError("Please select a role or enter your credentials.")
+      return
+    }
+    setError("")
+    setLoading(true)
     try {
-      const username = user.trim();
-      const demo = credentialsForRole(username);
+      const username = user.trim()
+      const demo = credentialsForRole(username)
 
       // The local RBAC store is the authority on who this person is and which
       // modules they may open, and it is what the rest of the app reads.
-      const local = RoleDatabase.authenticate(username, pass);
-      if (!local) throw new Error("Invalid credentials.");
+      const local = RoleDatabase.authenticate(username, pass)
+      if (!local) throw new Error("Invalid credentials.")
 
       // Separately, open a backend session so authenticated APIs work -- the AI
       // prescription splitter and Smart OCR need one. The backend's own accounts
@@ -61,27 +64,34 @@ export default function Login({ onLogin }: LoginProps) {
       // are sent rather than what was typed. This is best-effort on purpose: the
       // app is fully usable offline, so a failure here must not block the login,
       // only the AI features, and `backendSession` is what tells the user which.
-      let backendSession = false;
+      let backendSession = false
       if (demo) {
         try {
           await apiFetch("/api/auth/login", {
             method: "POST",
-            body: JSON.stringify({ username: demo.backendUsername, password: demo.backendPassword }),
-          });
-          backendSession = true;
+            body: JSON.stringify({
+              username: demo.backendUsername,
+              password: demo.backendPassword,
+            }),
+          })
+          backendSession = true
         } catch {
-          backendSession = false;
+          backendSession = false
         }
       }
 
       AuditDatabase.logEvent(
         "Login Successful",
         "Authentication",
-        `User ${username} logged in successfully${backendSession ? "" : " (local session only -- AI services unavailable)"}.`,
+        `User ${username} logged in successfully${
+          backendSession
+            ? ""
+            : " (local session only -- AI services unavailable)"
+        }.`,
         "Success",
         local.user.staffId,
-        username
-      );
+        username,
+      )
 
       onLogin({
         user: username,
@@ -89,7 +99,7 @@ export default function Login({ onLogin }: LoginProps) {
         staffId: local.user.staffId,
         permissions: local.role.allowedModules,
         doctorId: isDoctorLogin ? doctorId : undefined,
-      });
+      })
     } catch (err) {
       AuditDatabase.logEvent(
         "Login Failed",
@@ -97,55 +107,99 @@ export default function Login({ onLogin }: LoginProps) {
         `Failed login attempt for user ${user.trim()}.`,
         "Failed",
         "system",
-        user.trim()
-      );
-      setError(err instanceof Error ? err.message : "Unable to sign in. Please check your credentials.");
+        user.trim(),
+      )
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to sign in. Please check your credentials.",
+      )
     } finally {
-      
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="h-screen flex" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div
+      className="h-screen flex"
+      style={{ fontFamily: "'Inter', system-ui, sans-serif" }}
+    >
       {/* Left panel */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-[#0C1524] p-12 select-none relative overflow-hidden">
         {/* Bottom curve: white inside dark blue panel (lowered) */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 500 1000" preserveAspectRatio="none" fill="none">
-          <path d="M 0 920 C 130 860, 280 740, 500 840 L 500 1000 L 0 1000 Z" fill="#F0F2F5" />
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none z-0"
+          viewBox="0 0 500 1000"
+          preserveAspectRatio="none"
+          fill="none"
+        >
+          <path
+            d="M 0 920 C 130 860, 280 740, 500 840 L 500 1000 L 0 1000 Z"
+            fill="#F0F2F5"
+          />
         </svg>
 
         <div className="relative z-10">
           {/* Logo */}
           <div className="mb-6">
             <div className="w-40 h-40 flex items-center justify-start flex-shrink-0">
-              <img src="/logo.png" alt="HospAI Logo" className="w-40 h-40 object-contain pointer-events-none" />
+              <img
+                src="/logo.png"
+                alt="HospAI Logo"
+                className="w-40 h-40 object-contain pointer-events-none"
+              />
             </div>
           </div>
 
           {/* Title & Subtitle directly below Logo */}
           <div className="mb-12">
             <h1 className="text-white text-3xl font-bold leading-snug mb-3">
-              Universal Hospital<br />Management System
+              Universal Hospital
+              <br />
+              Management System
             </h1>
             <p className="text-[#94A3B8] text-[13.5px] leading-relaxed max-w-lg">
-              Enterprise-grade clinical operations platform for physicians, nurses, pharmacists, laboratory staff, and administrators.
+              Enterprise-grade clinical operations platform for physicians,
+              nurses, pharmacists, laboratory staff, and administrators.
             </p>
           </div>
 
           {/* 4 Feature Boxes in 2x2 Grid Container */}
           <div className="grid grid-cols-2 gap-3.5 mb-10">
             {[
-              { icon: "🏥", label: "16 Modules", sub: "End-to-end care workflow" },
-              { icon: "👥", label: "428 Patients Today", sub: "Real-time census management" },
-              { icon: "⚠", label: "7 Critical Alerts", sub: "Requires immediate attention" },
-              { icon: "🔒", label: "HIPAA Compliant", sub: "Role-based access control" },
+              {
+                icon: "🏥",
+                label: "16 Modules",
+                sub: "End-to-end care workflow",
+              },
+              {
+                icon: "👥",
+                label: "428 Patients Today",
+                sub: "Real-time census management",
+              },
+              {
+                icon: "⚠",
+                label: "7 Critical Alerts",
+                sub: "Requires immediate attention",
+              },
+              {
+                icon: "🔒",
+                label: "HIPAA Compliant",
+                sub: "Role-based access control",
+              },
             ].map((f, i) => (
-              <div key={i} className="flex items-center gap-3.5 p-3.5 rounded-none bg-white/5 border border-white/5 hover:border-white/10 transition-colors">
+              <div
+                key={i}
+                className="flex items-center gap-3.5 p-3.5 rounded-none bg-white/5 border border-white/5 hover:border-white/10 transition-colors"
+              >
                 <span className="text-xl flex-shrink-0">{f.icon}</span>
                 <div className="min-w-0">
-                  <div className="text-[13px] font-semibold text-white truncate">{f.label}</div>
-                  <div className="text-[11.5px] text-[#94A3B8] truncate">{f.sub}</div>
+                  <div className="text-[13px] font-semibold text-white truncate">
+                    {f.label}
+                  </div>
+                  <div className="text-[11.5px] text-[#94A3B8] truncate">
+                    {f.sub}
+                  </div>
                 </div>
               </div>
             ))}
@@ -158,7 +212,11 @@ export default function Login({ onLogin }: LoginProps) {
             Powered by
           </span>
           <div className="w-[100px] h-[100px] flex items-center justify-center flex-shrink-0">
-            <img src="/kalpra_logo.png" alt="Kalpra Tech Logo" className="w-full h-full object-contain pointer-events-none" />
+            <img
+              src="/kalpra_logo.png"
+              alt="Kalpra Tech Logo"
+              className="w-full h-full object-contain pointer-events-none"
+            />
           </div>
         </div>
       </div>
@@ -166,20 +224,36 @@ export default function Login({ onLogin }: LoginProps) {
       {/* Right panel */}
       <div className="flex-1 flex flex-col justify-between bg-[#F0F2F5] px-8 py-10 relative overflow-hidden">
         {/* Bottom curve: #0C1524 dark blue inside white panel (lowered) */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" viewBox="0 0 500 1000" preserveAspectRatio="none" fill="none">
-          <path d="M 0 840 C 230 940, 370 820, 500 760 L 500 1000 L 0 1000 Z" fill="#0C1524" />
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none z-0"
+          viewBox="0 0 500 1000"
+          preserveAspectRatio="none"
+          fill="none"
+        >
+          <path
+            d="M 0 840 C 230 940, 370 820, 500 760 L 500 1000 L 0 1000 Z"
+            fill="#0C1524"
+          />
         </svg>
 
         <div className="w-full max-w-sm mx-auto my-auto relative z-10">
           <div className="flex justify-center mb-6 lg:hidden">
             <div className="w-24 h-24 flex items-center justify-center flex-shrink-0">
-              <img src="/logo.png" alt="HospAI Logo" className="w-full h-full object-contain pointer-events-none" />
+              <img
+                src="/logo.png"
+                alt="HospAI Logo"
+                className="w-full h-full object-contain pointer-events-none"
+              />
             </div>
           </div>
 
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">Sign in</h2>
-            <p className="text-[12.5px] text-[#64748B]">Select your system role to access the HMS</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">
+              Sign in
+            </h2>
+            <p className="text-[12.5px] text-[#64748B]">
+              Select your system role to access the HMS
+            </p>
           </div>
 
           {error && (
@@ -199,11 +273,15 @@ export default function Login({ onLogin }: LoginProps) {
                 placeholder="Select role below or enter User ID"
                 className="w-full border border-[#DDE2EC] rounded-none bg-white text-[13px] px-3.5 py-2.5 focus:outline-none focus:border-[#1B4FD8]"
               />
-              <p className="text-[11px] text-[#94A3B8] mt-1">Select role from dropdown to auto-fill credentials</p>
+              <p className="text-[11px] text-[#94A3B8] mt-1">
+                Select role from dropdown to auto-fill credentials
+              </p>
             </div>
 
             <div>
-              <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">Password</label>
+              <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                Password
+              </label>
               <input
                 type="password"
                 value={pass}
@@ -212,14 +290,21 @@ export default function Login({ onLogin }: LoginProps) {
                 className="w-full border border-[#DDE2EC] rounded-none bg-white text-[13px] px-3.5 py-2.5 focus:outline-none focus:border-[#1B4FD8]"
               />
               <div className="text-right mt-1">
-                <a href="#" className="text-[11.5px] text-[#1B4FD8] hover:underline">Forgot password?</a>
+                <a
+                  href="#"
+                  className="text-[11.5px] text-[#1B4FD8] hover:underline"
+                >
+                  Forgot password?
+                </a>
               </div>
             </div>
 
             {/* Clean Minimalistic Custom Role Dropdown */}
             <div className="relative">
-              <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">Role</label>
-              
+              <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
+                Role
+              </label>
+
               <button
                 type="button"
                 onClick={() => setOpenRoleDropdown((prev) => !prev)}
@@ -228,11 +313,17 @@ export default function Login({ onLogin }: LoginProps) {
                 <div className="min-w-0 pr-2 truncate">
                   {activeRole ? (
                     <>
-                      <span className="font-semibold text-[#0F172A]">{activeRole.label}</span>
-                      <span className="text-[11.5px] text-[#64748B] ml-2 font-normal">— {activeRole.sub}</span>
+                      <span className="font-semibold text-[#0F172A]">
+                        {activeRole.label}
+                      </span>
+                      <span className="text-[11.5px] text-[#64748B] ml-2 font-normal">
+                        — {activeRole.sub}
+                      </span>
                     </>
                   ) : (
-                    <span className="text-[#94A3B8] font-medium">Select Role</span>
+                    <span className="text-[#94A3B8] font-medium">
+                      Select Role
+                    </span>
                   )}
                 </div>
                 <svg
@@ -243,7 +334,12 @@ export default function Login({ onLogin }: LoginProps) {
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </button>
 
@@ -252,41 +348,66 @@ export default function Login({ onLogin }: LoginProps) {
                   <button
                     type="button"
                     onClick={() => {
-                      setUser("");
-                      setPass("");
-                      setOpenRoleDropdown(false);
+                      setUser("")
+                      setPass("")
+                      setOpenRoleDropdown(false)
                     }}
                     className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                      user === "" ? "bg-[#EFF6FF] text-[#1B4FD8]" : "hover:bg-[#F8FAFC] text-[#64748B]"
+                      user === ""
+                        ? "bg-[#EFF6FF] text-[#1B4FD8]"
+                        : "hover:bg-[#F8FAFC] text-[#64748B]"
                     }`}
                   >
-                    <span className="text-[12.5px] font-medium text-[#64748B]">Select Role</span>
-                    {user === "" && <span className="text-[#1B4FD8] font-bold text-[12px] ml-2">✓</span>}
+                    <span className="text-[12.5px] font-medium text-[#64748B]">
+                      Select Role
+                    </span>
+                    {user === "" && (
+                      <span className="text-[#1B4FD8] font-bold text-[12px] ml-2">
+                        ✓
+                      </span>
+                    )}
                   </button>
                   {ROLES_LIST.map((r) => {
-                    const isSelected = user === r.value;
+                    const isSelected = user === r.value
                     return (
                       <button
                         key={r.value}
                         type="button"
                         onClick={() => {
-                          setUser(r.value);
-                          setPass(credentialsForRole(r.value)?.localPassword || "password123");
-                          setOpenRoleDropdown(false);
+                          setUser(r.value)
+                          setPass(
+                            credentialsForRole(r.value)?.localPassword ||
+                              "password123",
+                          )
+                          setOpenRoleDropdown(false)
                         }}
                         className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                          isSelected ? "bg-[#EFF6FF] text-[#1B4FD8]" : "hover:bg-[#F8FAFC] text-[#334155]"
+                          isSelected
+                            ? "bg-[#EFF6FF] text-[#1B4FD8]"
+                            : "hover:bg-[#F8FAFC] text-[#334155]"
                         }`}
                       >
                         <div className="min-w-0 truncate">
-                          <span className={`text-[12.5px] ${isSelected ? "font-bold text-[#1B4FD8]" : "font-medium text-[#0F172A]"}`}>
+                          <span
+                            className={`text-[12.5px] ${
+                              isSelected
+                                ? "font-bold text-[#1B4FD8]"
+                                : "font-medium text-[#0F172A]"
+                            }`}
+                          >
                             {r.label}
                           </span>
-                          <span className="text-[11px] text-[#64748B] ml-2 font-normal">— {r.sub}</span>
+                          <span className="text-[11px] text-[#64748B] ml-2 font-normal">
+                            — {r.sub}
+                          </span>
                         </div>
-                        {isSelected && <span className="text-[#1B4FD8] font-bold text-[12px] ml-2">✓</span>}
+                        {isSelected && (
+                          <span className="text-[#1B4FD8] font-bold text-[12px] ml-2">
+                            ✓
+                          </span>
+                        )}
                       </button>
-                    );
+                    )
                   })}
                 </div>
               )}
@@ -315,22 +436,46 @@ export default function Login({ onLogin }: LoginProps) {
             )}
 
             <div className="flex items-center gap-2 mt-2">
-              <input type="checkbox" id="mfa" className="w-3.5 h-3.5 accent-[#1B4FD8] rounded-none" defaultChecked />
-              <label htmlFor="mfa" className="text-[12px] text-[#64748B]">Remember this device for 8 hours</label>
+              <input
+                type="checkbox"
+                id="mfa"
+                className="w-3.5 h-3.5 accent-[#1B4FD8] rounded-none"
+                defaultChecked
+              />
+              <label htmlFor="mfa" className="text-[12px] text-[#64748B]">
+                Remember this device for 8 hours
+              </label>
             </div>
 
             <button
               type="submit"
               disabled={loading}
               className={`w-full py-2.5 rounded-none text-white font-semibold text-[13px] transition-colors mt-3 ${
-                loading ? "bg-[#94A3B8] cursor-not-allowed" : "bg-[#1B4FD8] hover:bg-[#1740B4]"
+                loading
+                  ? "bg-[#94A3B8] cursor-not-allowed"
+                  : "bg-[#1B4FD8] hover:bg-[#1740B4]"
               }`}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="white" strokeWidth="4" />
-                    <path className="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  <svg
+                    className="animate-spin w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="white"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="white"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
                   </svg>
                   Authenticating...
                 </span>
@@ -349,5 +494,5 @@ export default function Login({ onLogin }: LoginProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }

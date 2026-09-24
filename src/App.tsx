@@ -1,218 +1,133 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react"
 
-import { Icon, type IconProps } from "./components/icons";
+import { Icon, type IconProps } from "./components/icons"
 
-import Login from "./components/Login";
+import Login from "./components/Login"
 
-import Dashboard from "./components/Dashboard";
+import Dashboard from "./components/Dashboard"
 
-import PatientSearch from "./components/PatientSearch";
+import PatientSearch from "./components/PatientSearch"
 
-import PatientChart from "./components/PatientChart";
+import PatientChart from "./components/PatientChart"
 
-import ErPage from "./pages/ErPage";
+import ErPage from "./pages/ErPage"
 
-import BedManagementPage from "./pages/BedManagementPage";
+import BedManagementPage from "./pages/BedManagementPage"
 
-import NursingPortal from "./components/nursing/NursingPortal";
+import NursingPortal from "./components/nursing/NursingPortal"
 
-import type { Notice } from "./types";
+import type { Notice } from "./types"
 
-import Laboratory from "./components/Laboratory";
+import { apiFetch } from "./lib/api"
 
-import Pharmacy from "./components/Pharmacy";
+import Laboratory from "./components/Laboratory"
 
-import Billing from "./components/Billing";
+import Pharmacy from "./components/Pharmacy"
 
-import Inpatient from "./components/Inpatient";
+import Billing from "./components/Billing"
 
-import Surgery from "./components/Surgery";
+import Inpatient from "./components/Inpatient"
 
-import Appointments from "./components/Appointments";
+import Surgery from "./components/Surgery"
 
-import Radiology from "./components/Radiology";
+import Appointments from "./components/Appointments"
 
-import ICU from "./components/ICU";
+import Radiology from "./components/Radiology"
 
-import Analytics from "./components/Analytics";
+import ICU from "./components/ICU"
 
-import Discharge from "./components/Discharge";
+import Analytics from "./components/Analytics"
 
-import Triage from "./components/Triage";
+import Discharge from "./components/Discharge"
 
-import Insurance from "./components/Insurance";
+import Triage from "./components/Triage"
 
-import OrderDrawer from "./components/OrderDrawer";
+import Insurance from "./components/Insurance"
 
-import CommandPalette from "./components/CommandPalette";
+import OrderDrawer from "./components/OrderDrawer"
 
-import Registration from "./components/Registration";
+import CommandPalette from "./components/CommandPalette"
 
-import NurseStation from "./components/NurseStation";
+import Registration from "./components/Registration"
 
-import OPWorkflow from "./components/OPWorkflow";
+import NurseStation from "./components/NurseStation"
 
-import SmartOCR from "./components/SmartOCR";
+import OPWorkflow from "./components/OPWorkflow"
 
-import DpiOcrPortal from "./components/DpiOcrPortal";
+import SmartOCR from "./components/SmartOCR"
 
-import SymptomAI from "./components/SymptomAI";
+import DpiOcrPortal from "./components/DpiOcrPortal"
 
-import ClinicalRAG from "./components/ClinicalRAG";
+import SymptomAI from "./components/SymptomAI"
 
-import ClinicalSummaries from "./components/ClinicalSummaries";
+import ClinicalRAG from "./components/ClinicalRAG"
 
-import BulkAI from "./components/BulkAI";
+import ClinicalSummaries from "./components/ClinicalSummaries"
 
-import NLFiltering from "./components/NLFiltering";
+import BulkAI from "./components/BulkAI"
 
-import IntelligenceHub from "./components/IntelligenceHub";
+import NLFiltering from "./components/NLFiltering"
 
-import QueueManagement from "./components/QueueManagement";
+import IntelligenceHub from "./components/IntelligenceHub"
 
-import OPManagement from "./components/OPManagement";
-import OPDProcedures from "./components/OPDProcedures";
-import DoctorWorkflow from "./components/DoctorWorkflow";
+import QueueManagement from "./components/QueueManagement"
 
-import DoctorPortal from "./components/doctor/DoctorPortal";
+import OPManagement from "./components/OPManagement"
+import OPDProcedures from "./components/OPDProcedures"
+import DoctorPortal from "./components/doctor/DoctorPortal"
 
-import DoctorScheduling from "./components/DoctorScheduling";
+import DoctorScheduling from "./components/DoctorScheduling"
 
-import PatientExperience from "./components/PatientExperience";
+import PatientExperience from "./components/PatientExperience"
 
-import HRMS from "./components/HRMS";
+import HRMS from "./components/HRMS"
 
-import Employees from "./components/Employees";
+import Employees from "./components/Employees"
 
-import Admissions from "./components/Admissions";
+import Admissions from "./components/Admissions"
 
-import Readmission from "./components/Readmission";
+import Readmission from "./components/Readmission"
 
-import PaymentCollection from "./components/PaymentCollection";
+import PaymentCollection from "./components/PaymentCollection"
 
-import RevenueReports from "./components/RevenueReports";
+import RevenueReports from "./components/RevenueReports"
 
-import Administration from "./components/Administration";
+import Administration from "./components/Administration"
 
-import OpReportsPage from "./components/reports/OpReportsPage";
+import OpReportsPage from "./components/reports/OpReportsPage"
 
-import GeneralReportsOverviewPage from "./components/reports/GeneralReportsOverviewPage";
+import GeneralReportsOverviewPage from "./components/reports/GeneralReportsOverviewPage"
 
 import GenericReportPage, {
   ReportType,
-} from "./components/reports/GenericReportPage";
+} from "./components/reports/GenericReportPage"
 
-import { AuditDatabase } from "./services/auditDb";
+import { AuditDatabase } from "./services/auditDb"
 
-import { ALL_SYSTEM_MODULES, RoleDatabase } from "./services/roleDb";
+import { ALL_SYSTEM_MODULES, RoleDatabase } from "./services/roleDb"
 
 import {
   DoctorAccount,
   DoctorPortalDatabase,
   resolveDoctorAccount,
-} from "./services/doctorPortalDb";
+} from "./services/doctorPortalDb"
 
-import { LabOrderDatabase } from "./services/labOrdersDb";
+import { LabOrderDatabase } from "./services/labOrdersDb"
 
-import {
-  PharmacyDatabase,
-  isAwaitingVerification,
-} from "./services/pharmacyDb";
+import { PharmacyDatabase, isAwaitingVerification } from "./services/pharmacyDb"
 
-type Module =
-  | "dashboard"
-  | "patients"
-  | "appointments"
-  | "emergency"
-  | "clinical"
-  | "inpatient"
-  | "nursing"
-  | "laboratory"
-  | "radiology"
-  | "pharmacy"
-  | "pharmacy_dispensing"
-  | "pharmacy_rx"
-  | "pharmacy_ocr"
-  | "pharmacy_returns"
-  | "pharmacy_supplier_returns"
-  | "pharmacy_medicine"
-  | "pharmacy_category"
-  | "pharmacy_suppliers"
-  | "pharmacy_po"
-  | "pharmacy_grn"
-  | "pharmacy_ledger"
-  | "pharmacy_transfers"
-  | "pharmacy_expiry"
-  | "pharmacy_analytics"
-  | "pharmacy_notifications"
-  | "pharmacy_users"
-  | "pharmacy_audit"
-  | "pharmacy_settings"
-  | "surgery"
-  | "billing"
-  | "icu"
-  | "discharge"
-  | "triage"
-  | "insurance"
-  | "analytics"
-  | "reports"
-  | "reports_overview"
-  | "reports_patients"
-  | "reports_op"
-  | "reports_er"
-  | "reports_inpatient"
-  | "reports_appointments"
-  | "reports_doctors"
-  | "reports_pharmacy"
-  | "reports_laboratory"
-  | "reports_radiology"
-  | "reports_beds"
-  | "reports_admissions"
-  | "reports_discharges"
-  | "reports_staff"
-  | "admin"
-  | "chart"
-  | "register"
-  | "outpatient"
-  | "queue"
-  | "op_management"
-  | "op_registration"
-  | "op_workflow"
-  | "op_nurse"
-  | "opd_procedures"
-  | "doctor_workflow"
-  | "doctor_portal"
-  | "scheduling"
-  | "lab_billing"
-  | "admissions"
-  | "readmission"
-  | "payments"
-  | "revenue_reports"
-  | "reports_pharmacy_damaged"
-  | "reports_supplier_returns"
-  | "hrms"
-  | "employees"
-  | "patient_exp"
-  | "intelligence"
-  | "ocr"
-  | "dpi_ocr"
-  | "symptom_ai"
-  | "clinical_rag"
-  | "clinical_summaries"
-  | "bulk_ai"
-  | "nl_filtering"
-  | "beds";
+type Module = "dashboard" | "patients" | "appointments" | "emergency" | "clinical" | "inpatient" | "nursing" | "laboratory" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "icu" | "discharge" | "triage" | "insurance" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
 
 interface NavItem {
-  key: Module;
+  key: Module
 
-  label: string;
+  label: string
 
-  Icon: React.FC<IconProps>;
+  Icon: React.FC<IconProps>
 
-  badge?: number;
+  badge?: number
 
-  children?: { key: Module; label: string; group?: string }[];
+  children?: { key: Module; label: string; group?: string }[]
 }
 
 const NAV: NavItem[] = [
@@ -268,11 +183,9 @@ const NAV: NavItem[] = [
     key: "emergency",
     label: "Emergency",
     Icon: Icon.Emergency,
-    badge: 8,
 
     children: [
       { key: "emergency", label: "ED Track Board" },
-
       { key: "triage", label: "Triage" },
     ],
   },
@@ -326,10 +239,26 @@ const NAV: NavItem[] = [
         group: "Sales & Dispensing",
       },
       { key: "pharmacy_medicine", label: "Medicine Master", group: "Catalog" },
-      { key: "pharmacy_suppliers", label: "Suppliers", group: "Inventory Management" },
-      { key: "pharmacy_supplier_returns", label: "Supplier Returns", group: "Inventory Management" },
-      { key: "pharmacy_po", label: "Purchase Orders", group: "Procurement & Receiving" },
-      { key: "pharmacy_grn", label: "Scan Invoice (GRN)", group: "Procurement & Receiving" },
+      {
+        key: "pharmacy_suppliers",
+        label: "Suppliers",
+        group: "Inventory Management",
+      },
+      {
+        key: "pharmacy_supplier_returns",
+        label: "Supplier Returns",
+        group: "Inventory Management",
+      },
+      {
+        key: "pharmacy_po",
+        label: "Purchase Orders",
+        group: "Procurement & Receiving",
+      },
+      {
+        key: "pharmacy_grn",
+        label: "Scan Invoice (GRN)",
+        group: "Procurement & Receiving",
+      },
       { key: "pharmacy_ledger", label: "Inventory Ledger", group: "Inventory" },
 
       {
@@ -497,7 +426,7 @@ const NAV: NavItem[] = [
   },
 
   { key: "admin", label: "Administration", Icon: Icon.Admin },
-];
+]
 
 // Breadcrumb label for a module. NAV already carries a proper label for every
 
@@ -565,32 +494,32 @@ const BREADCRUMB_OVERRIDES: Record<string, string | string[]> = {
     "Financial Reports",
     "Supplier Return Ledger",
   ],
-};
+}
 
 function moduleTrail(module: string): string[] {
-  const override = BREADCRUMB_OVERRIDES[module];
+  const override = BREADCRUMB_OVERRIDES[module]
 
-  if (override) return Array.isArray(override) ? override : [override];
+  if (override) return Array.isArray(override) ? override : [override]
 
   for (const item of NAV) {
-    if (item.key === module && !item.children) return [item.label];
+    if (item.key === module && !item.children) return [item.label]
 
-    const child = item.children?.find((c) => c.key === module);
+    const child = item.children?.find((c) => c.key === module)
 
     if (child) {
       if (child.group) {
-        return [item.label, child.group, child.label];
+        return [item.label, child.group, child.label]
       }
 
       // A module's own landing page repeats the section name otherwise.
 
-      return child.key === item.key ? [item.label] : [item.label, child.label];
+      return child.key === item.key ? [item.label] : [item.label, child.label]
     }
 
-    if (item.key === module) return [item.label];
+    if (item.key === module) return [item.label]
   }
 
-  return [module];
+  return [module]
 }
 
 function NotificationPanel({ onClose }: { onClose: () => void }) {
@@ -688,7 +617,7 @@ function NotificationPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 function NursingDashboard() {
@@ -860,43 +789,21 @@ function NursingDashboard() {
         </div>
       </div>
     </div>
-  );
-}
-
-function PlaceholderModule({ title, sub }: { title: string; sub?: string }) {
-  return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-[#DDE2EC] px-6 py-3">
-        <h1 className="text-base font-semibold text-gray-900">{title}</h1>
-        {sub && <p className="text-[11.5px] text-[#64748B]">{sub}</p>}
-      </div>
-      <div className="flex-1 flex items-center justify-center bg-[#F0F2F5]">
-        <div className="text-center">
-          <div className="text-5xl mb-4">📋</div>
-          <div className="text-sm font-semibold text-gray-700 mb-1">
-            {title}
-          </div>
-          <div className="text-[12px] text-[#64748B]">
-            This module is available in the full implementation.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  )
 }
 
 interface StaffProfile {
-  id: string;
+  id: string
 
-  name: string;
+  name: string
 
-  role: string;
+  role: string
 
-  title: string;
+  title: string
 
-  department: string;
+  department: string
 
-  activeShift?: string;
+  activeShift?: string
 }
 
 const DEFAULT_STAFF: StaffProfile = {
@@ -909,12 +816,12 @@ const DEFAULT_STAFF: StaffProfile = {
   title: "Hospital Administrator",
 
   department: "Administration",
-};
+}
 
 function getRoleProfile(roleId: string, username?: string): StaffProfile {
-  const r = (roleId || "").toLowerCase();
+  const r = (roleId || "").toLowerCase()
 
-  const u = (username || "").toLowerCase();
+  const u = (username || "").toLowerCase()
 
   if (r.includes("superadmin") || u === "superadmin") {
     return {
@@ -923,7 +830,7 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
       role: "ROLE_SUPERADMIN",
       title: "Super Administrator",
       department: "Executive Control",
-    };
+    }
   }
 
   if (r.includes("doctor") || u === "doctor") {
@@ -933,7 +840,7 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
       role: "ROLE_DOCTOR",
       title: "Attending Physician / EMR",
       department: "Cardiology & ICU",
-    };
+    }
   }
 
   if (r.includes("reception") || u === "reception") {
@@ -943,7 +850,7 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
       role: "ROLE_RECEPTION",
       title: "Front Desk Receptionist",
       department: "Patient Services",
-    };
+    }
   }
 
   if (r.includes("pharmacy") || u === "pharmacy") {
@@ -953,7 +860,7 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
       role: "ROLE_PHARMACY",
       title: "Chief Pharmacist",
       department: "Pharmacy Dept",
-    };
+    }
   }
 
   if (r.includes("lab") || u === "lab") {
@@ -963,7 +870,7 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
       role: "ROLE_LAB",
       title: "Lead Lab Technician",
       department: "Pathology & Radiology",
-    };
+    }
   }
 
   if (r.includes("nurse") || r.includes("rn") || u === "nurse") {
@@ -973,7 +880,7 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
       role: "ROLE_NURSE",
       title: "Registered Nurse",
       department: "Inpatient & ICU",
-    };
+    }
   }
 
   return {
@@ -982,29 +889,29 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
     role: "ROLE_ADMIN",
     title: "System Administrator",
     department: "Administration",
-  };
+  }
 }
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false)
 
-  const [userRole, setUserRole] = useState<string>("ROLE_ADMIN");
+  const [userRole, setUserRole] = useState<string>("ROLE_ADMIN")
 
-  const [userPermissions, setUserPermissions] = useState<string[]>([]);
+  const [userPermissions, setUserPermissions] = useState<string[]>([])
 
-  const [activeStaff, setActiveStaff] = useState<StaffProfile>(DEFAULT_STAFF);
+  const [activeStaff, setActiveStaff] = useState<StaffProfile>(DEFAULT_STAFF)
 
   // Set when a physician signs in: their portal is scoped to this one doctor.
 
-  const [activeDoctor, setActiveDoctor] = useState<DoctorAccount | null>(null);
+  const [activeDoctor, setActiveDoctor] = useState<DoctorAccount | null>(null)
 
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false)
 
-  const [notice, setNotice] = useState<Notice | null>(null);
+  const [notice, setNotice] = useState<Notice | null>(null)
 
-  const stableSetNotice = useCallback((n: Notice | null) => setNotice(n), []);
+  const stableSetNotice = useCallback((n: Notice | null) => setNotice(n), [])
 
-  const [module, setModule] = useState<Module>("dashboard");
+  const [module, setModule] = useState<Module>("dashboard")
 
   // Set alongside setModule("chart") when another page (e.g. a bed card's
 
@@ -1014,38 +921,38 @@ export default function App() {
 
   const [clinicalPatientId, setClinicalPatientId] = useState<string | null>(
     null,
-  );
+  )
 
   const openPatientClinical = (patientId: string) => {
-    setClinicalPatientId(patientId);
+    setClinicalPatientId(patientId)
 
-    setModule("chart");
-  };
+    setModule("chart")
+  }
 
-  const [expanded, setExpanded] = useState<string[]>([]);
+  const [expanded, setExpanded] = useState<string[]>([])
   const [expandedReportGroups, setExpandedReportGroups] = useState<string[]>([
     "General Reports",
-  ]);
-  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
-  const [subBadges, setSubBadges] = useState<Record<string, number>>({});
+  ])
+  const [collapsedGroups, setCollapsedGroups] = useState<string[]>([])
+  const [subBadges, setSubBadges] = useState<Record<string, number>>({})
 
   // Bumped whenever the doctor inbox or the lab-order queue changes, so the
 
   // sidebar counts move without waiting for the next navigation.
 
-  const [badgeTick, setBadgeTick] = useState(0);
+  const [badgeTick, setBadgeTick] = useState(0)
 
   useEffect(
     () => DoctorPortalDatabase.subscribe(() => setBadgeTick((t) => t + 1)),
     [],
-  );
+  )
 
   useEffect(
     () => LabOrderDatabase.subscribe(() => setBadgeTick((t) => t + 1)),
     [],
-  );
+  )
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Keppler OCR is a whole separate React app in an iframe: unmounting it on
 
@@ -1055,21 +962,31 @@ export default function App() {
 
   // it, so going back is instant.
 
-  const [ocrMounted, setOcrMounted] = useState(false);
+  const [ocrMounted, setOcrMounted] = useState(false)
 
   useEffect(() => {
-    if (module === "dpi_ocr") setOcrMounted(true);
-  }, [module]);
+    if (module === "dpi_ocr") setOcrMounted(true)
+  }, [module])
 
-  const [orderOpen, setOrderOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null)
 
-  const [cmdOpen, setCmdOpen] = useState(false);
+  // Automatically scroll workspace to top whenever opening or switching modules/reports
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0
+    }
+    window.scrollTo(0, 0)
+  }, [module])
 
-  const [notifOpen, setNotifOpen] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false)
 
-  const [globalSearch, setGlobalSearch] = useState("");
+  const [cmdOpen, setCmdOpen] = useState(false)
 
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false)
+
+  const [globalSearch, setGlobalSearch] = useState("")
+
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   const [zoomLevel, setZoomLevel] = useState(() => {
     // Persisted so a chosen text size survives a reload; storage can throw in
@@ -1077,32 +994,31 @@ export default function App() {
     // private windows, and a bad/stale value must not scale the whole app.
 
     try {
-      const saved = parseFloat(localStorage.getItem("hms.zoomLevel") ?? "");
+      const saved = parseFloat(localStorage.getItem("hms.zoomLevel") ?? "")
 
-      if (Number.isFinite(saved)) return Math.min(1.2, Math.max(0.7, saved));
+      if (Number.isFinite(saved)) return Math.min(1.2, Math.max(0.7, saved))
     } catch {}
 
-    return 1;
-  });
+    return 1
+  })
 
   useEffect(() => {
     try {
-      localStorage.setItem("hms.zoomLevel", String(zoomLevel));
+      localStorage.setItem("hms.zoomLevel", String(zoomLevel))
     } catch {}
-  }, [zoomLevel]);
+  }, [zoomLevel])
 
-  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const [newMenuOpen, setNewMenuOpen] = useState(false)
 
-  const [workflowInitialStep, setWorkflowInitialStep] = useState<number>(2);
+  const [workflowInitialStep, setWorkflowInitialStep] = useState<number>(2)
 
   const [selectedWorkflowEncounterId, setSelectedWorkflowEncounterId] =
-    useState<string | undefined>();
+    useState<string | undefined>()
 
-  const [selectedTriageVisitId, setSelectedTriageVisitId] = useState<
-    number | null
-  >(null);
+  const [selectedTriageVisitId, setSelectedTriageVisitId] =
+    useState<number | null>(null)
 
-  const isNurse = userRole === "rn";
+  const isNurse = userRole === "rn"
 
   /**
    * Whether this user may open a clinical consultation screen at all.
@@ -1117,7 +1033,7 @@ export default function App() {
 
   const canOpenConsultation =
     userPermissions.includes("doctor_workflow") ||
-    userPermissions.includes("doctor_portal");
+    userPermissions.includes("doctor_portal")
 
   // Check route access
 
@@ -1131,73 +1047,95 @@ export default function App() {
 
       const parentMatch = NAV.find((n) =>
         n.children?.some((c) => c.key === module),
-      );
+      )
 
       if (!parentMatch || !userPermissions.includes(parentMatch.key)) {
-        setModule("dashboard");
+        setModule("dashboard")
       }
     }
-  }, [module, loggedIn, userPermissions]);
+  }, [module, loggedIn, userPermissions])
 
   const handleLogout = () => {
+    let curUsername = activeStaff.name
+    try {
+      const curData = localStorage.getItem("hospai_current_user")
+      if (curData) {
+        const u = JSON.parse(curData)
+        if (u && u.user) curUsername = u.user
+      }
+    } catch {}
+
     AuditDatabase.logEvent(
       "Logout",
-
       "Authentication",
-
       `User ${activeStaff.name} logged out.`,
-
       "Success",
-
       activeStaff.id,
+      curUsername,
+    )
 
-      activeStaff.name,
-    );
+    try {
+      localStorage.removeItem("hospai_current_user")
+    } catch {}
 
-    setLoggedIn(false);
-  };
+    setLoggedIn(false)
+  }
 
   const switchRole = (
     targetRole: string,
     targetUsername: string,
     permissions: string[],
   ) => {
-    setUserRole(targetRole);
+    setUserRole(targetRole)
 
-    setUserPermissions(permissions);
+    setUserPermissions(permissions)
 
-    setActiveStaff(getRoleProfile(targetRole, targetUsername));
+    setActiveStaff(getRoleProfile(targetRole, targetUsername))
 
     const doctor =
       targetRole === "ROLE_DOCTOR"
         ? resolveDoctorAccount({ username: targetUsername })
-        : null;
+        : null
 
-    setActiveDoctor(doctor);
+    setActiveDoctor(doctor)
 
-    setModule(doctor ? "doctor_portal" : "dashboard");
+    setModule(doctor ? "doctor_portal" : "dashboard")
 
-    setRoleMenuOpen(false);
-  };
+    setRoleMenuOpen(false)
+
+    try {
+      localStorage.setItem(
+        "hospai_current_user",
+        JSON.stringify({ user: targetUsername, staffId: targetRole }),
+      )
+    } catch {}
+  }
 
   const handleLogin = (userData: {
-    user: string;
+    user: string
 
-    role: string;
+    role: string
 
-    staffId: string;
+    staffId: string
 
-    permissions: string[];
+    permissions: string[]
 
-    doctorId?: string;
+    doctorId?: string
   }) => {
-    setUserRole(userData.role);
+    try {
+      localStorage.setItem(
+        "hospai_current_user",
+        JSON.stringify({ user: userData.user, staffId: userData.staffId, role: userData.role }),
+      )
+    } catch {}
 
-    setUserPermissions(userData.permissions);
+    setUserRole(userData.role)
+
+    setUserPermissions(userData.permissions)
 
     const isDoctor =
       userData.role === "ROLE_DOCTOR" ||
-      userData.user.toLowerCase().startsWith("doctor");
+      userData.user.toLowerCase().startsWith("doctor")
 
     const doctor = isDoctor
       ? resolveDoctorAccount({
@@ -1205,9 +1143,9 @@ export default function App() {
           username: userData.user,
           name: userData.user,
         })
-      : null;
+      : null
 
-    setActiveDoctor(doctor);
+    setActiveDoctor(doctor)
 
     setActiveStaff(
       doctor
@@ -1223,88 +1161,92 @@ export default function App() {
             department: `${doctor.specialty} · ${doctor.room}`,
           }
         : getRoleProfile(userData.role, userData.user),
-    );
+    )
 
-    setLoggedIn(true);
+    setLoggedIn(true)
 
     // A physician's home is their own portal -- the inbox of patients appointed
 
     // to them -- not the hospital-wide dashboard.
 
-    setModule(doctor ? "doctor_portal" : "dashboard");
-  };
+    setModule(doctor ? "doctor_portal" : "dashboard")
+  }
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement
         .requestFullscreen()
         .then(() => setIsFullscreen(true))
-        .catch(() => {});
+        .catch(() => {})
     } else {
       if (document.exitFullscreen) {
         document
           .exitFullscreen()
           .then(() => setIsFullscreen(false))
-          .catch(() => {});
+          .catch(() => {})
       }
     }
-  };
+  }
 
   // Ctrl+K
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        setCmdOpen(true);
+        e.preventDefault()
+        setCmdOpen(true)
       }
-    };
+    }
 
-    window.addEventListener("keydown", h);
+    window.addEventListener("keydown", h)
 
-    return () => window.removeEventListener("keydown", h);
-  }, []);
+    return () => window.removeEventListener("keydown", h)
+  }, [])
 
   const navigate = (m: string, sub?: string) => {
-    setModule(m as Module);
+    setModule(m as Module)
 
-    if (sub === "register") setModule("register");
+    if (sub === "register") setModule("register")
 
-    setCmdOpen(false);
-  };
+    setCmdOpen(false)
+  }
 
   // Counts on the nav itself, so a pharmacist sees what needs attention without opening each page.
 
   // Recomputed whenever the module changes, which is also when pharmacy data has just been written.
 
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!loggedIn) return
 
     try {
-      const prescriptions = PharmacyDatabase.getPrescriptions();
+      const prescriptions = PharmacyDatabase.getPrescriptions()
 
-      const batches = PharmacyDatabase.getBatches();
+      const batches = PharmacyDatabase.getBatches()
 
-      const medicines = PharmacyDatabase.getMedicines();
+      const medicines = PharmacyDatabase.getMedicines()
 
-      const active = batches.filter((b) => b.availableQuantity > 0);
+      const active = batches.filter((b) => b.availableQuantity > 0)
 
       const expiringSoon = active.filter((b) => {
         const days = Math.ceil(
           (new Date(b.expiryDate).getTime() - Date.now()) / 86400000,
-        );
+        )
 
-        return days <= 90;
-      }).length;
+        return days <= 90
+      }).length
 
       const lowStock = medicines.filter(
         (m) =>
           batches
             .filter((b) => b.medicineId === m.id)
             .reduce((a, b) => a + b.availableQuantity, 0) <= m.reorderLevel,
-      ).length;
+      ).length
 
-      setSubBadges({
+      // Merged in, not a full replace -- a separate effect owns the
+      // "emergency" key (live ER visit count, polled from the backend) and
+      // would get wiped out every time this effect re-runs otherwise.
+      setSubBadges((prev) => ({
+        ...prev,
         doctor_portal: activeDoctor
           ? DoctorPortalDatabase.getUnreadCount(activeDoctor.id)
           : 0,
@@ -1331,11 +1273,66 @@ export default function App() {
         pharmacy_expiry: expiringSoon,
 
         pharmacy_medicine: lowStock,
-      });
+      }))
     } catch {
-      setSubBadges({});
+      setSubBadges((prev) => ({
+        ...prev,
+        doctor_portal: 0,
+        laboratory: 0,
+        pharmacy_rx: 0,
+        pharmacy_dispensing: 0,
+        pharmacy_expiry: 0,
+        pharmacy_medicine: 0,
+      }))
     }
-  }, [module, loggedIn, badgeTick, activeDoctor]);
+  }, [module, loggedIn, badgeTick, activeDoctor])
+
+  // Emergency's nav badge is a live count of active ER visits, and Bed
+  // Management's is pending ER bed requests -- both polled from the real
+  // backend, unlike the pharmacy/lab/doctor-portal badges above, which read
+  // from an in-memory local store. Triage doesn't get its own badge: it's a
+  // child of Emergency now, and child badges sum onto the parent's, so a
+  // separate "needs triage" count here would double-count against
+  // `emergency`'s total-active count instead of adding real information.
+  useEffect(() => {
+    if (!loggedIn) return
+    let cancelled = false
+    const fetchEmergencyCount = async () => {
+      try {
+        const data = await apiFetch<{ visits: unknown[] }>(
+          "/api/er/visits?active_only=true",
+        )
+        if (!cancelled) {
+          setSubBadges((prev) => ({
+            ...prev,
+            emergency: (data.visits || []).length,
+          }))
+        }
+      } catch {
+        // best effort -- picked up again on the next poll tick
+      }
+      try {
+        const bedReqData = await apiFetch<{ bed_requests: unknown[] }>(
+          "/api/er/bed-requests?status=pending",
+        )
+        if (!cancelled) {
+          setSubBadges((prev) => ({
+            ...prev,
+            beds: (bedReqData.bed_requests || []).length,
+          }))
+        }
+      } catch {
+        // best effort -- picked up again on the next poll tick; a role
+        // without beds.read just never gets this badge, which is fine
+      }
+    }
+    void fetchEmergencyCount()
+    const interval = window.setInterval(fetchEmergencyCount, 20000)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
+  }, [loggedIn])
 
   // Landing on a sub-module from anywhere but the sidebar (command palette, a shortcut button)
 
@@ -1344,38 +1341,38 @@ export default function App() {
   useEffect(() => {
     const parent = NAV.find((n) =>
       n.children?.some((c) => c.key === module && c.key !== n.key),
-    );
+    )
 
-    if (!parent) return;
+    if (!parent) return
 
     setExpanded((prev) =>
       prev.includes(parent.key) ? prev : [...prev, parent.key],
-    );
+    )
 
     if (parent.key === "reports") {
-      const child = parent.children?.find((c) => c.key === module);
+      const child = parent.children?.find((c) => c.key === module)
 
       if (child?.group) {
-        const grp = child.group;
+        const grp = child.group
 
         setExpandedReportGroups((prev) =>
           prev.includes(grp) ? prev : [...prev, grp],
-        );
+        )
       }
     }
-  }, [module]);
+  }, [module])
 
   const toggleExpand = (key: string) => {
     setExpanded((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    );
-  };
+    )
+  }
 
   const toggleReportGroup = (group: string) => {
     setExpandedReportGroups((prev) =>
       prev.includes(group) ? prev.filter((g) => g !== group) : [...prev, group],
-    );
-  };
+    )
+  }
 
   return (
     <div
@@ -1445,8 +1442,8 @@ export default function App() {
                 <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-[#DDE2EC] rounded shadow-lg z-50 py-1">
                   <button
                     onClick={() => {
-                      setModule("register");
-                      setNewMenuOpen(false);
+                      setModule("register")
+                      setNewMenuOpen(false)
                     }}
                     className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
                   >
@@ -1454,8 +1451,8 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => {
-                      setModule("appointments");
-                      setNewMenuOpen(false);
+                      setModule("appointments")
+                      setNewMenuOpen(false)
                     }}
                     className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
                   >
@@ -1463,9 +1460,9 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => {
-                      setModule("chart");
-                      setOrderOpen(true);
-                      setNewMenuOpen(false);
+                      setModule("chart")
+                      setOrderOpen(true)
+                      setNewMenuOpen(false)
                     }}
                     className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
                   >
@@ -1637,7 +1634,7 @@ export default function App() {
                           ? ALL_SYSTEM_MODULES
                           : RoleDatabase.getRoles().find(
                               (role) => role.id === r.roleId,
-                            )?.allowedModules || ["dashboard"];
+                            )?.allowedModules || ["dashboard"]
 
                       return (
                         <button
@@ -1662,7 +1659,7 @@ export default function App() {
                             </span>
                           )}
                         </button>
-                      );
+                      )
                     })}
                     <div className="border-t border-[#E2E8F0] pt-1 mt-1">
                       <button
@@ -1719,9 +1716,9 @@ export default function App() {
                 {NAV.map((item) => {
                   // Module-based Access Control Filtering
 
-                  const hasAccess = userPermissions.includes(item.key);
+                  const hasAccess = userPermissions.includes(item.key)
 
-                  if (!hasAccess) return null;
+                  if (!hasAccess) return null
 
                   // Sub-items inherit the parent's access unless the role actually enumerates
 
@@ -1732,7 +1729,7 @@ export default function App() {
                   const subModulesGranted = item.children?.some(
                     (c) =>
                       c.key !== item.key && userPermissions.includes(c.key),
-                  );
+                  )
 
                   const filteredChildren = item.children?.filter(
                     (c) =>
@@ -1741,24 +1738,24 @@ export default function App() {
                         userPermissions.includes("reports")) ||
                       !subModulesGranted ||
                       userPermissions.includes(c.key),
-                  );
+                  )
 
                   const isActive =
                     module === item.key ||
-                    filteredChildren?.some((c) => c.key === module);
+                    filteredChildren?.some((c) => c.key === module)
 
-                  const isExpanded = expanded.includes(item.key);
+                  const isExpanded = expanded.includes(item.key)
 
                   const childBadgeTotal =
                     filteredChildren?.reduce(
                       (a, c) => a + (subBadges[c.key] || 0),
                       0,
-                    ) || 0;
+                    ) || 0
 
                   const navBadge =
                     childBadgeTotal > 0
                       ? childBadgeTotal
-                      : subBadges[item.key] || item.badge;
+                      : subBadges[item.key] || item.badge
 
                   return (
                     <div key={item.key} className="relative group">
@@ -1776,23 +1773,23 @@ export default function App() {
                           if (filteredChildren && filteredChildren.length > 0) {
                             if (sidebarCollapsed) {
                               if (item.key === "intelligence") {
-                                setModule("intelligence");
+                                setModule("intelligence")
                               } else {
-                                setModule(filteredChildren[0].key);
+                                setModule(filteredChildren[0].key)
                               }
                             } else {
-                              toggleExpand(item.key);
+                              toggleExpand(item.key)
 
                               if (!expanded.includes(item.key)) {
                                 if (item.key === "intelligence") {
-                                  setModule("intelligence");
+                                  setModule("intelligence")
                                 } else {
-                                  setModule(filteredChildren[0].key);
+                                  setModule(filteredChildren[0].key)
                                 }
                               }
                             }
                           } else {
-                            setModule(item.key);
+                            setModule(item.key)
                           }
                         }}
                         title={sidebarCollapsed ? item.label : undefined}
@@ -1805,7 +1802,7 @@ export default function App() {
                         />
 
                         {/* Collapsed Badge Dot */}
-                        {sidebarCollapsed && item.badge && !isActive && (
+                        {sidebarCollapsed && navBadge && !isActive && (
                           <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#DC2626] border border-[#0C1524] rounded-full"></span>
                         )}
 
@@ -1813,9 +1810,9 @@ export default function App() {
                         {sidebarCollapsed && (
                           <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#0F172A] text-white text-[12px] font-semibold rounded-lg shadow-2xl border border-white/10 whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 flex items-center gap-2">
                             <span>{item.label}</span>
-                            {item.badge && (
+                            {navBadge && (
                               <span className="bg-[#DC2626] text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">
-                                {item.badge}
+                                {navBadge}
                               </span>
                             )}
                           </div>
@@ -1880,20 +1877,20 @@ export default function App() {
                             ].map((group) => {
                               const groupChildren = filteredChildren.filter(
                                 (c) => c.group === group,
-                              );
+                              )
 
                               const isGroupActive = groupChildren.some(
                                 (c) => c.key === module,
-                              );
+                              )
 
                               const isGroupExpanded =
-                                expandedReportGroups.includes(group);
+                                expandedReportGroups.includes(group)
 
                               if (item.key === "reports") {
                                 const GroupIcon =
                                   group === "General Reports"
                                     ? Icon.Reports
-                                    : Icon.Billing;
+                                    : Icon.Billing
 
                                 return (
                                   <div
@@ -1906,16 +1903,16 @@ export default function App() {
                                         isGroupActive ? "active" : ""
                                       }`}
                                       onClick={(e) => {
-                                        e.stopPropagation();
+                                        e.stopPropagation()
 
-                                        toggleReportGroup(group);
+                                        toggleReportGroup(group)
 
                                         if (
                                           !isGroupExpanded &&
                                           !isGroupActive &&
                                           groupChildren.length > 0
                                         ) {
-                                          setModule(groupChildren[0].key);
+                                          setModule(groupChildren[0].key)
                                         }
                                       }}
                                     >
@@ -1940,7 +1937,7 @@ export default function App() {
                                       <div className="space-y-0.5 my-1">
                                         {groupChildren.map((child) => {
                                           const isChildActive =
-                                            module === child.key;
+                                            module === child.key
 
                                           return (
                                             <div
@@ -1963,12 +1960,12 @@ export default function App() {
                                                   </span>
                                                 )}
                                             </div>
-                                          );
+                                          )
                                         })}
                                       </div>
                                     )}
                                   </div>
-                                );
+                                )
                               }
 
                               return (
@@ -2029,12 +2026,12 @@ export default function App() {
                                       </div>
                                     ))}
                                 </div>
-                              );
+                              )
                             })}
                           </div>
                         )}
                     </div>
-                  );
+                  )
                 })}
               </div>
 
@@ -2063,22 +2060,28 @@ export default function App() {
             </aside>
 
             {/* ── Main Workspace ───────────────────────────────────────── */}
-            <main className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden">
+            <main
+              ref={mainRef}
+              className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden"
+            >
               {/* Breadcrumb strip */}
-              <div className="bg-white border-b border-[#DDE2EC] px-5 py-1.5 flex items-center gap-1.5 text-[11.5px] text-[#94A3B8] flex-shrink-0">
+              <div className="bg-white border-b border-slate-200 px-5 py-2 flex items-center gap-2 text-xs text-slate-500 flex-shrink-0 font-medium">
                 <button
                   type="button"
                   onClick={() => setModule("dashboard")}
-                  className="hover:text-[#1B4FD8] transition cursor-pointer"
+                  className="hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1 text-slate-600 font-medium"
                 >
-                  Home
+                  <span className="text-slate-400 text-xs">🏠</span>
+                  <span>Home</span>
                 </button>
                 {moduleTrail(module).map((crumb, i, all) => (
-                  <span key={crumb} className="flex items-center gap-1.5">
-                    {i > 0 && <Icon.ChevronRight />}
+                  <span key={crumb} className="flex items-center gap-2">
+                    <span className="text-slate-400 text-xs select-none font-bold">›</span>
                     <span
                       className={
-                        i === all.length - 1 ? "text-gray-700 font-medium" : ""
+                        i === all.length - 1
+                          ? "text-slate-900 font-bold"
+                          : "text-slate-600 font-medium hover:text-blue-600 transition-colors"
                       }
                     >
                       {crumb}
@@ -2101,26 +2104,26 @@ export default function App() {
                   onSelect={(p) => {
                     setClinicalPatientId(
                       p.umr || (p as any).patient_id || (p as any).id,
-                    );
+                    )
 
-                    setModule("chart");
+                    setModule("chart")
                   }}
                   onRegister={() => setModule("register")}
                   onNavigateToWorkflow={(encounterId) => {
-                    setSelectedWorkflowEncounterId(encounterId);
+                    setSelectedWorkflowEncounterId(encounterId)
 
-                    setWorkflowInitialStep(2);
+                    setWorkflowInitialStep(2)
 
-                    setModule("op_workflow");
+                    setModule("op_workflow")
                   }}
                 />
               )}
               {module === "register" && (
                 <Registration
                   onBookAppointment={(patient) => {
-                    if (patient?.id) setSelectedWorkflowEncounterId(patient.id);
+                    if (patient?.id) setSelectedWorkflowEncounterId(patient.id)
 
-                    setModule("appointments");
+                    setModule("appointments")
                   }}
                   onGoToBilling={() => setModule("billing")}
                   onComplete={() => setModule("patients")}
@@ -2139,8 +2142,8 @@ export default function App() {
                 <Appointments
                   initialEncounterId={selectedWorkflowEncounterId}
                   onSelect={(patientId?: string) => {
-                    if (patientId) setClinicalPatientId(patientId);
-                    setModule("chart");
+                    if (patientId) setClinicalPatientId(patientId)
+                    setModule("chart")
                   }}
                   onGoToBilling={() => setModule("billing")}
                 />
@@ -2150,9 +2153,9 @@ export default function App() {
                   setNotice={stableSetNotice}
                   onNavigate={(m) => setModule(m as any)}
                   onOpenTriage={(visitId) => {
-                    setSelectedTriageVisitId(visitId);
+                    setSelectedTriageVisitId(visitId)
 
-                    setModule("triage");
+                    setModule("triage")
                   }}
                 />
               )}
@@ -2231,12 +2234,6 @@ export default function App() {
                   onNavigate={(m) => setModule(m as any)}
                 />
               )}
-              {module === "clinical" && (
-                <PlaceholderModule
-                  title="Clinical"
-                  sub="Encounters, orders, results, and care plans"
-                />
-              )}
               {module === "op_nurse" && (
                 <NurseStation
                   nurseName={activeStaff?.name || "OP Nurse"}
@@ -2254,28 +2251,30 @@ export default function App() {
                 <OPManagement
                   staffName={activeStaff?.name || "OP desk"}
                   onNavigateToNurseStation={
-                    userPermissions.includes("op_nurse") ? () => setModule("op_nurse") : undefined
+                    userPermissions.includes("op_nurse")
+                      ? () => setModule("op_nurse")
+                      : undefined
                   }
                   onNavigateToQueue={() => setModule("queue")}
                   onNavigateToOPDProcedures={() => setModule("opd_procedures")}
                   onNavigateToOPWorkflow={(encId, step) => {
-                    if (encId) setSelectedWorkflowEncounterId(encId);
+                    if (encId) setSelectedWorkflowEncounterId(encId)
 
-                    if (step !== undefined) setWorkflowInitialStep(step);
+                    if (step !== undefined) setWorkflowInitialStep(step)
 
-                    setModule("op_workflow");
+                    setModule("op_workflow")
                   }}
                   onNavigateToDoctorWorkflow={
                     !canOpenConsultation
                       ? undefined
                       : (encId) => {
-                          if (encId) setSelectedWorkflowEncounterId(encId);
+                          if (encId) setSelectedWorkflowEncounterId(encId)
 
-                          setModule("doctor_portal");
+                          setModule("doctor_portal")
                         }
                   }
                   onNavigateToOPRegistration={() => {
-                    setModule("op_registration");
+                    setModule("op_registration")
                   }}
                 />
               )}
@@ -2287,23 +2286,23 @@ export default function App() {
                       : undefined
                   }
                   onNavigateToOPWorkflow={(encId, step) => {
-                    if (encId) setSelectedWorkflowEncounterId(encId);
+                    if (encId) setSelectedWorkflowEncounterId(encId)
 
-                    if (step !== undefined) setWorkflowInitialStep(step);
+                    if (step !== undefined) setWorkflowInitialStep(step)
 
-                    setModule("op_workflow");
+                    setModule("op_workflow")
                   }}
                   onNavigateToDoctorWorkflow={
                     !canOpenConsultation
                       ? undefined
                       : (encId) => {
-                          if (encId) setSelectedWorkflowEncounterId(encId);
+                          if (encId) setSelectedWorkflowEncounterId(encId)
 
-                          setModule("doctor_portal");
+                          setModule("doctor_portal")
                         }
                   }
                   onNavigateToOPRegistration={() => {
-                    setModule("op_registration");
+                    setModule("op_registration")
                   }}
                 />
               )}
@@ -2321,9 +2320,9 @@ export default function App() {
                     !canOpenConsultation
                       ? undefined
                       : (encId) => {
-                          if (encId) setSelectedWorkflowEncounterId(encId);
+                          if (encId) setSelectedWorkflowEncounterId(encId)
 
-                          setModule("doctor_portal");
+                          setModule("doctor_portal")
                         }
                   }
                 />
@@ -2335,6 +2334,11 @@ export default function App() {
                     activeDoctor ||
                     resolveDoctorAccount({ name: activeStaff.name })
                   }
+                  onOpenErVisit={(visitId) => {
+                    setSelectedTriageVisitId(visitId)
+
+                    setModule("triage")
+                  }}
                 />
               )}
               {module === "scheduling" && <DoctorScheduling />}
@@ -2375,26 +2379,26 @@ export default function App() {
             onClose={() => setCmdOpen(false)}
             onNavigate={(key) => {
               if (key === "order") {
-                setModule("chart");
-                setOrderOpen(true);
+                setModule("chart")
+                setOrderOpen(true)
               } else if (key === "register") {
-                setModule("register");
+                setModule("register")
               } else {
-                setModule(key as Module);
+                setModule(key as Module)
               }
             }}
             onSelectPatient={(patientId, encounterId) => {
-              setClinicalPatientId(patientId);
+              setClinicalPatientId(patientId)
 
               if (encounterId) {
-                setSelectedWorkflowEncounterId(encounterId);
+                setSelectedWorkflowEncounterId(encounterId)
               }
 
-              setModule("chart");
+              setModule("chart")
             }}
           />
         </>
       )}
     </div>
-  );
+  )
 }

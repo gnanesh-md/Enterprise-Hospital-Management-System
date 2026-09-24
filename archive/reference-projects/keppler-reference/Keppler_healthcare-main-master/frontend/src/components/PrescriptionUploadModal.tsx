@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react"
 import {
   Button,
   Input,
@@ -7,42 +7,42 @@ import {
   TableHead,
   TableRow,
   Textarea,
-} from "./ui";
-import { apiFetch, withAuthHeaders } from "../lib/api";
-import { API_BASE } from "../lib/constants";
-import type { Notice } from "../types";
+} from "./ui"
+import { apiFetch, withAuthHeaders } from "../lib/api"
+import { API_BASE } from "../lib/constants"
+import type { Notice } from "../types"
 
 type Props = {
-  patientId: string;
-  patientName: string;
-  doctorName?: string;
-  onClose: () => void;
-  setNotice: (notice: Notice | null) => void;
+  patientId: string
+  patientName: string
+  doctorName?: string
+  onClose: () => void
+  setNotice: (notice: Notice | null) => void
   // "ocr" (default) is the original scan-and-digitize flow. "manual" skips
   // straight to the medicine table with a blank row so a doctor can write a
   // fresh prescription during consultation, without needing a document to
   // upload first.
-  mode?: "ocr" | "manual";
-};
+  mode?: "ocr" | "manual"
+}
 
 type ParsedMedicine = {
-  name: string;
-  quantity: number;
-  dosage: string;
-};
+  name: string
+  quantity: number
+  dosage: string
+}
 
 type InventoryItem = {
-  id: number;
-  medicine_name: string;
-  quantity?: number;
-  reorder_level?: number;
-};
+  id: number
+  medicine_name: string
+  quantity?: number
+  reorder_level?: number
+}
 
-const POLL_INTERVAL_MS = 3000;
-const MAX_POLL_ATTEMPTS = 60; // ~3 minutes for large scanned/multi-page documents
+const POLL_INTERVAL_MS = 3000
+const MAX_POLL_ATTEMPTS = 60 // ~3 minutes for large scanned/multi-page documents
 
 function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export default function PrescriptionUploadModal({
@@ -53,113 +53,114 @@ export default function PrescriptionUploadModal({
   setNotice,
   mode = "ocr",
 }: Props) {
-  const isManual = mode === "manual";
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [parsing, setParsing] = useState(false);
-  const [savingText, setSavingText] = useState(false);
-  const [printing, setPrinting] = useState(false);
-  const [ocrText, setOcrText] = useState("");
+  const isManual = mode === "manual"
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [parsing, setParsing] = useState(false)
+  const [savingText, setSavingText] = useState(false)
+  const [printing, setPrinting] = useState(false)
+  const [ocrText, setOcrText] = useState("")
   const [medicines, setMedicines] = useState<ParsedMedicine[]>(
     isManual ? [{ name: "", dosage: "", quantity: 1 }] : [],
-  );
-  const [documentId, setDocumentId] = useState<number | null>(null);
+  )
+  const [documentId, setDocumentId] = useState<number | null>(null)
   const [step, setStep] = useState<"upload" | "review" | "verify" | "done">(
     isManual ? "verify" : "upload",
-  );
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  )
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!isManual) return;
+    if (!isManual) return
     apiFetch<{ items?: InventoryItem[] }>("/api/pharmacy/inventory")
       .then((data) => setInventory(data.items || []))
-      .catch(() => setInventory([]));
-  }, [isManual]);
+      .catch(() => setInventory([]))
+  }, [isManual])
 
   const stockFor = (medicineName: string) => {
-    const name = medicineName.trim().toLowerCase();
-    if (!name) return null;
+    const name = medicineName.trim().toLowerCase()
+    if (!name) return null
     return (
-      inventory.find((item) => item.medicine_name.trim().toLowerCase() === name) ||
-      null
-    );
-  };
+      inventory.find(
+        (item) => item.medicine_name.trim().toLowerCase() === name,
+      ) || null
+    )
+  }
 
   const handleUpload = async () => {
-    if (!file) return;
-    setUploading(true);
+    if (!file) return
+    setUploading(true)
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("blueprint", "Universal OCR (Any Text)");
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("blueprint", "Universal OCR (Any Text)")
 
       const uploadRes = await fetch(`${API_BASE}/api/ocr-portal/upload`, {
         method: "POST",
         body: formData,
         headers: withAuthHeaders({}, "POST"),
         credentials: "include",
-      });
+      })
 
       if (!uploadRes.ok) {
-        throw new Error("Failed to upload prescription");
+        throw new Error("Failed to upload prescription")
       }
 
-      const { job_id } = await uploadRes.json();
+      const { job_id } = await uploadRes.json()
 
       // Poll for job completion. The OCR service reports status in upper case
       // (PENDING/PROCESSING/COMPLETED/FAILED).
-      let finalStatus = "";
-      let errorMessage = "";
+      let finalStatus = ""
+      let errorMessage = ""
       for (let i = 0; i < MAX_POLL_ATTEMPTS; i++) {
-        await sleep(POLL_INTERVAL_MS);
+        await sleep(POLL_INTERVAL_MS)
         const statusData = await apiFetch<{
-          status: string;
-          error_message?: string;
-        }>(`/api/ocr-portal/jobs/${job_id}`);
-        const status = (statusData.status || "").toUpperCase();
+          status: string
+          error_message?: string
+        }>(`/api/ocr-portal/jobs/${job_id}`)
+        const status = (statusData.status || "").toUpperCase()
         if (status === "COMPLETED") {
-          finalStatus = status;
-          break;
+          finalStatus = status
+          break
         } else if (status === "FAILED") {
-          errorMessage = statusData.error_message || "OCR processing failed.";
-          break;
+          errorMessage = statusData.error_message || "OCR processing failed."
+          break
         }
       }
 
       if (errorMessage) {
-        throw new Error(errorMessage);
+        throw new Error(errorMessage)
       }
       if (finalStatus !== "COMPLETED") {
         throw new Error(
           "OCR is taking longer than expected. Please try again shortly.",
-        );
+        )
       }
 
       const resultData = await apiFetch<{ combined_markdown?: string }>(
         `/api/ocr-portal/jobs/${job_id}/result`,
-      );
-      const extractedText = resultData.combined_markdown || "";
+      )
+      const extractedText = resultData.combined_markdown || ""
 
       if (!extractedText) {
-        throw new Error("No text extracted from OCR.");
+        throw new Error("No text extracted from OCR.")
       }
 
-      setOcrText(extractedText);
-      setStep("review");
+      setOcrText(extractedText)
+      setStep("review")
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to process prescription.",
-      });
+      })
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   const handlePrint = async () => {
-    if (!ocrText.trim()) return;
-    setPrinting(true);
+    if (!ocrText.trim()) return
+    setPrinting(true)
     try {
       const res = await fetch(`${API_BASE}/api/export/pdf`, {
         method: "POST",
@@ -173,48 +174,48 @@ export default function PrescriptionUploadModal({
           doc_type: "Prescription",
           ocr_text: ocrText,
         }),
-      });
+      })
 
       if (!res.ok) {
-        throw new Error("Failed to generate the prescription PDF.");
+        throw new Error("Failed to generate the prescription PDF.")
       }
 
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const printWindow = window.open(blobUrl, "_blank");
+      const blob = await res.blob()
+      const blobUrl = URL.createObjectURL(blob)
+      const printWindow = window.open(blobUrl, "_blank")
       if (!printWindow) {
         setNotice({
           type: "warning",
           message: "Allow pop-ups to print the prescription.",
-        });
-        return;
+        })
+        return
       }
       // Blob-URL PDFs opened via window.open don't reliably fire "load" on the
       // opener side across browsers, so give the built-in PDF viewer a moment
       // to render before invoking print.
       setTimeout(() => {
-        printWindow.print();
-      }, 800);
+        printWindow.print()
+      }, 800)
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to print prescription.",
-      });
+      })
     } finally {
-      setPrinting(false);
+      setPrinting(false)
     }
-  };
+  }
 
   const handleSaveText = async () => {
-    if (!file) return;
-    setSavingText(true);
+    if (!file) return
+    setSavingText(true)
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("doc_type", "prescriptions");
-      formData.append("ocr_text", ocrText);
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("doc_type", "prescriptions")
+      formData.append("ocr_text", ocrText)
       if (doctorName) {
-        formData.append("doctor_name", doctorName);
+        formData.append("doctor_name", doctorName)
       }
 
       const res = await fetch(
@@ -225,34 +226,34 @@ export default function PrescriptionUploadModal({
           headers: withAuthHeaders({}, "POST"),
           credentials: "include",
         },
-      );
+      )
 
-      const payload = await res.json().catch(() => ({}));
+      const payload = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(payload.error || "Failed to save prescription text.");
+        throw new Error(payload.error || "Failed to save prescription text.")
       }
 
       if (payload.document_id) {
-        setDocumentId(payload.document_id);
+        setDocumentId(payload.document_id)
       }
 
       setNotice({
         type: "success",
         message:
           "Prescription saved. The patient will be notified on WhatsApp shortly.",
-      });
+      })
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to save prescription text.",
-      });
+      })
     } finally {
-      setSavingText(false);
+      setSavingText(false)
     }
-  };
+  }
 
   const handleParseMedicines = async () => {
-    setParsing(true);
+    setParsing(true)
     try {
       const parseData = await apiFetch<{ medicines: ParsedMedicine[] }>(
         "/api/ocr-portal/parse-prescription",
@@ -260,28 +261,28 @@ export default function PrescriptionUploadModal({
           method: "POST",
           body: JSON.stringify({ text: ocrText }),
         },
-      );
+      )
 
-      setMedicines(parseData.medicines || []);
-      setStep("verify");
+      setMedicines(parseData.medicines || [])
+      setStep("verify")
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to parse medicines.",
-      });
+      })
     } finally {
-      setParsing(false);
+      setParsing(false)
     }
-  };
+  }
 
   const handleConfirm = async () => {
-    const finalMedicines = medicines.filter((med) => med.name.trim());
+    const finalMedicines = medicines.filter((med) => med.name.trim())
     if (finalMedicines.length === 0) {
       setNotice({
         type: "warning",
         message: "Add at least one medicine before sending to pharmacy.",
-      });
-      return;
+      })
+      return
     }
     try {
       await apiFetch("/api/pharmacy/prescriptions", {
@@ -291,20 +292,20 @@ export default function PrescriptionUploadModal({
           medicines_json: JSON.stringify(finalMedicines),
           doc_id: documentId,
         }),
-      });
+      })
       setNotice({
         type: "success",
         message: "Prescription sent to pharmacy successfully.",
-      });
-      setStep("done");
-      setTimeout(onClose, 1500);
+      })
+      setStep("done")
+      setTimeout(onClose, 1500)
     } catch (err: any) {
       setNotice({
         type: "error",
         message: err.message || "Failed to send prescription.",
-      });
+      })
     }
-  };
+  }
 
   const handleMedicineChange = (
     index: number,
@@ -312,11 +313,11 @@ export default function PrescriptionUploadModal({
     value: any,
   ) => {
     setMedicines((prev) => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
-  };
+      const next = [...prev]
+      next[index] = { ...next[index], [field]: value }
+      return next
+    })
+  }
 
   return (
     <div className="modal-overlay">
@@ -390,25 +391,25 @@ export default function PrescriptionUploadModal({
               }}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.currentTarget.style.borderColor = "hsl(var(--accent))";
-                e.currentTarget.style.background = "hsl(var(--accent-tint))";
+                e.preventDefault()
+                e.stopPropagation()
+                e.currentTarget.style.borderColor = "hsl(var(--accent))"
+                e.currentTarget.style.background = "hsl(var(--accent-tint))"
               }}
               onDragLeave={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.currentTarget.style.borderColor = "hsl(var(--border))";
-                e.currentTarget.style.background = "hsl(var(--card))";
+                e.preventDefault()
+                e.stopPropagation()
+                e.currentTarget.style.borderColor = "hsl(var(--border))"
+                e.currentTarget.style.background = "hsl(var(--card))"
               }}
               onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                e.currentTarget.style.borderColor = "hsl(var(--border))";
-                e.currentTarget.style.background = "hsl(var(--card))";
+                e.preventDefault()
+                e.stopPropagation()
+                e.currentTarget.style.borderColor = "hsl(var(--border))"
+                e.currentTarget.style.background = "hsl(var(--card))"
                 if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                  setFile(e.dataTransfer.files[0]);
-                  e.dataTransfer.clearData();
+                  setFile(e.dataTransfer.files[0])
+                  e.dataTransfer.clearData()
                 }
               }}
             >
@@ -630,15 +631,17 @@ export default function PrescriptionUploadModal({
                   <TableCell>Action</TableCell>
                 </TableHead>
                 {medicines.map((med, i) => {
-                  const stockItem = isManual ? stockFor(med.name) : null;
-                  const quantity = Number(stockItem?.quantity ?? 0);
-                  const reorderLevel = Number(stockItem?.reorder_level ?? 0);
+                  const stockItem = isManual ? stockFor(med.name) : null
+                  const quantity = Number(stockItem?.quantity ?? 0)
+                  const reorderLevel = Number(stockItem?.reorder_level ?? 0)
                   return (
                     <TableRow key={i}>
                       <TableCell>
                         <Input
                           value={med.name}
-                          list={isManual ? "prescription-medicine-names" : undefined}
+                          list={
+                            isManual ? "prescription-medicine-names" : undefined
+                          }
                           placeholder={isManual ? "Medicine name" : undefined}
                           onChange={(e) =>
                             handleMedicineChange(i, "name", e.target.value)
@@ -671,7 +674,9 @@ export default function PrescriptionUploadModal({
                       <TableCell>
                         <Input
                           value={med.dosage}
-                          placeholder={isManual ? "e.g. 1-0-1, 5 days" : undefined}
+                          placeholder={
+                            isManual ? "e.g. 1-0-1, 5 days" : undefined
+                          }
                           onChange={(e) =>
                             handleMedicineChange(i, "dosage", e.target.value)
                           }
@@ -694,14 +699,16 @@ export default function PrescriptionUploadModal({
                       <TableCell>
                         <Button
                           onClick={() =>
-                            setMedicines(medicines.filter((_, idx) => idx !== i))
+                            setMedicines(
+                              medicines.filter((_, idx) => idx !== i),
+                            )
                           }
                         >
                           Remove
                         </Button>
                       </TableCell>
                     </TableRow>
-                  );
+                  )
                 })}
               </Table>
             </div>
@@ -752,5 +759,5 @@ export default function PrescriptionUploadModal({
         }
       `}</style>
     </div>
-  );
+  )
 }

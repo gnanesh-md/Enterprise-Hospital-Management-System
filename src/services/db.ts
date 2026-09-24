@@ -4,181 +4,164 @@
  * atomic transactions, and permanent data persistence.
  */
 
+import { getDoctorConsultationFee, getDoctorMaster } from "./doctorMaster"
+import { apiFetch } from "../lib/api"
+
 export interface DBPatient {
-  umr: string; // Primary Key: e.g. UMR10001
+  umr: string // Primary Key: e.g. UMR10001
 
-  name: string;
+  name: string
 
-  dob?: string;
+  dob?: string
 
-  age: number;
+  age: number
 
-  sex: "Male" | "Female" | "Other";
+  sex: "Male" | "Female" | "Other"
 
-  phone: string;
+  phone: string
 
-  address: string;
+  address: string
 
-  bloodGroup: string;
+  bloodGroup: string
 
-  createdAt: string;
+  createdAt: string
 
-  updatedAt: string;
+  updatedAt: string
 }
 
 export interface DBOPEncounter {
-  id: string; // Primary Key: e.g. ENC-101
+  id: string // Primary Key: e.g. ENC-101
 
-  umr: string; // Foreign Key to DBPatient
+  umr: string // Foreign Key to DBPatient
 
-  opNumber: string; // e.g. OP001, OP025
+  opNumber: string // e.g. OP001, OP025
 
-  patientName: string;
+  patientName: string
 
-  age: number;
+  age: number
 
-  sex: "Male" | "Female" | "Other";
+  sex: "Male" | "Female" | "Other"
 
-  phone: string;
+  phone: string
 
-  address: string;
+  address: string
 
-  bloodGroup: string;
+  bloodGroup: string
 
-  dept: string;
+  dept: string
 
-  isNew: boolean;
+  isNew: boolean
 
-  registrationTime: string;
+  registrationTime: string
 
-  chiefComplaint: string;
+  chiefComplaint: string
 
-  symptoms: string[];
+  symptoms: string[]
 
-  aiSpecialty: string;
+  aiSpecialty: string
 
-  aiDoctor: string;
+  aiDoctor: string
 
-  aiConfidence: number;
+  aiConfidence: number
 
-  aiReasoning?: string;
+  aiReasoning?: string
 
-  aiDoctorRationale?: string;
+  aiDoctorRationale?: string
 
-  doctorGenderPref: "Any" | "Male" | "Female";
+  doctorGenderPref: "Any" | "Male" | "Female"
 
-  assignedDoctor: string;
+  assignedDoctor: string
 
-  doctorStatus: "Available" | "Busy" | "Inactive" | "Absent";
+  doctorStatus: "Available" | "Busy" | "Inactive" | "Absent"
 
-  queueToken: string;
+  queueToken: string
 
-  queuePosition: number;
+  queuePosition: number
 
-  room: string;
+  room: string
 
-  assessment?: string;
+  assessment?: string
 
-  diagnosis: string;
+  diagnosis: string
 
-  icd10: string;
+  icd10: string
 
   prescription: {
-    medicine: string;
-    dosage: string;
-    frequency: string;
-    duration: string;
-    instructions?: string;
-  }[];
+    medicine: string
+    dosage: string
+    frequency: string
+    duration: string
+    instructions?: string
+  }[]
 
-  investigations: string[];
+  investigations: string[]
 
   services?: {
-    id?: string;
-    name: string;
-    category?: string;
-    cptCode?: string;
-    price: number;
-    quantity?: number;
-  }[];
+    id?: string
+    name: string
+    category?: string
+    cptCode?: string
+    price: number
+    quantity?: number
+  }[]
 
-  advice: string;
+  advice: string
   vitals: {
-    bp: string;
-    pulse: string;
-    temp: string;
-    spo2: string;
-    weight: string;
-    notes: string;
-  };
+    bp: string
+    pulse: string
+    temp: string
+    spo2: string
+    weight: string
+    notes: string
+  }
 
   billing: {
-    consultationFee: number;
-    labFee: number;
-    total: number;
-    status: "Paid" | "Pending";
-    mode: string;
-  };
+    registrationFee?: number
+    consultationFee: number
+    labFee: number
+    total: number
+    status: "Paid" | "Pending"
+    mode: string
+  }
 
-  furtherAction:
-    | "None"
-    | "Laboratory"
-    | "Pharmacy"
-    | "Radiology"
-    | "Admission"
-    | "Referral";
+  furtherAction: "None" | "Laboratory" | "Pharmacy" | "Radiology" | "Admission" | "Referral"
 
-  priorityTag?: "Urgent" | "Senior" | "Wheelchair" | "Pediatric" | "Standard";
-  visitType?: "New Visit" | "Follow-up" | "Review";
-  news2Score?: number;
-  news2Risk?: "Low" | "Medium" | "High";
+  priorityTag?: "Urgent" | "Senior" | "Wheelchair" | "Pediatric" | "Standard"
+  visitType?: "New Visit" | "Follow-up" | "Review"
+  news2Score?: number
+  news2Risk?: "Low" | "Medium" | "High"
   opdProcedures?: {
-    name: string;
-    status: "Ordered" | "In Progress" | "Completed";
-    timestamp: string;
-  }[];
-  status:
-    | "Registered"
-    | "Symptoms Captured"
-    | "AI Recommended"
-    | "Awaiting Doctor"
-    | "Doctor Assigned"
-    | "In Queue"
-    | "Vitals Recorded"
-    | "Awaiting Consultation"
-    | "Under Consultation"
-    | "Consultation Completed"
-    | "Post-Consultation"
-    | "Awaiting Billing"
-    | "Billing Completed"
-    | "Awaiting Investigation"
-    | "OP Completed";
+    name: string
+    status: "Ordered" | "In Progress" | "Completed"
+    timestamp: string
+  }[]
+  status: "Registered" | "Symptoms Captured" | "AI Recommended" | "Awaiting Doctor" | "Doctor Assigned" | "In Queue" | "Vitals Recorded" | "Awaiting Consultation" | "Under Consultation" | "Consultation Completed" | "Post-Consultation" | "Awaiting Billing" | "Billing Completed" | "Awaiting Investigation" | "OP Completed"
 
   timestamps: {
-    arrival: string;
+    arrival: string
 
-    registration?: string;
+    registration?: string
 
-    symptoms?: string;
+    symptoms?: string
 
-    doctorAssigned?: string;
+    doctorAssigned?: string
     /** When the OP desk called the patient through to the nurse station. */
-    calledToNurse?: string;
-    calledToNurseBy?: string;
+    calledToNurse?: string
+    calledToNurseBy?: string
     /** When the OP nurse took baseline observations, and who took them. */
 
-    vitalsRecorded?: string;
+    vitalsRecorded?: string
 
-    vitalsBy?: string;
+    vitalsBy?: string
 
-    consultationStart?: string;
+    consultationStart?: string
 
-    consultationEnd?: string;
+    consultationEnd?: string
 
-    billingCompleted?: string;
+    billingCompleted?: string
 
-    visitCompleted?: string;
-  };
+    visitCompleted?: string
+  }
 }
 
 const INITIAL_SEED_PATIENTS: DBPatient[] = [
@@ -313,7 +296,7 @@ const INITIAL_SEED_PATIENTS: DBPatient[] = [
 
     updatedAt: "2026-08-31T10:00:00.000Z",
   },
-];
+]
 
 const INITIAL_SEED_ENCOUNTERS: DBOPEncounter[] = [
   {
@@ -1359,9 +1342,9 @@ const INITIAL_SEED_ENCOUNTERS: DBOPEncounter[] = [
       visitCompleted: "03:10 PM",
     },
   },
-];
+]
 
-const CROSS_TAB_CHANNEL = "hospai_db_v1";
+const CROSS_TAB_CHANNEL = "hospai_db_v1"
 
 const STORAGE_KEYS = {
   PATIENTS: "hospai_db_patients_v1",
@@ -1371,98 +1354,121 @@ const STORAGE_KEYS = {
   UMR_COUNTER: "hospai_db_umr_counter_v1",
 
   OP_COUNTER: "hospai_db_op_counter_v1",
-};
+}
 
 class HospitalDatabase {
-  private listeners: Set<() => void> = new Set();
+  private listeners: Set<() => void> = new Set()
 
   constructor() {
-    this.init();
+    this.init()
   }
 
   private init() {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") return
 
     if (!localStorage.getItem(STORAGE_KEYS.PATIENTS)) {
       localStorage.setItem(
         STORAGE_KEYS.PATIENTS,
         JSON.stringify(INITIAL_SEED_PATIENTS),
-      );
+      )
     }
 
     if (!localStorage.getItem(STORAGE_KEYS.ENCOUNTERS)) {
       localStorage.setItem(
         STORAGE_KEYS.ENCOUNTERS,
         JSON.stringify(INITIAL_SEED_ENCOUNTERS),
-      );
+      )
     }
 
     if (!localStorage.getItem(STORAGE_KEYS.UMR_COUNTER)) {
-      localStorage.setItem(STORAGE_KEYS.UMR_COUNTER, "10048");
+      localStorage.setItem(STORAGE_KEYS.UMR_COUNTER, "10048")
     }
 
     if (!localStorage.getItem(STORAGE_KEYS.OP_COUNTER)) {
-      localStorage.setItem(STORAGE_KEYS.OP_COUNTER, "33");
+      localStorage.setItem(STORAGE_KEYS.OP_COUNTER, "33")
     }
 
     // Clean up Mangapathi Bhupathi data and deduplicate redundant encounters
 
     try {
-      const pData = localStorage.getItem(STORAGE_KEYS.PATIENTS);
+      const pData = localStorage.getItem(STORAGE_KEYS.PATIENTS)
 
       if (pData) {
-        const parsed: DBPatient[] = JSON.parse(pData);
+        const parsed: DBPatient[] = JSON.parse(pData)
 
         const filtered = parsed.filter(
           (p) =>
             !p.name.toLowerCase().includes("mangapathi") &&
             !p.name.toLowerCase().includes("bhupathi"),
-        );
+        )
 
         if (filtered.length !== parsed.length) {
-          localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(filtered));
+          localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(filtered))
         }
       }
 
       // Merge missing initial seed encounters and clean up duplicates
 
-      const eData = localStorage.getItem(STORAGE_KEYS.ENCOUNTERS);
+      const eData = localStorage.getItem(STORAGE_KEYS.ENCOUNTERS)
 
       if (eData) {
-        const parsedE: DBOPEncounter[] = JSON.parse(eData);
+        const parsedE: DBOPEncounter[] = JSON.parse(eData)
 
-        const existingIds = new Set(parsedE.map((e) => e.id));
+        const existingIds = new Set(parsedE.map((e) => e.id))
 
         const missing = INITIAL_SEED_ENCOUNTERS.filter(
           (e) => !existingIds.has(e.id),
-        );
+        )
 
-        const combined = [...parsedE, ...missing];
+        const combined = [...parsedE, ...missing]
 
-        const seen = new Set<string>();
+        const seen = new Set<string>()
 
         const filteredE = combined.filter((e) => {
           if (
             e.patientName.toLowerCase().includes("mangapathi") ||
             e.patientName.toLowerCase().includes("bhupathi")
           ) {
-            return false;
+            return false
           }
 
-          const key = `${e.umr}_${e.opNumber}`;
+          const key = `${e.umr}_${e.opNumber}`
 
-          if (seen.has(key)) return false;
+          if (seen.has(key)) return false
 
-          seen.add(key);
+          seen.add(key)
 
-          return true;
-        });
+          return true
+        })
 
-        if (filteredE.length !== parsedE.length || missing.length > 0) {
+        let encMigrated = false;
+        for (const e of filteredE) {
+          const defaultRegFee = e.isNew === false ? 0 : 20;
+          if (!e.billing) {
+            const fee = getDoctorConsultationFee(e.assignedDoctor);
+            e.billing = {
+              registrationFee: defaultRegFee,
+              consultationFee: fee,
+              labFee: 0,
+              total: defaultRegFee + fee,
+              status: "Pending",
+              mode: "Card",
+            };
+            encMigrated = true;
+          } else {
+            if (e.billing.registrationFee === undefined) {
+              e.billing.registrationFee = defaultRegFee;
+              e.billing.total = defaultRegFee + (e.billing.consultationFee || 500) + (e.billing.labFee || 0);
+              encMigrated = true;
+            }
+          }
+        }
+
+        if (filteredE.length !== parsedE.length || missing.length > 0 || encMigrated) {
           localStorage.setItem(
             STORAGE_KEYS.ENCOUNTERS,
             JSON.stringify(filteredE),
-          );
+          )
         }
       }
     } catch {
@@ -1471,11 +1477,11 @@ class HospitalDatabase {
   }
 
   public subscribe(listener: () => void) {
-    this.listeners.add(listener);
+    this.listeners.add(listener)
 
-    this.ensureCrossTab();
+    this.ensureCrossTab()
 
-    return () => this.listeners.delete(listener);
+    return () => this.listeners.delete(listener)
   }
 
   /**
@@ -1489,19 +1495,19 @@ class HospitalDatabase {
    * happened to reload. The rest of this frontend already fans out this way.
    */
 
-  private crossTabReady = false;
+  private crossTabReady = false
 
-  private channel: BroadcastChannel | null = null;
+  private channel: BroadcastChannel | null = null
 
   private ensureCrossTab() {
-    if (this.crossTabReady || typeof window === "undefined") return;
+    if (this.crossTabReady || typeof window === "undefined") return
 
-    this.crossTabReady = true;
+    this.crossTabReady = true
 
     try {
-      this.channel = new BroadcastChannel(CROSS_TAB_CHANNEL);
+      this.channel = new BroadcastChannel(CROSS_TAB_CHANNEL)
 
-      this.channel.onmessage = () => this.listeners.forEach((fn) => fn());
+      this.channel.onmessage = () => this.listeners.forEach((fn) => fn())
     } catch {
       // BroadcastChannel unavailable -- the storage event below still covers it.
     }
@@ -1511,24 +1517,24 @@ class HospitalDatabase {
     // without BroadcastChannel and writes made outside this class.
 
     window.addEventListener("storage", (e) => {
-      if (!e.key) return;
+      if (!e.key) return
 
       if (
         e.key === STORAGE_KEYS.ENCOUNTERS ||
         e.key === STORAGE_KEYS.PATIENTS
       ) {
-        this.listeners.forEach((fn) => fn());
+        this.listeners.forEach((fn) => fn())
       }
-    });
+    })
   }
 
   private notify() {
-    this.listeners.forEach((fn) => fn());
+    this.listeners.forEach((fn) => fn())
 
-    this.ensureCrossTab();
+    this.ensureCrossTab()
 
     try {
-      this.channel?.postMessage(Date.now());
+      this.channel?.postMessage(Date.now())
     } catch {
       /* a closed channel must never break the write that triggered it */
     }
@@ -1538,42 +1544,42 @@ class HospitalDatabase {
 
   public getPatients(): DBPatient[] {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.PATIENTS);
+      const data = localStorage.getItem(STORAGE_KEYS.PATIENTS)
 
-      return data ? JSON.parse(data) : INITIAL_SEED_PATIENTS;
+      return data ? JSON.parse(data) : INITIAL_SEED_PATIENTS
     } catch {
-      return INITIAL_SEED_PATIENTS;
+      return INITIAL_SEED_PATIENTS
     }
   }
 
   public getPatientByUmr(umr: string): DBPatient | undefined {
     return this.getPatients().find(
       (p) => p.umr.toUpperCase() === umr.toUpperCase(),
-    );
+    )
   }
 
   public searchPatients(query: string): DBPatient[] {
-    const q = query.trim().toLowerCase();
+    const q = query.trim().toLowerCase()
 
-    if (!q) return this.getPatients();
+    if (!q) return this.getPatients()
 
     return this.getPatients().filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         p.umr.toLowerCase().includes(q) ||
         p.phone.includes(q),
-    );
+    )
   }
 
   // ── Encounters CRUD ──────────────────────────────────────────────────────
 
   public getEncounters(): DBOPEncounter[] {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.ENCOUNTERS);
+      const data = localStorage.getItem(STORAGE_KEYS.ENCOUNTERS)
 
-      return data ? JSON.parse(data) : INITIAL_SEED_ENCOUNTERS;
+      return data ? JSON.parse(data) : INITIAL_SEED_ENCOUNTERS
     } catch {
-      return INITIAL_SEED_ENCOUNTERS;
+      return INITIAL_SEED_ENCOUNTERS
     }
   }
 
@@ -1581,24 +1587,24 @@ class HospitalDatabase {
     query: string,
     patientName?: string,
   ): DBOPEncounter[] {
-    if (!query && !patientName) return [];
+    if (!query && !patientName) return []
 
-    const q = (query || "").trim().toUpperCase();
+    const q = (query || "").trim().toUpperCase()
 
-    const nameTarget = (patientName || query || "").trim().toLowerCase();
+    const nameTarget = (patientName || query || "").trim().toLowerCase()
 
-    const encounters = this.getEncounters();
+    const encounters = this.getEncounters()
 
     const matched = encounters.filter((e) => {
-      const eUmr = (e.umr || "").toUpperCase();
+      const eUmr = (e.umr || "").toUpperCase()
 
       if (
         q &&
         (eUmr === q || eUmr.replace(/[-_]/g, "") === q.replace(/[-_]/g, ""))
       )
-        return true;
+        return true
 
-      const eName = (e.patientName || "").trim().toLowerCase();
+      const eName = (e.patientName || "").trim().toLowerCase()
 
       if (
         nameTarget &&
@@ -1606,23 +1612,23 @@ class HospitalDatabase {
           eName.includes(nameTarget) ||
           nameTarget.includes(eName))
       )
-        return true;
+        return true
 
-      const ePhone = (e.phone || "").replace(/\D/g, "");
+      const ePhone = (e.phone || "").replace(/\D/g, "")
 
-      const qDigits = q.replace(/\D/g, "");
+      const qDigits = q.replace(/\D/g, "")
 
       if (
         qDigits &&
         qDigits.length >= 7 &&
         (ePhone.includes(qDigits) || qDigits.includes(ePhone))
       )
-        return true;
+        return true
 
-      return false;
-    });
+      return false
+    })
 
-    if (matched.length > 0) return matched;
+    if (matched.length > 0) return matched
 
     // Fallback: If this patient is an existing hospital patient or registered ER patient, synthesize realistic prior OP consultation
 
@@ -1630,12 +1636,12 @@ class HospitalDatabase {
       this.getPatientByUmr(q) ||
       this.getPatients().find((p) =>
         (p.name || "").toLowerCase().includes(nameTarget),
-      );
+      )
 
     if (existing || q.startsWith("UMR") || q.startsWith("P-")) {
-      const encId = `ENC-${q || "OP"}-PREV`;
+      const encId = `ENC-${q || "OP"}-PREV`
 
-      const pName = existing?.name || patientName || "Patient";
+      const pName = existing?.name || patientName || "Patient"
 
       const synthEncounter: DBOPEncounter = {
         id: encId,
@@ -1739,16 +1745,16 @@ class HospitalDatabase {
           registration: "09:40 AM",
           consultationStart: "09:55 AM",
         },
-      };
+      }
 
-      return [synthEncounter];
+      return [synthEncounter]
     }
 
-    return [];
+    return []
   }
 
   public getEncounterById(id: string): DBOPEncounter | undefined {
-    return this.getEncounters().find((e) => e.id === id);
+    return this.getEncounters().find((e) => e.id === id)
   }
 
   // ── Patient Matching & Duplicate Verification ─────────────────────────────
@@ -1760,17 +1766,17 @@ class HospitalDatabase {
    */
 
   public findMatchingPatient(params: {
-    fullName: string;
+    fullName: string
 
-    dob?: string;
+    dob?: string
 
-    age?: number;
+    age?: number
 
-    sex?: string;
+    sex?: string
 
-    phone?: string;
+    phone?: string
   }): PatientMatchResult {
-    return findMatchingPatient(this.getPatients(), params);
+    return findMatchingPatient(this.getPatients(), params)
   }
 
   // ── High-Level OP Workflow Methods ────────────────────────────────────────
@@ -1781,69 +1787,69 @@ class HospitalDatabase {
    */
 
   public registerNewPatient(data: {
-    firstName: string;
+    firstName: string
 
-    middleName?: string;
+    middleName?: string
 
-    lastName: string;
+    lastName: string
 
-    dob?: string;
+    dob?: string
 
-    age: number;
+    age: number
 
-    sex?: "Male" | "Female" | "Other";
+    sex?: "Male" | "Female" | "Other"
 
-    phone: string;
+    phone: string
 
-    address?: string;
+    address?: string
 
-    bloodGroup?: string;
+    bloodGroup?: string
 
-    dept?: string;
+    dept?: string
 
-    chiefComplaint?: string;
-  }): { patient: DBPatient; encounter: DBOPEncounter } {
-    const patients = this.getPatients();
+    chiefComplaint?: string
+  }): { patient: DBPatient ;encounter: DBOPEncounter } {
+    const patients = this.getPatients()
 
-    const encounters = this.getEncounters();
+    const encounters = this.getEncounters()
 
     // Next UMR Generator
 
     const currentCounter = parseInt(
       localStorage.getItem(STORAGE_KEYS.UMR_COUNTER) || "10048",
       10,
-    );
+    )
 
-    const nextUmrCounter = currentCounter + 1;
+    const nextUmrCounter = currentCounter + 1
 
-    localStorage.setItem(STORAGE_KEYS.UMR_COUNTER, nextUmrCounter.toString());
+    localStorage.setItem(STORAGE_KEYS.UMR_COUNTER, nextUmrCounter.toString())
 
-    const newUmr = `UMR${nextUmrCounter}`;
+    const newUmr = `UMR${nextUmrCounter}`
 
     // Global Continuous Unique OP Number Generator
 
     const currentOpCounter = parseInt(
       localStorage.getItem(STORAGE_KEYS.OP_COUNTER) || "33",
       10,
-    );
+    )
 
-    const nextOpCounter = currentOpCounter + 1;
+    const nextOpCounter = currentOpCounter + 1
 
-    localStorage.setItem(STORAGE_KEYS.OP_COUNTER, nextOpCounter.toString());
+    localStorage.setItem(STORAGE_KEYS.OP_COUNTER, nextOpCounter.toString())
 
-    const newOpNumber = `OP${String(nextOpCounter).padStart(3, "0")}`;
+    const newOpNumber = `OP${String(nextOpCounter).padStart(3, "0")}`
 
     const fullName = [data.firstName, data.middleName, data.lastName]
       .filter(Boolean)
       .join(" ")
-      .trim();
+      .trim()
 
-    const nowIso = new Date().toISOString();
+    const nowIso = new Date().toISOString()
 
     const timeStr = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
-    });
+    })
 
     // Step 1: Create Patient Record
 
@@ -1867,11 +1873,11 @@ class HospitalDatabase {
       createdAt: nowIso,
 
       updatedAt: nowIso,
-    };
+    }
 
     // Step 2: Create Initial OP Encounter with Global Continuous OP Number
 
-    const encounterId = `ENC-${newUmr}-${nextOpCounter}`;
+    const encounterId = `ENC-${newUmr}-${nextOpCounter}`
 
     const newEncounter: DBOPEncounter = {
       id: encounterId,
@@ -1933,9 +1939,24 @@ class HospitalDatabase {
       vitals: { bp: "", pulse: "", temp: "", spo2: "", weight: "", notes: "" },
 
       billing: {
-        consultationFee: 50,
+        registrationFee: 20,
+        consultationFee: data.dept
+          ? getDoctorConsultationFee(
+              getDoctorMaster().find(
+                (d) => d.verified && d.specialty === data.dept,
+              )?.name || "",
+            )
+          : 500,
         labFee: 0,
-        total: 50,
+        total:
+          20 +
+          (data.dept
+            ? getDoctorConsultationFee(
+                getDoctorMaster().find(
+                  (d) => d.verified && d.specialty === data.dept,
+                )?.name || "",
+              )
+            : 500),
         status: "Pending",
         mode: "Card",
       },
@@ -1945,23 +1966,46 @@ class HospitalDatabase {
       status: "Registered",
 
       timestamps: { arrival: timeStr, registration: timeStr },
-    };
+    }
 
     // Commit to database
 
     localStorage.setItem(
       STORAGE_KEYS.PATIENTS,
       JSON.stringify([newPatient, ...patients]),
-    );
+    )
 
     localStorage.setItem(
       STORAGE_KEYS.ENCOUNTERS,
       JSON.stringify([newEncounter, ...encounters]),
-    );
+    )
 
-    this.notify();
+    // Backend write-through for OP Visit / Appointment
+    apiFetch("/api/op/visits", {
+      method: "POST",
+      body: JSON.stringify({
+        patient_id: newPatient.umr,
+        patient: {
+          first_name: data.firstName,
+          last_name: data.lastName,
+          phone: newPatient.phone,
+          age: newPatient.age,
+          gender: newPatient.sex,
+        },
+        appointment: {
+          doctor_name: (newEncounter as any).assignedDoctor || (newEncounter as any).doctorAssigned || "Dr. Staff",
+          department: newEncounter.dept || data.dept || "General Medicine",
+          visit_type: "OP",
+          appointment_date: new Date().toISOString().split("T")[0],
+          status: "checked_in",
+          chief_complaint: newEncounter.chiefComplaint || data.chiefComplaint || "OP Visit",
+        },
+      }),
+    }).catch(() => {})
 
-    return { patient: newPatient, encounter: newEncounter };
+    this.notify()
+
+    return { patient: newPatient, encounter: newEncounter }
   }
 
   /**
@@ -1971,34 +2015,34 @@ class HospitalDatabase {
 
   public createRevisitEncounter(
     umr: string,
-    data?: { dept?: string; chiefComplaint?: string },
+    data?: { dept?: string ;chiefComplaint?: string },
   ): DBOPEncounter {
-    const patient = this.getPatientByUmr(umr);
+    const patient = this.getPatientByUmr(umr)
 
     if (!patient)
-      throw new Error(`Patient with UMR ${umr} not found in database.`);
+      throw new Error(`Patient with UMR ${umr} not found in database.`)
 
-    const encounters = this.getEncounters();
+    const encounters = this.getEncounters()
 
     // Generate Next Global Continuous OP Number across hospital
 
     const currentOpCounter = parseInt(
       localStorage.getItem(STORAGE_KEYS.OP_COUNTER) || "33",
       10,
-    );
+    )
 
-    const nextOpCounter = currentOpCounter + 1;
+    const nextOpCounter = currentOpCounter + 1
 
-    localStorage.setItem(STORAGE_KEYS.OP_COUNTER, nextOpCounter.toString());
+    localStorage.setItem(STORAGE_KEYS.OP_COUNTER, nextOpCounter.toString())
 
-    const newOpNumber = `OP${String(nextOpCounter).padStart(3, "0")}`;
+    const newOpNumber = `OP${String(nextOpCounter).padStart(3, "0")}`
 
-    const encounterId = `ENC-${umr}-${nextOpCounter}`;
+    const encounterId = `ENC-${umr}-${nextOpCounter}`
 
     const timeStr = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
-    });
+    })
 
     const newEncounter: DBOPEncounter = {
       id: encounterId,
@@ -2067,9 +2111,24 @@ class HospitalDatabase {
       },
 
       billing: {
-        consultationFee: 50,
+        registrationFee: 0,
+        consultationFee: data?.dept
+          ? getDoctorConsultationFee(
+              getDoctorMaster().find(
+                (d) => d.verified && d.specialty === data.dept,
+              )?.name || "",
+            )
+          : 500,
         labFee: 0,
-        total: 50,
+        total:
+          0 +
+          (data?.dept
+            ? getDoctorConsultationFee(
+                getDoctorMaster().find(
+                  (d) => d.verified && d.specialty === data.dept,
+                )?.name || "",
+              )
+            : 500),
         status: "Pending",
         mode: "Card",
       },
@@ -2079,24 +2138,47 @@ class HospitalDatabase {
       status: "Registered",
 
       timestamps: { arrival: timeStr, registration: timeStr },
-    };
+    }
 
     // Update patient timestamp & save encounter
 
     const patients = this.getPatients().map((p) =>
       p.umr === umr ? { ...p, updatedAt: new Date().toISOString() } : p,
-    );
+    )
 
-    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
+    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients))
 
     localStorage.setItem(
       STORAGE_KEYS.ENCOUNTERS,
       JSON.stringify([newEncounter, ...encounters]),
-    );
+    )
 
-    this.notify();
+    // Backend write-through for OP Visit / Appointment
+    apiFetch("/api/op/visits", {
+      method: "POST",
+      body: JSON.stringify({
+        patient_id: umr,
+        patient: patient ? {
+          first_name: patient.name.split(" ")[0] || patient.name,
+          last_name: patient.name.split(" ").slice(1).join(" ") || "",
+          phone: patient.phone,
+          age: patient.age,
+          gender: patient.sex,
+        } : undefined,
+        appointment: {
+          doctor_name: (newEncounter as any).assignedDoctor || (newEncounter as any).doctorAssigned || "Dr. Staff",
+          department: newEncounter.dept || "General Medicine",
+          visit_type: "OP",
+          appointment_date: new Date().toISOString().split("T")[0],
+          status: "checked_in",
+          chief_complaint: newEncounter.chiefComplaint || "Revisit",
+        },
+      }),
+    }).catch(() => {})
 
-    return newEncounter;
+    this.notify()
+
+    return newEncounter
   }
 
   /**
@@ -2125,13 +2207,23 @@ class HospitalDatabase {
    * The status is untouched -- being called is not a clinical stage, it is a
    * fact about the waiting room. Vitals are still what moves the visit on.
    */
-  public callToNurseStation(id: string, calledBy: string): DBOPEncounter | undefined {
-    const existing = this.getEncounters().find((e) => e.id === id);
-    if (!existing) return undefined;
-    const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  public callToNurseStation(
+    id: string,
+    calledBy: string,
+  ): DBOPEncounter | undefined {
+    const existing = this.getEncounters().find((e) => e.id === id)
+    if (!existing) return undefined
+    const now = new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    })
     return this.updateEncounter(id, {
-      timestamps: { ...existing.timestamps, calledToNurse: now, calledToNurseBy: calledBy },
-    });
+      timestamps: {
+        ...existing.timestamps,
+        calledToNurse: now,
+        calledToNurseBy: calledBy,
+      },
+    })
   }
 
   public recordVitals(
@@ -2144,11 +2236,11 @@ class HospitalDatabase {
     const now = new Date().toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
-    });
+    })
 
-    const existing = this.getEncounters().find((e) => e.id === id);
+    const existing = this.getEncounters().find((e) => e.id === id)
 
-    return this.updateEncounter(id, {
+    const updated = this.updateEncounter(id, {
       vitals,
 
       status: "In Queue",
@@ -2158,37 +2250,99 @@ class HospitalDatabase {
         vitalsRecorded: now,
         vitalsBy: nurseName,
       },
-    });
+    })
+
+    // Write-through to the real backend, keyed on the patient's UMR (not this
+    // encounter's local id, which has no backend existence) -- best-effort,
+    // same posture as ICU/OT: the local record above is what the UI reads
+    // from immediately, this just makes the reading survive past this browser.
+    if (existing?.umr && (vitals.bp || vitals.pulse || vitals.temp || vitals.spo2)) {
+      apiFetch(`/api/patients/${existing.umr}/vitals`, {
+        method: "POST",
+        body: JSON.stringify({
+          bp: vitals.bp || undefined,
+          pulse: vitals.pulse ? parseInt(vitals.pulse) : undefined,
+          temperature: vitals.temp ? parseFloat(vitals.temp) : undefined,
+          spo2: vitals.spo2 ? parseInt(vitals.spo2) : undefined,
+          notes: vitals.notes || undefined,
+        }),
+      }).catch(() => {
+        // Offline/unreachable -- the local record above already has it.
+      })
+    }
+
+    return updated
   }
 
   public updateEncounter(
     id: string,
     updates: Partial<DBOPEncounter>,
   ): DBOPEncounter {
-    const encounters = this.getEncounters();
+    const encounters = this.getEncounters()
 
-    let updated: DBOPEncounter | null = null;
+    let updated: DBOPEncounter | null = null
 
     const newEncounters = encounters.map((e) => {
       if (e.id === id) {
-        updated = { ...e, ...updates };
+        const assignedDoc =
+          updates.assignedDoctor !== undefined
+            ? updates.assignedDoctor
+            : e.assignedDoctor
 
-        return updated;
+        let cFee = e.billing?.consultationFee || 500
+        if (updates.billing?.consultationFee !== undefined) {
+          cFee = updates.billing.consultationFee
+        } else if (
+          updates.assignedDoctor &&
+          updates.assignedDoctor !== e.assignedDoctor
+        ) {
+          cFee = getDoctorConsultationFee(updates.assignedDoctor)
+        } else if (assignedDoc && (cFee === 50 || !e.billing?.consultationFee)) {
+          cFee = getDoctorConsultationFee(assignedDoc)
+        }
+
+        const regFee =
+          updates.billing?.registrationFee !== undefined
+            ? updates.billing.registrationFee
+            : (e.billing?.registrationFee ?? (e.isNew === false ? 0 : 20))
+
+        const lFee =
+          updates.billing?.labFee !== undefined
+            ? updates.billing.labFee
+            : (e.billing?.labFee || 0)
+
+        const bStatus =
+          updates.billing?.status || e.billing?.status || "Pending"
+        const bMode = updates.billing?.mode || e.billing?.mode || "Card"
+
+        const mergedBilling = {
+          registrationFee: regFee,
+          consultationFee: cFee,
+          labFee: lFee,
+          total: regFee + cFee + lFee,
+          status: bStatus,
+          mode: bMode,
+        }
+
+        updated = {
+          ...e,
+          ...updates,
+          billing: mergedBilling,
+        }
+
+        return updated
       }
 
-      return e;
-    });
+      return e
+    })
 
-    if (!updated) throw new Error(`Encounter ${id} not found.`);
+    if (!updated) throw new Error(`Encounter ${id} not found.`)
 
-    localStorage.setItem(
-      STORAGE_KEYS.ENCOUNTERS,
-      JSON.stringify(newEncounters),
-    );
+    localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(newEncounters))
 
-    this.notify();
+    this.notify()
 
-    return updated;
+    return updated
   }
 
   /**
@@ -2198,17 +2352,17 @@ class HospitalDatabase {
   public deletePatientByUmr(umr: string): void {
     const patients = this.getPatients().filter(
       (p) => p.umr.toUpperCase() !== umr.toUpperCase(),
-    );
+    )
 
     const encounters = this.getEncounters().filter(
       (e) => e.umr.toUpperCase() !== umr.toUpperCase(),
-    );
+    )
 
-    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
+    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients))
 
-    localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters));
+    localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters))
 
-    this.notify();
+    this.notify()
   }
 
   /**
@@ -2216,21 +2370,21 @@ class HospitalDatabase {
    */
 
   public deletePatientByName(name: string): void {
-    const cleanName = name.trim().toLowerCase();
+    const cleanName = name.trim().toLowerCase()
 
     const patients = this.getPatients().filter(
       (p) => !p.name.toLowerCase().includes(cleanName),
-    );
+    )
 
     const encounters = this.getEncounters().filter(
       (e) => !e.patientName.toLowerCase().includes(cleanName),
-    );
+    )
 
-    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients));
+    localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(patients))
 
-    localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters));
+    localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters))
 
-    this.notify();
+    this.notify()
   }
 
   /**
@@ -2238,11 +2392,11 @@ class HospitalDatabase {
    */
 
   public deleteEncounterById(id: string): void {
-    const encounters = this.getEncounters().filter((e) => e.id !== id);
+    const encounters = this.getEncounters().filter((e) => e.id !== id)
 
-    localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters));
+    localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters))
 
-    this.notify();
+    this.notify()
   }
 
   /**
@@ -2253,27 +2407,115 @@ class HospitalDatabase {
     localStorage.setItem(
       STORAGE_KEYS.PATIENTS,
       JSON.stringify(INITIAL_SEED_PATIENTS),
-    );
+    )
 
     localStorage.setItem(
       STORAGE_KEYS.ENCOUNTERS,
       JSON.stringify(INITIAL_SEED_ENCOUNTERS),
-    );
+    )
 
-    localStorage.setItem(STORAGE_KEYS.UMR_COUNTER, "10048");
+    localStorage.setItem(STORAGE_KEYS.UMR_COUNTER, "10048")
 
-    this.notify();
+    this.notify()
+  }
+
+  /**
+   * Sync OP Visit Queue from real PostgreSQL backend into local store.
+   * Enables cross-machine real-time queue & doctor alert synchronization.
+   */
+  public async syncOPVisitsWithBackend(): Promise<void> {
+    try {
+      const res = await apiFetch<{ queue?: any[] }>("/api/queue")
+      if (res && Array.isArray(res.queue) && res.queue.length > 0) {
+        const encounters = this.getEncounters()
+        let hasChanges = false
+
+        for (const item of res.queue) {
+          const encId = item.appointment_id ? `ENC-${item.patient_id}-${item.appointment_id}` : `ENC-${item.patient_id}`
+          const existingIndex = encounters.findIndex(
+            (e) => e.id === encId || e.umr === item.patient_id || (e as any).dbAppointmentId === item.id || (e as any).dbAppointmentId === item.appointment_id
+          )
+
+          if (existingIndex >= 0) {
+            const existing = encounters[existingIndex]
+            const newStatus = item.status === "in_consultation" ? "Under Consultation" : item.status === "checked_in" ? "In Queue" : existing.status
+            const newDoc = item.doctor_name || (existing as any).assignedDoctor || (existing as any).doctorAssigned
+
+            if ((existing as any).assignedDoctor !== newDoc || existing.status !== newStatus) {
+              encounters[existingIndex] = {
+                ...existing,
+                assignedDoctor: newDoc,
+                doctorAssigned: newDoc,
+                status: newStatus as any,
+                ...(item.id || item.appointment_id ? { dbAppointmentId: item.id || item.appointment_id } : {}),
+              } as any
+              hasChanges = true
+            }
+          } else {
+            const newEnc: DBOPEncounter = {
+              id: encId,
+              opNumber: `OP-${item.patient_id || "101"}`,
+              tokenNo: `T-${item.id || 101}`,
+              umr: item.patient_id || "UMR-UNKNOWN",
+              patientName: item.patient_name || item.patient_first_name || "Patient",
+              age: item.age || 40,
+              sex: (item.gender === "Female" ? "Female" : item.gender === "Male" ? "Male" : "Other") as any,
+              phone: item.phone || "+91 98765 43210",
+              address: item.address || "Main City",
+              bloodGroup: item.blood_group || "O+",
+              dept: item.department || "General Medicine",
+              isNew: false,
+              registrationTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              chiefComplaint: item.chief_complaint || "OP Visit",
+              symptoms: item.chief_complaint ? [item.chief_complaint] : ["General Consultation"],
+              aiSpecialty: item.department || "General Medicine",
+              assignedDoctor: item.doctor_name || "Dr. Staff",
+              doctorAssigned: item.doctor_name || "Dr. Staff",
+              consultationType: "General Consultation",
+              consultationFee: 500,
+              payment: {
+                totalAmount: 500,
+                amountPaid: 500,
+                balanceDue: 0,
+                status: "Paid",
+                mode: "Card",
+              },
+              furtherAction: "None",
+              status: item.status === "in_consultation" ? "Under Consultation" : "In Queue",
+              timestamps: {
+                arrival: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+              },
+              vitals: item.vitals ? {
+                bp: item.vitals.bp || "120/80",
+                pulse: item.vitals.pulse ? String(item.vitals.pulse) : "72",
+                temp: item.vitals.temperature ? String(item.vitals.temperature) : "98.6",
+                spo2: item.vitals.spo2 ? String(item.vitals.spo2) : "98",
+              } : undefined,
+            } as any
+            encounters.unshift(newEnc)
+            hasChanges = true
+          }
+        }
+
+        if (hasChanges) {
+          localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(encounters))
+          this.notify()
+        }
+      }
+    } catch {
+      // Best-effort sync
+    }
   }
 }
 
-export const db = new HospitalDatabase();
+export const db = new HospitalDatabase()
 
 export interface PatientMatchResult {
-  match: DBPatient | null; // Non-null ONLY if name matches AND all other details (phone, age, sex) do NOT conflict with the DB record
+  match: DBPatient | null // Non-null ONLY if name matches AND all other details (phone, age, sex) do NOT conflict with the DB record
 
-  nameMatchedPatient: DBPatient | null; // Non-null if ANY patient in DB has the same name
+  nameMatchedPatient: DBPatient | null // Non-null if ANY patient in DB has the same name
 
-  mismatches: string[]; // List of specific mismatched fields
+  mismatches: string[] // List of specific mismatched fields
 }
 
 /**
@@ -2288,37 +2530,37 @@ export function findMatchingPatient(
   patients: DBPatient[],
 
   params: {
-    fullName: string;
+    fullName: string
 
-    dob?: string;
+    dob?: string
 
-    age?: number;
+    age?: number
 
-    sex?: string;
+    sex?: string
 
-    phone?: string;
+    phone?: string
   },
 ): PatientMatchResult {
-  const cleanName = params.fullName.trim().toLowerCase();
+  const cleanName = params.fullName.trim().toLowerCase()
 
   if (cleanName.length < 2) {
-    return { match: null, nameMatchedPatient: null, mismatches: [] };
+    return { match: null, nameMatchedPatient: null, mismatches: [] }
   }
 
   // Find all patients in DB with the exact same name (case-insensitive)
 
   const candidates = patients.filter(
     (p) => p.name.trim().toLowerCase() === cleanName,
-  );
+  )
 
   if (candidates.length === 0) {
-    return { match: null, nameMatchedPatient: null, mismatches: [] };
+    return { match: null, nameMatchedPatient: null, mismatches: [] }
   }
 
   // Check each candidate for an exact non-conflicting match
 
   for (const candidate of candidates) {
-    const candidateMismatches: string[] = [];
+    const candidateMismatches: string[] = []
 
     // 1. Exact Date of Birth (DOB) comparison
 
@@ -2326,7 +2568,7 @@ export function findMatchingPatient(
       if (params.dob.trim() !== candidate.dob.trim()) {
         candidateMismatches.push(
           `DOB differs (${params.dob} vs registered ${candidate.dob})`,
-        );
+        )
       }
     } else if (
       params.age !== undefined &&
@@ -2338,21 +2580,21 @@ export function findMatchingPatient(
       if (params.age !== candidate.age) {
         candidateMismatches.push(
           `Age differs (${params.age} yrs vs registered ${candidate.age} yrs)`,
-        );
+        )
       }
     }
 
     // 2. Phone number comparison (digits only, if phone has at least 4 digits)
 
     if (params.phone && params.phone.trim().length >= 4) {
-      const inputDigits = params.phone.replace(/\D/g, "");
+      const inputDigits = params.phone.replace(/\D/g, "")
 
-      const dbDigits = candidate.phone.replace(/\D/g, "");
+      const dbDigits = candidate.phone.replace(/\D/g, "")
 
       if (inputDigits && dbDigits && inputDigits !== dbDigits) {
         candidateMismatches.push(
           `Phone number differs (${params.phone.trim()} vs ${candidate.phone})`,
-        );
+        )
       }
     }
 
@@ -2364,7 +2606,7 @@ export function findMatchingPatient(
       ) {
         candidateMismatches.push(
           `Gender differs (${params.sex} vs ${candidate.sex})`,
-        );
+        )
       }
     }
 
@@ -2377,21 +2619,21 @@ export function findMatchingPatient(
         nameMatchedPatient: candidate,
 
         mismatches: [],
-      };
+      }
     }
   }
 
   // If no candidate matched without mismatches, collect the mismatches of the primary candidate
 
-  const primaryCandidate = candidates[0];
+  const primaryCandidate = candidates[0]
 
-  const detectedMismatches: string[] = [];
+  const detectedMismatches: string[] = []
 
   if (params.dob && primaryCandidate.dob) {
     if (params.dob.trim() !== primaryCandidate.dob.trim()) {
       detectedMismatches.push(
         `DOB differs: ${params.dob} vs registered ${primaryCandidate.dob}`,
-      );
+      )
     }
   } else if (
     params.age !== undefined &&
@@ -2401,18 +2643,18 @@ export function findMatchingPatient(
   ) {
     detectedMismatches.push(
       `Age differs: ${params.age} yrs vs registered ${primaryCandidate.age} yrs`,
-    );
+    )
   }
 
   if (params.phone && params.phone.trim().length >= 4) {
-    const inputDigits = params.phone.replace(/\D/g, "");
+    const inputDigits = params.phone.replace(/\D/g, "")
 
-    const dbDigits = primaryCandidate.phone.replace(/\D/g, "");
+    const dbDigits = primaryCandidate.phone.replace(/\D/g, "")
 
     if (inputDigits && dbDigits && inputDigits !== dbDigits) {
       detectedMismatches.push(
         `Phone number differs: "${params.phone.trim()}" vs registered "${primaryCandidate.phone}"`,
-      );
+      )
     }
   }
 
@@ -2424,7 +2666,7 @@ export function findMatchingPatient(
   ) {
     detectedMismatches.push(
       `Gender differs: ${params.sex} vs registered ${primaryCandidate.sex}`,
-    );
+    )
   }
 
   return {
@@ -2433,5 +2675,5 @@ export function findMatchingPatient(
     nameMatchedPatient: primaryCandidate,
 
     mismatches: detectedMismatches,
-  };
+  }
 }
