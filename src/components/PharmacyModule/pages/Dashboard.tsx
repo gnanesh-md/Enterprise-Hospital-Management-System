@@ -291,7 +291,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           />
           <button
             onClick={() => onNavigate("dispensing")}
-            className="px-4 py-2 rounded-lg text-white text-[13px] font-medium flex items-center gap-1.5 shadow-sm hover:opacity-95 transition-opacity"
+            className="px-4 py-2 rounded text-white text-[13px] font-medium flex items-center gap-1.5 shadow-sm hover:opacity-95 transition-opacity"
             style={{ background: "#0F766E" }}
           >
             <ShoppingCart size={14} /> New Sale
@@ -301,24 +301,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             className="px-4 py-2 rounded text-[13px] font-medium border border-[#E2E8F0] bg-white text-[#334155] hover:bg-[#F0FDFA] flex items-center gap-1.5 transition-colors"
           >
             <ClipboardList size={14} /> Scan Prescription
-          </button>
-          <button
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Are you sure you want to delete ALL demo, seed, and mock data from the pharmacy module? This will give you a 100% clean state.",
-                )
-              ) {
-                PharmacyDatabase.clearAllPharmacyData()
-                toast.success(
-                  "All pharmacy data deleted successfully. Clean state ready!",
-                )
-              }
-            }}
-            className="px-3 py-2 rounded text-[13px] font-medium border border-[#FEE2E2] bg-[#FEF2F2] text-[#DC2626] hover:bg-[#FEE2E2] flex items-center gap-1.5 transition-colors"
-            title="Purge all pharmacy demo and seed data"
-          >
-            <Trash2 size={14} /> Clear All Data
           </button>
         </div>
       </div>
