@@ -17,7 +17,7 @@ import {
   PermissionAction,
   getGrantedActionsForModule,
 } from "../services/roleDb"
-import { AuditDatabase, AuditLog } from "../services/auditDb"
+import { AuditDatabase, AuditLog, detectDevice } from "../services/auditDb"
 import { apiFetch } from "../lib/api"
 
 // System Module Categories for clean RBAC governance
@@ -185,6 +185,7 @@ export default function Administration() {
     setRoles(RoleDatabase.getRoles())
     setUsers(RoleDatabase.getUsers())
     setDoctors(getDoctorMaster())
+    setAuditLogs(AuditDatabase.getLogs())
   }
 
   useEffect(() => {
@@ -228,25 +229,7 @@ export default function Administration() {
   }
 
   useEffect(() => {
-    if (activeTab !== "audit") return
-    let cancelled = false
-    apiFetch<{ logs: any[] ;total: number }>(
-      `/api/audit/logs?limit=${AUDIT_PAGE_SIZE}&offset=0`,
-    )
-      .then((res) => {
-        if (cancelled) return
-        setAuditLogs((res.logs || []).map(mapAuditRow))
-        setAuditTotal(res.total || 0)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAuditLogs([])
-          setAuditTotal(0)
-        }
-      })
-    return () => {
-      cancelled = true
-    }
+    setAuditLogs(AuditDatabase.getLogs())
   }, [activeTab])
 
   const loadMoreAuditLogs = async () => {
@@ -513,6 +496,7 @@ export default function Administration() {
       username: "",
       room: `Room ${200 + nextNum}`,
       staffId: nextId,
+      consultationFee: 500,
     })
     setShowDoctorModal(true)
   }
@@ -525,7 +509,17 @@ export default function Administration() {
     let updatedDocs: MasterDoctor[]
 
     // Generate clean username if verified and missing
-    let finalDoc = { ...editingDoctor }
+    let finalDoc = {
+      ...editingDoctor,
+      consultationFee:
+        editingDoctor.consultationFee !== undefined &&
+        editingDoctor.consultationFee !== null &&
+        (editingDoctor.consultationFee as any) !== "" &&
+        !isNaN(Number(editingDoctor.consultationFee))
+          ? Math.max(0, Number(editingDoctor.consultationFee))
+          : 500,
+    }
+
     if (finalDoc.verified && !finalDoc.username) {
       const cleanName = finalDoc.name
         .toLowerCase()
@@ -555,18 +549,16 @@ export default function Administration() {
     }
 
     AuditDatabase.logEvent(
-      isNew ? "Doctor Added" : "Doctor Updated",
+      isNew ? "Doctor Added" : "Doctor Fee/Profile Updated",
       "Doctor Management",
-      `${
-        isNew ? "Added new doctor" : "Updated doctor profile"
-      } '${finalDoc.name}' (${finalDoc.specialty})`,
+      `${isNew ? "Added new doctor" : "Updated doctor profile"} '${finalDoc.name}' (${finalDoc.specialty}) — Consultation Fee: ₹${finalDoc.consultationFee}`,
       "Success",
     )
 
     setShowDoctorModal(false)
     setEditingDoctor(null)
     setDoctorNotice(
-      `Doctor "${finalDoc.name}" ${isNew ? "added" : "updated"} successfully.`,
+      `Doctor "${finalDoc.name}" ${isNew ? "added" : "updated"} successfully with fee ₹${finalDoc.consultationFee}.`,
     )
     setTimeout(() => setDoctorNotice(""), 3500)
   }
@@ -904,6 +896,7 @@ export default function Administration() {
                         Specialty / Department
                       </th>
                       <th className="text-left px-4 py-3">Panel</th>
+                      <th className="text-left px-4 py-3">Consultation Fee</th>
                       <th className="text-left px-4 py-3">Availability</th>
                       <th className="text-left px-4 py-3">Login Username</th>
                       <th className="text-left px-4 py-3">Status</th>
@@ -913,10 +906,7 @@ export default function Administration() {
                   <tbody className="divide-y divide-[#F1F5F9] text-[12.5px]">
                     {filteredDoctors.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={8}
-                          className="px-4 py-10 text-center text-[#64748B]"
-                        >
+                        <td colSpan={9} className="px-4 py-10 text-center text-[#64748B]">
                           No doctors found matching the search criteria.
                         </td>
                       </tr>
@@ -965,6 +955,10 @@ export default function Administration() {
                               >
                                 {d.section}
                               </span>
+                            </td>
+
+                            <td className="px-4 py-3 font-mono font-bold text-[#15803D]">
+                              ₹{d.consultationFee ?? 500}
                             </td>
 
                             <td className="px-4 py-3 text-[12px]">
@@ -1519,67 +1513,103 @@ export default function Administration() {
             <div className="flex-1 overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[#F1F5F9] border-b border-[#DDE2EC] text-[11.5px] text-[#475569] uppercase font-mono tracking-wider">
-                    <th className="px-6 py-3">Timestamp</th>
-                    <th className="px-6 py-3">User</th>
-                    <th className="px-6 py-3">Action Event</th>
-                    <th className="px-6 py-3">Module</th>
-                    <th className="px-6 py-3">Description</th>
-                    <th className="px-6 py-3 text-right">Status</th>
+                  <tr className="bg-[#F1F5F9] border-b border-[#DDE2EC] text-[11.5px] text-[#475569] uppercase font-mono tracking-wider whitespace-nowrap">
+                    <th className="px-4 py-3">Timestamp</th>
+                    <th className="px-4 py-3">User</th>
+                    <th className="px-4 py-3">Action Event</th>
+                    <th className="px-4 py-3">Module</th>
+                    <th className="px-4 py-3">Description</th>
+                    <th className="px-4 py-3">Device</th>
+                    <th className="px-4 py-3">Login Time</th>
+                    <th className="px-4 py-3">Logout Time</th>
+                    <th className="px-4 py-3">Duration</th>
+                    <th className="px-4 py-3 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F5F9] text-[13px] text-[#334155]">
                   {filteredAuditLogs.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="px-6 py-12 text-center text-[#64748B]"
-                      >
+                      <td colSpan={10} className="px-4 py-12 text-center text-[#64748B]">
                         No audit log records match the selected search criteria.
                       </td>
                     </tr>
                   ) : (
-                    filteredAuditLogs.map((log) => (
-                      <tr
-                        key={log.id}
-                        onClick={() => setSelectedAuditLog(log)}
-                        className="hover:bg-[#F8FAFC] cursor-pointer transition-colors"
-                      >
-                        <td className="px-6 py-3 font-mono text-[11.5px] text-[#64748B] whitespace-nowrap">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </td>
+                    filteredAuditLogs.map((log) => {
+                      const isLoginSession =
+                        log.action.toLowerCase().includes("login") || log.module === "Authentication"
 
-                        <td className="px-6 py-3 font-bold text-[#0F172A] whitespace-nowrap">
-                          {log.username}
-                        </td>
+                      return (
+                        <tr 
+                          key={log.id} 
+                          onClick={() => setSelectedAuditLog(log)}
+                          className="hover:bg-[#F8FAFC] cursor-pointer transition-colors text-[12.5px]"
+                        >
+                          <td className="px-4 py-3 font-mono text-[11.5px] text-[#64748B] whitespace-nowrap">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </td>
 
-                        <td className="px-6 py-3">
-                          <span className="text-[11.5px] bg-blue-50 text-[#1B4FD8] px-2 py-0.5 border border-blue-200 font-semibold">
-                            {log.action}
-                          </span>
-                        </td>
+                          <td className="px-4 py-3 font-bold text-[#0F172A] whitespace-nowrap">
+                            {log.username}
+                          </td>
 
-                        <td className="px-6 py-3 text-[#64748B] font-medium">
-                          {log.module}
-                        </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="text-[11.5px] bg-blue-50 text-[#1B4FD8] px-2 py-0.5 border border-blue-200 font-semibold">
+                              {log.action}
+                            </span>
+                          </td>
 
-                        <td className="px-6 py-3 text-[#334155] max-w-md truncate">
-                          {log.description}
-                        </td>
+                          <td className="px-4 py-3 text-[#64748B] font-medium whitespace-nowrap">
+                            {log.module}
+                          </td>
 
-                        <td className="px-6 py-3 text-right">
-                          <span
-                            className={`text-[11px] font-bold px-2 py-0.5 border ${
-                              log.status === "Success"
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-red-50 text-red-700 border-red-200"
-                            }`}
-                          >
-                            {log.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
+                          <td className="px-4 py-3 text-[#334155] max-w-xs truncate">
+                            {log.description}
+                          </td>
+
+                          <td className="px-4 py-3 font-medium text-[#0F172A] whitespace-nowrap">
+                            {isLoginSession ? (log.device || detectDevice()) : "—"}
+                          </td>
+
+                          <td className="px-4 py-3 font-mono text-[12px] text-[#334155] whitespace-nowrap">
+                            {isLoginSession ? (log.loginTime || "—") : "—"}
+                          </td>
+
+                          <td className="px-4 py-3 font-mono text-[12px] whitespace-nowrap">
+                            {isLoginSession ? (
+                              log.logoutTime === "Active" ? (
+                                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 font-bold rounded">
+                                  Active
+                                </span>
+                              ) : log.logoutTime === "Session Expired" ? (
+                                <span className="text-amber-800 bg-amber-50 px-2 py-0.5 border border-amber-200 font-semibold rounded">
+                                  Session Expired
+                                </span>
+                              ) : (
+                                log.logoutTime || "—"
+                              )
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3 font-mono font-bold text-[#1B4FD8] whitespace-nowrap">
+                            {isLoginSession ? (log.duration || "—") : "—"}
+                          </td>
+
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <span
+                              className={`text-[11px] font-bold px-2 py-0.5 border ${
+                                log.status === "Success"
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : "bg-red-50 text-red-700 border-red-200"
+                              }`}
+                            >
+                              {log.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1825,7 +1855,34 @@ export default function Administration() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[12px] font-bold text-[#334155] mb-1.5">Consultation Fee (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    required
+                    value={
+                      editingDoctor.consultationFee === undefined ||
+                      editingDoctor.consultationFee === null ||
+                      (editingDoctor.consultationFee as any) === "" ||
+                      isNaN(editingDoctor.consultationFee as any)
+                        ? ""
+                        : editingDoctor.consultationFee
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditingDoctor({
+                        ...editingDoctor,
+                        consultationFee: val === "" ? ("" as any) : Number(val),
+                      });
+                    }}
+                    placeholder="e.g. 500"
+                    className="w-full bg-white border border-[#DDE2EC] px-3 py-2 text-[13px] text-[#0F172A] font-semibold focus:outline-none focus:border-[#1B4FD8]"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-[12px] font-bold text-[#334155] mb-1.5">
                     Staff Employee ID
@@ -1840,7 +1897,7 @@ export default function Administration() {
                       })
                     }
                     placeholder="e.g. IMP-201"
-                    className="w-full bg-white border border-[#DDE2EC] px-3.5 py-2 text-[13px] text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] font-mono"
+                    className="w-full bg-white border border-[#DDE2EC] px-3 py-2 text-[13px] text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] font-mono"
                   />
                 </div>
 
@@ -1857,7 +1914,7 @@ export default function Administration() {
                       })
                     }
                     placeholder="e.g. prkvarma"
-                    className="w-full bg-white border border-[#DDE2EC] px-3.5 py-2 text-[13px] text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] font-mono"
+                    className="w-full bg-white border border-[#DDE2EC] px-3 py-2 text-[13px] text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] font-mono"
                   />
                 </div>
               </div>
@@ -2435,6 +2492,39 @@ export default function Administration() {
                   {selectedAuditLog.module}
                 </div>
               </div>
+
+              {(selectedAuditLog.device || selectedAuditLog.action.toLowerCase().includes("login") || selectedAuditLog.module === "Authentication") && (
+                <div className="grid grid-cols-2 gap-4 bg-[#F8FAFC] p-3.5 border border-[#E2E8F0]">
+                  <div>
+                    <div className="text-[11px] text-[#64748B] uppercase font-mono mb-0.5">Device</div>
+                    <div className="font-bold text-[#0F172A]">{selectedAuditLog.device || detectDevice()}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-[#64748B] uppercase font-mono mb-0.5">Session Duration</div>
+                    <div className="font-mono text-[#1B4FD8] font-bold text-[12px]">{selectedAuditLog.duration || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-[#64748B] uppercase font-mono mb-0.5">Login Time</div>
+                    <div className="font-mono text-[#0F172A] text-[12px]">{selectedAuditLog.loginTime || "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-[#64748B] uppercase font-mono mb-0.5">Logout Time</div>
+                    <div className="font-mono text-[#0F172A] text-[12px]">
+                      {selectedAuditLog.logoutTime === "Active" ? (
+                        <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 border border-emerald-200 font-bold rounded">
+                          Active
+                        </span>
+                      ) : selectedAuditLog.logoutTime === "Session Expired" ? (
+                        <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 border border-amber-200 font-semibold rounded">
+                          Session Expired
+                        </span>
+                      ) : (
+                        selectedAuditLog.logoutTime || "—"
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="text-[11px] text-[#64748B] uppercase font-mono mb-1">

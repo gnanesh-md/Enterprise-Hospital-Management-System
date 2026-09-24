@@ -1056,10 +1056,16 @@ function renderStatusPill(status: string) {
 }
 
 function renderBillingPill(v: ErVisit) {
+  const patientFullName = v.patient
+    ? [v.patient.name, v.patient.last_name].filter(Boolean).join(" ")
+    : v.patient_name
+      ? [v.patient_name, v.patient_last_name].filter(Boolean).join(" ")
+      : undefined;
+
   const clearance = BillingDatabase.getErFinancialClearance(
     v.visit_no || v.patient_id || String(v.id),
-    v.patient_name || undefined,
-  )
+    patientFullName || v.patient_name || undefined,
+  );
 
   if (clearance.status === "paid") {
     return (
@@ -1083,12 +1089,21 @@ function renderBillingPill(v: ErVisit) {
     )
   }
 
+  const unbilledTotal = clearance.unbilledAmount || 0;
+
   return (
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-300 whitespace-nowrap"
-      title="Active ER treatment. Bill not yet sent to Billing Department."
+      title={
+        unbilledTotal > 0
+          ? `Unbilled ER charges: ₹${unbilledTotal.toLocaleString("en-IN")}. Bill not yet sent to Billing Department.`
+          : "Active ER care. Bill not yet sent to Central Billing Department."
+      }
     >
-      <span>💳</span> In Treatment
+      <span className="w-1.5 h-1.5 rounded-full bg-[#94A3B8]"></span>{" "}
+      {unbilledTotal > 0
+        ? `Unbilled (₹${unbilledTotal.toLocaleString("en-IN")})`
+        : "Unbilled"}
     </span>
   )
 }
@@ -10068,14 +10083,12 @@ export function VisitDetailPanel({
   })
 
   // Compute ER Financial Clearance Status
-
   const erClearance = useMemo(() => {
     return BillingDatabase.getErFinancialClearance(
       curVisitNo,
-
-      curPatientName,
-    )
-  }, [curVisitNo, curPatientName, billingVersion])
+      displayName || curPatientName,
+    );
+  }, [curVisitNo, displayName, curPatientName, billingVersion]);
 
   // Form state for editing Patient Demographics & Allergies
 
@@ -10517,87 +10530,99 @@ export function VisitDetailPanel({
         )
       }
 
+      const encKey = String(detail.visit_no || curVisitNo || detail.id || "").trim();
+      const pidKey = String(curPatientId || detail.patient_id || (detail.patient && detail.patient.patient_id) || "").trim();
+
+      // Look for an existing Emergency claim specifically for this encounter or patient
       let activeClaim = BillingDatabase.getClaims().find(
         (c) =>
           c.status !== "Voided" &&
-          (c.encounterId === detail.visit_no ||
-            (erClearance.invoiceNo && c.invoiceNo === erClearance.invoiceNo) ||
-            (erClearance.claimId && c.id === erClearance.claimId) ||
-            c.patientName === displayName),
-      )
+          (c.department === "Emergency" || (Boolean(detail.visit_no) && c.encounterId === detail.visit_no)) &&
+          (
+            (Boolean(detail.visit_no) && c.encounterId === detail.visit_no) ||
+            (Boolean(encKey) && c.encounterId === encKey) ||
+            (Boolean(detail.id) && (c.encounterId === String(detail.id) || c.encounterId === `ER-${detail.id}`)) ||
+            (Boolean(erClearance.invoiceNo) && c.invoiceNo === erClearance.invoiceNo) ||
+            (Boolean(erClearance.claimId) && c.id === erClearance.claimId) ||
+            (Boolean(pidKey) && c.patientId === pidKey) ||
+            (Boolean(displayName) && c.patientName.toLowerCase() === displayName.toLowerCase())
+          ),
+      );
 
-      if (!activeClaim) {
-        activeClaim = BillingDatabase.createClaim({
-          patientId:
-            curPatientId || `UMR${Math.floor(100000 + Math.random() * 900000)}`,
+      const subtotal = billItems.reduce(
+        (sum, it) => sum + Number(it.patientPayable || it.total || 0),
+        0,
+      );
 
-          patientName: displayName,
-
-          mrn: detail.patient_id?.replace("UMR", "") || "100245",
-
-          age: Number(curAge) || 40,
-
-          gender: curGender as any,
-
-          phone: curPhone || "+91 98765 43210",
-
-          department: "Emergency",
-
-          carePathway: `ER Emergency Stabilization (${triageCatCode})`,
-
-          encounterId: detail.visit_no,
-
-          dateOfService: new Date().toISOString().split("T")[0],
-
-          insuranceProvider: "Self-Pay",
-
-          status: "Accepted",
-
-          items: billItems,
-        })
-      } else {
+      if (activeClaim) {
         activeClaim = BillingDatabase.updateClaim(activeClaim.id, {
           items: billItems,
-
+          department: "Emergency",
+          encounterId: encKey || activeClaim.encounterId,
           status: "Accepted",
-        })
+          amountPaid: 0,
+          balanceDue: subtotal,
+          payments: [],
+        });
+      } else {
+        activeClaim = BillingDatabase.createClaim({
+          patientId:
+            pidKey || `UMR${Math.floor(100000 + Math.random() * 900000)}`,
+          patientName: displayName,
+          mrn: (pidKey || detail.patient_id || "").replace("UMR", "").replace("P-", "") || "100245",
+          age: Number(curAge) || 40,
+          gender: curGender as any,
+          phone: curPhone || "+91 98765 43210",
+          department: "Emergency",
+          carePathway: `ER Emergency Stabilization (${triageCatCode})`,
+          encounterId: encKey || detail.visit_no || String(detail.id),
+          dateOfService: new Date().toISOString().split("T")[0],
+          insuranceProvider: "Self-Pay",
+          status: "Accepted",
+          items: billItems,
+        });
       }
 
       // Mark all matching staged department charges as "Invoiced in Central Billing"
-
       stagedDeptCharges.forEach((d) => {
-        BillingDatabase.createDepartmentCharge({
-          ...d,
+        try {
+          BillingDatabase.createDepartmentCharge({
+            ...d,
+            status: "Invoiced in Central Billing",
+            invoiceId: activeClaim?.invoiceNo || activeClaim?.id,
+          });
+        } catch {}
+      });
 
-          status: "Invoiced in Central Billing",
-
-          invoiceId: activeClaim?.invoiceNo || activeClaim?.id,
-        })
-      })
-
-      // Log dispatch to timeline
-
-      ErDatabase.addTimelineEvent(detail.id, {
-        event_type: "intervention_given",
-
-        event_name: "Bill Dispatched to Central Billing",
-
-        notes: `ER clinical bill of ₹${activeClaim.patientPortion.toLocaleString("en-IN")} dispatched to Central Billing Desk (Invoice: ${activeClaim.invoiceNo}). Clearance pending.`,
-
-        logged_by: "Staff RN",
-      })
+      // Log dispatch to timeline safely
+      try {
+        ErDatabase.addTimelineEvent(Number(detail.id), {
+          event_type: "intervention_given",
+          event_name: "Bill Dispatched to Central Billing",
+          notes: `ER clinical bill of ₹${(activeClaim.balanceDue || activeClaim.patientPortion).toLocaleString("en-IN")} dispatched to Central Billing Desk (Invoice: ${activeClaim.invoiceNo}). Clearance pending.`,
+          logged_by: "Staff RN",
+        });
+      } catch (tlErr) {
+        console.warn("Timeline log skipped:", tlErr);
+      }
 
       BillingDatabase.setPreselectedClaimForBilling(
         activeClaim.id || activeClaim.invoiceNo,
-      )
+      );
+
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
+
+      if (onRefresh) {
+        try {
+          onRefresh();
+        } catch {}
+      }
 
       setNotice({
         type: "success",
-
-        message: `📄 ER Bill Generated: Invoice ${activeClaim.invoiceNo} (₹${activeClaim.patientPortion.toLocaleString("en-IN")}) sent to Central Billing Department.`,
-      })
-
-      setBillingVersion((v) => v + 1)
+        message: `📄 ER Bill Generated: Invoice ${activeClaim.invoiceNo} (₹${(activeClaim.balanceDue || activeClaim.patientPortion).toLocaleString("en-IN")}) sent to Central Billing Department.`,
+      });
     } catch (e: any) {
       setNotice({
         type: "error",
@@ -11014,7 +11039,9 @@ export function VisitDetailPanel({
 
       setShowAddMedicationModal(false)
 
-      onRefresh()
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
+      onRefresh();
     } catch {
       setNotice({
         type: "success",
@@ -11023,7 +11050,9 @@ export function VisitDetailPanel({
 
       setShowAddMedicationModal(false)
 
-      onRefresh()
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
+      onRefresh();
     } finally {
       setActionSaving(false)
     }
@@ -11037,22 +11066,22 @@ export function VisitDetailPanel({
     try {
       const typeStr = quickIntervention.type.trim()
 
-      const descStr = quickIntervention.description.trim()
+      const desc = quickIntervention.description.trim() || typeStr;
 
       ErDatabase.addTreatment(detail.id, {
         intervention_type: typeStr,
 
-        description: descStr || undefined,
-      })
+        description: desc,
+      });
 
       // Also add to patient journey timeline
 
       ErDatabase.addTimelineEvent(detail.id, {
         event_type: "intervention_given",
 
-        event_name: `Procedure: ${typeStr}`,
+        event_name: `Intervention: ${typeStr}`,
 
-        notes: descStr || undefined,
+        notes: desc,
 
         logged_by: "Staff RN",
       })
@@ -11112,13 +11141,17 @@ export function VisitDetailPanel({
 
       setShowAddInterventionModal(false)
 
-      onRefresh()
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
+      onRefresh();
     } catch {
       setNotice({ type: "success", message: "Intervention saved." })
 
       setShowAddInterventionModal(false)
 
-      onRefresh()
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
+      onRefresh();
     } finally {
       setActionSaving(false)
     }
@@ -11202,7 +11235,9 @@ export function VisitDetailPanel({
 
       setShowInvestigationModal(false)
 
-      onRefresh()
+      BillingDatabase.emitUpdate();
+      setBillingVersion((v) => v + 1);
+      onRefresh();
     } catch {
       setNotice({
         type: "success",
@@ -11586,7 +11621,10 @@ export function VisitDetailPanel({
                     title={`Receipt: ${erClearance.receiptNo || "Paid & Cleared"}`}
                   >
                     <span className="w-2 h-2 rounded-full bg-[#15803D]"></span>
-                    <span>✅ Cleared</span>
+                    <span>
+                      ✅ Paid: ₹
+                      {(erClearance.totalAmount || 0).toLocaleString("en-IN")}
+                    </span>
                     {erClearance.receiptNo && (
                       <span className="text-[11px] font-normal text-emerald-800">
                         ({erClearance.receiptNo})
@@ -11600,6 +11638,43 @@ export function VisitDetailPanel({
                   >
                     🧾 Receipt
                   </button>
+                </div>
+              ) : erClearance.status === "due" ||
+                (erClearance.hasActiveBill &&
+                  (erClearance.balanceDue || 0) > 0) ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[12px] font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FCD34D] whitespace-nowrap shadow-2xs"
+                    title={`Bill dispatched to Central Billing (${erClearance.invoiceNo || "Invoice Pending"}). Payment pending.`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-[#B45309] animate-pulse"></span>
+                    <span>
+                      ⏳ Pending: ₹
+                      {(
+                        erClearance.balanceDue ||
+                        erClearance.totalAmount ||
+                        0
+                      ).toLocaleString("en-IN")}
+                    </span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
+                    Sent to Billing (Awaiting Payment)
+                  </span>
+                  {onNavigate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        BillingDatabase.setPreselectedClaimForBilling(
+                          erClearance.claimId || erClearance.invoiceNo || "",
+                        );
+                        onNavigate("billing");
+                      }}
+                      className="px-2.5 py-1 bg-[#15803D] hover:bg-[#166534] text-white rounded text-[11.5px] font-bold cursor-pointer shadow-2xs flex items-center gap-1 transition-colors ml-1"
+                      title="Open Central Billing Department POS to collect payment now"
+                    >
+                      <span>💳 Collect in Billing →</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 flex-wrap">

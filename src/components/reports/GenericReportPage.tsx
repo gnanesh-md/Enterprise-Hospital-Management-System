@@ -39,6 +39,20 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
+  Activity,
+  Users,
+  Stethoscope,
+  Bed,
+  TestTube,
+  CheckCircle2,
+  ShieldCheck,
+  Clock,
+  Pill,
+  Building2,
+  CreditCard,
+  HeartPulse,
+  UserPlus,
+  Zap,
 } from "lucide-react"
 import {
   GeneralReportsService,
@@ -58,6 +72,7 @@ import {
   printDoctorReport,
   downloadDoctorReportPdf,
 } from "../../utils/generalReportsExporter"
+import { useLiveClinic } from "../../hooks/useLiveClinic"
 import {
   PatientDataPdfModal,
   InReportEncounterModal,
@@ -345,6 +360,16 @@ export default function GenericReportPage({
 }: GenericReportPageProps) {
   const config = REPORT_CONFIGS[reportType] || REPORT_CONFIGS.reports_patients
 
+  // Always scroll to top whenever a new report is opened / switched
+  useEffect(() => {
+    const mainEl = document.querySelector("main");
+    if (mainEl) mainEl.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, [reportType]);
+
+  // Live clinic revision: automatically re-fetches report data whenever any patient, bed, or order is updated
+  const { revision } = useLiveClinic();
+
   // Filter States
   const [dateRange, setDateRange] = useState<DateRangePreset>("last30")
   const [customStart, setCustomStart] = useState("")
@@ -451,6 +476,7 @@ export default function GenericReportPage({
   useEffect(() => {
     fetchReportData()
   }, [
+    revision,
     reportType,
     dateRange,
     customStart,
@@ -589,7 +615,7 @@ export default function GenericReportPage({
                   Daily intake of new vs returning patients
                 </p>
                 <div className="h-40 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_1`} width="100%" height="100%">
                     <LineChart data={regTrend}>
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -619,7 +645,7 @@ export default function GenericReportPage({
                         iconType="circle"
                         wrapperStyle={{ fontSize: 10, paddingTop: 3 }}
                       />
-                      <Line
+                      <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                         type="monotone"
                         dataKey="newPatients"
                         name="New Patients"
@@ -628,7 +654,7 @@ export default function GenericReportPage({
                         dot={{ r: 2.5 }}
                         activeDot={{ r: 4 }}
                       />
-                      <Line
+                      <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                         type="monotone"
                         dataKey="returning"
                         name="Returning Patients"
@@ -651,7 +677,7 @@ export default function GenericReportPage({
                   Patient volume across hospital departments
                 </p>
                 <div className="h-40 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_2`} width="100%" height="100%">
                     <BarChart data={deptPts}>
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -677,7 +703,7 @@ export default function GenericReportPage({
                           border: "1px solid #E2E8F0",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="count"
                         name="Patients"
                         fill="#1B4FD8"
@@ -700,9 +726,9 @@ export default function GenericReportPage({
                   Patient breakdown by gender
                 </p>
                 <div className="h-36 w-full flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_3`} width="100%" height="100%">
                     <PieChart>
-                      <Pie
+                      <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                         data={genderDist}
                         cx="50%"
                         cy="50%"
@@ -742,7 +768,7 @@ export default function GenericReportPage({
                   Patient volume grouped by age brackets
                 </p>
                 <div className="h-36 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_4`} width="100%" height="100%">
                     <BarChart data={ageDist}>
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -768,7 +794,7 @@ export default function GenericReportPage({
                           border: "1px solid #E2E8F0",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="count"
                         name="Patients"
                         fill="#0284C7"
@@ -800,7 +826,7 @@ export default function GenericReportPage({
                 Emergency case arrivals over the period
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_5`} width="100%" height="100%">
                   <LineChart data={visitTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -826,7 +852,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="visits"
                       name="ER Visits"
@@ -848,9 +874,9 @@ export default function GenericReportPage({
                 Acuity levels across triage categories
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_6`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={priorityDist}
                       cx="50%"
                       cy="50%"
@@ -890,9 +916,9 @@ export default function GenericReportPage({
                 Patient discharge and admission outcomes
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_7`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={dispDist}
                       cx="50%"
                       cy="50%"
@@ -932,7 +958,7 @@ export default function GenericReportPage({
                 Resuscitation and trauma bay demand
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_8`} width="100%" height="100%">
                   <BarChart data={bedUtil}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -958,7 +984,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="utilization"
                       name="Cases Handled"
                       fill="#EA580C"
@@ -989,7 +1015,7 @@ export default function GenericReportPage({
                 Daily inpatient admissions
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_9`} width="100%" height="100%">
                   <LineChart data={admTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1015,7 +1041,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="admissions"
                       name="Admissions"
@@ -1037,7 +1063,7 @@ export default function GenericReportPage({
                 Daily patient recovery discharges
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_10`} width="100%" height="100%">
                   <LineChart data={disTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1063,7 +1089,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="discharges"
                       name="Discharges"
@@ -1085,7 +1111,7 @@ export default function GenericReportPage({
                 Census across inpatient wards and units
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_11`} width="100%" height="100%">
                   <BarChart data={wardOcc}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1111,7 +1137,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="occupied"
                       name="Occupied Beds"
                       fill="#1B4FD8"
@@ -1131,7 +1157,7 @@ export default function GenericReportPage({
                 Admissions partitioned by primary clinical service
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_12`} width="100%" height="100%">
                   <BarChart data={deptAdm}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1157,7 +1183,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="admissions"
                       name="Admissions"
                       fill="#0284C7"
@@ -1188,7 +1214,7 @@ export default function GenericReportPage({
                 Daily booking volume over time
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_13`} width="100%" height="100%">
                   <LineChart data={trend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1214,7 +1240,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="appointments"
                       name="Appointments"
@@ -1236,7 +1262,7 @@ export default function GenericReportPage({
                 Patient bookings by physician
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_14`} width="100%" height="100%">
                   <BarChart data={docAppts.slice(0, 7)}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1262,7 +1288,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="appointments"
                       name="Appointments"
                       fill="#0284C7"
@@ -1282,7 +1308,7 @@ export default function GenericReportPage({
                 Specialty consultation demand
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_15`} width="100%" height="100%">
                   <BarChart data={deptAppts}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1308,7 +1334,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="appointments"
                       name="Appointments"
                       fill="#1B4FD8"
@@ -1328,9 +1354,9 @@ export default function GenericReportPage({
                 Completed, pending, cancelled and no-show shares
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_16`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={statusDist}
                       cx="50%"
                       cy="50%"
@@ -1380,7 +1406,7 @@ export default function GenericReportPage({
                 Clinical consultation throughput across top physicians
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_17`} width="100%" height="100%">
                   <BarChart data={docVisits}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1406,7 +1432,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="visits"
                       name="Consultations"
                       fill="#1B4FD8"
@@ -1426,7 +1452,7 @@ export default function GenericReportPage({
                 Aggregate doctor consultations over time
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_18`} width="100%" height="100%">
                   <LineChart data={consultTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1452,7 +1478,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="consultations"
                       name="Consultations"
@@ -1474,7 +1500,7 @@ export default function GenericReportPage({
                 Total consultations aggregated by medical specialty
               </p>
               <div className="h-36 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_19`} width="100%" height="100%">
                   <BarChart data={deptDoc}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1500,7 +1526,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="activity"
                       name="Activity Score"
                       fill="#10B981"
@@ -1531,7 +1557,7 @@ export default function GenericReportPage({
                 Prescription intake over the selected timeframe
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_20`} width="100%" height="100%">
                   <LineChart data={rxTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1557,7 +1583,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="prescriptions"
                       name="Prescriptions"
@@ -1579,7 +1605,7 @@ export default function GenericReportPage({
                 Top dispensed pharmaceuticals
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_21`} width="100%" height="100%">
                   <BarChart data={medCons}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1605,7 +1631,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="consumption"
                       name="Units Dispensed"
                       fill="#10B981"
@@ -1625,7 +1651,7 @@ export default function GenericReportPage({
                 Drug utilization by referring clinic
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_22`} width="100%" height="100%">
                   <BarChart data={deptUsage}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1651,7 +1677,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="usage"
                       name="Prescriptions"
                       fill="#0284C7"
@@ -1671,9 +1697,9 @@ export default function GenericReportPage({
                 Dispensed, preparing, pending verification shares
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_23`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={rxStatus}
                       cx="50%"
                       cy="50%"
@@ -1724,7 +1750,7 @@ export default function GenericReportPage({
                 Daily diagnostic pathology requests
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_24`} width="100%" height="100%">
                   <LineChart data={labTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1750,7 +1776,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="orders"
                       name="Lab Orders"
@@ -1772,7 +1798,7 @@ export default function GenericReportPage({
                 Highest volume ordered diagnostic assays
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_25`} width="100%" height="100%">
                   <BarChart data={testVol}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1798,7 +1824,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="volume"
                       name="Tests Run"
                       fill="#0284C7"
@@ -1818,7 +1844,7 @@ export default function GenericReportPage({
                 Test orders originating from clinical services
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_26`} width="100%" height="100%">
                   <BarChart data={deptLab}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1844,7 +1870,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="orders"
                       name="Orders"
                       fill="#1B4FD8"
@@ -1864,9 +1890,9 @@ export default function GenericReportPage({
                 Verified results vs pending and sample collection
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_27`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={resDist}
                       cx="50%"
                       cy="50%"
@@ -1917,7 +1943,7 @@ export default function GenericReportPage({
                 Diagnostic imaging orders over time
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_28`} width="100%" height="100%">
                   <LineChart data={radTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -1943,7 +1969,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="orders"
                       name="Radiology Scans"
@@ -1965,9 +1991,9 @@ export default function GenericReportPage({
                 X-Ray, CT, MRI, and Ultrasound proportions
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_29`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={modDist}
                       cx="50%"
                       cy="50%"
@@ -2007,7 +2033,7 @@ export default function GenericReportPage({
                 Volume grouped by anatomical examination
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_30`} width="100%" height="100%">
                   <BarChart data={scanDist.slice(0, 6)}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2033,7 +2059,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="value"
                       name="Scans"
                       fill="#1B4FD8"
@@ -2053,7 +2079,7 @@ export default function GenericReportPage({
                 Imaging requests per clinical department
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_31`} width="100%" height="100%">
                   <BarChart data={deptRad}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2079,7 +2105,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="orders"
                       name="Orders"
                       fill="#0284C7"
@@ -2109,7 +2135,7 @@ export default function GenericReportPage({
                 Census occupancy percentage over time
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_32`} width="100%" height="100%">
                   <LineChart data={occTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2135,7 +2161,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="occupancyRate"
                       name="Occupancy %"
@@ -2157,9 +2183,9 @@ export default function GenericReportPage({
                 General, semi-private, private and ICU beds
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_33`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={bedTypeDist}
                       cx="50%"
                       cy="50%"
@@ -2199,7 +2225,7 @@ export default function GenericReportPage({
                 Occupied beds count across individual wards
               </p>
               <div className="h-36 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_34`} width="100%" height="100%">
                   <BarChart data={wardOcc}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2225,7 +2251,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="occupied"
                       name="Occupied Beds"
                       fill="#0284C7"
@@ -2256,7 +2282,7 @@ export default function GenericReportPage({
                 Daily patient admission flow
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_35`} width="100%" height="100%">
                   <LineChart data={admTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2282,7 +2308,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="admissions"
                       name="Admissions"
@@ -2304,9 +2330,9 @@ export default function GenericReportPage({
                 Emergency, planned, and direct ICU admissions
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_36`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={admTypeDist}
                       cx="50%"
                       cy="50%"
@@ -2346,7 +2372,7 @@ export default function GenericReportPage({
                 Admissions per admitting specialty
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_37`} width="100%" height="100%">
                   <BarChart data={deptAdm}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2372,7 +2398,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="admissions"
                       name="Admissions"
                       fill="#0284C7"
@@ -2392,7 +2418,7 @@ export default function GenericReportPage({
                 Bed placement distribution across wards
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_38`} width="100%" height="100%">
                   <BarChart data={wardAdm}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2418,7 +2444,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="admissions"
                       name="Admissions"
                       fill="#10B981"
@@ -2448,7 +2474,7 @@ export default function GenericReportPage({
                 Patient discharge clearance volume over time
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_39`} width="100%" height="100%">
                   <LineChart data={disTrend}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2474,7 +2500,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Line
+                    <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                       type="monotone"
                       dataKey="discharges"
                       name="Discharges"
@@ -2496,9 +2522,9 @@ export default function GenericReportPage({
                 Routine, transfers, and LAMA dispositions
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_40`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={disTypeDist}
                       cx="50%"
                       cy="50%"
@@ -2538,7 +2564,7 @@ export default function GenericReportPage({
                 Patient recovery clearances by ward
               </p>
               <div className="h-36 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_41`} width="100%" height="100%">
                   <BarChart data={deptDis}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2564,7 +2590,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="discharges"
                       name="Discharges"
                       fill="#1B4FD8"
@@ -2594,7 +2620,7 @@ export default function GenericReportPage({
                 Personnel headcount across hospital units
               </p>
               <div className="h-40 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_42`} width="100%" height="100%">
                   <BarChart data={deptStaff}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2620,7 +2646,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="staff"
                       name="Headcount"
                       fill="#1B4FD8"
@@ -2640,9 +2666,9 @@ export default function GenericReportPage({
                 Doctors, nurses, pharmacy and lab specialists
               </p>
               <div className="h-40 w-full flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_43`} width="100%" height="100%">
                   <PieChart>
-                    <Pie
+                    <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                       data={staffDist}
                       cx="50%"
                       cy="50%"
@@ -2682,7 +2708,7 @@ export default function GenericReportPage({
                 Duty roster distribution across 24-hour shifts
               </p>
               <div className="h-36 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_44`} width="100%" height="100%">
                   <BarChart data={staffActivity}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -2708,7 +2734,7 @@ export default function GenericReportPage({
                         border: "1px solid #E2E8F0",
                       }}
                     />
-                    <Bar
+                    <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                       dataKey="activity"
                       name="Staff on Shift"
                       fill="#0284C7"
@@ -2786,7 +2812,7 @@ export default function GenericReportPage({
                   Recognized billed revenue vs settled cash/digital collections
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_45`} width="100%" height="100%">
                     <LineChart
                       data={trend}
                       margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -2825,7 +2851,7 @@ export default function GenericReportPage({
                         iconType="circle"
                         wrapperStyle={{ fontSize: 10, paddingTop: 6 }}
                       />
-                      <Line
+                      <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                         type="monotone"
                         dataKey="revenue"
                         name="Recognized Revenue"
@@ -2834,7 +2860,7 @@ export default function GenericReportPage({
                         dot={{ r: 3 }}
                         activeDot={{ r: 5 }}
                       />
-                      <Line
+                      <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                         type="monotone"
                         dataKey="collections"
                         name="Settled Collections"
@@ -2862,7 +2888,7 @@ export default function GenericReportPage({
                   Total collection contribution across hospital clinical units
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_46`} width="100%" height="100%">
                     <BarChart
                       data={deptRev}
                       margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -2901,7 +2927,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="revenue"
                         name="Revenue"
                         fill="#1B4FD8"
@@ -2931,9 +2957,9 @@ export default function GenericReportPage({
                 </p>
                 <div className="h-44 w-full flex items-center justify-center">
                   {payDist.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_47`} width="100%" height="100%">
                       <PieChart>
-                        <Pie
+                        <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                           data={payDist}
                           cx="50%"
                           cy="50%"
@@ -2989,7 +3015,7 @@ export default function GenericReportPage({
                   Revenue generated by clinical service category
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_48`} width="100%" height="100%">
                     <BarChart
                       data={serviceLines}
                       margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -3030,7 +3056,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="revenue"
                         name="Service Revenue"
                         fill="#059669"
@@ -3084,7 +3110,7 @@ export default function GenericReportPage({
                   Write-off loss valuation over the reporting period
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_49`} width="100%" height="100%">
                     <LineChart
                       data={dTrend}
                       margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -3119,7 +3145,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Line
+                      <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                         type="monotone"
                         dataKey="lossValue"
                         name="Loss Valuation"
@@ -3147,7 +3173,7 @@ export default function GenericReportPage({
                   Medicines with greatest cumulative write-off valuation
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_50`} width="100%" height="100%">
                     <BarChart
                       data={topProducts}
                       margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -3186,7 +3212,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="lossValue"
                         name="Loss Value"
                         fill="#DC2626"
@@ -3215,7 +3241,7 @@ export default function GenericReportPage({
                   packaging
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_51`} width="100%" height="100%">
                     <BarChart
                       data={lossReasons}
                       layout="vertical"
@@ -3254,7 +3280,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="lossValue"
                         name="Loss Value"
                         fill="#EA580C"
@@ -3280,7 +3306,7 @@ export default function GenericReportPage({
                   Category-level distribution of inventory write-offs
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_52`} width="100%" height="100%">
                     <BarChart
                       data={catLoss}
                       margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -3319,7 +3345,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="lossValue"
                         name="Category Loss"
                         fill="#7C3AED"
@@ -3391,7 +3417,7 @@ export default function GenericReportPage({
                   Debit notes issued to pharmaceutical vendors over time
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_53`} width="100%" height="100%">
                     <LineChart
                       data={rTrend}
                       margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -3426,7 +3452,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Line
+                      <Line isAnimationActive={true} animationDuration={1400} animationEasing="ease-out" animationBegin={150}
                         type="monotone"
                         dataKey="returnAmount"
                         name="Debit Note Value"
@@ -3454,7 +3480,7 @@ export default function GenericReportPage({
                   Claimable return values by pharmaceutical supplier
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_54`} width="100%" height="100%">
                     <BarChart
                       data={supReturns}
                       margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
@@ -3493,7 +3519,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="returnAmount"
                         name="Debit Value"
                         fill="#2563EB"
@@ -3522,7 +3548,7 @@ export default function GenericReportPage({
                   orders
                 </p>
                 <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_55`} width="100%" height="100%">
                     <BarChart
                       data={rReasons}
                       layout="vertical"
@@ -3563,7 +3589,7 @@ export default function GenericReportPage({
                           boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
                         }}
                       />
-                      <Bar
+                      <Bar isAnimationActive={true} animationDuration={1300} animationEasing="ease-out" animationBegin={200}
                         dataKey="returnAmount"
                         name="Debit Value"
                         fill="#0891B2"
@@ -3590,9 +3616,9 @@ export default function GenericReportPage({
                 </p>
                 <div className="h-44 w-full flex items-center justify-center">
                   {rStatuses.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_56`} width="100%" height="100%">
                       <PieChart>
-                        <Pie
+                        <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
                           data={rStatuses}
                           cx="50%"
                           cy="50%"
@@ -4193,7 +4219,7 @@ export default function GenericReportPage({
         {!loading && !error && data && (
           <>
             {/* ── 3. KPI SUMMARY CARDS ────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 animate-flow-in delay-75">
               {data.kpis.map((kpi) => {
                 const isUp = kpi.trend === "up"
                 return (
@@ -4234,10 +4260,15 @@ export default function GenericReportPage({
             </div>
 
             {/* ── 4. DATA VISUALIZATIONS ────────────────────────────────────── */}
-            {renderVisualizations()}
+            <div
+              key={`vis_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}`}
+              className="animate-flow-in delay-150"
+            >
+              {renderVisualizations()}
+            </div>
 
             {/* ── 5. DETAILED REPORT TABLE ──────────────────────────────────── */}
-            <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-2xs overflow-hidden">
+            <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-2xs overflow-hidden animate-flow-in delay-225">
               <div className="p-4 border-b border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#F8FAFC]/50">
                 <div>
                   <h2 className="text-sm font-bold text-slate-900">
@@ -4309,7 +4340,7 @@ export default function GenericReportPage({
                     ) : (
                       data.records.map((row, idx) => (
                         <tr
-                          key={row.id || idx}
+                          key={`${row.id || "rec"}_${idx}`}
                           className="hover:bg-slate-50/80 transition duration-150"
                         >
                           {config.tableColumns.map((col) => {

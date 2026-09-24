@@ -29,6 +29,9 @@ const WATCHED_KEY_PREFIXES = [
   "hospai_lab_orders", // lab orders: reception billing + laboratory
   "hospai_pharm_", // prescriptions and dispensing
   "hospai_doctor_", // consultations and alert acknowledgements
+  "hospai_er_", // ER visits and trauma registrations
+  "hospai_inpatient_", // Inpatient ward bed occupancy and admissions
+  "hospai_discharged_", // Inpatient discharges
 ]
 
 export interface LiveClinic {

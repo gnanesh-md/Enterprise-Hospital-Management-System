@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { Icon } from "./icons"
 import { StatusBadge, Btn, Input } from "./shared"
 import { db, DBPatient, DBOPEncounter } from "../services/db"
-import { getDoctorMaster } from "../services/doctorMaster"
+import { getDoctorMaster, getDoctorConsultationFee } from "../services/doctorMaster"
 
 export interface OPPatient {
   id?: string
@@ -3001,13 +3001,14 @@ export default function OPWorkflow({
         {/* ── STEP 6: BILLING & OP VISIT COMPLETION ───────────────────── */}
         {currentStep === 6 &&
           (() => {
-            const consultFee = patient.billing?.consultationFee || 50
+            const regFee = (patient.billing as any)?.registrationFee ?? (patient.isNew === false ? 0 : 20)
+            const consultFee = patient.billing?.consultationFee || getDoctorConsultationFee(patient.assignedDoctor)
             const labItems = patient.investigations || []
             const rxItems = patient.prescription || []
             const labTotal = labItems.length * 40
             const rxTotal = rxItems.length * 20
             const nursingFee = 20
-            const grossSubtotal = consultFee + labTotal + rxTotal + nursingFee
+            const grossSubtotal = regFee + consultFee + labTotal + rxTotal + nursingFee
             const isInsurance = patient.billing?.mode === "Insurance Co-Pay"
             const insuranceCoverage = isInsurance
               ? Math.round(grossSubtotal * 0.8)
@@ -3032,11 +3033,12 @@ export default function OPWorkflow({
                   status: "OP Completed" as const,
                   billing: {
                     ...patient.billing,
+                    registrationFee: regFee,
                     consultationFee: consultFee,
                     labFee: labTotal,
                     total: netTotalPayable,
                     status: "Paid" as const,
-                    mode: patient.billing.mode || "Card",
+                    mode: patient.billing?.mode || "Card",
                   },
                   timestamps: {
                     ...patient.timestamps,
@@ -3058,11 +3060,12 @@ export default function OPWorkflow({
                       vitals: patient.vitals,
                       status: "OP Completed",
                       billing: {
+                        registrationFee: regFee,
                         consultationFee: consultFee,
                         labFee: labTotal,
                         total: netTotalPayable,
                         status: "Paid",
-                        mode: patient.billing.mode || "Card",
+                        mode: patient.billing?.mode || "Card",
                       },
                       timestamps: {
                         ...patient.timestamps,
@@ -3089,7 +3092,7 @@ export default function OPWorkflow({
                       OP Billing, Payment &amp; Encounter Settlement
                     </h2>
                     <p className="text-[12px] text-[#64748B] mt-0.5">
-                      Official financial statement aggregating physician
+                      Official financial statement aggregating patient registration, physician
                       consultation, nursing triage, prescribed medications, and
                       laboratory diagnostic tests.
                     </p>
@@ -3108,6 +3111,123 @@ export default function OPWorkflow({
                     </span>
                   </div>
                 </div>
+
+                {/* SMS Notification Banner if triggered */}
+                {smsSentNotice && (
+                  <div className="bg-[#F0FDF4] border border-green-300 p-3 rounded text-[12px] text-[#166534] flex items-center justify-between animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <span>📱</span>
+                      <span>Official Tax Receipt &amp; Discharge Summary SMS sent to <strong>{patient.phone || "patient mobile"}</strong>.</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="divide-y divide-[#E2E8F0] text-[12.5px]">
+                  {/* 1. Patient Registration Fee */}
+                  <div className="py-2.5 flex justify-between items-start">
+                    <div>
+                      <div className="font-semibold text-gray-900">1. Patient Registration Fee</div>
+                      <div className="text-[11px] text-[#64748B]">
+                        {regFee === 0 ? "Existing / Revisit Patient Registration (Waived - ₹0)" : "New Patient Registration Charge (₹20)"}
+                      </div>
+                    </div>
+                    <span className="font-mono font-bold text-gray-900">₹{regFee}.00</span>
+                  </div>
+
+                  {/* 2. Physician Consultation */}
+                  <div className="py-2.5 flex justify-between items-start">
+                    <div>
+                      <div className="font-semibold text-gray-900">2. Physician Consultation Fee</div>
+                      <div className="text-[11px] text-[#64748B]">Attending: {patient.assignedDoctor || "Assigned Doctor"} ({patient.aiSpecialty || "General"})</div>
+                    </div>
+                    <span className="font-mono font-bold text-gray-900">₹{consultFee}.00</span>
+                  </div>
+
+                    {/* 2. Nursing & Triage Fee */}
+                    <div className="py-2.5 flex justify-between items-start">
+                      <div>
+                        <div className="font-semibold text-gray-900">2. Pre-Consultation Nursing &amp; Vitals Triage</div>
+                        <div className="text-[11px] text-[#64748B]">BP: {patient.vitals?.bp} · Pulse: {patient.vitals?.pulse} · Temp: {patient.vitals?.temp}</div>
+                      </div>
+                      <span className="font-mono font-bold text-gray-900">₹{nursingFee}.00</span>
+                    </div>
+
+                    {/* 3. Prescription Medications */}
+                    <div className="py-2.5 space-y-1">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-semibold text-gray-900">3. Prescribed Pharmacy Medications (Rx Pad)</div>
+                          <div className="text-[11px] text-[#64748B]">{rxItems.length} items prescribed</div>
+                        </div>
+                        <span className="font-mono font-bold text-gray-900">₹{rxTotal}.00</span>
+                      </div>
+                      {rxItems.map((rx, idx) => (
+                        <div key={idx} className="pl-3 text-[11.5px] text-gray-600 flex justify-between">
+                          <span>• {rx.medicine} ({rx.dosage} · {rx.frequency})</span>
+                          <span className="font-mono">₹150.00</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* 4. Diagnostic Investigations */}
+                    <div className="py-2.5 space-y-1">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-semibold text-gray-900">4. Diagnostic Laboratory &amp; Imaging Orders</div>
+                          <div className="text-[11px] text-[#64748B]">{labItems.length} investigations requested</div>
+                        </div>
+                        <span className="font-mono font-bold text-gray-900">₹{labTotal}.00</span>
+                      </div>
+                      {labItems.map((test, idx) => (
+                        <div key={idx} className="pl-3 text-[11.5px] text-gray-600 flex justify-between">
+                          <span>• {test}</span>
+                          <span className="font-mono">₹350.00</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Subtotals & Net Amount */}
+                  <div className="bg-[#F8FAFC] border border-[#CBD5E1] p-4 rounded space-y-2 text-[13px]">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Gross Subtotal:</span>
+                      <span className="font-mono font-bold">₹{grossSubtotal}.00</span>
+                    </div>
+                    <div className="border-t border-[#E2E8F0] pt-2 flex justify-between text-[16px] font-black text-gray-900">
+                      <span>Total Amount Due:</span>
+                      <span className="text-[#16A34A] font-mono">₹{grossSubtotal}.00</span>
+                    </div>
+                  </div>
+
+                  {/* Complete Payment Settlement Action Button */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentStep(5)}
+                      className="text-[12.5px] text-[#64748B] hover:text-gray-900 font-medium cursor-pointer"
+                    >
+                      ← Back to consultation summary
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={paymentProcessing}
+                      onClick={handleProcessPayment}
+                      className="px-8 py-3.5 bg-gradient-to-r from-[#16A34A] to-[#15803D] hover:from-[#15803D] hover:to-[#166534] text-white text-[14px] font-bold rounded shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      {paymentProcessing ? (
+                        <>
+                          <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                          <span>Processing Settlement...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>💳</span>
+                          <span>Mark OP Visit Completed &amp; Settle Invoice (₹{grossSubtotal}.00)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
 
                 {/* SMS Notification Banner if triggered */}
                 {smsSentNotice && (

@@ -485,25 +485,34 @@ export default function PatientJourneyModal({
                   </div>
 
                   <div className="bg-[#F8FAFC] p-3 rounded-none border border-[#E2E8F0] space-y-1.5 text-[12px]">
-                    <div className="flex justify-between text-gray-700">
-                      <span>1. Physician Outpatient Consultation Fee</span>
-                      <span className="font-mono font-bold text-gray-900">
-                        ₹{encounter.billing?.consultationFee || 50}.00
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-gray-700">
-                      <span>2. Diagnostic Investigations / Triage</span>
-                      <span className="font-mono font-bold text-gray-900">
-                        ₹{encounter.billing?.labFee || 40}.00
-                      </span>
-                    </div>
-                    <div className="pt-1.5 border-t border-[#E2E8F0] flex justify-between font-bold text-[13px] text-gray-900">
-                      <span>Total Official Settlement:</span>
-                      <span className="font-mono text-emerald-700">
-                        ₹{encounter.billing?.total || 90}.00 (Status:{" "}
-                        {encounter.billing?.status || "Paid"})
-                      </span>
-                    </div>
+                    {(() => {
+                      const regFee = encounter.billing?.registrationFee ?? (encounter.isNew === false ? 0 : 20)
+                      const consultFee = encounter.billing?.consultationFee ?? 500
+                      const labFee = encounter.billing?.labFee || 0
+                      const grandTotal = encounter.billing?.total || (regFee + consultFee + labFee)
+                      return (
+                        <>
+                          <div className="flex justify-between text-gray-700">
+                            <span>1. Patient Registration Fee {encounter.isNew === false || regFee === 0 ? "(Existing Patient)" : ""}</span>
+                            <span className="font-mono font-bold text-gray-900">₹{regFee}.00</span>
+                          </div>
+                          <div className="flex justify-between text-gray-700">
+                            <span>2. Physician Outpatient Consultation Fee {encounter.assignedDoctor ? `(${encounter.assignedDoctor})` : ""}</span>
+                            <span className="font-mono font-bold text-gray-900">₹{consultFee}.00</span>
+                          </div>
+                          {labFee > 0 && (
+                            <div className="flex justify-between text-gray-700">
+                              <span>3. Diagnostic Investigations / Triage</span>
+                              <span className="font-mono font-bold text-gray-900">₹{labFee}.00</span>
+                            </div>
+                          )}
+                          <div className="pt-1.5 border-t border-[#E2E8F0] flex justify-between font-bold text-[13px] text-gray-900">
+                            <span>Total Official Settlement:</span>
+                            <span className="font-mono text-emerald-700">₹{grandTotal}.00 (Status: {encounter.billing?.status || 'Paid'})</span>
+                          </div>
+                        </>
+                      )
+                    })()}
                   </div>
                 </div>
               </div>

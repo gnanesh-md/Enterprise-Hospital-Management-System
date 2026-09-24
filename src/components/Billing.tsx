@@ -160,9 +160,10 @@ export default function Billing() {
             c.invoiceNo === preselected ||
             c.encounterId === preselected ||
             c.patientId === preselected ||
-            c.patientName === preselected,
+            (c.patientName && c.patientName.toLowerCase() === preselected.toLowerCase())
         )
         if (found) {
+          BillingDatabase.clearPreselectedClaimForBilling()
           setSelectedClaimId(found.id)
           const bal = found.balanceDue || 0
           setPayAmount(bal)
@@ -171,9 +172,7 @@ export default function Billing() {
           setSplitCashAmount(Math.floor(bal / 2))
           setSplitDigitalAmount(Math.ceil(bal / 2))
           setTransactionRef(`TXN-${Date.now().toString().slice(-6)}`)
-          if (found.department) {
-            setDeptFilter("All")
-          }
+          setDeptFilter("All")
           setStatusFilter("unpaid")
           return
         }
@@ -211,7 +210,7 @@ export default function Billing() {
 
   // ── Filtered Claims for the POS Queue ───────────────────────────────────────
   const filteredClaims = useMemo(() => {
-    return claims.filter((c) => {
+    const list = claims.filter((c) => {
       // Dept filter
       if (deptFilter !== "All" && c.department !== deptFilter) return false
       // Status filter
@@ -230,7 +229,15 @@ export default function Billing() {
       }
       return true
     })
-  }, [claims, deptFilter, statusFilter, searchQuery])
+
+    return list.sort((a, b) => {
+      if (selectedClaimId) {
+        if (a.id === selectedClaimId) return -1
+        if (b.id === selectedClaimId) return 1
+      }
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    })
+  }, [claims, deptFilter, statusFilter, searchQuery, selectedClaimId])
 
   // ── Financial Metrics Computation ───────────────────────────────────────────
   const metrics = useMemo(() => {
@@ -1703,13 +1710,16 @@ export default function Billing() {
                             <input
                               type="number"
                               min={0}
-                              value={splitCashAmount}
+                              value={(splitCashAmount as any) === 0 || (splitCashAmount as any) === "" || splitCashAmount === undefined || splitCashAmount === null ? (splitCashAmount === 0 ? 0 : "") : splitCashAmount}
                               onChange={(e) => {
-                                const cash = Number(e.target.value)
-                                setSplitCashAmount(cash)
-                                setSplitDigitalAmount(
-                                  Math.max(0, payAmount - cash),
-                                )
+                                const val = e.target.value
+                                if (val === "") {
+                                  setSplitCashAmount("" as any)
+                                } else {
+                                  const cash = Number(val)
+                                  setSplitCashAmount(cash)
+                                  setSplitDigitalAmount(Math.max(0, payAmount - cash))
+                                }
                               }}
                               className="w-full px-3 py-1.5 bg-white border border-purple-300 rounded-lg font-mono font-bold text-xs"
                             />
@@ -1721,13 +1731,16 @@ export default function Billing() {
                             <input
                               type="number"
                               min={0}
-                              value={splitDigitalAmount}
+                              value={(splitDigitalAmount as any) === 0 || (splitDigitalAmount as any) === "" || splitDigitalAmount === undefined || splitDigitalAmount === null ? (splitDigitalAmount === 0 ? 0 : "") : splitDigitalAmount}
                               onChange={(e) => {
-                                const digital = Number(e.target.value)
-                                setSplitDigitalAmount(digital)
-                                setSplitCashAmount(
-                                  Math.max(0, payAmount - digital),
-                                )
+                                const val = e.target.value
+                                if (val === "") {
+                                  setSplitDigitalAmount("" as any)
+                                } else {
+                                  const digital = Number(val)
+                                  setSplitDigitalAmount(digital)
+                                  setSplitCashAmount(Math.max(0, payAmount - digital))
+                                }
                               }}
                               className="w-full px-3 py-1.5 bg-white border border-purple-300 rounded-lg font-mono font-bold text-xs"
                             />
@@ -1754,10 +1767,17 @@ export default function Billing() {
                               <input
                                 type="number"
                                 min={payAmount}
-                                value={tenderedCash || ""}
-                                onChange={(e) =>
-                                  setTenderedCash(Number(e.target.value))
+                                value={
+                                  tenderedCash === undefined ||
+                                  tenderedCash === null ||
+                                  (tenderedCash as any) === ""
+                                    ? ""
+                                    : tenderedCash
                                 }
+                                onChange={(e) => {
+                                  const val = e.target.value
+                                  setTenderedCash(val === "" ? ("" as any) : Number(val))
+                                }}
                                 className="w-full px-3 py-1.5 bg-white border border-amber-300 rounded-lg font-mono font-bold text-xs"
                               />
                             </div>
@@ -1829,10 +1849,17 @@ export default function Billing() {
                             required
                             min={1}
                             max={selectedClaim.balanceDue}
-                            value={payAmount || ""}
-                            onChange={(e) =>
-                              setPayAmount(Number(e.target.value))
+                            value={
+                              payAmount === undefined ||
+                              payAmount === null ||
+                              (payAmount as any) === ""
+                                ? ""
+                                : payAmount
                             }
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setPayAmount(val === "" ? ("" as any) : Number(val))
+                            }}
                             className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl font-mono font-extrabold text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                           />
                         </div>
@@ -2939,21 +2966,17 @@ export default function Billing() {
                   ✓
                 </span>
                 <div>
-                  <h3 className="font-extrabold text-sm">
-                    Payment Confirmed — Send to Diagnostic Depts
-                  </h3>
+                  <h3 className="font-extrabold text-sm">Send Orders to Laboratory / Radiology?</h3>
                   <p className="text-[10px] text-blue-200">
-                    Receipt #{postPayClearanceModal.payment.receiptNo} Issued
+                    Payment of ₹{postPayClearanceModal.payment.amount.toLocaleString("en-IN")} received • Receipt #{postPayClearanceModal.payment.receiptNo} • Billing Dept Action
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  setReceiptData({
-                    claim: postPayClearanceModal.claim,
-                    payment: postPayClearanceModal.payment,
-                  })
+                  showToast("Diagnostic transmission skipped. Orders remain pending clearance.", "info")
+                  setReceiptData({ claim: postPayClearanceModal.claim, payment: postPayClearanceModal.payment })
                   setPostPayClearanceModal(null)
                   setShowReceiptModal(true)
                 }}
@@ -2989,10 +3012,9 @@ export default function Billing() {
                 </div>
               </div>
 
-              <div className="text-slate-600 font-medium">
-                The invoice has been financially cleared. Send the advised
-                investigations to Laboratory and Radiology so they can begin
-                specimen processing and imaging:
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-slate-700 font-medium leading-relaxed">
+                <p className="font-bold text-blue-900 mb-0.5">Diagnostic Tests Prescribed</p>
+                The payment has been confirmed by Central Billing. Would you like to send these diagnostic test orders to the Laboratory and/or Radiology departments now so they appear on their worklists?
               </div>
 
               {/* Department Clearance Cards */}
@@ -3024,7 +3046,7 @@ export default function Billing() {
                                 Laboratory Department
                               </div>
                               <div className="text-[11px] text-teal-800 font-semibold truncate">
-                                Tests: {cs.labTestNames.join(", ")}
+                                Tests: {cs.labTestNames.join(", ") || "Standard Lab Panel"}
                               </div>
                             </div>
                           </div>
@@ -3042,12 +3064,12 @@ export default function Billing() {
                                     postPayClearanceModal.claim.patientName,
                                     "Laboratory",
                                     postPayClearanceModal.payment.receiptNo,
-                                    cs.labTestNames[0],
+                                    cs.labTestNames.join(" + "),
                                   )
                                 }
-                                className="px-4 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-extrabold text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
+                                className="px-3.5 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-extrabold text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
                               >
-                                <span>📤</span> Send to Laboratory
+                                <span>📤</span> Send to Lab
                               </button>
                             )}
                           </div>
@@ -3065,7 +3087,7 @@ export default function Billing() {
                                 Radiology &amp; Imaging
                               </div>
                               <div className="text-[11px] text-indigo-800 font-semibold truncate">
-                                Studies: {cs.radStudyNames.join(", ")}
+                                Studies: {cs.radStudyNames.join(", ") || "Imaging Studies"}
                               </div>
                             </div>
                           </div>
@@ -3083,10 +3105,10 @@ export default function Billing() {
                                     postPayClearanceModal.claim.patientName,
                                     "Radiology",
                                     postPayClearanceModal.payment.receiptNo,
-                                    cs.radStudyNames[0],
+                                    cs.radStudyNames.join(" + "),
                                   )
                                 }
-                                className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
+                                className="px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
                               >
                                 <span>📤</span> Send to Radiology
                               </button>
@@ -3099,41 +3121,52 @@ export default function Billing() {
                 })()}
               </div>
 
-              {/* Modal Footer Actions */}
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+              {/* Modal Footer Actions: Prominent Yes Send / No Skip */}
+              <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5">
                 <button
                   type="button"
                   onClick={() => {
-                    const cs = BillingDatabase.getDepartmentClearanceStatus(
-                      postPayClearanceModal.claim.patientName,
-                      postPayClearanceModal.claim,
-                    )
-                    if (cs.hasLabOrders) {
-                      handleDispatchClearance(
-                        postPayClearanceModal.claim.patientName,
-                        "Laboratory",
-                        postPayClearanceModal.payment.receiptNo,
-                        cs.labTestNames[0],
-                      )
-                    }
-                    if (cs.hasRadStudies) {
-                      handleDispatchClearance(
-                        postPayClearanceModal.claim.patientName,
-                        "Radiology",
-                        postPayClearanceModal.payment.receiptNo,
-                        cs.radStudyNames[0],
-                      )
-                    }
+                    showToast("Diagnostic orders kept on hold. Showing payment receipt.", "info")
+                    setReceiptData({
+                      claim: postPayClearanceModal.claim,
+                      payment: postPayClearanceModal.payment,
+                    })
+                    setPostPayClearanceModal(null)
+                    setShowReceiptModal(true)
                   }}
-                  className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold rounded-xl text-xs cursor-pointer border border-blue-200 flex items-center gap-1"
+                  className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer text-center transition-colors"
                 >
-                  <span>⚡</span> Send All to Both Departments
+                  ✕ No, Skip for Now
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                   <button
                     type="button"
                     onClick={() => {
+                      const cs = BillingDatabase.getDepartmentClearanceStatus(
+                        postPayClearanceModal.claim.patientName,
+                        postPayClearanceModal.claim
+                      );
+                      if (cs.hasLabOrders) {
+                        handleDispatchClearance(
+                          postPayClearanceModal.claim.patientName,
+                          "Laboratory",
+                          postPayClearanceModal.payment.receiptNo,
+                          cs.labTestNames.join(" + ")
+                        );
+                      }
+                      if (cs.hasRadStudies) {
+                        handleDispatchClearance(
+                          postPayClearanceModal.claim.patientName,
+                          "Radiology",
+                          postPayClearanceModal.payment.receiptNo,
+                          cs.radStudyNames.join(" + ")
+                        );
+                      }
+                      showToast(
+                        `✓ Diagnostic clearance dispatched by Billing Department! Receipt #${postPayClearanceModal.payment.receiptNo}.`,
+                        "success"
+                      );
                       setReceiptData({
                         claim: postPayClearanceModal.claim,
                         payment: postPayClearanceModal.payment,
@@ -3141,16 +3174,18 @@ export default function Billing() {
                       setPostPayClearanceModal(null)
                       setShowReceiptModal(true)
                     }}
-                    className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs flex items-center gap-1"
+                    className="w-full sm:w-auto px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow-md flex items-center justify-center gap-1.5 transition-all"
                   >
-                    <span>🖨️</span> View Official Receipt
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPostPayClearanceModal(null)}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
-                  >
-                    Done
+                    <span>✓</span>
+                    {(() => {
+                      const cs = BillingDatabase.getDepartmentClearanceStatus(
+                        postPayClearanceModal.claim.patientName,
+                        postPayClearanceModal.claim
+                      );
+                      if (cs.hasLabOrders && cs.hasRadStudies) return "Yes, Send to Lab & Radiology";
+                      if (cs.hasLabOrders) return "Yes, Send to Laboratory";
+                      return "Yes, Send to Radiology";
+                    })()}
                   </button>
                 </div>
               </div>
@@ -3249,8 +3284,17 @@ export default function Billing() {
                   type="number"
                   required
                   min={1}
-                  value={quickAmount}
-                  onChange={(e) => setQuickAmount(Number(e.target.value))}
+                  value={
+                    quickAmount === undefined ||
+                    quickAmount === null ||
+                    (quickAmount as any) === ""
+                      ? ""
+                      : quickAmount
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setQuickAmount(val === "" ? ("" as any) : Number(val));
+                  }}
                   className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg font-mono font-bold text-xs"
                 />
               </div>

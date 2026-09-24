@@ -352,18 +352,22 @@ export default function LabBillingQueue({
                         type="number"
                         min={0}
                         max={selected.billing.subtotal}
-                        value={discount}
-                        onChange={(event) =>
-                          setDiscount(
-                            Math.max(
-                              0,
-                              Math.min(
-                                selected.billing.subtotal,
-                                parseInt(event.target.value, 10) || 0,
-                              ),
-                            ),
-                          )
+                        value={
+                          discount === undefined ||
+                          discount === null ||
+                          (discount as any) === ""
+                            ? ""
+                            : discount
                         }
+                        onChange={event => {
+                          const val = event.target.value;
+                          if (val === "") {
+                            setDiscount("" as any);
+                          } else {
+                            const parsed = parseInt(val, 10);
+                            setDiscount(isNaN(parsed) ? ("" as any) : Math.max(0, Math.min(selected.billing.subtotal, parsed)));
+                          }
+                        }}
                         className="w-full border border-[#DDE2EC] rounded px-3 py-2 text-[13px] font-mono focus:outline-none focus:border-[#1B4FD8]"
                       />
                     </div>

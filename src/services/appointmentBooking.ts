@@ -1,5 +1,5 @@
 import { db } from "./db"
-import { getDoctorByName } from "./doctorMaster"
+import { getDoctorByName, getDoctorConsultationFee } from "./doctorMaster"
 
 /**
  * Booking an outpatient appointment -- the one place that turns a booking into a

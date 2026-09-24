@@ -4,6 +4,7 @@
  * atomic transactions, and permanent data persistence.
  */
 
+import { getDoctorConsultationFee, getDoctorMaster } from "./doctorMaster"
 import { apiFetch } from "../lib/api"
 
 export interface DBPatient {
@@ -115,6 +116,7 @@ export interface DBOPEncounter {
   }
 
   billing: {
+    registrationFee?: number
     consultationFee: number
     labFee: number
     total: number
@@ -1439,7 +1441,30 @@ class HospitalDatabase {
           return true
         })
 
-        if (filteredE.length !== parsedE.length || missing.length > 0) {
+        let encMigrated = false;
+        for (const e of filteredE) {
+          const defaultRegFee = e.isNew === false ? 0 : 20;
+          if (!e.billing) {
+            const fee = getDoctorConsultationFee(e.assignedDoctor);
+            e.billing = {
+              registrationFee: defaultRegFee,
+              consultationFee: fee,
+              labFee: 0,
+              total: defaultRegFee + fee,
+              status: "Pending",
+              mode: "Card",
+            };
+            encMigrated = true;
+          } else {
+            if (e.billing.registrationFee === undefined) {
+              e.billing.registrationFee = defaultRegFee;
+              e.billing.total = defaultRegFee + (e.billing.consultationFee || 500) + (e.billing.labFee || 0);
+              encMigrated = true;
+            }
+          }
+        }
+
+        if (filteredE.length !== parsedE.length || missing.length > 0 || encMigrated) {
           localStorage.setItem(
             STORAGE_KEYS.ENCOUNTERS,
             JSON.stringify(filteredE),
@@ -1914,9 +1939,24 @@ class HospitalDatabase {
       vitals: { bp: "", pulse: "", temp: "", spo2: "", weight: "", notes: "" },
 
       billing: {
-        consultationFee: 50,
+        registrationFee: 20,
+        consultationFee: data.dept
+          ? getDoctorConsultationFee(
+              getDoctorMaster().find(
+                (d) => d.verified && d.specialty === data.dept,
+              )?.name || "",
+            )
+          : 500,
         labFee: 0,
-        total: 50,
+        total:
+          20 +
+          (data.dept
+            ? getDoctorConsultationFee(
+                getDoctorMaster().find(
+                  (d) => d.verified && d.specialty === data.dept,
+                )?.name || "",
+              )
+            : 500),
         status: "Pending",
         mode: "Card",
       },
@@ -2071,9 +2111,24 @@ class HospitalDatabase {
       },
 
       billing: {
-        consultationFee: 50,
+        registrationFee: 0,
+        consultationFee: data?.dept
+          ? getDoctorConsultationFee(
+              getDoctorMaster().find(
+                (d) => d.verified && d.specialty === data.dept,
+              )?.name || "",
+            )
+          : 500,
         labFee: 0,
-        total: 50,
+        total:
+          0 +
+          (data?.dept
+            ? getDoctorConsultationFee(
+                getDoctorMaster().find(
+                  (d) => d.verified && d.specialty === data.dept,
+                )?.name || "",
+              )
+            : 500),
         status: "Pending",
         mode: "Card",
       },
@@ -2229,7 +2284,51 @@ class HospitalDatabase {
 
     const newEncounters = encounters.map((e) => {
       if (e.id === id) {
-        updated = { ...e, ...updates }
+        const assignedDoc =
+          updates.assignedDoctor !== undefined
+            ? updates.assignedDoctor
+            : e.assignedDoctor
+
+        let cFee = e.billing?.consultationFee || 500
+        if (updates.billing?.consultationFee !== undefined) {
+          cFee = updates.billing.consultationFee
+        } else if (
+          updates.assignedDoctor &&
+          updates.assignedDoctor !== e.assignedDoctor
+        ) {
+          cFee = getDoctorConsultationFee(updates.assignedDoctor)
+        } else if (assignedDoc && (cFee === 50 || !e.billing?.consultationFee)) {
+          cFee = getDoctorConsultationFee(assignedDoc)
+        }
+
+        const regFee =
+          updates.billing?.registrationFee !== undefined
+            ? updates.billing.registrationFee
+            : (e.billing?.registrationFee ?? (e.isNew === false ? 0 : 20))
+
+        const lFee =
+          updates.billing?.labFee !== undefined
+            ? updates.billing.labFee
+            : (e.billing?.labFee || 0)
+
+        const bStatus =
+          updates.billing?.status || e.billing?.status || "Pending"
+        const bMode = updates.billing?.mode || e.billing?.mode || "Card"
+
+        const mergedBilling = {
+          registrationFee: regFee,
+          consultationFee: cFee,
+          labFee: lFee,
+          total: regFee + cFee + lFee,
+          status: bStatus,
+          mode: bMode,
+        }
+
+        updated = {
+          ...e,
+          ...updates,
+          billing: mergedBilling,
+        }
 
         return updated
       }

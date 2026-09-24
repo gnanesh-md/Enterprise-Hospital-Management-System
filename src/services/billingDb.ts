@@ -19,7 +19,8 @@
 import { apiFetch } from "../lib/api"
 import { BillingRbacManager } from "./billingRbac"
 
-import { db, DBPatient, DBOPEncounter } from "./db"
+import { db, DBPatient, DBOPEncounter } from "./db";
+import { getDoctorConsultationFee } from "./doctorMaster";
 
 import { ErDatabase, ErVisitRecord } from "./erDb"
 
@@ -340,7 +341,9 @@ export interface LabOrderRecord {
 
   invoiceNo?: string
 
-  department?: string
+  encounterId?: string;
+
+  department?: string;
 
   diagnosis?: string
 
@@ -413,7 +416,9 @@ export interface RadiologyStudyRecord {
 
   invoiceNo?: string
 
-  department?: string
+  encounterId?: string;
+
+  department?: string;
 
   diagnosis?: string
 
@@ -4431,6 +4436,110 @@ export class BillingDatabase {
       INITIAL_HOSPITAL_CLAIMS,
     )
 
+    // Auto-sync OP Encounters from db.ts if not yet in claims list
+    try {
+      const opEncs = db.getEncounters();
+      const existingEncounterIds = new Set(
+        claims.map((c) => c.encounterId || c.id).filter(Boolean),
+      );
+
+      opEncs.forEach((enc) => {
+        if (!existingEncounterIds.has(enc.id)) {
+          const regFee = enc.billing?.registrationFee ?? (enc.isNew === false ? 0 : 20);
+          const consultFee =
+            enc.billing?.consultationFee ??
+            getDoctorConsultationFee(enc.assignedDoctor);
+          const labFee = enc.billing?.labFee ?? 0;
+          const totalAmt = regFee + consultFee + labFee;
+          const isPaid =
+            enc.billing?.status === "Paid" || enc.status === "OP Completed";
+
+          const items: InvoiceItem[] = [];
+
+          if (regFee > 0) {
+            items.push({
+              id: `ITEM-REG-${enc.id}`,
+              description: `Patient Registration Fee – ₹${regFee}`,
+              category: "Procedure / Surgery",
+              cptCode: "99201",
+              quantity: 1,
+              unitPrice: regFee,
+              total: regFee,
+              insuranceCovered: 0,
+              patientPayable: regFee,
+              orderedBy: "Front Desk Registration",
+              orderedAt: enc.registrationTime,
+            });
+          }
+
+          items.push({
+            id: `ITEM-CONSULT-${enc.id}`,
+            description: `Physician Consultation Fee (${enc.assignedDoctor || enc.dept || "Attending Specialist"})`,
+            category: "Consultation",
+            cptCode: "99205",
+            quantity: 1,
+            unitPrice: consultFee,
+            total: consultFee,
+            insuranceCovered: 0,
+            patientPayable: consultFee,
+            orderedBy: enc.assignedDoctor || "OP Physician",
+            orderedAt: enc.registrationTime,
+          });
+
+          if (labFee > 0) {
+            items.push({
+              id: `ITEM-LAB-${enc.id}`,
+              description: "Diagnostic Investigations & Services",
+              category: "Laboratory",
+              cptCode: "80050",
+              quantity: 1,
+              unitPrice: labFee,
+              total: labFee,
+              insuranceCovered: 0,
+              patientPayable: labFee,
+              orderedBy: enc.assignedDoctor || "OP Physician",
+            });
+          }
+
+          const newClaim: ClaimRecord = {
+            id: `CLM-${enc.id}`,
+            invoiceNo: `INV-${enc.opNumber}`,
+            encounterId: enc.id,
+            patientId: enc.umr,
+            patientName: enc.patientName,
+            mrn: enc.umr.replace("UMR", ""),
+            age: enc.age,
+            gender: enc.sex === "Female" ? "Female" : "Male",
+            phone: enc.phone,
+            payments: [],
+            department: "Outpatient",
+            carePathway: `${enc.dept} Consultation (${enc.opNumber})`,
+            dateOfService: new Date().toISOString().split("T")[0],
+            insuranceProvider: "Self-Pay",
+            policyNumber: "N/A",
+            status: isPaid ? "Paid" : "Draft",
+            attendingDoctor: enc.assignedDoctor || "OP Physician",
+            diagnosisCodes: [enc.icd10 || "Z00.00"],
+            items,
+            subtotal: totalAmt,
+            discount: 0,
+            tax: 0,
+            totalAmount: totalAmt,
+            insurancePortion: 0,
+            patientPortion: totalAmt,
+            amountPaid: isPaid ? totalAmt : 0,
+            balanceDue: isPaid ? 0 : totalAmt,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          claims.push(newClaim);
+        }
+      });
+    } catch {
+      // ignore
+    }
+
     if (filter) {
       if (filter.status && filter.status !== "All") {
         claims = claims.filter((c) => c.status === filter.status)
@@ -4491,9 +4600,18 @@ export class BillingDatabase {
       INITIAL_HOSPITAL_CLAIMS,
     )
 
-    const claimNum = 8900 + claims.length + 1
+    const maxClaimNum = claims.reduce((max, c) => {
+      const num = parseInt((c.id || "").replace(/\D/g, ""), 10);
+      return !isNaN(num) && num > max ? num : max;
+    }, 8937);
+    const claimNum = maxClaimNum + 1;
 
-    const invNum = 800 + claims.length + 1
+    const maxInvNum = claims.reduce((max, c) => {
+      const match = (c.invoiceNo || "").match(/(\d+)$/);
+      const num = match ? parseInt(match[1], 10) : 0;
+      return num > max ? num : max;
+    }, 827);
+    const invNum = maxInvNum + 1;
 
     const nowIso = new Date().toISOString()
 
@@ -4530,6 +4648,16 @@ export class BillingDatabase {
     if (existingIndex >= 0) {
       const existing = claims[existingIndex]
 
+      const finalAmountPaid =
+        data.amountPaid !== undefined ? data.amountPaid : existing.amountPaid;
+      const finalBalanceDue =
+        data.balanceDue !== undefined
+          ? data.balanceDue
+          : Math.max(0, patientPortion - finalAmountPaid);
+      const finalStatus =
+        data.status ||
+        (finalAmountPaid >= patientPortion ? "Paid" : "Accepted");
+
       const updatedClaim: ClaimRecord = {
         ...existing,
 
@@ -4553,11 +4681,11 @@ export class BillingDatabase {
 
         patientPortion,
 
-        balanceDue: Math.max(0, patientPortion - existing.amountPaid),
+        amountPaid: finalAmountPaid,
 
-        status:
-          data.status ||
-          (existing.amountPaid >= patientPortion ? "Paid" : "Accepted"),
+        balanceDue: finalBalanceDue,
+
+        status: finalStatus,
 
         updatedAt: nowIso,
       }
@@ -4572,7 +4700,8 @@ export class BillingDatabase {
     const newClaim: ClaimRecord = {
       id: data.id || `CLM-${claimNum}`,
 
-      invoiceNo: data.invoiceNo || `INV-2026-0${invNum}`,
+      invoiceNo:
+        data.invoiceNo || `INV-2026-${String(invNum).padStart(4, "0")}`,
 
       patientId:
         data.patientId || `UMR${Math.floor(100000 + Math.random() * 900000)}`,
@@ -5062,15 +5191,26 @@ export class BillingDatabase {
 
       notes?: string
     },
-  ): { claim: ClaimRecord ;payment: PaymentRecord } {
-    const claims = this.load<ClaimRecord[]>(
-      STORAGE_KEY_CLAIMS,
-      INITIAL_HOSPITAL_CLAIMS,
-    )
+  ): { claim: ClaimRecord; payment: PaymentRecord } {
+    const claims = this.getClaims();
 
-    const idx = claims.findIndex(
-      (c) => c.id === invoiceId || c.invoiceNo === invoiceId,
-    )
+    const target = (invoiceId || "").toLowerCase().trim();
+
+    const idx = claims.findIndex((c) => {
+      const cId = (c.id || "").toLowerCase().trim();
+      const cInv = (c.invoiceNo || "").toLowerCase().trim();
+      const cEnc = (c.encounterId || "").toLowerCase().trim();
+      return (
+        cId === target ||
+        cInv === target ||
+        cEnc === target ||
+        `clm-${cEnc}` === target ||
+        `inv-${cInv}` === target ||
+        cId.endsWith(target) ||
+        target.endsWith(cId) ||
+        (target.length > 3 && (cId.includes(target) || cInv.includes(target)))
+      );
+    });
 
     if (idx < 0) throw new Error("Invoice not found")
 
@@ -5138,6 +5278,26 @@ export class BillingDatabase {
 
     this.save(STORAGE_KEY_CLAIMS, claims)
 
+    // Sync underlying OP encounter in db.ts
+    if (updatedClaim.encounterId) {
+      try {
+        const enc = db.getEncounterById(updatedClaim.encounterId);
+        if (enc) {
+          db.updateEncounter(updatedClaim.encounterId, {
+            billing: {
+              ...enc.billing,
+              status: newBalanceDue === 0 ? "Paid" : "Pending",
+              mode: payment.paymentMethod,
+            },
+            status:
+              enc.status === "Doctor Assigned" || enc.status === "Registered"
+                ? "In Queue"
+                : enc.status,
+          });
+        }
+      } catch {}
+    }
+
     BillingRbacManager.logEvent({
       action: "PAYMENT_RECORDED",
 
@@ -5175,254 +5335,339 @@ export class BillingDatabase {
 
   static dispatchClearanceToDepartment(
     patientIdOrName: string,
-
     department: "Laboratory" | "Radiology",
-
     receiptNo?: string,
-
     optionalTestName?: string,
-  ): { success: boolean ;updatedCount: number ;message: string } {
-    const targetName = (patientIdOrName || "").toLowerCase().trim()
+  ): { success: boolean; updatedCount: number; message: string } {
+    const targetName = (patientIdOrName || "").toLowerCase().trim();
+    const targetMrn = targetName.replace("umr", "").replace("p-", "").trim();
+    const nowIso = new Date().toISOString();
 
-    const targetMrn = targetName.replace("umr", "").trim()
+    let updatedCount = 0;
 
-    const nowIso = new Date().toISOString()
+    // Resolve matching claim to get canonical details
+    const matchingClaim = this.getClaims().find((c) => {
+      const cName = (c.patientName || "").toLowerCase().trim();
+      const cMrn = (c.mrn || c.patientId || "").toLowerCase().replace("umr", "").replace("p-", "").trim();
+      const cEnc = (c.encounterId || "").toLowerCase().trim();
+      return (
+        cName === targetName ||
+        (targetName.length > 4 && (cName.includes(targetName) || targetName.includes(cName))) ||
+        (targetMrn && cMrn === targetMrn) ||
+        (targetName && cEnc === targetName)
+      );
+    });
 
-    let updatedCount = 0
+    const resolvedMrn = matchingClaim?.mrn || matchingClaim?.patientId || targetMrn || "100999";
+    const resolvedPatientName = matchingClaim?.patientName || patientIdOrName;
+    const resolvedEncounterId = matchingClaim?.encounterId;
+    const effectiveReceiptNo =
+      receiptNo ||
+      matchingClaim?.payments?.[matchingClaim.payments.length - 1]?.receiptNo ||
+      `RCPT-2026-${Math.floor(1000 + Math.random() * 9000)}`;
 
     if (department === "Laboratory") {
-      const labOrders = this.getLabOrders()
-
-      let labChanged = false
+      const labOrders = this.getLabOrders();
+      let labChanged = false;
 
       const updatedLabOrders = labOrders.map((lo) => {
-        const loName = (lo.patient || "").toLowerCase().trim()
+        const loName = (lo.patient || "").toLowerCase().trim();
+        const loMrn = (lo.mrn || lo.umr || "").toLowerCase().replace("umr", "").replace("p-", "").trim();
+        const loEnc = ((lo as any).encounterId || "").toLowerCase().trim();
+        const loInv = (lo.invoiceNo || "").toLowerCase().trim();
 
-        const loMrn = (lo.mrn || "").toLowerCase().replace("umr", "").trim()
+        const matchName = targetName && (loName === targetName || (targetName.length > 4 && (loName.includes(targetName) || targetName.includes(loName))));
+        const matchMrn = targetMrn && loMrn && (loMrn === targetMrn || loMrn.includes(targetMrn) || targetMrn.includes(loMrn));
+        const matchEnc = resolvedEncounterId && loEnc && loEnc === resolvedEncounterId.toLowerCase();
+        const matchInv = matchingClaim?.invoiceNo && loInv && loInv === matchingClaim.invoiceNo.toLowerCase();
 
-        if (
-          loName === targetName ||
-          (targetMrn &&
-            loMrn &&
-            (loMrn.includes(targetMrn) || targetMrn.includes(loMrn)))
-        ) {
-          labChanged = true
-
-          updatedCount += 1
-
+        if (matchName || matchMrn || matchEnc || matchInv) {
+          labChanged = true;
+          updatedCount += 1;
           return {
             ...lo,
-
             paymentStatus: "Paid" as const,
-
-            paidReceiptNo:
-              receiptNo ||
-              lo.paidReceiptNo ||
-              `RCPT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-
+            paidReceiptNo: effectiveReceiptNo,
             paidAt: nowIso,
+          };
+        }
+        return lo;
+      });
+
+      // Also sync to LabOrderDatabase (hospai_lab_orders_v1)
+      try {
+        if (typeof window !== "undefined") {
+          const rawOrders = window.localStorage.getItem("hospai_lab_orders_v1");
+          if (rawOrders) {
+            const parsed = JSON.parse(rawOrders);
+            let hasOrderChanged = false;
+            const updated = parsed.map((o: any) => {
+              const oName = (o.patientName || "").toLowerCase().trim();
+              const oUmr = (o.umr || "").toLowerCase().replace("umr", "").replace("p-", "").trim();
+              const oEnc = (o.encounterId || "").toLowerCase().trim();
+              const matchName = targetName && (oName === targetName || (targetName.length > 4 && (oName.includes(targetName) || targetName.includes(oName))));
+              const matchMrn = targetMrn && oUmr && (oUmr === targetMrn || oUmr.includes(targetMrn) || targetMrn.includes(oUmr));
+              const matchEnc = resolvedEncounterId && oEnc && oEnc === resolvedEncounterId.toLowerCase();
+
+              if (matchName || matchMrn || matchEnc) {
+                hasOrderChanged = true;
+                updatedCount = Math.max(updatedCount, (o.tests || []).length || 1);
+                return {
+                  ...o,
+                  status: o.status === "Awaiting Billing" ? "Billed" : o.status,
+                  billing: {
+                    ...(o.billing || {}),
+                    status: "Paid",
+                    paidAt: nowIso,
+                    receiptNo: effectiveReceiptNo,
+                  },
+                };
+              }
+              return o;
+            });
+            if (hasOrderChanged) {
+              window.localStorage.setItem("hospai_lab_orders_v1", JSON.stringify(updated));
+              try {
+                new BroadcastChannel("hospai_lab_orders").postMessage("changed");
+              } catch {}
+            }
           }
         }
-
-        return lo
-      })
+      } catch (e) {
+        console.warn("Could not sync to LabOrderDatabase:", e);
+      }
 
       if (labChanged) {
-        this.save(STORAGE_KEY_LAB_ORDERS, updatedLabOrders)
-
+        this.save(STORAGE_KEY_LAB_ORDERS, updatedLabOrders);
+        this.emitUpdate();
         return {
           success: true,
-
-          updatedCount,
-
-          message: `✓ Clearance dispatched to Laboratory for ${updatedCount} test(s). Receipt: ${receiptNo || "Issued"}.`,
-        }
+          updatedCount: Math.max(1, updatedCount),
+          message: `✓ Clearance dispatched to Laboratory for ${Math.max(1, updatedCount)} test(s). Receipt: ${effectiveReceiptNo}.`,
+        };
       } else {
         // Find matching claim to see if there were lab items
-
-        const matchingClaim = this.getClaims().find(
-          (c) =>
-            c.patientName.toLowerCase().trim() === targetName ||
-            c.patientId.toLowerCase().replace("umr", "").trim() === targetMrn,
-        )
-
         const labItems = matchingClaim
-          ? matchingClaim.items.filter((i) => i.category === "Laboratory")
-          : []
+          ? matchingClaim.items.filter(
+              (i) =>
+                i.category === "Laboratory" ||
+                (i.category as string) === "Lab" ||
+                (i.category as string) === "Investigation" ||
+                /(cbc|hemogram|blood|glucose|sugar|urine|creatinine|urea|electrolyte|kft|rft|lft|bilirubin|serology|culture|pathology|troponin|ecg|ekg|lipid|biochemistry|hematology|diagnostic:|investigation:|stool|wbc|platelet|d-dimer|dimer|abg|vbg|lactate|procalcitonin|thyroid|tsh|crp|esr|ferritin|hba1c|inr|coagulation|amylase|lipase|smear|widal|swab|profile|bmp|cmp)/i.test(
+                  i.description,
+                ),
+            )
+          : [];
 
         const testName =
           optionalTestName ||
           (labItems.length > 0
             ? labItems.map((i) => i.description).join(", ")
-            : "Laboratory Diagnostic Panel")
+            : "Laboratory Diagnostic Panel");
+
+        const totalLabPrice = labItems.reduce((s, i) => s + (i.total || i.unitPrice || 0), 0) || 150;
 
         const newLabOrder: LabOrderRecord = {
           id: `LAB-${Date.now().toString().slice(-4)}`,
-
-          patient: matchingClaim?.patientName || patientIdOrName,
-
-          mrn: matchingClaim?.mrn || targetMrn || "100999",
-
+          patient: resolvedPatientName,
+          mrn: resolvedMrn,
+          umr: matchingClaim?.patientId || resolvedMrn,
+          invoiceNo: matchingClaim?.invoiceNo,
+          encounterId: resolvedEncounterId,
           test: testName,
-
-          priority: "Routine",
-
+          category: "Clinical Laboratory",
+          priority: matchingClaim?.department === "Emergency" ? "STAT" : "Routine",
+          sampleType: "Blood / Plasma Specimen",
+          accessionNo: `ACC-2026-${(matchingClaim?.invoiceNo || "").replace(/\D/g, "").slice(-4) || Math.floor(1000 + Math.random() * 9000)}`,
           collected: "—",
-
           status: "Pending",
-
           provider: matchingClaim?.attendingDoctor || "Attending Specialist",
-
-          price: labItems.reduce((s, i) => s + i.total, 0) || 100,
-
+          price: totalLabPrice,
           paymentStatus: "Paid",
-
-          paidReceiptNo:
-            receiptNo || `RCPT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-
+          paidReceiptNo: effectiveReceiptNo,
           paidAt: nowIso,
+          department: matchingClaim?.department || "Central Clinic",
+        };
+
+        const newLabOrders = [newLabOrder, ...labOrders];
+        this.save(STORAGE_KEY_LAB_ORDERS, newLabOrders);
+
+        // Also add to hospai_lab_orders_v1 so it shows in Lab Worklist
+        try {
+          if (typeof window !== "undefined") {
+            const rawOrders = window.localStorage.getItem("hospai_lab_orders_v1");
+            const parsed = rawOrders ? JSON.parse(rawOrders) : [];
+            const newOrderObj = {
+              id: `ORD-${Date.now().toString().slice(-5)}`,
+              encounterId: resolvedEncounterId || `ENC-${Date.now().toString().slice(-4)}`,
+              umr: resolvedMrn,
+              patientName: resolvedPatientName,
+              age: matchingClaim?.age || 35,
+              sex: matchingClaim?.gender || "Male",
+              phone: matchingClaim?.phone || "+91 98765 43210",
+              opNumber: resolvedEncounterId || "OP-100",
+              doctorId: "DOC-1",
+              doctorName: matchingClaim?.attendingDoctor || "Attending Specialist",
+              department: matchingClaim?.department || "Central Clinic",
+              diagnosis: "Clinical Diagnostics Investigation",
+              tests: [
+                {
+                  id: `LT-1`,
+                  name: testName,
+                  category: "Pathology",
+                  urgency: "Routine",
+                  price: totalLabPrice,
+                  status: "Ordered",
+                },
+              ],
+              status: "Billed",
+              createdAt: nowIso,
+              updatedAt: nowIso,
+              billing: {
+                status: "Paid",
+                invoiceNo: matchingClaim?.invoiceNo || `INV-${Date.now().toString().slice(-4)}`,
+                subtotal: totalLabPrice,
+                discount: 0,
+                total: totalLabPrice,
+                paidAt: nowIso,
+                receiptNo: effectiveReceiptNo,
+              },
+              history: [
+                {
+                  at: nowIso,
+                  actor: "Central Billing Cashier",
+                  action: "Payment Verified & Dispatched",
+                  detail: `Financially cleared and released to Laboratory worklist.`,
+                },
+              ],
+            };
+            window.localStorage.setItem("hospai_lab_orders_v1", JSON.stringify([newOrderObj, ...parsed]));
+            try {
+              new BroadcastChannel("hospai_lab_orders").postMessage("changed");
+            } catch {}
+          }
+        } catch (e) {
+          console.warn("Could not insert to hospai_lab_orders_v1:", e);
         }
 
-        const newLabOrders = [newLabOrder, ...labOrders]
-
-        this.save(STORAGE_KEY_LAB_ORDERS, newLabOrders)
-
+        this.emitUpdate();
         return {
           success: true,
-
           updatedCount: 1,
-
-          message: `✓ Clearance dispatched to Laboratory for ${testName}. Receipt: ${receiptNo || "Issued"}.`,
-        }
+          message: `✓ Clearance dispatched to Laboratory for ${testName}. Receipt: ${effectiveReceiptNo}.`,
+        };
       }
     } else if (department === "Radiology") {
-      const radStudies = this.getRadiologyStudies()
-
-      let radChanged = false
+      const radStudies = this.getRadiologyStudies();
+      let radChanged = false;
 
       const updatedRadStudies = radStudies.map((rs) => {
-        const rsName = (rs.patient || "").toLowerCase().trim()
+        const rsName = (rs.patient || "").toLowerCase().trim();
+        const rsMrn = (rs.mrn || rs.umr || "").toLowerCase().replace("umr", "").replace("p-", "").trim();
+        const rsEnc = ((rs as any).encounterId || "").toLowerCase().trim();
+        const rsInv = (rs.invoiceNo || "").toLowerCase().trim();
 
-        const rsMrn = (rs.mrn || "").toLowerCase().replace("umr", "").trim()
+        const matchName = targetName && (rsName === targetName || (targetName.length > 4 && (rsName.includes(targetName) || targetName.includes(rsName))));
+        const matchMrn = targetMrn && rsMrn && (rsMrn === targetMrn || rsMrn.includes(targetMrn) || targetMrn.includes(rsMrn));
+        const matchEnc = resolvedEncounterId && rsEnc && rsEnc === resolvedEncounterId.toLowerCase();
+        const matchInv = matchingClaim?.invoiceNo && rsInv && rsInv === matchingClaim.invoiceNo.toLowerCase();
 
-        if (
-          rsName === targetName ||
-          (targetMrn &&
-            rsMrn &&
-            (rsMrn.includes(targetMrn) || targetMrn.includes(rsMrn)))
-        ) {
-          radChanged = true
-
-          updatedCount += 1
-
+        if (matchName || matchMrn || matchEnc || matchInv) {
+          radChanged = true;
+          updatedCount += 1;
           return {
             ...rs,
-
             paymentStatus: "Paid" as const,
-
-            paidReceiptNo:
-              receiptNo ||
-              rs.paidReceiptNo ||
-              `RCPT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-
+            paidReceiptNo: effectiveReceiptNo,
             paidAt: nowIso,
-          }
+          };
         }
-
-        return rs
-      })
+        return rs;
+      });
 
       if (radChanged) {
-        this.save(STORAGE_KEY_RAD_STUDIES, updatedRadStudies)
-
+        this.save(STORAGE_KEY_RAD_STUDIES, updatedRadStudies);
+        try {
+          new BroadcastChannel("hospai_rad_channel").postMessage("changed");
+        } catch {}
+        this.emitUpdate();
         return {
           success: true,
-
           updatedCount,
-
-          message: `✓ Clearance dispatched to Radiology for ${updatedCount} study(ies). Receipt: ${receiptNo || "Issued"}.`,
-        }
+          message: `✓ Clearance dispatched to Radiology for ${updatedCount} study(ies). Receipt: ${effectiveReceiptNo}.`,
+        };
       } else {
-        const matchingClaim = this.getClaims().find(
-          (c) =>
-            c.patientName.toLowerCase().trim() === targetName ||
-            c.patientId.toLowerCase().replace("umr", "").trim() === targetMrn,
-        )
-
         const radItems = matchingClaim
           ? matchingClaim.items.filter(
-              (i) => i.category === "Radiology / Imaging",
+              (i) =>
+                i.category === "Radiology / Imaging" ||
+                (i.category as string) === "Radiology" ||
+                (i.category as string) === "Imaging" ||
+                /(x-ray|xray|radiograph|\bct\b|ct\s|ct-|ct scan|computed tomography|hrct|\bmri\b|mr\s|magnetic resonance|ultrasound|usg|sonograph|doppler|echo|echocardiography|mammograph|dexa|fluoroscop|pet scan)/i.test(
+                  i.description,
+                ),
             )
-          : []
+          : [];
 
         const studyName =
           optionalTestName ||
           (radItems.length > 0
             ? radItems.map((i) => i.description).join(", ")
-            : "Diagnostic Imaging Study")
+            : "Diagnostic Imaging Study");
+
+        const modality = studyName.toLowerCase().includes("ct")
+          ? "CT"
+          : studyName.toLowerCase().includes("mri")
+            ? "MR"
+            : studyName.toLowerCase().includes("ultra") || studyName.toLowerCase().includes("echo")
+              ? "US"
+              : "XR";
+
+        const totalRadPrice = radItems.reduce((s, i) => s + (i.total || i.unitPrice || 0), 0) || 250;
 
         const newRadStudy: RadiologyStudyRecord = {
           id: `RAD-${Date.now().toString().slice(-4)}`,
-
-          patient: matchingClaim?.patientName || patientIdOrName,
-
-          mrn: matchingClaim?.mrn || targetMrn || "100999",
-
+          patient: resolvedPatientName,
+          mrn: resolvedMrn,
+          umr: matchingClaim?.patientId || resolvedMrn,
+          invoiceNo: matchingClaim?.invoiceNo,
+          encounterId: resolvedEncounterId,
           study: studyName,
-
-          modality: studyName.toLowerCase().includes("ct")
-            ? "CT"
-            : studyName.toLowerCase().includes("mri")
-              ? "MR"
-              : studyName.toLowerCase().includes("ultra")
-                ? "US"
-                : "XR",
-
-          priority: "Routine",
-
-          ordered: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-
+          modality: modality as any,
+          priority: matchingClaim?.department === "Emergency" ? "STAT" : "Routine",
+          ordered: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           provider: matchingClaim?.attendingDoctor || "Attending Specialist",
-
           status: "Orders",
-
-          room: "RAD-1",
-
-          price: radItems.reduce((s, i) => s + i.total, 0) || 120,
-
+          room: modality === "CT" ? "CT-1" : modality === "MR" ? "MR-1" : modality === "US" ? "US-1" : "XR-1",
+          price: totalRadPrice,
           paymentStatus: "Paid",
-
-          paidReceiptNo:
-            receiptNo || `RCPT-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-
+          paidReceiptNo: effectiveReceiptNo,
           paidAt: nowIso,
-        }
+          accessionNo: `RAD-ACC-${(matchingClaim?.invoiceNo || "").replace(/\D/g, "").slice(-4) || Math.floor(1000 + Math.random() * 9000)}`,
+          department: matchingClaim?.department || "Central Clinic",
+        };
 
-        const newRadStudies = [newRadStudy, ...radStudies]
-
-        this.save(STORAGE_KEY_RAD_STUDIES, newRadStudies)
-
+        const newRadStudies = [newRadStudy, ...radStudies];
+        this.save(STORAGE_KEY_RAD_STUDIES, newRadStudies);
+        try {
+          new BroadcastChannel("hospai_rad_channel").postMessage("changed");
+        } catch {}
+        this.emitUpdate();
         return {
           success: true,
-
           updatedCount: 1,
-
-          message: `✓ Clearance dispatched to Radiology for ${studyName}. Receipt: ${receiptNo || "Issued"}.`,
-        }
+          message: `✓ Clearance dispatched to Radiology for ${studyName}. Receipt: ${effectiveReceiptNo}.`,
+        };
       }
     }
 
     return {
       success: false,
-
       updatedCount: 0,
-
       message: `No pending ${department} orders found for this patient.`,
     }
   }
+
 
   static getDepartmentClearanceStatus(
     patientIdOrName: string,
@@ -5447,70 +5692,266 @@ export class BillingDatabase {
 
     isNonDiagnostic: boolean
   } {
-    const targetName = (patientIdOrName || "").toLowerCase().trim()
-
-    const targetMrn = targetName.replace("umr", "").trim()
-
-    const labOrders = this.getLabOrders().filter((lo) => {
-      const loName = (lo.patient || "").toLowerCase().trim()
-
-      const loMrn = (lo.mrn || "").toLowerCase().replace("umr", "").trim()
-
-      return (
-        loName === targetName ||
-        (targetMrn &&
-          loMrn &&
-          (loMrn.includes(targetMrn) || targetMrn.includes(loMrn)))
-      )
-    })
-
-    const radStudies = this.getRadiologyStudies().filter((rs) => {
-      const rsName = (rs.patient || "").toLowerCase().trim()
-
-      const rsMrn = (rs.mrn || "").toLowerCase().replace("umr", "").trim()
-
-      return (
-        rsName === targetName ||
-        (targetMrn &&
-          rsMrn &&
-          (rsMrn.includes(targetMrn) || targetMrn.includes(rsMrn)))
-      )
-    })
-
-    // Check if claim items contain lab/radiology
-
-    let claimLabItems: InvoiceItem[] = []
-
-    let claimRadItems: InvoiceItem[] = []
-
-    if (claimContext) {
-      claimLabItems = claimContext.items.filter(
+    // For Outpatient visits prior to doctor consultation (no prescribed investigations in encounter),
+    // diagnostic clearance is NOT applicable because no lab/radiology tests have been prescribed yet.
+    if (claimContext && claimContext.department === "Outpatient") {
+      let encInvestigations: string[] = [];
+      if (claimContext.encounterId) {
+        try {
+          const enc = db.getEncounterById(claimContext.encounterId);
+          if (enc && enc.investigations) {
+            encInvestigations = enc.investigations;
+          }
+        } catch {}
+      }
+      const hasExplicitLabItemInClaim = (claimContext.items || []).some(
+        (i) => i.category === "Laboratory" && i.unitPrice > 0,
+      );
+      const hasExplicitRadItemInClaim = (claimContext.items || []).some(
         (i) =>
-          i.category === "Laboratory" ||
-          claimContext.department === "Laboratory",
-      )
+          ((i.category as any) === "Radiology / Imaging" ||
+            (i.category as any) === "Radiology") &&
+          i.unitPrice > 0,
+      );
 
-      claimRadItems = claimContext.items.filter(
-        (i) =>
-          i.category === "Radiology / Imaging" ||
-          claimContext.department === "Radiology",
-      )
+      if (
+        encInvestigations.length === 0 &&
+        !hasExplicitLabItemInClaim &&
+        !hasExplicitRadItemInClaim
+      ) {
+        return {
+          hasLabOrders: false,
+          labPaidCount: 0,
+          labPendingCount: 0,
+          labTestNames: [],
+          hasRadStudies: false,
+          radPaidCount: 0,
+          radPendingCount: 0,
+          radStudyNames: [],
+          isNonDiagnostic: true,
+        };
+      }
     }
 
-    const hasLab = labOrders.length > 0 || claimLabItems.length > 0
+    const targetName = (claimContext?.patientName || patientIdOrName || "").toLowerCase().trim();
+    const targetMrn = (claimContext?.mrn || claimContext?.patientId || targetName).toLowerCase().replace("umr", "").replace("p-", "").trim();
+    const targetEncounter = (claimContext?.encounterId || "").toLowerCase().trim();
+    const targetInvoice = (claimContext?.invoiceNo || "").toLowerCase().trim();
+
+    const LAB_REGEX =
+      /(cbc|hemogram|blood|glucose|sugar|urine|creatinine|urea|electrolyte|kft|rft|lft|bilirubin|serology|culture|pathology|troponin|ecg|ekg|lipid|biochemistry|hematology|diagnostic:|investigation:|stool|wbc|platelet|d-dimer|dimer|abg|vbg|lactate|procalcitonin|thyroid|tsh|crp|esr|ferritin|hba1c|inr|coagulation|amylase|lipase|smear|widal|swab|profile|bmp|cmp)/i;
+
+    const RAD_REGEX =
+      /(x-ray|xray|radiograph|\bct\b|ct\s|ct-|ct scan|computed tomography|hrct|\bmri\b|mr\s|magnetic resonance|ultrasound|usg|sonograph|doppler|echo|echocardiography|mammograph|dexa|fluoroscop|pet scan)/i;
+
+    const labOrders = this.getLabOrders().filter((lo) => {
+      const loName = (lo.patient || "").toLowerCase().trim();
+      const loMrn = (lo.mrn || lo.umr || "").toLowerCase().replace("umr", "").replace("p-", "").trim();
+      const loInv = (lo.invoiceNo || "").toLowerCase().trim();
+      const loEnc = ((lo as any).encounterId || "").toLowerCase().trim();
+
+      const matchName = targetName && (loName === targetName || (targetName.length > 5 && loName === targetName));
+      const matchMrn = targetMrn && loMrn && loMrn === targetMrn;
+      const matchInv = targetInvoice && loInv && loInv === targetInvoice;
+      const matchEnc = targetEncounter && loEnc && loEnc === targetEncounter;
+
+      return Boolean(matchMrn || matchEnc || (matchInv && matchName));
+    });
+
+    const radStudies = this.getRadiologyStudies().filter((rs) => {
+      const rsName = (rs.patient || "").toLowerCase().trim();
+      const rsMrn = (rs.mrn || rs.umr || "").toLowerCase().replace("umr", "").replace("p-", "").trim();
+      const rsInv = (rs.invoiceNo || "").toLowerCase().trim();
+      const rsEnc = ((rs as any).encounterId || "").toLowerCase().trim();
+
+      const matchName = targetName && (rsName === targetName || (targetName.length > 4 && (rsName.includes(targetName) || targetName.includes(rsName))));
+      const matchMrn = targetMrn && rsMrn && (rsMrn === targetMrn || rsMrn.includes(targetMrn) || targetMrn.includes(rsMrn));
+      const matchInv = targetInvoice && rsInv && rsInv === targetInvoice;
+      const matchEnc = targetEncounter && rsEnc && rsEnc === targetEncounter;
+
+      return Boolean(matchName || matchMrn || matchInv || matchEnc);
+    });
+
+    // Also check LabOrderDatabase (hospai_lab_orders_v1)
+    const extraLabTestNames: string[] = [];
+    try {
+      if (typeof window !== "undefined") {
+        const rawOrders = window.localStorage.getItem("hospai_lab_orders_v1");
+        if (rawOrders) {
+          const parsed = JSON.parse(rawOrders);
+          parsed.forEach((o: any) => {
+            const oName = (o.patientName || "").toLowerCase().trim();
+            const oUmr = (o.umr || "").toLowerCase().replace("umr", "").replace("p-", "").trim();
+            const oEnc = (o.encounterId || "").toLowerCase().trim();
+            const matchName = targetName && (oName === targetName || (targetName.length > 4 && (oName.includes(targetName) || targetName.includes(oName))));
+            const matchMrn = targetMrn && oUmr && (oUmr === targetMrn || oUmr.includes(targetMrn) || targetMrn.includes(oUmr));
+            const matchEnc = targetEncounter && oEnc && oEnc === targetEncounter;
+            if (matchName || matchMrn || matchEnc) {
+              (o.tests || []).forEach((t: any) => {
+                if (t.name && !extraLabTestNames.includes(t.name)) {
+                  extraLabTestNames.push(t.name);
+                }
+              });
+            }
+          });
+        }
+      }
+    } catch {}
+
+    // Check if claim items contain lab/radiology
+    let claimLabItems: InvoiceItem[] = [];
+    let claimRadItems: InvoiceItem[] = [];
+
+    if (claimContext && claimContext.items) {
+      claimContext.items.forEach((i) => {
+        const desc = i.description || "";
+        const cat = (i.category || "") as string;
+        if (
+          cat === "Radiology / Imaging" ||
+          cat === "Radiology" ||
+          cat === "Imaging" ||
+          claimContext.department === "Radiology" ||
+          RAD_REGEX.test(desc)
+        ) {
+          claimRadItems.push(i);
+        } else if (
+          cat === "Laboratory" ||
+          cat === "Lab" ||
+          cat === "Pathology" ||
+          cat === "Biochemistry" ||
+          cat === "Hematology" ||
+          cat === "Microbiology" ||
+          claimContext.department === "Laboratory" ||
+          LAB_REGEX.test(desc) ||
+          cat === "Investigation"
+        ) {
+          claimLabItems.push(i);
+        }
+      });
+    }
+
+    // Also check department charges for this patient
+    try {
+      const deptCharges = this.getDepartmentCharges().filter((d) => {
+        const dName = (d.patientName || "").toLowerCase().trim();
+        const dMrn = (d.mrn || d.patientId || "").toLowerCase().replace("umr", "").replace("p-", "").trim();
+        const dEnc = (d.encounterId || "").toLowerCase().trim();
+        return (
+          (targetEncounter && dEnc === targetEncounter) ||
+          (targetMrn && dMrn === targetMrn) ||
+          (targetName && dName === targetName)
+        );
+      });
+
+      deptCharges.forEach((dept) => {
+        (dept.items || []).forEach((it) => {
+          const desc = it.description || "";
+          const cat = (it.category || "") as string;
+          if (
+            cat === "Radiology / Imaging" ||
+            cat === "Radiology" ||
+            cat === "Imaging" ||
+            RAD_REGEX.test(desc)
+          ) {
+            if (!claimRadItems.some((x) => x.description === desc)) {
+              claimRadItems.push(it);
+            }
+          } else if (
+            cat === "Laboratory" ||
+            cat === "Lab" ||
+            cat === "Pathology" ||
+            cat === "Biochemistry" ||
+            cat === "Hematology" ||
+            cat === "Microbiology" ||
+            LAB_REGEX.test(desc) ||
+            cat === "Investigation"
+          ) {
+            if (!claimLabItems.some((x) => x.description === desc)) {
+              claimLabItems.push(it);
+            }
+          }
+        });
+      });
+    } catch {}
+
+    // Check ErVisit investigations if applicable (read-only)
+    try {
+      const allVisits = ErDatabase.getVisits("all");
+      const vMatch = allVisits.find((v) => {
+        const vNo = (v.visit_no || "").toLowerCase().trim();
+        const vId = String(v.id).trim();
+        const vName = [v.patient_name, v.patient_last_name].filter(Boolean).join(" ").toLowerCase().trim();
+        return (
+          (targetEncounter && (vNo === targetEncounter || vId === targetEncounter || `er-${vId}` === targetEncounter)) ||
+          (targetName && vName === targetName)
+        );
+      });
+
+      if (vMatch && vMatch.investigations && vMatch.investigations.length > 0) {
+        vMatch.investigations.forEach((inv) => {
+          const tName = inv.test_name || "";
+          if (!tName) return;
+          if (RAD_REGEX.test(tName) || (inv as any).modality) {
+            if (!claimRadItems.some((x) => x.description === tName)) {
+              claimRadItems.push({
+                id: `INV-RAD-${Date.now()}`,
+                description: tName,
+                category: "Radiology / Imaging",
+                cptCode: "71045",
+                quantity: 1,
+                unitPrice: 500,
+                total: 500,
+                insuranceCovered: 0,
+                patientPayable: 500,
+              });
+            }
+          } else {
+            if (!claimLabItems.some((x) => x.description === tName)) {
+              claimLabItems.push({
+                id: `INV-LAB-${Date.now()}`,
+                description: tName,
+                category: "Laboratory",
+                cptCode: "80050",
+                quantity: 1,
+                unitPrice: 400,
+                total: 400,
+                insuranceCovered: 0,
+                patientPayable: 400,
+              });
+            }
+          }
+        });
+      }
+    } catch {}
+
+    const hasLab =
+      labOrders.length > 0 ||
+      claimLabItems.length > 0 ||
+      extraLabTestNames.length > 0;
 
     const hasRad = radStudies.length > 0 || claimRadItems.length > 0
 
-    const labTestNames = labOrders.map((o) => o.test)
+    const labTestNames = [
+      ...labOrders.map((o) => o.test),
+      ...extraLabTestNames,
+    ];
 
-    if (claimLabItems.length > 0 && labTestNames.length === 0) {
-      labTestNames.push(...claimLabItems.map((i) => i.description))
+    if (claimLabItems.length > 0) {
+      claimLabItems.forEach((i) => {
+        if (!labTestNames.includes(i.description)) {
+          labTestNames.push(i.description);
+        }
+      });
     }
 
     const radStudyNames = radStudies.map((s) => s.study)
 
-    if (claimRadItems.length > 0 && radStudyNames.length === 0) {
-      radStudyNames.push(...claimRadItems.map((i) => i.description))
+    if (claimRadItems.length > 0) {
+      claimRadItems.forEach((i) => {
+        if (!radStudyNames.includes(i.description)) {
+          radStudyNames.push(i.description);
+        }
+      });
     }
 
     const labPaid = labOrders.filter((lo) => lo.paymentStatus === "Paid").length
@@ -5529,31 +5970,23 @@ export class BillingDatabase {
 
     return {
       hasLabOrders: hasLab,
-
       labPaidCount: labPaid,
-
       labPendingCount:
         labPending > 0
           ? labPending
           : claimLabItems.length > 0 && labPaid === 0
             ? claimLabItems.length
             : 0,
-
       labTestNames,
-
       hasRadStudies: hasRad,
-
       radPaidCount: radPaid,
-
       radPendingCount:
         radPending > 0
           ? radPending
           : claimRadItems.length > 0 && radPaid === 0
             ? claimRadItems.length
             : 0,
-
       radStudyNames,
-
       isNonDiagnostic: !hasLab && !hasRad,
     }
   }
@@ -6315,12 +6748,12 @@ export class BillingDatabase {
 
     const mrnClean = query.replace("umr", "").trim()
 
-    const isSpecificVisit = Boolean(
+    const isEncounterQuery = Boolean(
       query &&
         (query.startsWith("er-") ||
           query.startsWith("enc-") ||
           /^\d+$/.test(query)),
-    )
+    );
 
     const matchingClaims = claims.filter((c) => {
       if (c.status === "Voided") return false
@@ -6337,39 +6770,76 @@ export class BillingDatabase {
 
       const cMrn = (c.mrn || "").toLowerCase().trim()
 
-      const isErClaim = c.department === "Emergency"
+      // 1. Exact encounter match or invoice or claim ID match
+      if (
+        query &&
+        (encId === query ||
+          invNo === query ||
+          cId === query ||
+          encId === `er-${query}`)
+      )
+        return true;
 
-      // 1. Exact encounter match
+      // If query is an encounter ID, claims with a different encounter ID belong to other visits!
+      if (
+        isEncounterQuery &&
+        encId &&
+        encId !== query &&
+        encId !== `er-${query}`
+      ) {
+        return false;
+      }
+      // 2. Match by MRN or patientId ONLY for Emergency department and if claim has no conflicting encounter
+      if (
+        !isEncounterQuery &&
+        query &&
+        (pId === query ||
+          cMrn === query ||
+          (mrnClean &&
+            (cMrn === mrnClean ||
+              pId.replace("umr", "").replace("p-", "") === mrnClean)))
+      ) {
+        if (c.department === "Emergency" && (!encId || encId === query))
+          return true;
+      }
 
-      if (query && (encId === query || invNo === query || cId === query))
-        return true
-
-      // 2. Only if NOT a specific visit query, check general ER claims
-
-      if (!isSpecificVisit && isErClaim) {
-        if (
-          query &&
-          (pId === query ||
-            cMrn === query ||
-            (mrnClean &&
-              (cMrn === mrnClean || pId.replace("umr", "") === mrnClean)))
-        ) {
-          return true
-        }
-
-        if (
-          nameQuery &&
-          nameQuery.length >= 3 &&
-          (cName === nameQuery ||
-            cName.includes(nameQuery) ||
-            nameQuery.includes(cName))
-        ) {
-          return true
-        }
+      // 3. Match by exact patient name ONLY for Emergency department if claim has no conflicting encounter
+      if (
+        !isEncounterQuery &&
+        nameQuery &&
+        nameQuery.length >= 3 &&
+        nameQuery !== "patient" &&
+        nameQuery !== "unknown" &&
+        cName === nameQuery
+      ) {
+        if (c.department === "Emergency" && (!encId || encId === query))
+          return true;
       }
 
       return false
     })
+
+    // Prioritize exact encounter match, then Emergency department, then active balance due, then newest
+    matchingClaims.sort((a, b) => {
+      const aEnc =
+        query && (a.encounterId || "").toLowerCase().trim() === query ? 1 : 0;
+      const bEnc =
+        query && (b.encounterId || "").toLowerCase().trim() === query ? 1 : 0;
+      if (bEnc !== aEnc) return bEnc - aEnc;
+
+      const aEr = a.department === "Emergency" ? 1 : 0;
+      const bEr = b.department === "Emergency" ? 1 : 0;
+      if (bEr !== aEr) return bEr - aEr;
+
+      const aDue = (a.balanceDue || 0) > 0 ? 1 : 0;
+      const bDue = (b.balanceDue || 0) > 0 ? 1 : 0;
+      if (bDue !== aDue) return bDue - aDue;
+
+      return (
+        new Date(b.createdAt || 0).getTime() -
+        new Date(a.createdAt || 0).getTime()
+      );
+    });
 
     const matchingDeptCharges = deptCharges.filter((d) => {
       const pId = (d.patientId || "").toLowerCase().trim()
@@ -6380,139 +6850,173 @@ export class BillingDatabase {
 
       if (d.department !== "Emergency") return false
 
-      if (isSpecificVisit) {
-        return encId === query
+      if (query && (encId === query || encId === `er-${query}`)) return true;
+
+      if (!isEncounterQuery) {
+        if (query && pId === query) return true;
+
+        if (
+          nameQuery.length >= 3 &&
+          nameQuery !== "patient" &&
+          nameQuery !== "unknown" &&
+          dName === nameQuery
+        ) {
+          return true;
+        }
       }
 
-      return (
-        (query && (encId === query || pId === query)) ||
-        (nameQuery.length >= 3 &&
-          (dName === nameQuery ||
-            dName.includes(nameQuery) ||
-            nameQuery.includes(dName)))
-      )
-    })
+      return false;
+    });
 
     const unInvoicedCharges = matchingDeptCharges.filter(
       (d) => d.status !== "Invoiced in Central Billing",
     )
 
-    const deptChargesDue = unInvoicedCharges.reduce(
+    let totalUnbilledCharges = unInvoicedCharges.reduce(
       (sum, d) => sum + (d.totalAmount || 0),
       0,
     )
 
-    if (matchingClaims.length === 0 && matchingDeptCharges.length === 0) {
+    // Also look up the ErVisit record to count charted medications, treatments, or procedures not yet staged in deptCharges
+    if (totalUnbilledCharges === 0) {
+      try {
+        const allVisits = ErDatabase.getVisits("all");
+        const visit = allVisits.find((v) => {
+          const vNo = (v.visit_no || "").toLowerCase().trim();
+          const vId = String(v.id).trim();
+          return (
+            (query &&
+              (vNo === query || vId === query || `er-${vId}` === query)) ||
+            (nameQuery &&
+              nameQuery !== "patient" &&
+              nameQuery !== "unknown" &&
+              [v.patient_name, v.patient_last_name]
+                .filter(Boolean)
+                .join(" ")
+                .toLowerCase() === nameQuery)
+          );
+        });
+
+        if (visit) {
+          // 1. Charted treatments / medications on the visit
+          if (visit.treatments && visit.treatments.length > 0) {
+            visit.treatments.forEach((t) => {
+              const medName = t.description || t.intervention_type || "";
+              if (medName) {
+                const tariff = resolveErItemPrice(medName, "medication");
+                totalUnbilledCharges += tariff.unitPrice;
+              }
+            });
+          }
+
+          // 2. Charted investigations
+          if (visit.investigations && visit.investigations.length > 0) {
+            visit.investigations.forEach((inv) => {
+              const testName = inv.test_name || "";
+              if (testName) {
+                const tariff = resolveErItemPrice(testName, "investigation");
+                totalUnbilledCharges += tariff.unitPrice;
+              }
+            });
+          }
+
+          // 3. Charted timeline medication events
+          if (visit.timeline_events && visit.timeline_events.length > 0) {
+            visit.timeline_events.forEach((ev) => {
+              if (
+                ev.event_type === "medication_given" ||
+                ev.event_type === "intervention_given"
+              ) {
+                const evName = ev.event_name || ev.notes || "";
+                if (evName) {
+                  const tariff = resolveErItemPrice(
+                    evName,
+                    ev.event_type === "medication_given"
+                      ? "medication"
+                      : "intervention",
+                  );
+                  totalUnbilledCharges += tariff.unitPrice;
+                }
+              }
+            });
+          }
+        }
+      } catch {
+        // Safe fallback
+      }
+    }
+
+    if (matchingClaims.length === 0) {
       return {
-        isCleared: true,
-
+        isCleared: false,
         status: "unbilled",
-
         hasActiveBill: false,
-
         balanceDue: 0,
-
-        totalAmount: 0,
-
-        unbilledAmount: 0,
-
+        totalAmount: totalUnbilledCharges,
+        unbilledAmount: totalUnbilledCharges,
+        invoiceNo: unInvoicedCharges[0]?.id,
+        claimId: unInvoicedCharges[0]?.id,
+        patientName: unInvoicedCharges[0]?.patientName,
+        hasPendingCharges: totalUnbilledCharges > 0,
         pendingInvoices: [],
       }
     }
 
-    if (matchingClaims.length > 0) {
-      const claimBalanceDue = matchingClaims.reduce(
-        (sum, c) => sum + (c.balanceDue || 0),
-        0,
-      )
+    const claimBalanceDue = matchingClaims.reduce(
+      (sum, c) => sum + (c.balanceDue || 0),
+      0,
+    );
 
-      const claimTotal = matchingClaims.reduce(
-        (sum, c) => sum + (c.totalAmount || 0),
-        0,
-      )
+    const claimTotal = matchingClaims.reduce(
+      (sum, c) => sum + (c.totalAmount || 0),
+      0,
+    );
 
-      const latestClaim = matchingClaims[0]
+    const latestClaim = matchingClaims[0];
 
-      const latestPayment =
-        latestClaim?.payments && latestClaim.payments.length > 0
-          ? latestClaim.payments[latestClaim.payments.length - 1]
-          : undefined
+    const latestPayment =
+      latestClaim?.payments && latestClaim.payments.length > 0
+        ? latestClaim.payments[latestClaim.payments.length - 1]
+        : undefined;
 
-      const isDue = claimBalanceDue > 0
+    const isDue = claimBalanceDue > 0;
 
-      const isPaid = !isDue && (claimTotal > 0 || !!latestPayment)
+    const isPaid =
+      !isDue &&
+      (claimTotal > 0 || !!latestPayment || latestClaim?.status === "Paid");
 
-      const status: "paid" | "due" | "unbilled" = isDue
-        ? "due"
-        : isPaid
-          ? "paid"
-          : "unbilled"
+    const status: "paid" | "due" | "unbilled" = isDue
+      ? "due"
+      : isPaid
+        ? "paid"
+        : "unbilled";
 
-      const pendingInvoices = matchingClaims
-
-        .filter((c) => (c.balanceDue || 0) > 0)
-
-        .map((c) => ({
-          invoiceNo: c.invoiceNo,
-
-          dueAmount: c.balanceDue || 0,
-
-          department: c.department,
-        }))
-
-      return {
-        isCleared: !isDue,
-
-        status,
-
-        hasActiveBill: true,
-
-        balanceDue: claimBalanceDue,
-
-        totalAmount: claimTotal,
-
-        unbilledAmount: deptChargesDue,
-
-        receiptNo:
-          latestPayment?.receiptNo || (isPaid ? "RCPT-2026-5501" : undefined),
-
-        invoiceNo: latestClaim?.invoiceNo,
-
-        claimId: latestClaim?.id,
-
-        patientName: latestClaim?.patientName,
-
-        hasPendingCharges: deptChargesDue > 0,
-
-        pendingInvoices,
-      }
-    }
-
-    // No formal invoice dispatched to Central Billing yet - all charges remain staged unbilled
+    const pendingInvoices = matchingClaims
+      .filter((c) => (c.balanceDue || 0) > 0)
+      .map((c) => ({
+        invoiceNo: c.invoiceNo,
+        dueAmount: c.balanceDue || 0,
+        department: c.department,
+      }));
 
     return {
-      isCleared: deptChargesDue === 0,
-
-      status: "unbilled",
-
-      hasActiveBill: false,
-
-      balanceDue: 0,
-
-      totalAmount: deptChargesDue,
-
-      unbilledAmount: deptChargesDue,
-
-      invoiceNo: unInvoicedCharges[0]?.id,
-
-      claimId: unInvoicedCharges[0]?.id,
-
-      patientName: unInvoicedCharges[0]?.patientName,
-
-      hasPendingCharges: deptChargesDue > 0,
-
-      pendingInvoices: [],
-    }
+      isCleared: isPaid,
+      status,
+      hasActiveBill: true,
+      balanceDue: claimBalanceDue,
+      totalAmount: claimTotal,
+      unbilledAmount: totalUnbilledCharges,
+      receiptNo:
+        latestPayment?.receiptNo ||
+        (isPaid
+          ? latestClaim.payments?.[0]?.receiptNo || "RCPT-2026-5501"
+          : undefined),
+      invoiceNo: latestClaim?.invoiceNo,
+      claimId: latestClaim?.id,
+      patientName: latestClaim?.patientName,
+      hasPendingCharges: totalUnbilledCharges > 0,
+      pendingInvoices,
+    };
   }
 
   /**
@@ -6536,24 +7040,32 @@ export class BillingDatabase {
    * Get and clear preselected claim ID for Central Billing POS
    */
 
-  static getPreselectedClaimForBilling(): string | null {
+  static getPreselectedClaimForBilling(clear = false): string | null {
     try {
       if (typeof window !== "undefined" && window.sessionStorage) {
         const item = window.sessionStorage.getItem(
           "hospai_billing_preselected_claim",
-        )
+        );
 
-        if (item) {
-          window.sessionStorage.removeItem("hospai_billing_preselected_claim")
-
-          return item
+        if (item && clear) {
+          window.sessionStorage.removeItem("hospai_billing_preselected_claim");
         }
+
+        return item || null;
       }
     } catch {
       // Ignore in non-browser environment
     }
 
-    return null
+    return null;
+  }
+
+  static clearPreselectedClaimForBilling(): void {
+    try {
+      if (typeof window !== "undefined" && window.sessionStorage) {
+        window.sessionStorage.removeItem("hospai_billing_preselected_claim");
+      }
+    } catch {}
   }
 
   /**
@@ -6795,7 +7307,8 @@ export class BillingDatabase {
 
       deptCharges[deptIdx] = updatedDept
 
-      this.save(STORAGE_KEY_DEPT_CHARGES, deptCharges)
+      this.save(STORAGE_KEY_DEPT_CHARGES, deptCharges);
+      this.emitUpdate();
 
       return {
         totalAdded: total,
@@ -6850,7 +7363,8 @@ export class BillingDatabase {
 
     deptCharges.unshift(newDeptCharge)
 
-    this.save(STORAGE_KEY_DEPT_CHARGES, deptCharges)
+    this.save(STORAGE_KEY_DEPT_CHARGES, deptCharges);
+    this.emitUpdate();
 
     return {
       totalAdded: total,

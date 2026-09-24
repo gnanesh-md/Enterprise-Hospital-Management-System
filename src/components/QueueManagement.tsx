@@ -2120,29 +2120,34 @@ export default function QueueManagement({
                     </div>
 
                     <div className="bg-[#F8FAFC] p-3 rounded border border-[#E2E8F0] space-y-1.5 text-[12px]">
-                      <div className="flex justify-between text-gray-700">
-                        <span>1. Physician Outpatient Consultation Fee</span>
-                        <span className="font-mono font-bold text-gray-900">
-                          ₹
-                          {selectedJourneyEncounter.billing?.consultationFee ||
-                            50}
-                          .00
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-gray-700">
-                        <span>2. Diagnostic Investigations / Triage</span>
-                        <span className="font-mono font-bold text-gray-900">
-                          ₹{selectedJourneyEncounter.billing?.labFee || 40}.00
-                        </span>
-                      </div>
-                      <div className="pt-1.5 border-t border-[#E2E8F0] flex justify-between font-bold text-[13px] text-gray-900">
-                        <span>Total Official Settlement:</span>
-                        <span className="font-mono text-emerald-700">
-                          ₹{selectedJourneyEncounter.billing?.total || 90}.00
-                          (Status:{" "}
-                          {selectedJourneyEncounter.billing?.status || "Paid"})
-                        </span>
-                      </div>
+                      {(() => {
+                        const regFee = selectedJourneyEncounter.billing?.registrationFee ?? (selectedJourneyEncounter.isNew === false ? 0 : 20)
+                        const consultFee = selectedJourneyEncounter.billing?.consultationFee ?? 500
+                        const labFee = selectedJourneyEncounter.billing?.labFee || 0
+                        const grandTotal = selectedJourneyEncounter.billing?.total || (regFee + consultFee + labFee)
+                        return (
+                          <>
+                            <div className="flex justify-between text-gray-700">
+                              <span>1. Patient Registration Fee {selectedJourneyEncounter.isNew === false || regFee === 0 ? "(Existing Patient)" : ""}</span>
+                              <span className="font-mono font-bold text-gray-900">₹{regFee}.00</span>
+                            </div>
+                            <div className="flex justify-between text-gray-700">
+                              <span>2. Physician Outpatient Consultation Fee {selectedJourneyEncounter.assignedDoctor ? `(${selectedJourneyEncounter.assignedDoctor})` : ""}</span>
+                              <span className="font-mono font-bold text-gray-900">₹{consultFee}.00</span>
+                            </div>
+                            {labFee > 0 && (
+                              <div className="flex justify-between text-gray-700">
+                                <span>3. Diagnostic Investigations / Triage</span>
+                                <span className="font-mono font-bold text-gray-900">₹{labFee}.00</span>
+                              </div>
+                            )}
+                            <div className="pt-1.5 border-t border-[#E2E8F0] flex justify-between font-bold text-[13px] text-gray-900">
+                              <span>Total Official Settlement:</span>
+                              <span className="font-mono text-emerald-700">₹{grandTotal}.00 (Status: {selectedJourneyEncounter.billing?.status || 'Paid'})</span>
+                            </div>
+                          </>
+                        )
+                      })()}
                     </div>
                   </div>
                 </div>

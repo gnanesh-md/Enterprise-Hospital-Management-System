@@ -56,16 +56,17 @@ export default function PaymentCollection() {
     payment: PaymentRecord
   } | null>(null)
 
-  // ── Toast Notifications ─────────────────────────────────────────────────────
-  const [toast, setToast] = useState<{
-    message: string
-    type: "success" | "error"
+  // ── Payment Confirmation & Post-Payment Clearance Modals ────────────────────
+  const [showConfirmPayModal, setShowConfirmPayModal] = useState(false)
+  const [postPayClearanceModal, setPostPayClearanceModal] = useState<{
+    claim: ClaimRecord
+    payment: PaymentRecord
   } | null>(null)
 
-  const showToast = (
-    message: string,
-    type: "success" | "error" = "success",
-  ) => {
+  // ── Toast Notifications ─────────────────────────────────────────────────────
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null)
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
   }
@@ -267,12 +268,18 @@ export default function PaymentCollection() {
   }
 
   // ── Process Payment Handler ─────────────────────────────────────────────────
-  const handleProcessPayment = () => {
+  // ── Process Payment Handler ─────────────────────────────────────────────────
+  const handleInitiatePayment = () => {
     if (!selectedClaim) return
     if (payAmount <= 0) {
       showToast("Please enter a valid payment amount.", "error")
       return
     }
+    setShowConfirmPayModal(true)
+  }
+
+  const executeConfirmedPayment = () => {
+    if (!selectedClaim) return
 
     try {
       const result = BillingDatabase.recordPayment(selectedClaim.id, {
@@ -283,11 +290,16 @@ export default function PaymentCollection() {
         notes: notes.trim() || undefined,
       })
 
-      setReceiptModalData(result)
-      showToast(
-        `✓ Payment of ₹${payAmount.toLocaleString("en-IN")} collected! Receipt: ${result.payment.receiptNo}`,
-        "success",
-      )
+      setShowConfirmPayModal(false)
+
+      const cs = BillingDatabase.getDepartmentClearanceStatus(result.claim.patientName, result.claim)
+      if (cs.hasLabOrders || cs.hasRadStudies) {
+        setPostPayClearanceModal(result)
+        showToast(`✓ Payment of ₹${payAmount.toLocaleString("en-IN")} collected! Receipt: ${result.payment.receiptNo}`, "success")
+      } else {
+        setReceiptModalData(result)
+        showToast(`✓ Payment of ₹${payAmount.toLocaleString("en-IN")} collected! Receipt: ${result.payment.receiptNo}`, "success")
+      }
       refreshData()
     } catch (e: any) {
       showToast(e.message || "Failed to process payment", "error")
@@ -351,10 +363,12 @@ export default function PaymentCollection() {
           className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-xl text-[13px] font-medium flex items-center gap-2.5 ${
             toast.type === "success"
               ? "bg-emerald-600 text-white"
+              : toast.type === "info"
+              ? "bg-blue-600 text-white"
               : "bg-rose-600 text-white"
           }`}
         >
-          <span>{toast.type === "success" ? "✓" : "⚠️"}</span>
+          <span>{toast.type === "success" ? "✓" : toast.type === "info" ? "ℹ️" : "⚠️"}</span>
           <span>{toast.message}</span>
         </div>
       )}
@@ -926,8 +940,17 @@ export default function PaymentCollection() {
                       </label>
                       <input
                         type="number"
-                        value={payAmount}
-                        onChange={(e) => setPayAmount(Number(e.target.value))}
+                        value={
+                          payAmount === undefined ||
+                          payAmount === null ||
+                          (payAmount as any) === ""
+                            ? ""
+                            : payAmount
+                        }
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setPayAmount(val === "" ? ("" as any) : Number(val));
+                        }}
                         className="w-full px-3 py-1.5 bg-white border border-[#CBD5E1] rounded font-mono font-bold text-gray-900 text-sm focus:border-[#1B4FD8]"
                       />
                     </div>
@@ -954,10 +977,17 @@ export default function PaymentCollection() {
                         </label>
                         <input
                           type="number"
-                          value={cashTendered}
-                          onChange={(e) =>
-                            setCashTendered(Number(e.target.value))
+                          value={
+                            cashTendered === undefined ||
+                            cashTendered === null ||
+                            (cashTendered as any) === ""
+                              ? ""
+                              : cashTendered
                           }
+                          onChange={(e) => {
+                            const val = e.target.value
+                            setCashTendered(val === "" ? ("" as any) : Number(val))
+                          }}
                           className="w-full px-2 py-1 bg-white border border-amber-300 rounded font-mono font-bold"
                         />
                       </div>
@@ -976,10 +1006,8 @@ export default function PaymentCollection() {
                   <div className="space-y-2 pt-2">
                     <button
                       type="button"
-                      onClick={handleProcessPayment}
-                      disabled={
-                        (selectedClaim.balanceDue || 0) === 0 && payAmount <= 0
-                      }
+                      onClick={handleInitiatePayment}
+                      disabled={(selectedClaim.balanceDue || 0) === 0 && payAmount <= 0}
                       className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold rounded text-sm cursor-pointer shadow-sm transition-colors flex items-center justify-center gap-2"
                     >
                       <span>✓</span> Process Settlement &amp; Issue Receipt
@@ -1097,6 +1125,318 @@ export default function PaymentCollection() {
           </div>
         )}
       </div>
+
+      {/* Confirmation Modal Before Payment */}
+      {showConfirmPayModal && selectedClaim && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💳</span>
+                <h3 className="font-extrabold text-sm">Confirm Payment Collection</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConfirmPayModal(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Patient:</span>
+                  <span className="font-bold text-slate-900 text-sm">{selectedClaim.patientName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">MRN / UMR:</span>
+                  <span className="font-mono font-bold text-slate-700">{selectedClaim.mrn || selectedClaim.patientId}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Invoice No:</span>
+                  <span className="font-mono font-bold text-blue-700">{selectedClaim.invoiceNo}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Department:</span>
+                  <span className="font-semibold text-slate-700">{selectedClaim.department}</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-emerald-900 font-bold">Payment Amount:</span>
+                  <span className="font-mono font-black text-emerald-800 text-base">₹{payAmount.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600 font-medium">Payment Mode:</span>
+                  <span className="font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                    {payMethod}
+                  </span>
+                </div>
+                {payMethod === "Cash" && (
+                  <div className="flex justify-between items-center text-[11px] pt-1 border-t border-emerald-100">
+                    <span className="text-slate-500">Tendered: ₹{cashTendered.toLocaleString("en-IN")}</span>
+                    <span className="text-emerald-700 font-bold">
+                      Change Due: ₹{changeDue.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Diagnostic Orders Alert if applicable */}
+              {(() => {
+                const cs = BillingDatabase.getDepartmentClearanceStatus(selectedClaim.patientName, selectedClaim);
+                if (cs.hasLabOrders || cs.hasRadStudies) {
+                  return (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-start gap-2">
+                      <span className="text-base text-amber-600">🔬</span>
+                      <div>
+                        <div className="font-bold text-amber-950 text-xs">Diagnostic Clearance Included</div>
+                        <p className="text-[11px] text-amber-800 mt-0.5">
+                          {cs.hasLabOrders && `• ${cs.labTestNames.length} Lab Test(s) `}
+                          {cs.hasRadStudies && `• ${cs.radStudyNames.length} Radiology Study `}
+                          will be unlocked. You will be prompted to send the cleared orders to departments upon confirming.
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPayModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeConfirmedPayment}
+                  className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <span>✓</span> Confirm &amp; Pay ₹{payAmount.toLocaleString("en-IN")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Post-Payment Clearance Modal */}
+      {postPayClearanceModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-emerald-400 text-slate-900 flex items-center justify-center font-bold text-xs">✓</span>
+                <div>
+                  <h3 className="font-extrabold text-sm">Send Orders to Laboratory / Radiology?</h3>
+                  <p className="text-[10px] text-blue-200">
+                    Payment of ₹{postPayClearanceModal.payment.amount.toLocaleString("en-IN")} received • Receipt #{postPayClearanceModal.payment.receiptNo}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setReceiptModalData({ claim: postPayClearanceModal.claim, payment: postPayClearanceModal.payment });
+                  setPostPayClearanceModal(null);
+                }}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold text-xs cursor-pointer"
+                title="Close & View Receipt"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-slate-500 font-medium">Patient:</span>{" "}
+                  <strong className="text-slate-900 text-sm">{postPayClearanceModal.claim.patientName}</strong>{" "}
+                  <span className="text-slate-500 font-mono">({postPayClearanceModal.claim.mrn || postPayClearanceModal.claim.patientId})</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-emerald-800 font-black font-mono text-sm">
+                    ₹{postPayClearanceModal.payment.amount.toLocaleString("en-IN")} PAID
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-slate-700 font-medium leading-relaxed">
+                <p className="font-bold text-blue-900 mb-0.5">Diagnostic Tests Prescribed</p>
+                The payment has been confirmed. Would you like to send these diagnostic test orders to the Laboratory and/or Radiology departments now so they appear on their worklists?
+              </div>
+
+              {/* Department Clearance Cards */}
+              <div className="space-y-2.5">
+                {(() => {
+                  const cs = BillingDatabase.getDepartmentClearanceStatus(
+                    postPayClearanceModal.claim.patientName,
+                    postPayClearanceModal.claim
+                  );
+                  const isLabSent = dispatchedClearances[`${postPayClearanceModal.claim.patientName}_Laboratory`] || cs.labPendingCount === 0;
+                  const isRadSent = dispatchedClearances[`${postPayClearanceModal.claim.patientName}_Radiology`] || cs.radPendingCount === 0;
+
+                  return (
+                    <>
+                      {cs.hasLabOrders && (
+                        <div className="p-3 bg-white border border-teal-200 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center shrink-0 text-teal-700 font-bold text-base">
+                              🧪
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-extrabold text-slate-900 text-xs">Laboratory Department</div>
+                              <div className="text-[11px] text-teal-800 font-semibold truncate">
+                                Tests: {cs.labTestNames.join(", ") || "Standard Lab Panel"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            {isLabSent ? (
+                              <span className="px-3 py-1.5 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center gap-1">
+                                ✓ Sent to Lab
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDispatchClearance(
+                                    postPayClearanceModal.claim.patientName,
+                                    "Laboratory",
+                                    postPayClearanceModal.payment.receiptNo,
+                                    cs.labTestNames.join(" + ")
+                                  )
+                                }
+                                className="px-3.5 py-1.5 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-extrabold text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
+                              >
+                                <span>📤</span> Send to Lab
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {cs.hasRadStudies && (
+                        <div className="p-3 bg-white border border-indigo-200 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center shrink-0 text-indigo-700 font-bold text-base">
+                              🩻
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-extrabold text-slate-900 text-xs">Radiology &amp; Imaging</div>
+                              <div className="text-[11px] text-indigo-800 font-semibold truncate">
+                                Studies: {cs.radStudyNames.join(", ") || "Imaging Studies"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0">
+                            {isRadSent ? (
+                              <span className="px-3 py-1.5 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center gap-1">
+                                ✓ Sent to Radiology
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleDispatchClearance(
+                                    postPayClearanceModal.claim.patientName,
+                                    "Radiology",
+                                    postPayClearanceModal.payment.receiptNo,
+                                    cs.radStudyNames.join(" + ")
+                                  )
+                                }
+                                className="px-3.5 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-extrabold text-xs rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
+                              >
+                                <span>📤</span> Send to Radiology
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Modal Footer Actions: Prominent Yes Send / No Skip */}
+              <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    showToast("Diagnostic orders kept on hold. Showing payment receipt.", "info");
+                    setReceiptModalData({
+                      claim: postPayClearanceModal.claim,
+                      payment: postPayClearanceModal.payment,
+                    });
+                    setPostPayClearanceModal(null);
+                  }}
+                  className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer text-center transition-colors"
+                >
+                  ✕ No, Skip for Now
+                </button>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cs = BillingDatabase.getDepartmentClearanceStatus(
+                        postPayClearanceModal.claim.patientName,
+                        postPayClearanceModal.claim
+                      );
+                      if (cs.hasLabOrders) {
+                        handleDispatchClearance(
+                          postPayClearanceModal.claim.patientName,
+                          "Laboratory",
+                          postPayClearanceModal.payment.receiptNo,
+                          cs.labTestNames.join(" + ")
+                        );
+                      }
+                      if (cs.hasRadStudies) {
+                        handleDispatchClearance(
+                          postPayClearanceModal.claim.patientName,
+                          "Radiology",
+                          postPayClearanceModal.payment.receiptNo,
+                          cs.radStudyNames.join(" + ")
+                        );
+                      }
+                      showToast(
+                        `✓ Diagnostic clearance dispatched by Billing Department! Receipt #${postPayClearanceModal.payment.receiptNo}.`,
+                        "success"
+                      );
+                      setReceiptModalData({
+                        claim: postPayClearanceModal.claim,
+                        payment: postPayClearanceModal.payment,
+                      });
+                      setPostPayClearanceModal(null);
+                    }}
+                    className="w-full sm:w-auto px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold rounded-xl text-xs cursor-pointer shadow-md flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <span>✓</span>
+                    {(() => {
+                      const cs = BillingDatabase.getDepartmentClearanceStatus(
+                        postPayClearanceModal.claim.patientName,
+                        postPayClearanceModal.claim
+                      );
+                      if (cs.hasLabOrders && cs.hasRadStudies) return "Yes, Send to Lab & Radiology";
+                      if (cs.hasLabOrders) return "Yes, Send to Laboratory";
+                      return "Yes, Send to Radiology";
+                    })()}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Standardized Reference Hospital Receipt Modal */}
       {receiptModalData && (

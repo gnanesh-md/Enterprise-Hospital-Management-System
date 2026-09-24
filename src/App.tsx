@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 
 import { Icon, type IconProps } from "./components/icons"
 
@@ -968,6 +968,16 @@ export default function App() {
     if (module === "dpi_ocr") setOcrMounted(true)
   }, [module])
 
+  const mainRef = useRef<HTMLElement>(null)
+
+  // Automatically scroll workspace to top whenever opening or switching modules/reports
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0
+    }
+    window.scrollTo(0, 0)
+  }, [module])
+
   const [orderOpen, setOrderOpen] = useState(false)
 
   const [cmdOpen, setCmdOpen] = useState(false)
@@ -1046,19 +1056,27 @@ export default function App() {
   }, [module, loggedIn, userPermissions])
 
   const handleLogout = () => {
+    let curUsername = activeStaff.name
+    try {
+      const curData = localStorage.getItem("hospai_current_user")
+      if (curData) {
+        const u = JSON.parse(curData)
+        if (u && u.user) curUsername = u.user
+      }
+    } catch {}
+
     AuditDatabase.logEvent(
       "Logout",
-
       "Authentication",
-
       `User ${activeStaff.name} logged out.`,
-
       "Success",
-
       activeStaff.id,
-
-      activeStaff.name,
+      curUsername,
     )
+
+    try {
+      localStorage.removeItem("hospai_current_user")
+    } catch {}
 
     setLoggedIn(false)
   }
@@ -1084,6 +1102,13 @@ export default function App() {
     setModule(doctor ? "doctor_portal" : "dashboard")
 
     setRoleMenuOpen(false)
+
+    try {
+      localStorage.setItem(
+        "hospai_current_user",
+        JSON.stringify({ user: targetUsername, staffId: targetRole }),
+      )
+    } catch {}
   }
 
   const handleLogin = (userData: {
@@ -1097,6 +1122,13 @@ export default function App() {
 
     doctorId?: string
   }) => {
+    try {
+      localStorage.setItem(
+        "hospai_current_user",
+        JSON.stringify({ user: userData.user, staffId: userData.staffId, role: userData.role }),
+      )
+    } catch {}
+
     setUserRole(userData.role)
 
     setUserPermissions(userData.permissions)
@@ -2028,7 +2060,10 @@ export default function App() {
             </aside>
 
             {/* ── Main Workspace ───────────────────────────────────────── */}
-            <main className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden">
+            <main
+              ref={mainRef}
+              className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden"
+            >
               {/* Breadcrumb strip */}
               <div className="bg-white border-b border-slate-200 px-5 py-2 flex items-center gap-2 text-xs text-slate-500 flex-shrink-0 font-medium">
                 <button
