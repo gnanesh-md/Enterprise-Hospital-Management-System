@@ -3,8 +3,6 @@ import { useState } from "react"
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -13,7 +11,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from "recharts"
 import {
   ShoppingCart,
@@ -23,16 +20,14 @@ import {
   TrendingUp,
   TrendingDown,
   Package,
-  FileText,
   IndianRupee,
   RefreshCcw,
   BarChart3,
-  ChevronRight,
   ArrowRight,
-  Zap,
+  Trash2,
 } from "lucide-react"
+import toast from "react-hot-toast"
 
-import PageHeader from "../components/PageHeader"
 import StatusBadge from "../components/StatusBadge"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
 
@@ -40,16 +35,16 @@ const quickActions = [
   {
     label: "New Sale",
     icon: ShoppingCart,
-    color: "#1B4FD8",
+    color: "#0F766E",
     page: "dispensing",
   },
   {
     label: "Prescription Queue",
     icon: ClipboardList,
-    color: "#16a34a",
+    color: "#059669",
     page: "prescriptions",
   },
-  { label: "Receive Stock", icon: Package, color: "#d906", page: "grn" },
+  { label: "Receive Stock", icon: Package, color: "#D97706", page: "grn" },
   {
     label: "Check Stock",
     icon: AlertTriangle,
@@ -64,15 +59,12 @@ const quickActions = [
   },
 ]
 
-const CHART_COLORS = { sales: "#1B4FD8", transactions: "#16a34a" }
-
 interface DashboardProps {
   onNavigate: (page: string) => void
 }
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
   const {
-    salesData,
     prescriptions,
     medicines,
     expiringMedicines,
@@ -83,6 +75,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0],
   )
+
   // Dynamically generate chart data ending on selectedDate
   const last7Days = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date(selectedDate)
@@ -122,7 +115,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   // Selected Date specific metric
   const selectedDateStats = chartData[chartData.length - 1]
   const selectedDateNet = selectedDateStats?.revenue || 0
-  const selectedDateGross = selectedDateStats?.gross || 0
 
   const selectedDatePrescriptions = prescriptions.filter((p) =>
     (p.date || "").startsWith(selectedDate),
@@ -137,7 +129,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       up: true,
       sub: "Total revenue (Gross - Refunds)",
       icon: ShoppingCart,
-      color: "#1B4FD8",
+      color: "#0F766E",
+      borderColor: "#0F766E",
       bg: "#E8EDF5",
       page: "sales-returns",
     },
@@ -148,7 +141,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       up: true,
       sub: "For selected date",
       icon: ClipboardList,
-      color: "#16a34a",
+      color: "#10B981",
+      borderColor: "#10B981",
       bg: "#DCFCE7",
       page: "prescriptions",
     },
@@ -161,7 +155,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       up: false,
       sub: "Requires attention",
       icon: AlertTriangle,
-      color: "#d906",
+      color: "#F59E0B",
+      borderColor: "#F59E0B",
       bg: "#FEF3C7",
       page: "expiry-low-stock",
     },
@@ -172,7 +167,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       up: false,
       sub: "Within 30 days",
       icon: Clock,
-      color: "#dc2626",
+      color: "#EF4444",
+      borderColor: "#EF4444",
       bg: "#FEE2E2",
       page: "expiry-low-stock",
     },
@@ -235,15 +231,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       title: "Supplier Returns This Month",
       value: `₹${returnTotalMonth.toLocaleString()}`,
       icon: RefreshCcw,
-      color: "#1B4FD8",
-      bg: "#E8EDF5",
+      color: "#0284C7",
+      bg: "#E0F2FE",
       page: "supplier-returns",
     },
     {
       title: "Pending Credit Amount",
       value: `₹${pendingCreditAmount.toLocaleString()}`,
       icon: AlertTriangle,
-      color: "#d906",
+      color: "#D97706",
       bg: "#FEF3C7",
       page: "supplier-returns",
     },
@@ -251,7 +247,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       title: "Expired Stock Returned",
       value: `${expiredStockReturned} Units`,
       icon: Package,
-      color: "#dc2626",
+      color: "#DC2626",
       bg: "#FEE2E2",
       page: "supplier-returns",
     },
@@ -259,104 +255,118 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       title: "Total Return Value",
       value: `₹${allTimeReturnValue.toLocaleString()}`,
       icon: IndianRupee,
-      color: "#16a34a",
+      color: "#16A34A",
       bg: "#DCFCE7",
       page: "supplier-returns",
     },
   ]
 
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader
-        breadcrumbs={[{ label: "Pharmacy" }, { label: "Dashboard" }]}
-        title="Pharmacy Dashboard"
-        description={`Here's what's happening in your pharmacy today – ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
-        actions={
-          <div className="flex gap-2 items-center">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-2 rounded text-[13px] font-medium border border-[#DDE2EC] bg-white text-[#334155] focus:border-[#1B4FD8] focus:outline-none"
-            />
-            <button
-              onClick={() => onNavigate("dispensing")}
-              className="px-4 py-2 rounded text-white text-[13px] font-medium flex items-center gap-1.5"
-              style={{ background: "#1B4FD8" }}
-            >
-              <ShoppingCart size={14} /> New Sale
-            </button>
-            <button
-              onClick={() => onNavigate("prescriptions")}
-              className="px-4 py-2 rounded text-[13px] font-medium border border-[#DDE2EC] bg-white text-[#334155] hover:bg-[#F5F7FA] flex items-center gap-1.5 transition-colors"
-            >
-              <ClipboardList size={14} /> Scan Prescription
-            </button>
+    <div className="p-6 space-y-6 bg-[#EDF7F5] min-h-full font-sans text-[#0F1624]">
+      {/* Header Card */}
+      <div className="bg-gradient-to-r from-[#F0FDFA] to-white rounded-xl shadow-sm border border-[#E2E8F0] border-t-2 border-t-[#0F766E] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-xl">💊</span>
+            <h1 className="text-[20px] font-bold text-[#064E3B] tracking-tight">
+              Pharmacy Dashboard
+            </h1>
           </div>
-        }
-        onNavigate={onNavigate}
-      />
+          <p className="text-[12.5px] text-[#64748B] mt-1">
+            Here's what's happening in your pharmacy today –{" "}
+            {new Date().toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </p>
+        </div>
 
-      {/* KPI Cards */}
+        <div className="flex gap-2 items-center flex-wrap">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="px-3 py-2 rounded text-[13px] font-medium border border-[#E2E8F0] bg-white text-[#334155] focus:border-[#0F766E] focus:outline-none"
+          />
+          <button
+            onClick={() => onNavigate("dispensing")}
+            className="px-4 py-2 rounded text-white text-[13px] font-medium flex items-center gap-1.5 shadow-sm hover:opacity-95 transition-opacity"
+            style={{ background: "#0F766E" }}
+          >
+            <ShoppingCart size={14} /> New Sale
+          </button>
+          <button
+            onClick={() => onNavigate("prescriptions")}
+            className="px-4 py-2 rounded text-[13px] font-medium border border-[#E2E8F0] bg-white text-[#334155] hover:bg-[#F0FDFA] flex items-center gap-1.5 transition-colors"
+          >
+            <ClipboardList size={14} /> Scan Prescription
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Cards Row 1 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi) => (
           <button
             key={kpi.title}
             onClick={() => onNavigate(kpi.page)}
-            className="bg-white rounded p-5 border border-[#DDE2EC] hover:border-[#1B4FD8] hover:shadow-md transition-all text-left w-full group"
+            className="bg-white rounded-xl p-5 shadow-sm border border-[#E2E8F0] border-t-2 hover:shadow-md transition-all text-left w-full group relative overflow-hidden"
+            style={{ borderTopColor: kpi.borderColor }}
           >
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-[12px] text-[#64748B] font-medium">
                   {kpi.title}
                 </p>
-                <p className="text-[26px] font-bold text-[#0F1624] mt-1 leading-none">
+                <p className="text-[26px] font-bold text-[#0F1624] mt-1 leading-none tracking-tight">
                   {kpi.value}
                 </p>
               </div>
               <div
-                className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0"
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{ background: kpi.bg }}
               >
                 <kpi.icon size={18} style={{ color: kpi.color }} />
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 text-[12px]">
               {kpi.up ? (
                 <TrendingUp size={13} className="text-emerald-500" />
               ) : (
                 <TrendingDown size={13} className="text-red-500" />
               )}
               <span
-                className="text-[12px] font-semibold"
+                className="font-semibold"
                 style={{ color: kpi.up ? "#15803d" : "#b91c1c" }}
               >
                 {kpi.change}
               </span>
-              <span className="text-[12px] text-[#94A3B8]">{kpi.sub}</span>
+              <span className="text-[#94A3B8]">{kpi.sub}</span>
             </div>
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+      {/* KPI Cards Row 2 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {returnKpis.map((kpi) => (
           <button
             key={kpi.title}
             onClick={() => onNavigate(kpi.page)}
-            className="bg-white rounded p-5 border border-[#DDE2EC] hover:border-[#1B4FD8] hover:shadow-md transition-all text-left w-full group"
+            className="bg-white rounded-xl p-5 shadow-sm border border-[#E2E8F0] hover:shadow-md transition-all text-left w-full group"
           >
             <div className="flex items-start justify-between mb-3">
               <div>
                 <p className="text-[12px] text-[#64748B] font-medium">
                   {kpi.title}
                 </p>
-                <p className="text-[20px] font-bold text-[#0F1624] mt-1 leading-none">
+                <p className="text-[22px] font-bold text-[#0F1624] mt-1 leading-none tracking-tight">
                   {kpi.value}
                 </p>
               </div>
               <div
-                className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0"
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                 style={{ background: kpi.bg }}
               >
                 <kpi.icon size={18} style={{ color: kpi.color }} />
@@ -366,28 +376,29 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         ))}
       </div>
 
+      {/* Main Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Sales Chart */}
-        <div className="lg:col-span-2 bg-white rounded border border-[#DDE2EC] p-5">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-[#E2E8F0] border-t-2 border-t-[#0F766E] p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-[15px] font-semibold text-[#0F1624]">
+              <h2 className="text-[16px] font-bold text-[#134E4A]">
                 Sales Overview
               </h2>
               <p className="text-[12px] text-[#64748B]">
                 Revenue and transaction trends
               </p>
             </div>
-            <div className="flex rounded border border-[#DDE2EC] overflow-hidden text-[12px]">
+            <div className="flex rounded-full bg-[#F1F5F9] p-0.5 border border-[#E2E8F0] text-[12px]">
               {(["weekly", "monthly"] as const).map((v) => (
                 <button
                   key={v}
                   onClick={() => setChartView(v)}
-                  className="px-3 py-1.5 font-medium transition-colors"
-                  style={{
-                    background: chartView === v ? "#0F1624" : "#fff",
-                    color: chartView === v ? "#fff" : "#64748B",
-                  }}
+                  className={`px-3.5 py-1 font-medium rounded-full transition-all ${
+                    chartView === v
+                      ? "bg-[#0F766E] text-white shadow-xs"
+                      : "text-[#64748B] hover:text-[#0F1624]"
+                  }`}
                 >
                   {v === "weekly" ? "This Week" : "Monthly"}
                 </button>
@@ -396,10 +407,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </div>
           <div className="grid grid-cols-3 gap-4 mb-4 pb-4 border-b border-[#F0F2F5]">
             <div>
-              <p className="text-[11px] text-[#64748B] font-medium uppercase tracking-wide">
-                Total Sales
+              <p className="text-[11px] text-[#64748B] font-semibold uppercase tracking-wider">
+                TOTAL SALES
               </p>
-              <p className="text-[18px] font-bold text-[#0F1624]">
+              <p className="text-[19px] font-bold text-[#0F1624]">
                 ₹
                 {totalSales.toLocaleString("en-IN", {
                   maximumFractionDigits: 0,
@@ -407,19 +418,19 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               </p>
             </div>
             <div>
-              <p className="text-[11px] text-[#64748B] font-medium uppercase tracking-wide">
-                Avg / Day
+              <p className="text-[11px] text-[#64748B] font-semibold uppercase tracking-wider">
+                AVG / DAY
               </p>
-              <p className="text-[18px] font-bold text-[#0F1624]">
+              <p className="text-[19px] font-bold text-[#0F1624]">
                 ₹
                 {avgSales.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
               </p>
             </div>
             <div>
-              <p className="text-[11px] text-[#64748B] font-medium uppercase tracking-wide">
-                Transactions
+              <p className="text-[11px] text-[#64748B] font-semibold uppercase tracking-wider">
+                TRANSACTIONS
               </p>
-              <p className="text-[18px] font-bold text-[#0F1624]">
+              <p className="text-[19px] font-bold text-[#0F1624]">
                 {totalOrders}
               </p>
             </div>
@@ -428,13 +439,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1B4FD8" stopOpacity={0.12} />
-                  <stop offset="95%" stopColor="#1B4FD8" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#0F766E" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#0F766E" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#F0F2F5"
+                strokeDasharray="4 4"
+                stroke="#F1F5F9"
                 vertical={false}
               />
               <XAxis
@@ -457,13 +468,13 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 8,
-                  border: "1px solid #DDE2EC",
+                  border: "1px solid #E2E8F0",
                 }}
               />
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="#1B4FD8"
+                stroke="#0F766E"
                 strokeWidth={2}
                 fill="url(#salesGrad)"
                 dot={false}
@@ -473,8 +484,8 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
 
         {/* Stock Distribution */}
-        <div className="bg-white rounded border border-[#DDE2EC] p-5">
-          <h2 className="text-[15px] font-semibold text-[#0F1624] mb-1">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
+          <h2 className="text-[16px] font-bold text-[#0F1624] mb-1">
             Stock Summary
           </h2>
           <p className="text-[12px] text-[#64748B] mb-4">Total: 0 medicines</p>
@@ -521,7 +532,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Quick Actions */}
-        <div className="bg-white rounded border border-[#DDE2EC] p-5">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
           <h2 className="text-[15px] font-semibold text-[#0F1624] mb-3">
             Quick Actions
           </h2>
@@ -530,7 +541,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
               <button
                 key={a.label}
                 onClick={() => onNavigate(a.page)}
-                className="flex flex-col items-center gap-2 p-3 rounded border border-[#DDE2EC] hover:border-[#1B4FD8] hover:bg-[#F5F7FA] transition-all text-center group"
+                className="flex flex-col items-center gap-2 p-3 rounded-xl border border-[#CCFBF1] bg-[#F0FDFA] hover:border-[#0F766E] hover:bg-[#CCFBF1] shadow-xs hover:shadow-sm transition-all text-center group"
               >
                 <div
                   className="w-9 h-9 rounded flex items-center justify-center"
@@ -538,7 +549,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 >
                   <a.icon size={16} style={{ color: a.color }} />
                 </div>
-                <span className="text-[11px] font-medium text-[#334155] group-hover:text-[#1B4FD8] transition-colors leading-tight">
+                <span className="text-[11px] font-medium text-[#334155] group-hover:text-[#0F766E] transition-colors leading-tight">
                   {a.label}
                 </span>
               </button>
@@ -547,32 +558,45 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
 
         {/* Prescription Queue */}
-        <div className="lg:col-span-2 bg-white rounded border border-[#DDE2EC] overflow-hidden">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0F2F5]">
             <h2 className="text-[15px] font-semibold text-[#0F1624]">
               Prescription Queue
             </h2>
             <button
               onClick={() => onNavigate("prescriptions")}
-              className="text-[12px] font-medium flex items-center gap-1"
-              style={{ color: "#1B4FD8" }}
+              className="text-[12px] font-medium flex items-center gap-1 text-[#0F766E] hover:underline"
             >
               View all <ArrowRight size={12} />
             </button>
           </div>
-          <table>
-            <thead>
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
               <tr>
-                <th>Prescription ID</th>
-                <th>Patient</th>
-                <th>Doctor</th>
-                <th>Items</th>
-                <th>Status</th>
-                <th>Time</th>
-                <th>Action</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Prescription ID
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Patient
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Doctor
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Items
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Time
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Action
+                </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#D1FAE5]">
               {selectedDatePrescriptions.length === 0 ? (
                 <tr>
                   <td
@@ -584,11 +608,14 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </tr>
               ) : (
                 selectedDatePrescriptions.slice(0, 5).map((rx) => (
-                  <tr key={rx.id}>
-                    <td className="font-mono text-[12px] text-[#1B4FD8] font-medium">
+                  <tr
+                    className="hover:bg-[#F0FDFA] transition-colors"
+                    key={rx.id}
+                  >
+                    <td className="font-mono text-[12px] text-[#0F766E] font-medium py-3 px-4">
                       {rx.id}
                     </td>
-                    <td>
+                    <td className="py-3 px-4">
                       <p className="font-medium text-[#0F1624] text-[13px]">
                         {rx.patient}
                       </p>
@@ -596,18 +623,22 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         {rx.age}y · {rx.gender}
                       </p>
                     </td>
-                    <td className="text-[13px] text-[#334155]">{rx.doctor}</td>
-                    <td className="text-[13px] font-medium text-center">
+                    <td className="text-[13px] text-[#334155] py-3 px-4">
+                      {rx.doctor}
+                    </td>
+                    <td className="text-[13px] font-medium text-center py-3 px-4">
                       {rx.items}
                     </td>
-                    <td>
+                    <td className="py-3 px-4">
                       <StatusBadge status={rx.status} size="sm" />
                     </td>
-                    <td className="text-[12px] text-[#94A3B8]">{rx.time}</td>
-                    <td>
+                    <td className="text-[12px] text-[#94A3B8] py-3 px-4">
+                      {rx.time}
+                    </td>
+                    <td className="py-3 px-4">
                       <button
                         onClick={() => onNavigate("prescriptions")}
-                        className="text-[12px] font-medium px-2.5 py-1 rounded border border-[#DDE2EC] text-[#334155] hover:bg-[#F0F2F5] transition-colors"
+                        className="text-[12px] font-medium px-2.5 py-1 rounded border border-[#E2E8F0] text-[#334155] hover:bg-[#F0F2F5] transition-colors"
                       >
                         View
                       </button>
@@ -622,35 +653,45 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Low Stock */}
-        <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0F2F5]">
             <h2 className="text-[15px] font-semibold text-[#0F1624]">
               Low Stock Medicines
             </h2>
             <button
               onClick={() => onNavigate("expiry-low-stock")}
-              className="text-[12px] font-medium"
-              style={{ color: "#1B4FD8" }}
+              className="text-[12px] font-medium text-[#0F766E] hover:underline"
             >
               View all
             </button>
           </div>
-          <table>
-            <thead>
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
               <tr>
-                <th>Medicine</th>
-                <th>Stock</th>
-                <th>Reorder Level</th>
-                <th>Action</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Medicine
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Stock
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Reorder Level
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Action
+                </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#D1FAE5]">
               {medicines
                 .filter((m) => m.stock < m.reorderLevel && m.stock > 0)
                 .slice(0, 5)
                 .map((m) => (
-                  <tr key={m.id}>
-                    <td>
+                  <tr
+                    className="hover:bg-[#F0FDFA] transition-colors"
+                    key={m.id}
+                  >
+                    <td className="py-3 px-4">
                       <p className="font-medium text-[#0F1624] text-[13px]">
                         {m.name}
                       </p>
@@ -658,22 +699,23 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         {m.manufacturer}
                       </p>
                     </td>
-                    <td>
+                    <td className="py-3 px-4">
                       <span
                         className="font-semibold text-[13px]"
-                        style={{ color: m.stock < 20 ? "#dc2626" : "#d906" }}
+                        style={{
+                          color: m.stock < 20 ? "#dc2626" : "#D97706",
+                        }}
                       >
                         {m.stock}
                       </span>
                     </td>
-                    <td className="text-[13px] text-[#64748B]">
+                    <td className="text-[13px] text-[#64748B] py-3 px-4">
                       {m.reorderLevel}
                     </td>
-                    <td>
+                    <td className="py-3 px-4">
                       <button
                         onClick={() => onNavigate("purchase-orders")}
-                        className="text-[11px] font-medium px-2 py-1 rounded"
-                        style={{ background: "#E8EDF5", color: "#1B4FD8" }}
+                        className="text-[11px] font-medium px-2 py-1 rounded bg-[#E8EDF5] text-[#0F766E] hover:bg-[#DDE2EC] transition-colors"
                       >
                         Order
                       </button>
@@ -685,47 +727,61 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
         </div>
 
         {/* Expiring Medicines */}
-        <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0F2F5]">
             <h2 className="text-[15px] font-semibold text-[#0F1624]">
               Expiring Soon
             </h2>
             <button
               onClick={() => onNavigate("expiry-low-stock")}
-              className="text-[12px] font-medium"
-              style={{ color: "#1B4FD8" }}
+              className="text-[12px] font-medium text-[#0F766E] hover:underline"
             >
               View all
             </button>
           </div>
-          <table>
-            <thead>
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
               <tr>
-                <th>Medicine</th>
-                <th>Batch</th>
-                <th>Expiry</th>
-                <th>Days Left</th>
-                <th>Qty</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Medicine
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Batch
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Expiry
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Days Left
+                </th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">
+                  Qty
+                </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#D1FAE5]">
               {expiringMedicines.map((m) => {
                 const urgency =
                   m.daysLeft <= 15
                     ? "#dc2626"
                     : m.daysLeft <= 30
-                      ? "#d906"
+                      ? "#D97706"
                       : "#64748B"
                 return (
-                  <tr key={m.id}>
-                    <td className="font-medium text-[13px] text-[#0F1624]">
+                  <tr
+                    className="hover:bg-[#F0FDFA] transition-colors"
+                    key={m.id}
+                  >
+                    <td className="font-medium text-[13px] text-[#0F1624] py-3 px-4">
                       {m.medicine}
                     </td>
-                    <td className="font-mono text-[12px] text-[#64748B]">
+                    <td className="font-mono text-[12px] text-[#64748B] py-3 px-4">
                       {m.batch}
                     </td>
-                    <td className="text-[12px] text-[#64748B]">{m.expiry}</td>
-                    <td>
+                    <td className="text-[12px] text-[#64748B] py-3 px-4">
+                      {m.expiry}
+                    </td>
+                    <td className="py-3 px-4">
                       <span
                         className="font-bold text-[13px]"
                         style={{ color: urgency }}
@@ -733,7 +789,9 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                         {m.daysLeft}d
                       </span>
                     </td>
-                    <td className="text-[13px] text-[#334155]">{m.quantity}</td>
+                    <td className="text-[13px] text-[#334155] py-3 px-4">
+                      {m.quantity}
+                    </td>
                   </tr>
                 )
               })}

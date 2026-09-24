@@ -4,7 +4,7 @@ import { Search, Filter, Download, ChevronDown } from "lucide-react"
 import PageHeader from "../components/PageHeader"
 
 const typeColors: Record<string, { color: string ;bg: string }> = {
-  Sale: { color: "#1B4FD8", bg: "#E8EDF5" },
+  Sale: { color: "#0F766E", bg: "#E8EDF5" },
   Purchase: { color: "#15803d", bg: "#DCFCE7" },
   Return: { color: "#7c3aed", bg: "#faf5ff" },
   Transfer: { color: "#0284c7", bg: "#E8EDF5" },
@@ -170,7 +170,7 @@ export default function InventoryLedger({ onNavigate }: InventoryLedgerProps) {
         actions={
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#DDE2EC] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#E2E8F0] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
           >
             <Download size={13} /> Export
           </button>
@@ -195,12 +195,12 @@ export default function InventoryLedger({ onNavigate }: InventoryLedgerProps) {
           {
             label: "Transactions Logged",
             value: ledgerData.length + " entries",
-            color: "#1B4FD8",
+            color: "#0F766E",
           },
         ].map((s) => (
           <div
             key={s.label}
-            className="bg-white rounded p-4 border border-[#DDE2EC]"
+            className="bg-white rounded p-4 border border-[#E2E8F0]"
           >
             <p className="text-[11px] text-[#64748B] font-medium">{s.label}</p>
             <p
@@ -224,7 +224,7 @@ export default function InventoryLedger({ onNavigate }: InventoryLedgerProps) {
             placeholder="Search medicine or ref…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 pr-4 py-2 w-64 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors"
+            className="pl-9 pr-4 py-2 w-64 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -232,17 +232,17 @@ export default function InventoryLedger({ onNavigate }: InventoryLedgerProps) {
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="px-3 py-2 rounded border border-[#DDE2EC] text-[13px] text-[#64748B] focus:border-[#1B4FD8] focus:outline-none"
+            className="px-3 py-2 rounded border border-[#E2E8F0] text-[13px] text-[#64748B] focus:border-[#0F766E] focus:outline-none"
           />
           <span className="text-[#94A3B8]">-</span>
           <input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="px-3 py-2 rounded border border-[#DDE2EC] text-[13px] text-[#64748B] focus:border-[#1B4FD8] focus:outline-none"
+            className="px-3 py-2 rounded border border-[#E2E8F0] text-[13px] text-[#64748B] focus:border-[#0F766E] focus:outline-none"
           />
         </div>
-        <div className="flex bg-white rounded border border-[#DDE2EC] p-1">
+        <div className="flex bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-1">
           {types.map((t) => (
             <button
               key={t}
@@ -260,29 +260,29 @@ export default function InventoryLedger({ onNavigate }: InventoryLedgerProps) {
       </div>
 
       {/* Ledger Table */}
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
         <table>
-          <thead>
+          <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
             <tr>
-              <th>Date & Time</th>
-              <th>Reference</th>
-              <th>Medicine</th>
-              <th>Batch</th>
-              <th>Type</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Date & Time</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Reference</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Batch</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Type</th>
               <th className="text-emerald-600">IN</th>
               <th className="text-red-600">OUT</th>
-              <th>User</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">User</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((r, i) => (
-              <tr key={i}>
+              <tr className="hover:bg-[#F0FDFA] transition-colors" key={i}>
                 <td className="text-[12px] text-[#64748B] whitespace-nowrap">
                   {r.date}
                 </td>
                 <td
                   className="font-mono text-[12px] font-semibold"
-                  style={{ color: "#1B4FD8" }}
+                  style={{ color: "#0F766E" }}
                 >
                   {r.ref}
                 </td>

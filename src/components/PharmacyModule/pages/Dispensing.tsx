@@ -384,7 +384,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
         name: patientName || "Walk-in Patient",
       },
       theme: {
-        color: "#1B4FD8",
+        color: "#0F766E",
       },
     }
 
@@ -553,7 +553,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
               activeTab === "new_sale" ? "New sale · POS" : "Past transactions"
             }
             actions={
-              <div className="flex rounded border border-[#DDE2EC] overflow-hidden text-[13px]">
+              <div className="flex rounded border border-[#E2E8F0] overflow-hidden text-[13px]">
                 <button
                   onClick={() => setActiveTab("new_sale")}
                   className="px-5 py-2 font-medium transition-colors"
@@ -584,7 +584,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
         {activeTab === "sales_history" ? (
           <div className="flex-1 overflow-y-auto p-6">
             <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-[#E2E8F0] flex justify-between items-center bg-[#F8FAFC]">
+              <div className="p-4 border-b border-[#E2E8F0] flex justify-between items-center bg-[#EDF7F5]">
                 <h3 className="font-bold text-[15px] text-[#0F1624]">
                   Completed Transactions
                 </h3>
@@ -597,11 +597,11 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                         }),
                       )
                     }
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#DDE2EC] text-[12px] font-medium text-[#334155] hover:bg-[#F5F7FA]"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#E2E8F0] text-[12px] font-medium text-[#334155] hover:bg-[#F5F7FA]"
                   >
                     <Plus size={14} /> Add Customer
                   </button>
-                  <div className="flex items-center gap-2 bg-white border border-[#DDE2EC] rounded px-3 py-1.5 w-64">
+                  <div className="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded px-3 py-1.5 w-64">
                     <Search size={14} className="text-[#94A3B8]" />
                     <input
                       value={historySearch}
@@ -612,20 +612,20 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                   </div>
                 </div>
               </div>
-              <div className="p-4 bg-[#F8FAFC] border-b border-[#E2E8F0]">
+              <div className="p-4 bg-[#EDF7F5] border-b border-[#E2E8F0]">
                 <button
                   onClick={() => {
                     setActiveTab("new_sale")
                     closeInvoice()
                   }}
-                  className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded text-[13px] font-semibold text-[#1B4FD8] bg-[#E8EDF5] hover:bg-[#dbeafe] transition-colors"
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded text-[13px] font-semibold text-[#0F766E] bg-[#E8EDF5] hover:bg-[#dbeafe] transition-colors"
                 >
                   <Plus size={14} /> New Sale
                 </button>
               </div>
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-[#F8FAFC] sticky top-0 border-b border-[#E2E8F0]">
+                  <thead className="bg-[#EDF7F5] sticky top-0 border-b border-[#E2E8F0]">
                     <tr>
                       <th className="px-5 py-3 text-[12px] font-bold text-[#475569] uppercase tracking-wider">
                         Bill No
@@ -661,11 +661,9 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                             .includes(historySearch.toLowerCase()),
                       )
                       .map((inv, i) => (
-                        <tr
-                          key={i}
-                          className="hover:bg-[#F5F7FA] transition-colors"
+                        <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-[#F5F7FA] transition-colors"
                         >
-                          <td className="px-5 py-3 font-mono text-[12px] font-semibold text-[#1B4FD8]">
+                          <td className="px-5 py-3 font-mono text-[12px] font-semibold text-[#0F766E]">
                             {inv.billNumber}
                           </td>
                           <td className="px-5 py-3 text-[12px] text-[#64748B]">
@@ -682,7 +680,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                             {inv.items ? inv.items.length : 0}
                           </td>
                           <td className="px-5 py-3">
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-[#E8EDF5] text-[#1B4FD8]">
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-[#E8EDF5] text-[#0F766E]">
                               {inv.paymentMode || "Cash"}
                             </span>
                           </td>
@@ -695,7 +693,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           <td className="px-5 py-3 text-right">
                             <button
                               onClick={() => setPrintBill(inv)}
-                              className="p-1.5 rounded bg-white border border-[#DDE2EC] hover:bg-[#F0F2F5] text-[#475569] transition-colors inline-flex items-center justify-center shadow-sm"
+                              className="p-1.5 rounded bg-white border border-[#E2E8F0] hover:bg-[#F0F2F5] text-[#475569] transition-colors inline-flex items-center justify-center shadow-sm"
                             >
                               <Printer size={14} />
                             </button>
@@ -730,7 +728,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                     value={rxId}
                     onChange={(e) => setRxId(e.target.value)}
                     placeholder="e.g. RX-2026-1041"
-                    className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] text-[#0F1624] focus:border-[#1B4FD8] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
+                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
                   />
                 </div>
                 <div>
@@ -740,13 +738,13 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                   <input
                     value={patientName}
                     onChange={(e) => setPatientName(e.target.value)}
-                    className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] text-[#0F1624] focus:border-[#1B4FD8] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
+                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
                   />
                 </div>
               </div>
               <button
                 onClick={loadPrescriptionFEFO}
-                className="bg-[#1B4FD8] text-white px-5 py-2 h-[42px] rounded-lg text-[13px] font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all whitespace-nowrap"
+                className="bg-[#0F766E] text-white px-5 py-2 h-[42px] rounded-lg text-[13px] font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all whitespace-nowrap"
               >
                 Load Rx & Auto-Allocate
               </button>
@@ -754,7 +752,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
             {/* Medicine Search */}
             <div className="relative">
-              <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm border border-[#E2E8F0] px-5 py-3 focus-within:border-[#1B4FD8] focus-within:ring-4 focus-within:ring-[#1B4FD8]/10 transition-all">
+              <div className="flex items-center gap-2 bg-white rounded-xl shadow-sm border border-[#E2E8F0] px-5 py-3 focus-within:border-[#0F766E] focus-within:ring-4 focus-within:ring-[#0F766E]/10 transition-all">
                 <Search size={16} className="text-[#64748B] flex-shrink-0" />
                 <input
                   value={searchQuery}
@@ -806,7 +804,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                         className="ml-3 w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
                         style={{ background: "#E8EDF5" }}
                       >
-                        <Plus size={14} style={{ color: "#1B4FD8" }} />
+                        <Plus size={14} style={{ color: "#0F766E" }} />
                       </div>
                     </button>
                   ))}
@@ -817,30 +815,30 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
             {/* Cart Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] overflow-hidden">
               <table>
-                <thead>
+                <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
                   <tr>
-                    <th className="text-left px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-left px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Medicine
                     </th>
-                    <th className="text-left px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-left px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Batch
                     </th>
-                    <th className="text-left px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-left px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Expiry
                     </th>
-                    <th className="text-center px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-center px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Qty
                     </th>
-                    <th className="text-right px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-right px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       MRP (₹)
                     </th>
-                    <th className="text-center px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-center px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Tax%
                     </th>
-                    <th className="text-right px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-right px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Total (₹)
                     </th>
-                    <th className="px-5 py-4 bg-[#F8FAFC] border-b border-[#E2E8F0]"></th>
+                    <th className="px-5 py-4 bg-[#EDF7F5] border-b border-[#E2E8F0]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -859,9 +857,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                     </tr>
                   ) : (
                     cart.map((item, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-[#DDE2EC] last:border-0 hover:bg-[#F5F7FA]"
+                      <tr key={i} className="hover:bg-[#F0FDFA] transition-colors border-b border-[#E2E8F0] last:border-0 hover:bg-[#F5F7FA]"
                       >
                         <td className="px-5 py-4 font-medium text-[13px] text-[#0F1624]">
                           {item.medicine}
@@ -921,7 +917,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       {/* Right: Payment summary (Only shown in New Sale tab) */}
       {activeTab === "new_sale" && (
         <div className="w-[420px] bg-white border-l border-[#E2E8F0] shadow-[-10px_0_40px_rgba(0,0,0,0.04)] flex flex-col print:hidden z-10">
-          <div className="p-6 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+          <div className="p-6 border-b border-[#E2E8F0] bg-[#EDF7F5]">
             <h3 className="font-black text-[18px] text-[#0F1624] tracking-tight">
               Payment Summary
             </h3>
@@ -929,7 +925,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
           <div className="p-5 space-y-4 flex-1 overflow-y-auto">
             {/* Bill Breakup */}
-            <div className="space-y-3 bg-[#F8FAFC] p-6 rounded-2xl border border-[#E2E8F0]">
+            <div className="space-y-3 bg-[#EDF7F5] p-6 rounded-2xl border border-[#E2E8F0]">
               <div className="flex justify-between text-[13px] text-[#475569]">
                 <span>Subtotal</span>
                 <span className="font-medium text-[#0F1624]">
@@ -944,7 +940,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                     type="number"
                     value={discount}
                     onChange={(e) => setDiscount(Number(e.target.value))}
-                    className="w-12 px-2 py-1 text-right border border-[#DDE2EC] bg-white text-[#0F1624] focus:border-[#1B4FD8] focus:outline-none"
+                    className="w-12 px-2 py-1 text-right border border-[#E2E8F0] bg-white text-[#0F1624] focus:border-[#0F766E] focus:outline-none"
                   />
                   <span className="text-[#94A3B8]">%</span>
                   <span className="font-medium text-[#16a34a]">
@@ -983,7 +979,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                   <span className="text-[11px] text-[#64748B] block mb-1">
                     Total Amount
                   </span>
-                  <span className="text-[36px] font-black text-[#1B4FD8] leading-none tracking-tighter">
+                  <span className="text-[36px] font-black text-[#0F766E] leading-none tracking-tighter">
                     ₹{finalAmount}
                   </span>
                 </div>
@@ -1003,9 +999,9 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
               <div className="space-y-3">
                 {/* Cash */}
-                <div className="border border-[#DDE2EC] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center gap-2 bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
-                    <Wallet size={16} className="text-[#1B4FD8]" />
+                <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-center gap-2 bg-[#EDF7F5] p-3 border-b border-[#E2E8F0]">
+                    <Wallet size={16} className="text-[#0F766E]" />
                     <span className="text-[13px] font-semibold text-[#0F1624]">
                       Cash
                     </span>
@@ -1024,7 +1020,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                             cash: Number(e.target.value),
                           }))
                         }
-                        className="w-24 px-2 py-1 text-right text-[13px] border border-[#DDE2EC] focus:border-[#1B4FD8] outline-none rounded"
+                        className="w-24 px-2 py-1 text-right text-[13px] border border-[#E2E8F0] focus:border-[#0F766E] outline-none rounded"
                         placeholder="0.00"
                       />
                     </div>
@@ -1039,7 +1035,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           onChange={(e) =>
                             setTenderedCash(Number(e.target.value))
                           }
-                          className="w-24 px-2 py-1 text-right text-[13px] border border-[#DDE2EC] focus:border-[#1B4FD8] outline-none rounded"
+                          className="w-24 px-2 py-1 text-right text-[13px] border border-[#E2E8F0] focus:border-[#0F766E] outline-none rounded"
                           placeholder="0.00"
                         />
                       </div>
@@ -1061,10 +1057,10 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                 </div>
 
                 {/* UPI */}
-                <div className="border border-[#DDE2EC] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center justify-between bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
+                <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-center justify-between bg-[#EDF7F5] p-3 border-b border-[#E2E8F0]">
                     <div className="flex items-center gap-2">
-                      <Smartphone size={16} className="text-[#1B4FD8]" />
+                      <Smartphone size={16} className="text-[#0F766E]" />
                       <span className="text-[13px] font-semibold text-[#0F1624]">
                         UPI / QR
                       </span>
@@ -1090,7 +1086,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           return n
                         })
                       }}
-                      className="w-28 px-3 py-2 text-right text-[15px] font-bold border border-[#CBD5E1] focus:border-[#1B4FD8] focus:ring-2 focus:ring-[#1B4FD8]/20 outline-none rounded-md transition-all"
+                      className="w-28 px-3 py-2 text-right text-[15px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/20 outline-none rounded-md transition-all"
                       placeholder="0.00"
                     />
                     <div className="flex gap-1">
@@ -1099,7 +1095,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           handleRazorpayPayment("upi", payments["upi"])
                         }
                         disabled={!payments["upi"]}
-                        className="px-3 py-1 bg-[#1B4FD8] text-white text-[12px] rounded font-medium disabled:opacity-50"
+                        className="px-3 py-1 bg-[#0F766E] text-white text-[12px] rounded font-medium disabled:opacity-50"
                       >
                         Pay via Gateway
                       </button>
@@ -1122,10 +1118,10 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                 </div>
 
                 {/* Card - Physical POS */}
-                <div className="border border-[#DDE2EC] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center justify-between bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
+                <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
+                  <div className="flex items-center justify-between bg-[#EDF7F5] p-3 border-b border-[#E2E8F0]">
                     <div className="flex items-center gap-2">
-                      <CreditCard size={16} className="text-[#1B4FD8]" />
+                      <CreditCard size={16} className="text-[#0F766E]" />
                       <span className="text-[13px] font-semibold text-[#0F1624]">
                         Card (Physical POS)
                       </span>
@@ -1152,7 +1148,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                             return n
                           })
                         }}
-                        className="w-28 px-3 py-2 text-right text-[15px] font-bold border border-[#CBD5E1] focus:border-[#1B4FD8] focus:ring-2 focus:ring-[#1B4FD8]/20 outline-none rounded-md transition-all"
+                        className="w-28 px-3 py-2 text-right text-[15px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/20 outline-none rounded-md transition-all"
                         placeholder="0.00"
                       />
                       <button
@@ -1160,7 +1156,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           handlePhysicalPOSPayment(payments["card"])
                         }
                         disabled={!payments["card"] || posStatus !== null}
-                        className="px-3 py-1 bg-[#1B4FD8] text-white text-[12px] rounded font-medium disabled:opacity-50 flex items-center gap-1"
+                        className="px-3 py-1 bg-[#0F766E] text-white text-[12px] rounded font-medium disabled:opacity-50 flex items-center gap-1"
                       >
                         Send to Card Machine (POS)
                       </button>
@@ -1170,7 +1166,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                         className={`text-[11px] font-semibold p-2 rounded ${
                           posStatus === "Approved!"
                             ? "bg-[#DCFCE7] text-[#15803d]"
-                            : "bg-[#E8EDF5] text-[#1B4FD8]"
+                            : "bg-[#E8EDF5] text-[#0F766E]"
                         }`}
                       >
                         <RefreshCw
@@ -1190,13 +1186,13 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
             </div>
           </div>
 
-          <div className="p-5 border-t border-[#DDE2EC] bg-white">
+          <div className="p-5 border-t border-[#E2E8F0] bg-white">
             <button
               onClick={completeTransaction}
               disabled={cart.length === 0 || !isPaid}
               className={`w-full py-4 text-[14px] font-bold shadow-sm transition-colors uppercase tracking-wide ${
                 cart.length > 0 && isPaid
-                  ? "bg-[#1B4FD8] text-white hover:bg-[#1742B8]"
+                  ? "bg-[#0F766E] text-white hover:bg-[#1742B8]"
                   : "bg-[#F0F2F5] text-[#94A3B8] cursor-not-allowed"
               }`}
             >

@@ -14,45 +14,24 @@ interface PageHeaderProps {
 }
 
 export default function PageHeader({
-  breadcrumbs,
   title,
   description,
   actions,
-  onNavigate,
 }: PageHeaderProps) {
+  // We ignore breadcrumbs since the App.tsx shell now provides a global breadcrumb strip.
   return (
-    <div className="flex items-start justify-between px-6 pt-6 pb-4 gap-4 flex-wrap">
+    <div className="bg-gradient-to-r from-[#F0FDFA] to-white rounded-xl shadow-sm border border-[#E2E8F0] border-t-2 border-t-[#0F766E] p-5 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <nav className="flex items-center gap-1.5 mb-2 text-[12px] text-[#64748B]">
-          {breadcrumbs.map((bc, i) => (
-            <span key={i} className="flex items-center gap-1.5">
-              {i > 0 && <ChevronRight size={11} />}
-              {bc.page && onNavigate ? (
-                <button
-                  onClick={() => onNavigate(bc.page!)}
-                  className="hover:text-[#1B4FD8] transition-colors"
-                >
-                  {bc.label}
-                </button>
-              ) : (
-                <span
-                  className={
-                    i === breadcrumbs.length - 1
-                      ? "text-[#0F1624] font-medium"
-                      : ""
-                  }
-                >
-                  {bc.label}
-                </span>
-              )}
-            </span>
-          ))}
-        </nav>
-        <h1 className="text-[22px] font-bold text-[#0F1624] leading-tight">
-          {title}
-        </h1>
+        <div className="flex items-center gap-2">
+          {typeof title === "string" && !title.includes("Dashboard") ? null : (
+            <span className="text-xl">{title === "Pharmacy Dashboard" ? "💊" : ""}</span>
+          )}
+          <h1 className="text-[20px] font-bold text-[#064E3B] tracking-tight">
+            {title}
+          </h1>
+        </div>
         {description && (
-          <p className="text-[13px] text-[#64748B] mt-1">{description}</p>
+          <p className="text-[12.5px] text-[#64748B] mt-1">{description}</p>
         )}
       </div>
       {actions && (

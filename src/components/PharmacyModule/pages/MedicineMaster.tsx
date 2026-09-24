@@ -185,20 +185,20 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
           <div className="flex gap-2">
             <button
               onClick={handleImport}
-              className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#DDE2EC] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#E2E8F0] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
             >
               <Upload size={13} /> Import
             </button>
             <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-3 py-1.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
             >
               <Download size={14} /> Export
             </button>
             <button
               onClick={openAddModal}
               className="flex items-center gap-2 px-3 py-1.5 rounded text-white font-medium text-[13px] transition-colors"
-              style={{ background: "#1B4FD8" }}
+              style={{ background: "#0F766E" }}
             >
               <Plus size={14} /> Add Medicine
             </button>
@@ -209,7 +209,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 bg-white border border-[#DDE2EC] rounded px-3 py-2 flex-1 max-w-xs">
+        <div className="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded px-3 py-2 flex-1 max-w-xs">
           <Search size={14} className="text-[#94A3B8] flex-shrink-0" />
           <input
             value={search}
@@ -231,25 +231,25 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
         <table>
-          <thead>
+          <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
             <tr>
-              <th>Medicine</th>
-              <th>Generic Name</th>
-              <th>Strength</th>
-              <th>Form</th>
-              <th>Manufacturer</th>
-              <th>Stock</th>
-              <th>MRP (₹)</th>
-              <th>Price (₹)</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Generic Name</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Strength</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Form</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Manufacturer</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Stock</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">MRP (₹)</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Price (₹)</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((m) => (
-              <tr key={m.id}>
+              <tr className="hover:bg-[#F0FDFA] transition-colors" key={m.id}>
                 <td>
                   <div>
                     <p className="font-semibold text-[13px] text-[#0F1624]">
@@ -307,7 +307,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                     </button>
                     <button
                       onClick={() => handleEdit(m)}
-                      className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#1B4FD8] transition-colors"
+                      className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#0F766E] transition-colors"
                       title="Edit"
                     >
                       <Edit2 size={13} />
@@ -440,7 +440,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                         name: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -455,7 +455,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                         generic: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -470,7 +470,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                         strength: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -485,7 +485,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                         form: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -500,7 +500,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                         manufacturer: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -516,7 +516,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                         mrp: parseFloat(e.target.value),
                       })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -532,7 +532,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                         stock: parseInt(e.target.value),
                       })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                     disabled={!!editingMedicine?.id}
                   />
                 </div>
@@ -541,13 +541,13 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                 <button
                   onClick={handleSave}
                   className="flex-1 py-2.5 rounded text-white font-semibold text-[13px]"
-                  style={{ background: "#1B4FD8" }}
+                  style={{ background: "#0F766E" }}
                 >
                   Save Medicine
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+                  className="flex-1 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
                 >
                   Cancel
                 </button>

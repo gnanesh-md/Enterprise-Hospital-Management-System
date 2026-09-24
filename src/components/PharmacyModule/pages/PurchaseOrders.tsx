@@ -108,7 +108,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                 setShowCreate(true)
               }}
               className="flex items-center gap-1.5 px-4 py-2 rounded text-white text-[13px] font-medium"
-              style={{ background: "#1B4FD8" }}
+              style={{ background: "#0F766E" }}
             >
               <Plus size={14} /> Create PO
             </button>
@@ -145,26 +145,26 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
         <table>
-          <thead>
+          <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
             <tr>
-              <th>PO Number</th>
-              <th>Supplier</th>
-              <th>Order Date</th>
-              <th>Expected</th>
-              <th>Items</th>
-              <th>Total (₹)</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">PO Number</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Supplier</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Order Date</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Expected</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Items</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Total (₹)</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((po) => (
-              <tr key={po.id}>
+              <tr className="hover:bg-[#F0FDFA] transition-colors" key={po.id}>
                 <td
                   className="font-mono text-[12px] font-semibold"
-                  style={{ color: "#1B4FD8" }}
+                  style={{ color: "#0F766E" }}
                 >
                   {po.id}
                 </td>
@@ -209,7 +209,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                             }),
                           )
                         }}
-                        className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#1B4FD8] transition-colors"
+                        className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#0F766E] transition-colors"
                         title="Send"
                       >
                         <Send size={13} />
@@ -228,7 +228,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                       <button
                         onClick={() => onNavigate("grn")}
                         className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded"
-                        style={{ background: "#E8EDF5", color: "#1B4FD8" }}
+                        style={{ background: "#E8EDF5", color: "#0F766E" }}
                       >
                         Receive
                       </button>
@@ -268,7 +268,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                   <select
                     value={supplierId}
                     onChange={(e) => setSupplierId(e.target.value)}
-                    className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors"
+                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors"
                   >
                     <option value="">Select supplier…</option>
                     {suppliers.map((s) => (
@@ -286,7 +286,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                     type="date"
                     value={poDate}
                     onChange={(e) => setPoDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -297,7 +297,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                     type="date"
                     value={expectedDate}
                     onChange={(e) => setExpectedDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
               </div>
@@ -314,10 +314,10 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                     value={medicineSearch}
                     onChange={(e) => setMedicineSearch(e.target.value)}
                     placeholder="Search medicine to add…"
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                   {medicineSearch && (
-                    <div className="absolute top-full left-0 right-0 bg-white border border-[#DDE2EC] shadow-xl max-h-48 overflow-y-auto z-10">
+                    <div className="absolute top-full left-0 right-0 bg-white border border-[#E2E8F0] shadow-xl max-h-48 overflow-y-auto z-10">
                       {medicines
                         .filter((m) =>
                           m.name
@@ -340,21 +340,21 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                   )}
                 </div>
 
-                <div className="rounded border border-[#DDE2EC] overflow-hidden">
+                <div className="rounded border border-[#E2E8F0] overflow-hidden">
                   <table>
-                    <thead>
+                    <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
                       <tr>
-                        <th>Medicine</th>
-                        <th>Quantity</th>
-                        <th>Purchase Price (₹)</th>
-                        <th>GST%</th>
-                        <th>Total (₹)</th>
-                        <th></th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Quantity</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Purchase Price (₹)</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">GST%</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Total (₹)</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {items.map((item, idx) => (
-                        <tr key={idx}>
+                        <tr className="hover:bg-[#F0FDFA] transition-colors" key={idx}>
                           <td className="text-[13px] font-semibold">
                             {item.name}
                           </td>
@@ -367,7 +367,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                                 newItems[idx].qty = Number(e.target.value)
                                 setItems(newItems)
                               }}
-                              className="w-20 px-2 py-1 text-[13px] border border-[#DDE2EC]"
+                              className="w-20 px-2 py-1 text-[13px] border border-[#E2E8F0]"
                             />
                           </td>
                           <td>
@@ -379,7 +379,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                                 newItems[idx].price = Number(e.target.value)
                                 setItems(newItems)
                               }}
-                              className="w-24 px-2 py-1 text-[13px] border border-[#DDE2EC]"
+                              className="w-24 px-2 py-1 text-[13px] border border-[#E2E8F0]"
                             />
                           </td>
                           <td>
@@ -391,7 +391,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                                 newItems[idx].gst = Number(e.target.value)
                                 setItems(newItems)
                               }}
-                              className="w-16 px-2 py-1 text-[13px] border border-[#DDE2EC]"
+                              className="w-16 px-2 py-1 text-[13px] border border-[#E2E8F0]"
                             />
                           </td>
                           <td className="text-[13px] font-semibold text-[#0F1624]">
@@ -417,7 +417,7 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                     </tbody>
                   </table>
                   {items.length > 0 && (
-                    <div className="p-3 bg-[#F5F7FA] border-t border-[#DDE2EC] text-right font-bold text-[14px]">
+                    <div className="p-3 bg-[#F5F7FA] border-t border-[#E2E8F0] text-right font-bold text-[14px]">
                       Total: ₹
                       {items
                         .reduce(
@@ -430,17 +430,17 @@ export default function PurchaseOrders({ onNavigate }: PurchaseOrdersProps) {
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-[#DDE2EC] flex gap-3">
+            <div className="p-5 border-t border-[#E2E8F0] flex gap-3">
               <button
                 onClick={() => handleCreate("Submitted")}
                 className="px-4 py-2.5 rounded text-white font-semibold text-[13px]"
-                style={{ background: "#1B4FD8" }}
+                style={{ background: "#0F766E" }}
               >
                 Submit for Approval
               </button>
               <button
                 onClick={() => handleCreate("Draft")}
-                className="px-4 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+                className="px-4 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
               >
                 Save Draft
               </button>

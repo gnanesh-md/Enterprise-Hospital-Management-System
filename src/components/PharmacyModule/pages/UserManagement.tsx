@@ -131,7 +131,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
           <button
             onClick={() => setShowAdd(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded text-white text-[13px] font-medium"
-            style={{ background: "#1B4FD8" }}
+            style={{ background: "#0F766E" }}
           >
             <Plus size={14} /> Add User
           </button>
@@ -140,7 +140,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
       />
 
       {/* Tabs */}
-      <div className="flex rounded border border-[#DDE2EC] overflow-hidden w-fit text-[13px]">
+      <div className="flex rounded border border-[#E2E8F0] overflow-hidden w-fit text-[13px]">
         {(["users", "permissions"] as const).map((t) => (
           <button
             key={t}
@@ -170,33 +170,33 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
             ].map((role) => (
               <span
                 key={role}
-                className="text-[11px] font-medium px-2.5 py-1 rounded border border-[#DDE2EC] bg-white text-[#334155]"
+                className="text-[11px] font-medium px-2.5 py-1 rounded border border-[#E2E8F0] bg-white text-[#334155]"
               >
                 {role}
               </span>
             ))}
           </div>
 
-          <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
             <table>
-              <thead>
+              <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
                 <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Branch</th>
-                  <th>Last Login</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">User</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Role</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Branch</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Last Login</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id}>
+                  <tr className="hover:bg-[#F0FDFA] transition-colors" key={u.id}>
                     <td>
                       <div className="flex items-center gap-3">
                         <div
                           className="w-8 h-8 rounded flex items-center justify-center text-[12px] font-bold flex-shrink-0"
-                          style={{ background: "#E8EDF5", color: "#1B4FD8" }}
+                          style={{ background: "#E8EDF5", color: "#0F766E" }}
                         >
                           {u.avatar}
                         </div>
@@ -231,7 +231,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
                           onClick={() =>
                             alert("Edit User feature is currently a mockup.")
                           }
-                          className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#1B4FD8] transition-colors"
+                          className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#0F766E] transition-colors"
                           title="Edit"
                         >
                           <Edit2 size={13} />
@@ -270,13 +270,13 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
           </div>
         </>
       ) : (
-        <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
           <div className="px-5 py-4 border-b border-[#F0F2F5] flex items-center gap-3">
             <Shield size={16} className="text-[#7c3aed]" />
             <p className="font-semibold text-[14px] text-[#0F1624]">
               Pharmacist Role Permissions
             </p>
-            <select className="ml-auto text-[13px] px-3 py-1.5 rounded border border-[#DDE2EC] focus:border-[#1B4FD8] focus:outline-none">
+            <select className="ml-auto text-[13px] px-3 py-1.5 rounded border border-[#E2E8F0] focus:border-[#0F766E] focus:outline-none">
               <option>Pharmacist</option>
               <option>Pharmacy Manager</option>
               <option>Billing Operator</option>
@@ -285,9 +285,9 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
             </select>
           </div>
           <table>
-            <thead>
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
               <tr>
-                <th>Module</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Module</th>
                 {["View", "Create", "Edit", "Delete", "Approve"].map((p) => (
                   <th key={p} className="text-center">
                     {p}
@@ -297,7 +297,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
             </thead>
             <tbody>
               {permMatrix.map((row) => (
-                <tr key={row.module}>
+                <tr className="hover:bg-[#F0FDFA] transition-colors" key={row.module}>
                   <td className="font-semibold text-[13px] text-[#0F1624]">
                     {row.module}
                   </td>
@@ -350,7 +350,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
                 <input
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors"
+                  className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors"
                 />
               </div>
               <div>
@@ -360,7 +360,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
                 <input
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors"
+                  className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors"
                 />
               </div>
               <div>
@@ -370,7 +370,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
                 <input
                   value={form.phone}
                   onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors"
+                  className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -381,7 +381,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
                   <select
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value })}
-                    className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none"
+                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none"
                   >
                     <option>Pharmacist</option>
                     <option>Pharmacy Manager</option>
@@ -398,7 +398,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
                     onChange={(e) =>
                       setForm({ ...form, branch: e.target.value })
                     }
-                    className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none"
+                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none"
                   >
                     <option>Main Pharmacy</option>
                     <option>IP Pharmacy</option>
@@ -410,13 +410,13 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
                 <button
                   onClick={handleAddUser}
                   className="flex-1 py-2.5 rounded text-white font-semibold text-[13px]"
-                  style={{ background: "#1B4FD8" }}
+                  style={{ background: "#0F766E" }}
                 >
                   Create User
                 </button>
                 <button
                   onClick={() => setShowAdd(false)}
-                  className="flex-1 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+                  className="flex-1 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
                 >
                   Cancel
                 </button>

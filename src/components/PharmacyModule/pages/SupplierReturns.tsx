@@ -234,11 +234,11 @@ export default function SupplierReturns({
           onNavigate={onNavigate}
         />
 
-        <div className="bg-white rounded border border-[#DDE2EC] p-6 space-y-8">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-6 space-y-8">
           {/* Section 1: Supplier & Batch */}
           <div className="space-y-4">
             <h3 className="font-semibold text-[14px] text-[#0F1624] flex items-center gap-2">
-              <Building2 size={16} className="text-[#1B4FD8]" /> 1. Select
+              <Building2 size={16} className="text-[#0F766E]" /> 1. Select
               Supplier & Product
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -252,7 +252,7 @@ export default function SupplierReturns({
                     setSelectedSupplierId(e.target.value)
                     setSelectedBatchId("")
                   }}
-                  className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px] rounded focus:border-[#1B4FD8] focus:outline-none"
+                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded focus:border-[#0F766E] focus:outline-none"
                 >
                   <option value="">-- Choose Supplier --</option>
                   {suppliers.map((s) => (
@@ -270,7 +270,7 @@ export default function SupplierReturns({
                   value={selectedBatchId}
                   onChange={(e) => setSelectedBatchId(e.target.value)}
                   disabled={!selectedSupplierId}
-                  className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px] rounded disabled:bg-[#F8FAFC]"
+                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded disabled:bg-[#EDF7F5]"
                 >
                   <option value="">-- Choose Batch --</option>
                   {activeBatches.map((b) => (
@@ -289,7 +289,7 @@ export default function SupplierReturns({
           {/* Section 2: Reference Details */}
           <div className="space-y-4">
             <h3 className="font-semibold text-[14px] text-[#0F1624] flex items-center gap-2">
-              <FileText size={16} className="text-[#1B4FD8]" /> 2. Original
+              <FileText size={16} className="text-[#0F766E]" /> 2. Original
               Purchase Details (Optional)
             </h3>
             <div className="grid grid-cols-3 gap-4">
@@ -302,7 +302,7 @@ export default function SupplierReturns({
                   value={poNumber}
                   onChange={(e) => setPoNumber(e.target.value)}
                   placeholder="PO-2026-..."
-                  className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px] rounded"
+                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded"
                 />
               </div>
               <div>
@@ -314,7 +314,7 @@ export default function SupplierReturns({
                   value={grnNumber}
                   onChange={(e) => setGrnNumber(e.target.value)}
                   placeholder="GRN-2026-..."
-                  className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px] rounded"
+                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded"
                 />
               </div>
               <div>
@@ -326,7 +326,7 @@ export default function SupplierReturns({
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   placeholder="INV-..."
-                  className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px] rounded"
+                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded"
                 />
               </div>
             </div>
@@ -337,7 +337,7 @@ export default function SupplierReturns({
           {/* Section 3: Return Specifics */}
           <div className="space-y-4">
             <h3 className="font-semibold text-[14px] text-[#0F1624] flex items-center gap-2">
-              <Package size={16} className="text-[#1B4FD8]" /> 3. Return Details
+              <Package size={16} className="text-[#0F766E]" /> 3. Return Details
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -349,7 +349,7 @@ export default function SupplierReturns({
                   min="1"
                   value={returnQuantity}
                   onChange={(e) => setReturnQuantity(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px] rounded"
+                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded"
                   placeholder="e.g. 50"
                 />
               </div>
@@ -360,7 +360,7 @@ export default function SupplierReturns({
                 <select
                   value={returnReason}
                   onChange={(e) => setReturnReason(e.target.value)}
-                  className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px] rounded"
+                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded"
                 >
                   {RETURN_REASONS.map((r) => (
                     <option key={r} value={r}>
@@ -371,7 +371,7 @@ export default function SupplierReturns({
               </div>
             </div>
 
-            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded p-4 flex justify-between items-center mt-4">
+            <div className="bg-[#EDF7F5] border border-[#E2E8F0] rounded p-4 flex justify-between items-center mt-4">
               <div>
                 <p className="text-[12px] font-semibold text-[#64748B] uppercase">
                   Purchase Rate
@@ -403,14 +403,14 @@ export default function SupplierReturns({
           <div className="flex justify-end gap-3 pt-4 border-t border-[#F0F2F5]">
             <button
               onClick={() => setViewState("list")}
-              className="px-6 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+              className="px-6 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleInitiateReturn}
               className="px-6 py-2.5 rounded text-white font-semibold text-[13px] hover:bg-[#1e40af] transition-colors"
-              style={{ background: "#1B4FD8" }}
+              style={{ background: "#0F766E" }}
             >
               Create Draft Return
             </button>
@@ -428,7 +428,7 @@ export default function SupplierReturns({
     return (
       <div className="p-6">
         <div
-          className="max-w-2xl mx-auto bg-white border border-[#DDE2EC] p-10 shadow-sm"
+          className="max-w-2xl mx-auto bg-white border border-[#E2E8F0] p-10 shadow-sm"
           style={{ fontFamily: "monospace" }}
         >
           <div className="text-center mb-8 border-b-2 border-dashed border-[#94A3B8] pb-4">
@@ -454,12 +454,12 @@ export default function SupplierReturns({
 
           <div className="border-t-2 border-b-2 border-dashed border-[#94A3B8] py-2 mb-8">
             <table className="w-full text-left">
-              <thead>
+              <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
                 <tr>
-                  <th>Medicine</th>
-                  <th>Batch</th>
-                  <th>Qty</th>
-                  <th>Rate</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Batch</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Qty</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Rate</th>
                   <th className="text-right">Amount</th>
                 </tr>
               </thead>
@@ -536,7 +536,7 @@ export default function SupplierReturns({
             <button
               onClick={() => setViewState("create")}
               className="flex items-center gap-1.5 px-4 py-2 rounded text-white text-[13px] font-medium"
-              style={{ background: "#1B4FD8" }}
+              style={{ background: "#0F766E" }}
             >
               <Plus size={14} /> Initiate Return
             </button>
@@ -545,17 +545,17 @@ export default function SupplierReturns({
         onNavigate={onNavigate}
       />
 
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
         <table>
-          <thead>
+          <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
             <tr>
-              <th>Debit Note No</th>
-              <th>Date</th>
-              <th>Supplier</th>
-              <th>Medicine / Batch</th>
-              <th>Return Val</th>
-              <th>Reason</th>
-              <th>Status</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Debit Note No</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Date</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Supplier</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine / Batch</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Return Val</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Reason</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
               <th className="text-right">Actions</th>
             </tr>
           </thead>
@@ -574,9 +574,9 @@ export default function SupplierReturns({
                 const nextStatus =
                   STATUS_ORDER[STATUS_ORDER.indexOf(rtn.status) + 1]
                 return (
-                  <tr key={rtn.id}>
+                  <tr className="hover:bg-[#F0FDFA] transition-colors" key={rtn.id}>
                     <td>
-                      <p className="font-mono text-[13px] font-medium text-[#1B4FD8]">
+                      <p className="font-mono text-[13px] font-medium text-[#0F766E]">
                         {rtn.debitNoteNumber}
                       </p>
                       {(rtn.poNumber || rtn.grnNumber) && (
@@ -628,7 +628,7 @@ export default function SupplierReturns({
                         {nextStatus && (
                           <button
                             onClick={() => advanceStatus(rtn.id, rtn.status)}
-                            className="p-1.5 rounded hover:bg-[#F0F2F5] text-[#1B4FD8]"
+                            className="p-1.5 rounded hover:bg-[#F0F2F5] text-[#0F766E]"
                             title={`Advance to ${nextStatus}`}
                           >
                             <ArrowRight size={15} />

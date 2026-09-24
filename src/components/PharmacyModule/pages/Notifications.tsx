@@ -25,7 +25,7 @@ const typeConfig = {
   },
   info: {
     icon: Info,
-    color: "#1B4FD8",
+    color: "#0F766E",
     bg: "#E8EDF5",
     border: "#93c5fd",
     dot: "#60a5fa",
@@ -76,7 +76,7 @@ export default function Notifications({ onNavigate }: NotificationsProps) {
         actions={
           <button
             onClick={markAll}
-            className="flex items-center gap-1.5 px-4 py-2 rounded border border-[#DDE2EC] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 rounded border border-[#E2E8F0] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
           >
             <CheckCheck size={14} /> Mark all as read
           </button>
@@ -124,7 +124,7 @@ export default function Notifications({ onNavigate }: NotificationsProps) {
       {/* Notification list */}
       <div className="space-y-2">
         {filtered.length === 0 ? (
-          <div className="bg-white rounded border border-[#DDE2EC] py-16 text-center">
+          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] py-16 text-center">
             <div
               className="w-12 h-12 rounded flex items-center justify-center mx-auto mb-3"
               style={{ background: "#F0F2F5" }}
@@ -184,7 +184,7 @@ export default function Notifications({ onNavigate }: NotificationsProps) {
                         <button
                           onClick={() => markOne(n.id)}
                           className="text-[12px] font-medium"
-                          style={{ color: "#1B4FD8" }}
+                          style={{ color: "#0F766E" }}
                         >
                           Mark as read
                         </button>

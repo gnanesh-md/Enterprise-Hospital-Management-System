@@ -195,7 +195,7 @@ export default function GRN({ onNavigate }: GRNProps) {
         onNavigate={onNavigate}
         actions={
           <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#DDE2EC] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors">
+            <button className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#E2E8F0] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors">
               <Printer size={13} /> Print GRN
             </button>
             <button
@@ -210,7 +210,7 @@ export default function GRN({ onNavigate }: GRNProps) {
       />
 
       {/* GRN Header */}
-      <div className="bg-white rounded border border-[#DDE2EC] p-5">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div>
             <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
@@ -227,7 +227,7 @@ export default function GRN({ onNavigate }: GRNProps) {
             <select
               value={selectedPoId}
               onChange={handlePoSelect}
-              className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors bg-white"
+              className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors bg-white"
             >
               <option value="">-- Select PO --</option>
               {approvedPOs.map((po) => (
@@ -269,7 +269,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                   type={(f as any).type ?? "text"}
                   defaultValue={f.value}
                   placeholder={(f as any).placeholder}
-                  className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
+                  className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
                 />
               ) : (
                 <p className="px-3 py-2 rounded bg-[#F5F7FA] text-[13px] font-medium text-[#0F1624]">
@@ -325,13 +325,13 @@ export default function GRN({ onNavigate }: GRNProps) {
       </div>
 
       {/* Receiving Table */}
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-visible">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-visible">
         <div className="px-5 py-3 border-b border-[#F0F2F5] flex items-center justify-between relative">
           <p className="font-semibold text-[14px] text-[#0F1624]">
             Receiving Details
           </p>
           <div className="relative">
-            <div className="flex items-center gap-2 border border-[#DDE2EC] px-3 py-1.5 w-64 bg-white">
+            <div className="flex items-center gap-2 border border-[#E2E8F0] px-3 py-1.5 w-64 bg-white">
               <Search size={14} className="text-[#94A3B8]" />
               <input
                 value={search}
@@ -341,7 +341,7 @@ export default function GRN({ onNavigate }: GRNProps) {
               />
             </div>
             {searchResults.length > 0 && (
-              <div className="absolute top-full right-0 w-80 bg-white border border-[#DDE2EC] shadow-xl z-50 max-h-64 overflow-y-auto">
+              <div className="absolute top-full right-0 w-80 bg-white border border-[#E2E8F0] shadow-xl z-50 max-h-64 overflow-y-auto">
                 {searchResults.map((m) => (
                   <div
                     key={m.id}
@@ -354,7 +354,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                       </p>
                       <p className="text-[11px] text-[#64748B]">{m.generic}</p>
                     </div>
-                    <Plus size={14} className="text-[#1B4FD8]" />
+                    <Plus size={14} className="text-[#0F766E]" />
                   </div>
                 ))}
               </div>
@@ -363,23 +363,23 @@ export default function GRN({ onNavigate }: GRNProps) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead>
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
               <tr>
-                <th>Medicine</th>
-                <th>Ordered</th>
-                <th>Received</th>
-                <th>Damaged</th>
-                <th>Batch No.</th>
-                <th>Mfg. Date</th>
-                <th>Expiry Date</th>
-                <th>Purchase Price</th>
-                <th>MRP (₹)</th>
-                <th>Status</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Ordered</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Received</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Damaged</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Batch No.</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Mfg. Date</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Expiry Date</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Purchase Price</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">MRP (₹)</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, idx) => (
-                <tr key={idx}>
+                <tr className="hover:bg-[#F0FDFA] transition-colors" key={idx}>
                   <td className="font-medium text-[13px] text-[#0F1624]">
                     {item.medicine}
                   </td>
@@ -391,7 +391,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                       onChange={(e) =>
                         updateItem(idx, "received", e.target.value)
                       }
-                      className="w-20 px-2 py-1 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none text-center"
+                      className="w-20 px-2 py-1 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none text-center"
                     />
                   </td>
                   <td>
@@ -401,7 +401,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                       onChange={(e) =>
                         updateItem(idx, "damaged", e.target.value)
                       }
-                      className="w-16 px-2 py-1 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none text-center"
+                      className="w-16 px-2 py-1 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none text-center"
                     />
                   </td>
                   <td>
@@ -409,7 +409,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                       value={item.batch}
                       onChange={(e) => updateItem(idx, "batch", e.target.value)}
                       placeholder="Batch"
-                      className="w-24 px-2 py-1 rounded border border-[#DDE2EC] text-[12px] font-mono focus:border-[#1B4FD8] focus:outline-none"
+                      className="w-24 px-2 py-1 rounded border border-[#E2E8F0] text-[12px] font-mono focus:border-[#0F766E] focus:outline-none"
                     />
                   </td>
                   <td>
@@ -417,7 +417,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                       type="date"
                       value={item.mfg}
                       onChange={(e) => updateItem(idx, "mfg", e.target.value)}
-                      className="w-32 px-2 py-1 rounded border border-[#DDE2EC] text-[12px] focus:border-[#1B4FD8] focus:outline-none"
+                      className="w-32 px-2 py-1 rounded border border-[#E2E8F0] text-[12px] focus:border-[#0F766E] focus:outline-none"
                     />
                   </td>
                   <td>
@@ -427,7 +427,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                       onChange={(e) =>
                         updateItem(idx, "expiry", e.target.value)
                       }
-                      className="w-32 px-2 py-1 rounded border border-[#DDE2EC] text-[12px] focus:border-[#1B4FD8] focus:outline-none"
+                      className="w-32 px-2 py-1 rounded border border-[#E2E8F0] text-[12px] focus:border-[#0F766E] focus:outline-none"
                     />
                   </td>
                   <td>
@@ -437,7 +437,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                       onChange={(e) =>
                         updateItem(idx, "price", +e.target.value)
                       }
-                      className="w-20 px-2 py-1 rounded border border-[#DDE2EC] text-[13px]"
+                      className="w-20 px-2 py-1 rounded border border-[#E2E8F0] text-[13px]"
                     />
                   </td>
                   <td>
@@ -445,7 +445,7 @@ export default function GRN({ onNavigate }: GRNProps) {
                       type="number"
                       value={item.mrp}
                       onChange={(e) => updateItem(idx, "mrp", +e.target.value)}
-                      className="w-20 px-2 py-1 rounded border border-[#DDE2EC] text-[13px]"
+                      className="w-20 px-2 py-1 rounded border border-[#E2E8F0] text-[13px]"
                     />
                   </td>
                   <td>
@@ -488,7 +488,7 @@ export default function GRN({ onNavigate }: GRNProps) {
       </div>
 
       {/* Summary */}
-      <div className="bg-white rounded border border-[#DDE2EC] p-5">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
             <p className="text-[11px] text-[#64748B] uppercase font-semibold tracking-wide">

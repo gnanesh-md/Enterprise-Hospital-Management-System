@@ -109,7 +109,7 @@ export default function PrescriptionQueue({
               <button
                 onClick={handleGenerateTestPrescription}
                 className="flex items-center gap-1.5 px-4 py-2 rounded text-white text-[13px] font-medium"
-                style={{ background: "#1B4FD8" }}
+                style={{ background: "#0F766E" }}
               >
                 <Plus size={14} /> Add Test Prescription
               </button>
@@ -119,12 +119,12 @@ export default function PrescriptionQueue({
 
           {/* Filters */}
           <div className="flex items-center gap-3 mt-4 mb-0 flex-wrap">
-            <div className="flex rounded border border-[#DDE2EC] overflow-hidden bg-white text-[13px]">
+            <div className="flex rounded border border-[#E2E8F0] overflow-hidden bg-white text-[13px]">
               {filters.map((f) => (
                 <button
                   key={f}
                   onClick={() => setActiveFilter(f)}
-                  className="px-4 py-2 font-medium transition-colors border-r last:border-r-0 border-[#DDE2EC]"
+                  className="px-4 py-2 font-medium transition-colors border-r last:border-r-0 border-[#E2E8F0]"
                   style={{
                     background: activeFilter === f ? "#0F1624" : "#fff",
                     color: activeFilter === f ? "#fff" : "#64748B",
@@ -135,7 +135,7 @@ export default function PrescriptionQueue({
               ))}
             </div>
             <div className="flex items-center gap-2 ml-auto">
-              <div className="flex items-center gap-2 bg-white border border-[#DDE2EC] rounded px-3 py-2">
+              <div className="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded px-3 py-2">
                 <Search size={14} className="text-[#94A3B8]" />
                 <input
                   value={search}
@@ -150,19 +150,19 @@ export default function PrescriptionQueue({
 
         {/* Table */}
         <div className="flex-1 overflow-y-auto px-6 pb-6 pt-4">
-          <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
             <table>
-              <thead>
+              <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
                 <tr>
-                  <th>Prescription ID</th>
-                  <th>Patient</th>
-                  <th>Doctor</th>
-                  <th>Date</th>
-                  <th>Items</th>
-                  <th>Priority</th>
-                  <th>Status</th>
-                  <th>Pharmacist</th>
-                  <th>Action</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Prescription ID</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Patient</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Doctor</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Date</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Items</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Priority</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Pharmacist</th>
+                  <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -179,14 +179,11 @@ export default function PrescriptionQueue({
                   </tr>
                 ) : (
                   filtered.map((rx) => (
-                    <tr
-                      key={rx.id}
-                      onClick={() => setSelected(rx)}
-                      className="cursor-pointer"
+                    <tr key={rx.id} onClick={() => setSelected(rx)} className="hover:bg-[#F0FDFA] transition-colors cursor-pointer"
                     >
                       <td
                         className="font-mono text-[12px] font-semibold"
-                        style={{ color: "#1B4FD8" }}
+                        style={{ color: "#0F766E" }}
                       >
                         {rx.id}
                       </td>
@@ -222,7 +219,7 @@ export default function PrescriptionQueue({
                         )}
                       </td>
                       <td>
-                        <button className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded border border-[#DDE2EC] text-[#334155] hover:bg-[#F0F2F5] transition-colors">
+                        <button className="flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded border border-[#E2E8F0] text-[#334155] hover:bg-[#F0F2F5] transition-colors">
                           View <ChevronRight size={12} />
                         </button>
                       </td>
@@ -237,7 +234,7 @@ export default function PrescriptionQueue({
 
       {/* Detail Drawer */}
       {selected && (
-        <div className="w-96 bg-white border-l border-[#DDE2EC] flex flex-col flex-shrink-0 overflow-hidden">
+        <div className="w-96 bg-white border-l border-[#E2E8F0] flex flex-col flex-shrink-0 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0F2F5]">
             <div>
               <p className="font-semibold text-[14px] text-[#0F1624]">
@@ -289,7 +286,7 @@ export default function PrescriptionQueue({
                     <p className="text-[11px] text-[#64748B] mt-0.5">
                       {m.dosage} · {m.frequency} · {m.duration}
                     </p>
-                    <p className="text-[11px] font-bold mt-1 text-[#1B4FD8]">
+                    <p className="text-[11px] font-bold mt-1 text-[#0F766E]">
                       Qty: {m.quantity}
                     </p>
                   </div>
@@ -303,13 +300,13 @@ export default function PrescriptionQueue({
             </div>
           </div>
 
-          <div className="p-4 border-t border-[#DDE2EC] space-y-2">
+          <div className="p-4 border-t border-[#E2E8F0] space-y-2">
             {selected.status !== "dispensed" && (
               <div className="grid grid-cols-1 gap-2">
                 <button
                   onClick={handleDispense}
                   className="flex items-center justify-center gap-1.5 py-2.5 rounded text-white text-[12px] font-medium hover:opacity-90"
-                  style={{ background: "#1B4FD8" }}
+                  style={{ background: "#0F766E" }}
                 >
                   <Play size={13} /> Dispense Items
                 </button>

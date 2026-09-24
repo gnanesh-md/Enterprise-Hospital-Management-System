@@ -35,7 +35,7 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded text-white text-[13px] font-medium"
-            style={{ background: "#1B4FD8" }}
+            style={{ background: "#0F766E" }}
           >
             <Plus size={14} /> Create Transfer
           </button>
@@ -44,7 +44,7 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
       />
 
       {/* Workflow steps */}
-      <div className="bg-white rounded border border-[#DDE2EC] p-5">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
         <p className="text-[12px] font-semibold text-[#64748B] uppercase tracking-wide mb-4">
           Transfer Workflow
         </p>
@@ -54,7 +54,7 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
               <div className="flex items-center gap-2">
                 <div
                   className="w-7 h-7 rounded flex items-center justify-center text-[11px] font-bold"
-                  style={{ background: "#E8EDF5", color: "#1B4FD8" }}
+                  style={{ background: "#E8EDF5", color: "#0F766E" }}
                 >
                   {i + 1}
                 </div>
@@ -71,27 +71,27 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
       </div>
 
       {/* Transfers table */}
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
         <table>
-          <thead>
+          <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
             <tr>
-              <th>Transfer ID</th>
-              <th>From</th>
-              <th>To</th>
-              <th>Medicines</th>
-              <th>Requested By</th>
-              <th>Approved By</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Transfer ID</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">From</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">To</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicines</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Requested By</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Approved By</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Date</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
             {stockTransfers.map((t) => (
-              <tr key={t.id}>
+              <tr className="hover:bg-[#F0FDFA] transition-colors" key={t.id}>
                 <td
                   className="font-mono text-[12px] font-semibold"
-                  style={{ color: "#1B4FD8" }}
+                  style={{ color: "#0F766E" }}
                 >
                   {t.id}
                 </td>
@@ -101,7 +101,7 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
                       className="w-5 h-5 rounded flex items-center justify-center"
                       style={{ background: "#E8EDF5" }}
                     >
-                      <Package size={11} style={{ color: "#1B4FD8" }} />
+                      <Package size={11} style={{ color: "#0F766E" }} />
                     </div>
                     <span className="text-[13px] text-[#0F1624]">{t.from}</span>
                   </div>
@@ -157,7 +157,7 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
                           )
                         }
                         className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded"
-                        style={{ background: "#E8EDF5", color: "#1B4FD8" }}
+                        style={{ background: "#E8EDF5", color: "#0F766E" }}
                       >
                         <Truck size={10} /> Receive
                       </button>
@@ -200,7 +200,7 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
                     <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
                       {l} *
                     </label>
-                    <select className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors">
+                    <select className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors">
                       <option>Main Branch</option>
                       <option>Branch 2</option>
                       <option>Branch 3</option>
@@ -214,14 +214,14 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
                   <input
                     type="date"
                     defaultValue="2026-09-12"
-                    className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors"
+                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors"
                   />
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
                     Reason
                   </label>
-                  <select className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none transition-colors">
+                  <select className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none transition-colors">
                     <option>Stock rebalancing</option>
                     <option>Emergency supply</option>
                     <option>Branch request</option>
@@ -243,24 +243,24 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
                       )
                     }
                     className="flex items-center gap-1 text-[12px] font-medium"
-                    style={{ color: "#1B4FD8" }}
+                    style={{ color: "#0F766E" }}
                   >
                     <Plus size={12} /> Add
                   </button>
                 </div>
-                <div className="rounded border border-[#DDE2EC] overflow-hidden">
+                <div className="rounded border border-[#E2E8F0] overflow-hidden">
                   <table>
-                    <thead>
+                    <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
                       <tr>
-                        <th>Medicine</th>
-                        <th>Batch</th>
-                        <th>Available</th>
-                        <th>Transfer Qty</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Batch</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Available</th>
+                        <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Transfer Qty</th>
                       </tr>
                     </thead>
                     <tbody>
                       {[1, 2].map((i) => (
-                        <tr key={i}>
+                        <tr className="hover:bg-[#F0FDFA] transition-colors" key={i}>
                           <td>
                             <input
                               placeholder="Search…"
@@ -278,7 +278,7 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
                             <input
                               type="number"
                               defaultValue={50}
-                              className="w-20 px-2 py-1 rounded border border-[#DDE2EC] text-[13px] focus:border-[#1B4FD8] focus:outline-none"
+                              className="w-20 px-2 py-1 rounded border border-[#E2E8F0] text-[13px] focus:border-[#0F766E] focus:outline-none"
                             />
                           </td>
                         </tr>
@@ -288,7 +288,7 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-[#DDE2EC] flex gap-3">
+            <div className="p-5 border-t border-[#E2E8F0] flex gap-3">
               <button
                 onClick={() => {
                   setShowCreate(false)
@@ -301,13 +301,13 @@ export default function StockTransfers({ onNavigate }: StockTransfersProps) {
                   )
                 }}
                 className="flex-1 py-2.5 rounded text-white font-semibold text-[13px]"
-                style={{ background: "#1B4FD8" }}
+                style={{ background: "#0F766E" }}
               >
                 Submit Request
               </button>
               <button
                 onClick={() => setShowCreate(false)}
-                className="flex-1 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+                className="flex-1 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
               >
                 Cancel
               </button>
