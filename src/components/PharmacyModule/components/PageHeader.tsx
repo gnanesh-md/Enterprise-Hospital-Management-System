@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react"
+import { Pill } from "lucide-react"
 
 interface Breadcrumb {
   label: string
@@ -6,7 +6,7 @@ interface Breadcrumb {
 }
 
 interface PageHeaderProps {
-  breadcrumbs: Breadcrumb[]
+  breadcrumbs?: Breadcrumb[]
   title: React.ReactNode
   description?: string
   actions?: React.ReactNode
@@ -18,20 +18,22 @@ export default function PageHeader({
   description,
   actions,
 }: PageHeaderProps) {
-  // We ignore breadcrumbs since the App.tsx shell now provides a global breadcrumb strip.
+  // Strip emoji prefixes if passed as text string
+  const cleanTitle = typeof title === "string" ? title.replace(/^[💊💉🧪]\s*/, "") : title
+
   return (
-    <div className="bg-gradient-to-r from-[#F0FDFA] to-white rounded-xl shadow-sm border border-[#E2E8F0] border-t-2 border-t-[#0F766E] p-5 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="bg-white border-b border-[#DDE2EC] px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 -mx-6 -mt-6 mb-6 shadow-2xs">
       <div>
         <div className="flex items-center gap-2">
-          {typeof title === "string" && !title.includes("Dashboard") ? null : (
-            <span className="text-xl">{title === "Pharmacy Dashboard" ? "💊" : ""}</span>
-          )}
-          <h1 className="text-[20px] font-bold text-[#064E3B] tracking-tight">
-            {title}
+          <Pill className="w-5 h-5 text-[#1B4FD8]" />
+          <h1 className="text-lg font-semibold text-gray-900 tracking-tight">
+            {cleanTitle}
           </h1>
         </div>
         {description && (
-          <p className="text-[12.5px] text-[#64748B] mt-1">{description}</p>
+          <p className="text-[12px] text-[#64748B] mt-0.5 font-normal">
+            {description}
+          </p>
         )}
       </div>
       {actions && (

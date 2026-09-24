@@ -852,14 +852,14 @@ Output strictly valid JSON only without markdown formatting.`
             </div>
           )}
 
-          <label className="block w-full py-12 px-4 rounded-xl border-2 border-dashed border-[#CBD5E1] hover:border-[#0F766E] hover:bg-[#EDF7F5] cursor-pointer transition-all">
+          <label className="block w-full py-12 px-4 rounded-xl border-2 border-dashed border-[#CBD5E1] hover:border-[#1B4FD8] hover:bg-[#EFF6FF] cursor-pointer transition-all">
             <input
               type="file"
               accept="image/*,.pdf"
               className="hidden"
               onChange={handleFileUpload}
             />
-            <div className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-semibold text-[14px] bg-[#0F766E] hover:bg-[#1540B3] transition-colors shadow-sm">
+            <div className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-semibold text-[14px] bg-[#1B4FD8] hover:bg-[#1540B3] transition-colors shadow-2xs">
               <FileText size={18} /> Select Invoice File
             </div>
             <p className="text-[11px] text-[#94A3B8] mt-3">
@@ -965,7 +965,7 @@ Output strictly valid JSON only without markdown formatting.`
               </div>
             )}
 
-            <div className="relative flex-1 min-h-[480px] m-4 rounded bg-[#EDF7F5] border border-[#E2E8F0] overflow-hidden flex items-center justify-center p-4">
+            <div className="relative flex-1 min-h-[480px] m-4 rounded bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden flex items-center justify-center p-4">
               <div
                 style={{
                   transform: `scale(${zoom / 100})`,
@@ -1322,7 +1322,7 @@ Output strictly valid JSON only without markdown formatting.`
                 Financial Amount Calculation Summary
               </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-lg bg-[#EDF7F5] border border-[#E2E8F0]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
                 <div>
                   <p className="text-[11px] text-[#64748B]">
                     Base Amount (Subtotal)

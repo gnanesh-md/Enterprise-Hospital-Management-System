@@ -541,7 +541,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
       {/* Main Container */}
 
-      <div className="flex-1 flex flex-col overflow-hidden print:hidden bg-gradient-to-br from-[#F8FAFC] to-[#F1F5F9]">
+      <div className="flex-1 flex flex-col overflow-hidden print:hidden bg-[#F8FAFC]">
         <div className="p-6 pb-0">
           <PageHeader
             breadcrumbs={[
@@ -584,7 +584,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
         {activeTab === "sales_history" ? (
           <div className="flex-1 overflow-y-auto p-6">
             <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-[#E2E8F0] flex justify-between items-center bg-[#EDF7F5]">
+              <div className="p-4 border-b border-[#E2E8F0] flex justify-between items-center bg-[#F8FAFC]">
                 <h3 className="font-bold text-[15px] text-[#0F1624]">
                   Completed Transactions
                 </h3>
@@ -612,20 +612,20 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                   </div>
                 </div>
               </div>
-              <div className="p-4 bg-[#EDF7F5] border-b border-[#E2E8F0]">
+              <div className="p-4 bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <button
                   onClick={() => {
                     setActiveTab("new_sale")
                     closeInvoice()
                   }}
-                  className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded text-[13px] font-semibold text-[#0F766E] bg-[#E8EDF5] hover:bg-[#dbeafe] transition-colors"
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded text-[13px] font-semibold text-[#1B4FD8] bg-[#EFF6FF] hover:bg-[#DBEAFE] transition-colors"
                 >
                   <Plus size={14} /> New Sale
                 </button>
               </div>
               <div className="flex-1 overflow-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-[#EDF7F5] sticky top-0 border-b border-[#E2E8F0]">
+                  <thead className="bg-[#F8FAFC] sticky top-0 border-b border-[#E2E8F0]">
                     <tr>
                       <th className="px-5 py-3 text-[12px] font-bold text-[#475569] uppercase tracking-wider">
                         Bill No
@@ -815,30 +815,30 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
             {/* Cart Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] overflow-hidden">
               <table>
-                <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
+                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                   <tr>
-                    <th className="text-left px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-left px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Medicine
                     </th>
-                    <th className="text-left px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-left px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Batch
                     </th>
-                    <th className="text-left px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-left px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Expiry
                     </th>
-                    <th className="text-center px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-center px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Qty
                     </th>
-                    <th className="text-right px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-right px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       MRP (₹)
                     </th>
-                    <th className="text-center px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-center px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Tax%
                     </th>
-                    <th className="text-right px-5 py-4 bg-[#EDF7F5] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
+                    <th className="text-right px-5 py-4 bg-[#F8FAFC] text-[12px] font-extrabold text-[#475569] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Total (₹)
                     </th>
-                    <th className="px-5 py-4 bg-[#EDF7F5] border-b border-[#E2E8F0]"></th>
+                    <th className="px-5 py-4 bg-[#F8FAFC] border-b border-[#E2E8F0]"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -917,7 +917,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       {/* Right: Payment summary (Only shown in New Sale tab) */}
       {activeTab === "new_sale" && (
         <div className="w-[420px] bg-white border-l border-[#E2E8F0] shadow-[-10px_0_40px_rgba(0,0,0,0.04)] flex flex-col print:hidden z-10">
-          <div className="p-6 border-b border-[#E2E8F0] bg-[#EDF7F5]">
+          <div className="p-6 border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <h3 className="font-black text-[18px] text-[#0F1624] tracking-tight">
               Payment Summary
             </h3>
@@ -925,7 +925,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
           <div className="p-5 space-y-4 flex-1 overflow-y-auto">
             {/* Bill Breakup */}
-            <div className="space-y-3 bg-[#EDF7F5] p-6 rounded-2xl border border-[#E2E8F0]">
+            <div className="space-y-3 bg-[#F8FAFC] p-6 rounded-2xl border border-[#E2E8F0]">
               <div className="flex justify-between text-[13px] text-[#475569]">
                 <span>Subtotal</span>
                 <span className="font-medium text-[#0F1624]">
@@ -1000,8 +1000,8 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
               <div className="space-y-3">
                 {/* Cash */}
                 <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center gap-2 bg-[#EDF7F5] p-3 border-b border-[#E2E8F0]">
-                    <Wallet size={16} className="text-[#0F766E]" />
+                  <div className="flex items-center gap-2 bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
+                    <Wallet size={16} className="text-[#1B4FD8]" />
                     <span className="text-[13px] font-semibold text-[#0F1624]">
                       Cash
                     </span>
@@ -1020,7 +1020,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                             cash: Number(e.target.value),
                           }))
                         }
-                        className="w-24 px-2 py-1 text-right text-[13px] border border-[#E2E8F0] focus:border-[#0F766E] outline-none rounded"
+                        className="w-24 px-2 py-1 text-right text-[13px] border border-[#E2E8F0] focus:border-[#1B4FD8] outline-none rounded"
                         placeholder="0.00"
                       />
                     </div>
@@ -1035,7 +1035,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           onChange={(e) =>
                             setTenderedCash(Number(e.target.value))
                           }
-                          className="w-24 px-2 py-1 text-right text-[13px] border border-[#E2E8F0] focus:border-[#0F766E] outline-none rounded"
+                          className="w-24 px-2 py-1 text-right text-[13px] border border-[#E2E8F0] focus:border-[#1B4FD8] outline-none rounded"
                           placeholder="0.00"
                         />
                       </div>
@@ -1058,9 +1058,9 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
                 {/* UPI */}
                 <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center justify-between bg-[#EDF7F5] p-3 border-b border-[#E2E8F0]">
+                  <div className="flex items-center justify-between bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
                     <div className="flex items-center gap-2">
-                      <Smartphone size={16} className="text-[#0F766E]" />
+                      <Smartphone size={16} className="text-[#1B4FD8]" />
                       <span className="text-[13px] font-semibold text-[#0F1624]">
                         UPI / QR
                       </span>
@@ -1086,7 +1086,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           return n
                         })
                       }}
-                      className="w-28 px-3 py-2 text-right text-[15px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] focus:ring-2 focus:ring-[#0F766E]/20 outline-none rounded-md transition-all"
+                      className="w-28 px-3 py-2 text-right text-[15px] font-bold border border-[#CBD5E1] focus:border-[#1B4FD8] focus:ring-2 focus:ring-[#1B4FD8]/20 outline-none rounded-md transition-all"
                       placeholder="0.00"
                     />
                     <div className="flex gap-1">
@@ -1095,7 +1095,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           handleRazorpayPayment("upi", payments["upi"])
                         }
                         disabled={!payments["upi"]}
-                        className="px-3 py-1 bg-[#0F766E] text-white text-[12px] rounded font-medium disabled:opacity-50"
+                        className="px-3 py-1 bg-[#1B4FD8] text-white text-[12px] rounded font-medium disabled:opacity-50 hover:bg-[#1540B3]"
                       >
                         Pay via Gateway
                       </button>
@@ -1119,9 +1119,9 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
                 {/* Card - Physical POS */}
                 <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center justify-between bg-[#EDF7F5] p-3 border-b border-[#E2E8F0]">
+                  <div className="flex items-center justify-between bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
                     <div className="flex items-center gap-2">
-                      <CreditCard size={16} className="text-[#0F766E]" />
+                      <CreditCard size={16} className="text-[#1B4FD8]" />
                       <span className="text-[13px] font-semibold text-[#0F1624]">
                         Card (Physical POS)
                       </span>

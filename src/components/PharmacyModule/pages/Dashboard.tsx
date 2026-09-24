@@ -29,6 +29,7 @@ import {
 import toast from "react-hot-toast"
 
 import StatusBadge from "../components/StatusBadge"
+import PageHeader from "../components/PageHeader"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
 
 const quickActions = [
@@ -262,48 +263,33 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
   ]
 
   return (
-    <div className="p-6 space-y-6 bg-[#EDF7F5] min-h-full font-sans text-[#0F1624]">
-      {/* Header Card */}
-      <div className="bg-gradient-to-r from-[#F0FDFA] to-white rounded-xl shadow-sm border border-[#E2E8F0] border-t-2 border-t-[#0F766E] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xl">💊</span>
-            <h1 className="text-[20px] font-bold text-[#064E3B] tracking-tight">
-              Pharmacy Dashboard
-            </h1>
-          </div>
-          <p className="text-[12.5px] text-[#64748B] mt-1">
-            Here's what's happening in your pharmacy today –{" "}
-            {new Date().toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-
-        <div className="flex gap-2 items-center flex-wrap">
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="px-3 py-2 rounded text-[13px] font-medium border border-[#E2E8F0] bg-white text-[#334155] focus:border-[#0F766E] focus:outline-none"
-          />
-          <button
-            onClick={() => onNavigate("dispensing")}
-            className="px-4 py-2 rounded text-white text-[13px] font-medium flex items-center gap-1.5 shadow-sm hover:opacity-95 transition-opacity"
-            style={{ background: "#0F766E" }}
-          >
-            <ShoppingCart size={14} /> New Sale
-          </button>
-          <button
-            onClick={() => onNavigate("prescriptions")}
-            className="px-4 py-2 rounded text-[13px] font-medium border border-[#E2E8F0] bg-white text-[#334155] hover:bg-[#F0FDFA] flex items-center gap-1.5 transition-colors"
-          >
-            <ClipboardList size={14} /> Scan Prescription
-          </button>
-        </div>
-      </div>
+    <div className="p-6 space-y-6 bg-[#F8FAFC] min-h-full font-sans text-[#0F1624]">
+      <PageHeader
+        title="Pharmacy Dashboard"
+        description={`Here's what's happening in your pharmacy today – ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`}
+        actions={
+          <>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="px-3 py-1.5 rounded-md text-xs font-medium border border-[#DDE2EC] bg-white text-[#334155] focus:border-[#1B4FD8] focus:outline-none"
+            />
+            <button
+              onClick={() => onNavigate("dispensing")}
+              className="px-3.5 py-1.5 rounded-md text-white text-xs font-medium flex items-center gap-1.5 bg-[#1B4FD8] hover:bg-[#1541B0] shadow-2xs transition-colors"
+            >
+              <ShoppingCart size={14} /> New Sale
+            </button>
+            <button
+              onClick={() => onNavigate("prescriptions")}
+              className="px-3.5 py-1.5 rounded-md text-xs font-medium border border-[#DDE2EC] bg-white text-[#334155] hover:bg-slate-50 flex items-center gap-1.5 transition-colors"
+            >
+              <ClipboardList size={14} /> Scan Prescription
+            </button>
+          </>
+        }
+      />
 
       {/* KPI Cards Row 1 */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

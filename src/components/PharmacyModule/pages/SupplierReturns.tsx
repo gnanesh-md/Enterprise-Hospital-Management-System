@@ -270,7 +270,7 @@ export default function SupplierReturns({
                   value={selectedBatchId}
                   onChange={(e) => setSelectedBatchId(e.target.value)}
                   disabled={!selectedSupplierId}
-                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded disabled:bg-[#EDF7F5]"
+                  className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px] rounded disabled:bg-[#F8FAFC]"
                 >
                   <option value="">-- Choose Batch --</option>
                   {activeBatches.map((b) => (
@@ -282,6 +282,7 @@ export default function SupplierReturns({
                 </select>
               </div>
             </div>
+
           </div>
 
           <hr className="border-[#F0F2F5]" />
@@ -289,7 +290,7 @@ export default function SupplierReturns({
           {/* Section 2: Reference Details */}
           <div className="space-y-4">
             <h3 className="font-semibold text-[14px] text-[#0F1624] flex items-center gap-2">
-              <FileText size={16} className="text-[#0F766E]" /> 2. Original
+              <FileText size={16} className="text-[#1B4FD8]" /> 2. Original
               Purchase Details (Optional)
             </h3>
             <div className="grid grid-cols-3 gap-4">
@@ -337,7 +338,7 @@ export default function SupplierReturns({
           {/* Section 3: Return Specifics */}
           <div className="space-y-4">
             <h3 className="font-semibold text-[14px] text-[#0F1624] flex items-center gap-2">
-              <Package size={16} className="text-[#0F766E]" /> 3. Return Details
+              <Package size={16} className="text-[#1B4FD8]" /> 3. Return Details
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -371,7 +372,7 @@ export default function SupplierReturns({
               </div>
             </div>
 
-            <div className="bg-[#EDF7F5] border border-[#E2E8F0] rounded p-4 flex justify-between items-center mt-4">
+            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded p-4 flex justify-between items-center mt-4">
               <div>
                 <p className="text-[12px] font-semibold text-[#64748B] uppercase">
                   Purchase Rate

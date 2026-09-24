@@ -2120,7 +2120,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
   }
 
   return (
-    <div className="p-6 space-y-5 bg-[#EDF7F5] min-h-screen">
+    <div className="p-6 space-y-5 bg-[#F8FAFC] min-h-screen">
       {/* Print Styles: Strict read-only printable layout */}
       <style>{`
         @media print {
@@ -2132,49 +2132,35 @@ export default function Reports({ onNavigate }: ReportsProps) {
       `}</style>
 
       {/* TOP HEADER */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] px-6 py-4 shadow-sm flex items-center justify-between flex-wrap gap-4 no-print">
-        <div>
-          <nav className="flex items-center gap-1.5 text-[12px] text-[#64748B] mb-1">
-            <span>HospAI</span>
-            <ChevronRight size={11} />
-            <button
-              onClick={() => onNavigate("dashboard")}
-              className="hover:text-[#0F766E]"
-            >
-              Pharmacy
-            </button>
-            <ChevronRight size={11} />
-            <span className="text-[#0F1624] font-medium">
-              Analytics & Reports
-            </span>
-          </nav>
-          <h1 className="text-[20px] font-bold text-[#0F1624]">
-            Reports & Analytics
-          </h1>
-          <p className="text-[12px] text-[#64748B]">
-            Insights and business intelligence for pharmacy operations
-          </p>
-        </div>
+      <div className="no-print">
+        <PageHeader
+          breadcrumbs={[
+            { label: "Pharmacy" },
+            { label: "Reports & Analytics" },
+          ]}
+          title="Reports & Analytics"
+          description="Insights and business intelligence for pharmacy operations"
+          actions={
+            <>
+              <button
+                onClick={handlePrint}
+                title="Print Report"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#E2E8F0] bg-white text-[12px] font-medium text-[#334155] hover:bg-gray-50 transition-colors shadow-2xs"
+              >
+                <Printer size={13} className="text-gray-600" /> Print
+              </button>
 
-        {/* Top-Right Action Controls (Clean, not visually overpowering) */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePrint}
-            title="Print Report"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#E2E8F0] bg-white text-[12px] font-medium text-[#334155] hover:bg-gray-50 transition-colors shadow-sm"
-          >
-            <Printer size={13} className="text-gray-600" /> Print
-          </button>
-
-          <button
-            onClick={handleExportExcel}
-            title="Export Data to Excel/CSV"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-white text-[12px] font-semibold transition-colors shadow-sm hover:bg-green-800"
-            style={{ background: "#15803d" }}
-          >
-            <Download size={13} /> Export Excel
-          </button>
-        </div>
+              <button
+                onClick={handleExportExcel}
+                title="Export Data to Excel/CSV"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded text-white text-[12px] font-semibold transition-colors shadow-2xs hover:bg-blue-700 bg-[#1B4FD8]"
+              >
+                <Download size={13} /> Export Excel
+              </button>
+            </>
+          }
+          onNavigate={onNavigate}
+        />
       </div>
 
       {/* DATE FILTER TOOLBAR (Compact, professional) */}
@@ -2271,7 +2257,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 <div key={cat.id}>
                   <button
                     onClick={() => toggleCategory(cat.id)}
-                    className="w-full text-left px-3.5 py-2.5 flex items-center justify-between text-[11px] font-bold tracking-wider text-[#64748B] bg-[#EDF7F5] hover:bg-[#F1F5F9] transition-colors"
+                    className="w-full text-left px-3.5 py-2.5 flex items-center justify-between text-[11px] font-bold tracking-wider text-[#64748B] bg-[#F8FAFC] hover:bg-[#F1F5F9] transition-colors"
                   >
                     <span>{cat.label}</span>
                     {isExpanded ? (
@@ -2588,7 +2574,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                 {/* Compact Visual Summary Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded text-center">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded text-center">
                     <span className="text-[11px] font-semibold text-[#64748B] block">
                       Total Items
                     </span>
@@ -2711,7 +2697,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Purchase Orders
                     </span>
@@ -2719,7 +2705,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {totalPurchaseOrders}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Purchase Value
                     </span>
@@ -2730,7 +2716,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       })}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Pending Deliveries
                     </span>
@@ -2738,7 +2724,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {pendingPurchaseOrders}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Goods Received (GRN)
                     </span>
@@ -2750,7 +2736,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                 {supplierPurchasesData.length > 0 && (
                   <div className="border border-[#F1F5F9] rounded overflow-hidden">
-                    <div className="bg-[#EDF7F5] px-4 py-2 border-b border-[#E2E8F0] text-[11px] font-bold text-[#475569] uppercase">
+                    <div className="bg-[#F8FAFC] px-4 py-2 border-b border-[#E2E8F0] text-[11px] font-bold text-[#475569] uppercase">
                       Top Suppliers by Purchase Value
                     </div>
                     <table className="w-full text-left border-collapse text-[12px]">
@@ -2807,7 +2793,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Return Cases
                     </span>
@@ -2815,7 +2801,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {totalReturnTransactions}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Refund Amount
                     </span>
@@ -2826,7 +2812,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       })}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Returned Units
                     </span>
@@ -2834,7 +2820,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {totalReturnedQuantity}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Return Rate
                     </span>
@@ -2897,7 +2883,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Active Suppliers
                     </span>
@@ -2905,7 +2891,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {suppliers.length}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Orders Placed
                     </span>
@@ -2913,7 +2899,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {purchaseOrders.length}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Pending Shipments
                     </span>
@@ -2981,7 +2967,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 {expiringMedicines.length > 0 && (
                   <div className="border border-[#F1F5F9] rounded overflow-hidden">
                     <table className="w-full text-left border-collapse text-[12px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-2.5 font-semibold">Medicine</th>
                           <th className="p-2.5 font-semibold">Batch</th>
@@ -3081,7 +3067,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 {activeReport === "Daily Sales" ||
                 activeReport === "Monthly Sales" ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Date</th>
                         <th className="p-3 font-semibold text-center">
@@ -3140,7 +3126,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </table>
                 ) : activeReport === "Medicine-wise Sales" ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Medicine Name</th>
                         <th className="p-3 font-semibold text-center">
@@ -3205,7 +3191,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </table>
                 ) : activeReport === "Category-wise Sales" ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Category Name</th>
                         <th className="p-3 font-semibold text-center">
@@ -3275,7 +3261,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </table>
                 ) : activeReport === "Pharmacist-wise Sales" ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">
                           Pharmacist / Staff Name
@@ -3383,7 +3369,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                     </div>
 
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Medicine Name</th>
                           <th className="p-3 font-semibold">Batch No</th>
@@ -3481,7 +3467,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Stock Valuation" ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                         <span className="text-[11px] font-semibold text-[#64748B]">
                           Total Stock Valuation
                         </span>
@@ -3492,7 +3478,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                           })}
                         </span>
                       </div>
-                      <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                         <span className="text-[11px] font-semibold text-[#64748B]">
                           Total Distinct SKUs
                         </span>
@@ -3500,7 +3486,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                           {medicines.length}
                         </span>
                       </div>
-                      <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
+                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
                         <span className="text-[11px] font-semibold text-[#64748B]">
                           Total Physical Batches
                         </span>
@@ -3511,7 +3497,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                     </div>
 
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Medicine Name</th>
                           <th className="p-3 font-semibold">Category</th>
@@ -3610,7 +3596,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport.includes("Stock") ||
                   activeReport.includes("Moving") ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Medicine Name</th>
                         <th className="p-3 font-semibold">Category</th>
@@ -3741,7 +3727,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </table>
                 ) : activeReport.includes("GRN") ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">GRN Number</th>
                         <th className="p-3 font-semibold">PO Reference</th>
@@ -3907,7 +3893,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Procurement Activity Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Purchase Date</th>
                           <th className="p-3 font-semibold">Supplier</th>
@@ -4108,7 +4094,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* PO Lifecycle / Tracking Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">PO Number</th>
                           <th className="p-3 font-semibold">Supplier</th>
@@ -4242,7 +4228,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Pending Purchase Report" ? (
                   <div className="space-y-4">
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">PO Number</th>
                           <th className="p-3 font-semibold">Supplier Name</th>
@@ -4431,7 +4417,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Supplier Name</th>
                           <th className="p-3 font-semibold">Contact Person</th>
@@ -4611,7 +4597,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Supplier Name</th>
                           <th className="p-3 font-semibold text-center">
@@ -4770,7 +4756,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">PO Number</th>
                           <th className="p-3 font-semibold">Supplier Name</th>
@@ -4921,7 +4907,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Return ID</th>
                           <th className="p-3 font-semibold">Supplier Name</th>
@@ -5080,7 +5066,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">PO Number</th>
                           <th className="p-3 font-semibold">Supplier Name</th>
@@ -5191,7 +5177,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                 ) : activeReport.includes("Supplier") ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Supplier Name</th>
                         <th className="p-3 font-semibold">Contact Person</th>
@@ -5262,7 +5248,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Medicine Returns" ? (
                   <div className="space-y-4">
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Return ID</th>
                           <th className="p-3 font-semibold">Original Bill</th>
@@ -5421,7 +5407,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Financial Refund Transactions Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Return ID</th>
                           <th className="p-3 font-semibold">Original Bill</th>
@@ -5503,7 +5489,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Return Reasons" ? (
                   <div className="space-y-4">
                     {/* Visual Breakdown of Reasons */}
-                    <div className="bg-[#EDF7F5] border border-[#E2E8F0] p-4 rounded space-y-3">
+                    <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded space-y-3">
                       <span className="text-[12px] font-bold text-[#0F1624] block uppercase tracking-wider">
                         Return Reasons Distribution
                       </span>
@@ -5544,7 +5530,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Aggregate Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Return Reason</th>
                           <th className="p-3 font-semibold text-center">
@@ -5614,7 +5600,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Medicine-wise Returns" ? (
                   <div className="space-y-4">
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Medicine Name</th>
                           <th className="p-3 font-semibold">
@@ -5693,7 +5679,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Return Trends" ? (
                   <div className="space-y-5">
                     {/* Return Trends Chart */}
-                    <div className="bg-[#EDF7F5] border border-[#E2E8F0] p-4 rounded">
+                    <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-[12px] font-bold text-[#0F1624] uppercase tracking-wider">
                           Return Value Trend Over Time
@@ -5760,7 +5746,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Daily Trends Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Date</th>
                           <th className="p-3 font-semibold text-center">
@@ -5825,7 +5811,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : (
                   /* Fallback Table */
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Item / Entity</th>
                         <th className="p-3 font-semibold">Reference</th>
