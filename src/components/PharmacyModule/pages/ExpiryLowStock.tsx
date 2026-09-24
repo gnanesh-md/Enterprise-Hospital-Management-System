@@ -113,21 +113,21 @@ export default function ExpiryLowStock({ onNavigate }: ExpiryLowStockProps) {
         ))}
       </div>
 
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
         {activeTab === "low" && (
           <table>
-            <thead>
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
               <tr>
-                <th>Medicine</th>
-                <th>Current Stock</th>
-                <th>Reorder Level</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Current Stock</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Reorder Level</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
               {lowStock.map((m, i) => (
-                <tr key={i}>
+                <tr className="hover:bg-[#F0FDFA] transition-colors" key={i}>
                   <td className="font-semibold text-[13px] text-[#0F1624]">
                     {m.name}
                   </td>
@@ -148,7 +148,7 @@ export default function ExpiryLowStock({ onNavigate }: ExpiryLowStockProps) {
                   <td>
                     <button
                       onClick={() => onNavigate("purchase-orders")}
-                      className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded bg-[#E8EDF5] text-[#1B4FD8]"
+                      className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded bg-[#E8EDF5] text-[#0F766E]"
                     >
                       <ShoppingBag size={12} /> Order
                     </button>
@@ -171,17 +171,17 @@ export default function ExpiryLowStock({ onNavigate }: ExpiryLowStockProps) {
 
         {activeTab === "outofstock" && (
           <table>
-            <thead>
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
               <tr>
-                <th>Medicine</th>
-                <th>Current Stock</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Current Stock</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
               {outOfStock.map((m, i) => (
-                <tr key={i}>
+                <tr className="hover:bg-[#F0FDFA] transition-colors" key={i}>
                   <td className="font-semibold text-[13px] text-[#0F1624]">
                     {m.name}
                   </td>
@@ -196,7 +196,7 @@ export default function ExpiryLowStock({ onNavigate }: ExpiryLowStockProps) {
                   <td>
                     <button
                       onClick={() => onNavigate("purchase-orders")}
-                      className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded bg-[#E8EDF5] text-[#1B4FD8]"
+                      className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded bg-[#E8EDF5] text-[#0F766E]"
                     >
                       <ShoppingBag size={12} /> Order
                     </button>
@@ -219,13 +219,13 @@ export default function ExpiryLowStock({ onNavigate }: ExpiryLowStockProps) {
 
         {(activeTab === "expiring" || activeTab === "expired") && (
           <table>
-            <thead>
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
               <tr>
-                <th>Medicine</th>
-                <th>Batch No.</th>
-                <th>Stock Left</th>
-                <th>Expiry Date</th>
-                <th>Time Left</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Medicine</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Batch No.</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Stock Left</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Expiry Date</th>
+                <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Time Left</th>
               </tr>
             </thead>
             <tbody>
@@ -237,7 +237,7 @@ export default function ExpiryLowStock({ onNavigate }: ExpiryLowStockProps) {
                   )
                   const urg = urgencyLabel(daysLeft)
                   return (
-                    <tr key={i}>
+                    <tr className="hover:bg-[#F0FDFA] transition-colors" key={i}>
                       <td className="font-semibold text-[13px] text-[#0F1624]">
                         {m.name}
                       </td>

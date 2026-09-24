@@ -830,8 +830,8 @@ Output strictly valid JSON only without markdown formatting.`
 
       {/* PHASE 1: Clean Initial Upload State (Before OCR) -- NO PRESETS */}
       {!done && !processing && (
-        <div className="max-w-3xl mx-auto bg-white rounded-xl border border-[#DDE2EC] p-10 shadow-sm text-center space-y-6">
-          <div className="w-16 h-16 rounded-full bg-[#E8EDF5] text-[#1B4FD8] flex items-center justify-center mx-auto">
+        <div className="max-w-3xl mx-auto bg-white rounded-xl border border-[#E2E8F0] p-10 shadow-sm text-center space-y-6">
+          <div className="w-16 h-16 rounded-full bg-[#E8EDF5] text-[#0F766E] flex items-center justify-center mx-auto">
             <Upload size={28} />
           </div>
 
@@ -852,14 +852,14 @@ Output strictly valid JSON only without markdown formatting.`
             </div>
           )}
 
-          <label className="block w-full py-12 px-4 rounded-xl border-2 border-dashed border-[#CBD5E1] hover:border-[#1B4FD8] hover:bg-[#F8FAFC] cursor-pointer transition-all">
+          <label className="block w-full py-12 px-4 rounded-xl border-2 border-dashed border-[#CBD5E1] hover:border-[#0F766E] hover:bg-[#EDF7F5] cursor-pointer transition-all">
             <input
               type="file"
               accept="image/*,.pdf"
               className="hidden"
               onChange={handleFileUpload}
             />
-            <div className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-semibold text-[14px] bg-[#1B4FD8] hover:bg-[#1540B3] transition-colors shadow-sm">
+            <div className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-semibold text-[14px] bg-[#0F766E] hover:bg-[#1540B3] transition-colors shadow-sm">
               <FileText size={18} /> Select Invoice File
             </div>
             <p className="text-[11px] text-[#94A3B8] mt-3">
@@ -871,8 +871,8 @@ Output strictly valid JSON only without markdown formatting.`
 
       {/* PHASE 2: OCR Vision Processing Spinner */}
       {processing && (
-        <div className="max-w-xl mx-auto bg-white rounded-xl border border-[#DDE2EC] p-10 shadow-sm text-center space-y-4">
-          <Loader size={36} className="text-[#1B4FD8] animate-spin mx-auto" />
+        <div className="max-w-xl mx-auto bg-white rounded-xl border border-[#E2E8F0] p-10 shadow-sm text-center space-y-4">
+          <Loader size={36} className="text-[#0F766E] animate-spin mx-auto" />
           <h3 className="text-[16px] font-bold text-[#0F172A]">
             Analyzing Supplier Invoice with AI Vision…
           </h3>
@@ -887,10 +887,10 @@ Output strictly valid JSON only without markdown formatting.`
       {done && (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           {/* Left Column: Image Preview (5 Cols) */}
-          <div className="xl:col-span-5 bg-white rounded-lg border border-[#DDE2EC] overflow-hidden flex flex-col shadow-sm">
+          <div className="xl:col-span-5 bg-white rounded-lg border border-[#E2E8F0] overflow-hidden flex flex-col shadow-sm">
             <div className="flex items-center justify-between px-5 py-3 border-b border-[#F0F2F5] bg-[#FAFAFA]">
               <div className="flex items-center gap-2">
-                <FileText size={16} className="text-[#1B4FD8]" />
+                <FileText size={16} className="text-[#0F766E]" />
                 <p className="font-semibold text-[14px] text-[#0F1624]">
                   Scanned Invoice Document
                 </p>
@@ -899,7 +899,7 @@ Output strictly valid JSON only without markdown formatting.`
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleReset}
-                  className="px-2.5 py-1 rounded text-[11px] font-medium text-[#1B4FD8] bg-[#E8EDF5] hover:bg-[#DDE2EC] transition-colors"
+                  className="px-2.5 py-1 rounded text-[11px] font-medium text-[#0F766E] bg-[#E8EDF5] hover:bg-[#DDE2EC] transition-colors"
                 >
                   Scan Another
                 </button>
@@ -914,7 +914,7 @@ Output strictly valid JSON only without markdown formatting.`
                   </button>
                 )}
 
-                <div className="flex items-center gap-1 bg-white border border-[#DDE2EC] px-1.5 py-1 rounded">
+                <div className="flex items-center gap-1 bg-white border border-[#E2E8F0] px-1.5 py-1 rounded">
                   <button
                     onClick={() => setZoom((z) => Math.max(50, z - 10))}
                     className="p-1 hover:bg-[#F5F7FA] rounded text-[#64748B]"
@@ -924,7 +924,7 @@ Output strictly valid JSON only without markdown formatting.`
                   </button>
                   <button
                     onClick={() => setRotation((r) => (r + 90) % 360)}
-                    className="p-1 hover:bg-[#F5F7FA] rounded text-[#1B4FD8] font-bold flex items-center gap-0.5"
+                    className="p-1 hover:bg-[#F5F7FA] rounded text-[#0F766E] font-bold flex items-center gap-0.5"
                     title="Rotate Image"
                   >
                     <RotateCw size={13} />
@@ -965,7 +965,7 @@ Output strictly valid JSON only without markdown formatting.`
               </div>
             )}
 
-            <div className="relative flex-1 min-h-[480px] m-4 rounded bg-[#F8FAFC] border border-[#E2E8F0] overflow-hidden flex items-center justify-center p-4">
+            <div className="relative flex-1 min-h-[480px] m-4 rounded bg-[#EDF7F5] border border-[#E2E8F0] overflow-hidden flex items-center justify-center p-4">
               <div
                 style={{
                   transform: `scale(${zoom / 100})`,
@@ -989,10 +989,10 @@ Output strictly valid JSON only without markdown formatting.`
           {/* Right Column: Summarized Data & Editable Line Items (7 Cols) */}
           <div className="xl:col-span-7 space-y-5">
             {/* Header Metadata Form */}
-            <div className="bg-white rounded-lg border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+            <div className="bg-white rounded-lg border border-[#E2E8F0] p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-[#F0F2F5]">
                 <div className="flex items-center gap-2">
-                  <Receipt className="text-[#1B4FD8]" size={18} />
+                  <Receipt className="text-[#0F766E]" size={18} />
                   <p className="text-[13px] font-bold text-[#0F172A] uppercase tracking-wide">
                     Extracted Invoice Details
                   </p>
@@ -1016,7 +1016,7 @@ Output strictly valid JSON only without markdown formatting.`
                         supplierName: e.target.value,
                       })
                     }
-                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-bold text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
+                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-bold text-[#0F172A] focus:outline-none focus:border-[#0F766E]"
                   />
                 </div>
 
@@ -1033,7 +1033,7 @@ Output strictly valid JSON only without markdown formatting.`
                         invoiceNumber: e.target.value,
                       })
                     }
-                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-bold text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
+                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-bold text-[#0F172A] focus:outline-none focus:border-[#0F766E]"
                   />
                 </div>
 
@@ -1050,7 +1050,7 @@ Output strictly valid JSON only without markdown formatting.`
                         invoiceDate: e.target.value,
                       })
                     }
-                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-medium text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
+                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-medium text-[#0F172A] focus:outline-none focus:border-[#0F766E]"
                   />
                 </div>
 
@@ -1067,7 +1067,7 @@ Output strictly valid JSON only without markdown formatting.`
                         gstin: e.target.value,
                       })
                     }
-                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-medium text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
+                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-medium text-[#0F172A] focus:outline-none focus:border-[#0F766E]"
                   />
                 </div>
 
@@ -1084,7 +1084,7 @@ Output strictly valid JSON only without markdown formatting.`
                         poNumber: e.target.value,
                       })
                     }
-                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-medium text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
+                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-medium text-[#0F172A] focus:outline-none focus:border-[#0F766E]"
                   />
                 </div>
 
@@ -1101,17 +1101,17 @@ Output strictly valid JSON only without markdown formatting.`
                         paymentTerms: e.target.value,
                       })
                     }
-                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-medium text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
+                    className="mt-1 w-full px-3 py-1.5 rounded border border-[#CBD5E1] text-[13px] font-medium text-[#0F172A] focus:outline-none focus:border-[#0F766E]"
                   />
                 </div>
               </div>
             </div>
 
             {/* Line Items Table with Inline Editing */}
-            <div className="bg-white rounded-lg border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+            <div className="bg-white rounded-lg border border-[#E2E8F0] p-5 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-[#F0F2F5]">
                 <div className="flex items-center gap-2">
-                  <Edit3 className="text-[#1B4FD8]" size={18} />
+                  <Edit3 className="text-[#0F766E]" size={18} />
                   <p className="text-[13px] font-bold text-[#0F172A] uppercase tracking-wide">
                     Extracted Line Items ({extractedItems.length})
                   </p>
@@ -1119,7 +1119,7 @@ Output strictly valid JSON only without markdown formatting.`
 
                 <button
                   onClick={handleAddItem}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-semibold text-[#1B4FD8] bg-[#E8EDF5] hover:bg-[#DDE2EC] transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-semibold text-[#0F766E] bg-[#E8EDF5] hover:bg-[#DDE2EC] transition-colors"
                 >
                   <Plus size={14} /> Add Line Item
                 </button>
@@ -1143,7 +1143,7 @@ Output strictly valid JSON only without markdown formatting.`
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 flex items-center gap-2">
-                          <span className="w-5 h-5 rounded-full bg-[#E8EDF5] text-[#1B4FD8] text-[11px] font-bold flex items-center justify-center">
+                          <span className="w-5 h-5 rounded-full bg-[#E8EDF5] text-[#0F766E] text-[11px] font-bold flex items-center justify-center">
                             {idx + 1}
                           </span>
                           <input
@@ -1157,7 +1157,7 @@ Output strictly valid JSON only without markdown formatting.`
                               )
                             }
                             placeholder="Medicine / Item Name"
-                            className="flex-1 px-2.5 py-1 rounded border border-[#CBD5E1] text-[13px] font-bold text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] bg-white"
+                            className="flex-1 px-2.5 py-1 rounded border border-[#CBD5E1] text-[13px] font-bold text-[#0F172A] focus:outline-none focus:border-[#0F766E] bg-white"
                           />
                         </div>
 
@@ -1203,7 +1203,7 @@ Output strictly valid JSON only without markdown formatting.`
                             onChange={(e) =>
                               updateItemField(item.id, "batch", e.target.value)
                             }
-                            className="mt-0.5 w-full px-2 py-1 rounded border border-[#CBD5E1] text-[12px] font-medium text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] bg-white"
+                            className="mt-0.5 w-full px-2 py-1 rounded border border-[#CBD5E1] text-[12px] font-medium text-[#0F172A] focus:outline-none focus:border-[#0F766E] bg-white"
                           />
                         </div>
 
@@ -1217,7 +1217,7 @@ Output strictly valid JSON only without markdown formatting.`
                             onChange={(e) =>
                               updateItemField(item.id, "expiry", e.target.value)
                             }
-                            className="mt-0.5 w-full px-2 py-1 rounded border border-[#CBD5E1] text-[12px] font-medium text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] bg-white"
+                            className="mt-0.5 w-full px-2 py-1 rounded border border-[#CBD5E1] text-[12px] font-medium text-[#0F172A] focus:outline-none focus:border-[#0F766E] bg-white"
                           />
                         </div>
 
@@ -1235,7 +1235,7 @@ Output strictly valid JSON only without markdown formatting.`
                                 Number(e.target.value),
                               )
                             }
-                            className="mt-0.5 w-full px-2 py-1 rounded border border-[#CBD5E1] text-[12px] font-bold text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] bg-white"
+                            className="mt-0.5 w-full px-2 py-1 rounded border border-[#CBD5E1] text-[12px] font-bold text-[#0F172A] focus:outline-none focus:border-[#0F766E] bg-white"
                           />
                         </div>
 
@@ -1254,7 +1254,7 @@ Output strictly valid JSON only without markdown formatting.`
                                 Number(e.target.value),
                               )
                             }
-                            className="mt-0.5 w-full px-2 py-1 rounded border border-[#CBD5E1] text-[12px] font-bold text-[#0F172A] focus:outline-none focus:border-[#1B4FD8] bg-white"
+                            className="mt-0.5 w-full px-2 py-1 rounded border border-[#CBD5E1] text-[12px] font-bold text-[#0F172A] focus:outline-none focus:border-[#0F766E] bg-white"
                           />
                         </div>
 
@@ -1301,7 +1301,7 @@ Output strictly valid JSON only without markdown formatting.`
                           <label className="text-[10px] font-semibold text-[#64748B]">
                             Line Net (₹)
                           </label>
-                          <div className="mt-0.5 py-1 px-2 rounded bg-[#E8EDF5] text-[12px] font-bold text-[#1B4FD8] text-right">
+                          <div className="mt-0.5 py-1 px-2 rounded bg-[#E8EDF5] text-[12px] font-bold text-[#0F766E] text-right">
                             ₹
                             {math.itemNetTotal.toLocaleString("en-IN", {
                               minimumFractionDigits: 2,
@@ -1317,12 +1317,12 @@ Output strictly valid JSON only without markdown formatting.`
             </div>
 
             {/* Financial Amount Calculation Summary */}
-            <div className="bg-white rounded-lg border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+            <div className="bg-white rounded-lg border border-[#E2E8F0] p-5 shadow-sm space-y-4">
               <p className="text-[12px] font-bold text-[#0F172A] uppercase tracking-wide">
                 Financial Amount Calculation Summary
               </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-lg bg-[#EDF7F5] border border-[#E2E8F0]">
                 <div>
                   <p className="text-[11px] text-[#64748B]">
                     Base Amount (Subtotal)

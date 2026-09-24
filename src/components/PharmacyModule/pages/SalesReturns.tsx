@@ -422,7 +422,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
           <div className="flex gap-2">
             <button
               onClick={handleExport}
-              className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#DDE2EC] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#E2E8F0] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
             >
               <Download size={13} /> Export
             </button>
@@ -441,7 +441,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
               todayRevenue.toLocaleString("en-IN", {
                 minimumFractionDigits: 2,
               }),
-            color: "#1B4FD8",
+            color: "#0F766E",
           },
           {
             label: "Transactions",
@@ -467,7 +467,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
         ].map((s) => (
           <div
             key={s.label}
-            className="bg-white rounded p-4 border border-[#DDE2EC]"
+            className="bg-white rounded p-4 border border-[#E2E8F0]"
           >
             <p className="text-[11px] text-[#64748B] font-medium">{s.label}</p>
             <p
@@ -482,7 +482,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
 
       {/* Tab switch */}
       <div className="flex items-center gap-4">
-        <div className="flex rounded border border-[#DDE2EC] overflow-hidden text-[13px]">
+        <div className="flex rounded border border-[#E2E8F0] overflow-hidden text-[13px]">
           {(["sales", "returns"] as const).map((v) => (
             <button
               key={v}
@@ -501,7 +501,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
 
         {view === "sales" && (
           <>
-            <div className="flex items-center gap-2 bg-white border border-[#DDE2EC] rounded px-3 py-2 ml-auto">
+            <div className="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded px-3 py-2 ml-auto">
               <Search size={14} className="text-[#94A3B8]" />
               <input
                 value={search}
@@ -514,7 +514,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
               <input
                 type="date"
                 defaultValue="2026-09-15"
-                className="px-3 py-2 rounded border border-[#DDE2EC] text-[13px] bg-white focus:border-[#1B4FD8] focus:outline-none"
+                className="px-3 py-2 rounded border border-[#E2E8F0] text-[13px] bg-white focus:border-[#0F766E] focus:outline-none"
               />
             </div>
           </>
@@ -523,10 +523,10 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
 
       {view === "sales" ? (
         /* SALES HISTORY TAB */
-        <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#F8FAFC] border-b border-[#DDE2EC]">
+            <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
+              <tr className="bg-[#EDF7F5] border-b border-[#E2E8F0]">
                 <th className="p-3 text-[12px] font-semibold text-[#475569]">
                   Bill Number
                 </th>
@@ -570,14 +570,12 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                 filtered.map((inv) => {
                   const isModifiedBill = inv.isModifiedReturnBill
                   return (
-                    <tr
-                      key={inv.id}
-                      className="border-b border-[#F1F5F9] hover:bg-[#F8FAFC]"
+                    <tr key={inv.id} className="hover:bg-[#F0FDFA] transition-colors border-b border-[#F1F5F9] hover:bg-[#EDF7F5]"
                     >
                       <td
                         className="p-3 font-mono text-[12px] font-semibold"
                         style={{
-                          color: isModifiedBill ? "#7c3aed" : "#1B4FD8",
+                          color: isModifiedBill ? "#7c3aed" : "#0F766E",
                         }}
                       >
                         {inv.billNumber}
@@ -666,7 +664,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
         /* MEDICINE RETURNS WORKFLOW TAB */
         <div className="space-y-6">
           {/* Section 1: Search Original Bill */}
-          <div className="bg-white rounded border border-[#DDE2EC] p-6 space-y-4 shadow-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-6 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
               <div>
                 <h3 className="font-bold text-[16px] text-[#0F1624] flex items-center gap-2">
@@ -685,7 +683,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                     setSearchBillNo("BILL-2026-001245")
                     handleSearchBill("BILL-2026-001245")
                   }}
-                  className="px-2 py-0.5 bg-blue-50 text-blue-700 font-mono text-[11px] rounded hover:bg-blue-100 transition-colors"
+                  className="px-2 py-0.5 bg-teal-50 text-blue-700 font-mono text-[11px] rounded hover:bg-blue-100 transition-colors"
                 >
                   BILL-2026-001245 (Rahul Verma)
                 </button>
@@ -714,7 +712,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                       if (e.key === "Enter") handleSearchBill()
                     }}
                     placeholder="Enter bill number (e.g. BILL-2026-001245)"
-                    className="w-full pl-9 pr-3 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-mono font-medium focus:border-[#1B4FD8] focus:outline-none"
+                    className="w-full pl-9 pr-3 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-mono font-medium focus:border-[#0F766E] focus:outline-none"
                   />
                   <Search
                     size={15}
@@ -724,7 +722,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                 <button
                   onClick={() => handleSearchBill()}
                   className="px-5 py-2.5 rounded text-white text-[13px] font-semibold flex items-center gap-2 shadow-sm transition-colors hover:bg-blue-700 shrink-0"
-                  style={{ background: "#1B4FD8" }}
+                  style={{ background: "#0F766E" }}
                 >
                   <Search size={14} /> Search Bill
                 </button>
@@ -770,7 +768,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={handleResetToReturns}
-                    className="px-3 py-1.5 bg-white border border-[#DDE2EC] hover:bg-gray-100 text-gray-700 font-semibold text-[12px] rounded flex items-center gap-1.5 shadow-sm transition-colors"
+                    className="px-3 py-1.5 bg-white border border-[#E2E8F0] hover:bg-gray-100 text-gray-700 font-semibold text-[12px] rounded flex items-center gap-1.5 shadow-sm transition-colors"
                   >
                     ← Back to Returns
                   </button>
@@ -794,9 +792,9 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
 
           {/* Section 2: Loaded Bill Details & Return Quantities */}
           {searchedBill && (
-            <div className="bg-white rounded border border-[#DDE2EC] shadow-sm overflow-hidden space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] shadow-sm overflow-hidden space-y-6">
               {/* Original Bill Info Card */}
-              <div className="p-6 bg-[#F8FAFC] border-b border-[#DDE2EC]">
+              <div className="p-6 bg-[#EDF7F5] border-b border-[#E2E8F0]">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
@@ -840,7 +838,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                       <span className="text-[11px] text-[#94A3B8] uppercase block">
                         Original Total
                       </span>
-                      <span className="font-bold text-[16px] text-[#1B4FD8]">
+                      <span className="font-bold text-[16px] text-[#0F766E]">
                         ₹
                         {(searchedBill.totalAmount || 0).toLocaleString(
                           "en-IN",
@@ -882,9 +880,9 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                   </span>
                 </div>
 
-                <div className="border border-[#DDE2EC] rounded overflow-hidden">
+                <div className="border border-[#E2E8F0] rounded overflow-hidden">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-[#F8FAFC] border-b border-[#DDE2EC]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0]">
                       <tr>
                         <th className="p-3 text-[11px] font-bold text-[#475569] uppercase">
                           Medicine
@@ -928,9 +926,8 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                         const isReturning = item.returnQuantity > 0
 
                         return (
-                          <tr
-                            key={idx}
-                            className={`hover:bg-[#F8FAFC] ${
+                          <tr key={idx}
+                            className={`hover:bg-[#EDF7F5] ${
                               isReturning ? "bg-amber-50/40" : ""
                             }`}
                           >
@@ -968,7 +965,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                                       )
                                     }
                                     disabled={item.returnQuantity <= 0}
-                                    className="w-7 h-7 flex items-center justify-center rounded border border-[#DDE2EC] bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                                    className="w-7 h-7 flex items-center justify-center rounded border border-[#E2E8F0] bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40"
                                   >
                                     -
                                   </button>
@@ -984,7 +981,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                                         parseInt(e.target.value) || 0,
                                       )
                                     }
-                                    className="w-14 text-center py-1 border border-[#DDE2EC] rounded font-bold text-[13px] text-amber-700 focus:outline-none focus:border-amber-500"
+                                    className="w-14 text-center py-1 border border-[#E2E8F0] rounded font-bold text-[13px] text-amber-700 focus:outline-none focus:border-amber-500"
                                   />
                                   <button
                                     onClick={() =>
@@ -997,7 +994,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                                     disabled={
                                       item.returnQuantity >= item.maxEligible
                                     }
-                                    className="w-7 h-7 flex items-center justify-center rounded border border-[#DDE2EC] bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40"
+                                    className="w-7 h-7 flex items-center justify-center rounded border border-[#E2E8F0] bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40"
                                   >
                                     +
                                   </button>
@@ -1047,7 +1044,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
               </div>
 
               {/* Recalculation Summary & Actions */}
-              <div className="p-6 bg-[#F8FAFC] border-t border-[#DDE2EC]">
+              <div className="p-6 bg-[#EDF7F5] border-t border-[#E2E8F0]">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                   <div className="space-y-4">
                     <div>
@@ -1058,7 +1055,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                         value={returnReason}
                         onChange={(e) => setReturnReason(e.target.value)}
                         disabled={Boolean(processedReturn)}
-                        className="w-full px-3 py-2.5 rounded border border-[#DDE2EC] text-[13px] bg-white focus:border-[#1B4FD8] focus:outline-none font-medium disabled:bg-gray-100 disabled:text-gray-500"
+                        className="w-full px-3 py-2.5 rounded border border-[#E2E8F0] text-[13px] bg-white focus:border-[#0F766E] focus:outline-none font-medium disabled:bg-gray-100 disabled:text-gray-500"
                       >
                         <option>Patient not using</option>
                         <option>Wrong medicine dispensed</option>
@@ -1079,13 +1076,13 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                         disabled={Boolean(processedReturn)}
                         placeholder="Enter verification or inspection notes regarding returned medicines..."
                         rows={2}
-                        className="w-full px-3 py-2 rounded border border-[#DDE2EC] text-[13px] bg-white focus:border-[#1B4FD8] focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
+                        className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] bg-white focus:border-[#0F766E] focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
                       />
                     </div>
                   </div>
 
                   {/* Financial Comparison */}
-                  <div className="bg-white p-4 rounded border border-[#DDE2EC] shadow-sm space-y-2">
+                  <div className="bg-white p-4 rounded border border-[#E2E8F0] shadow-sm space-y-2">
                     <div className="flex justify-between items-center text-[13px]">
                       <span className="text-[#64748B]">
                         Previous Bill Amount:
@@ -1113,7 +1110,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center text-[14px] text-indigo-900 font-bold border-t border-[#DDE2EC] pt-2">
+                    <div className="flex justify-between items-center text-[14px] text-indigo-900 font-bold border-t border-[#E2E8F0] pt-2">
                       <span>Modified Bill Amount:</span>
                       <span className="text-[17px] font-mono">
                         ₹
@@ -1126,10 +1123,10 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#DDE2EC] pt-4">
+                <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#E2E8F0] pt-4">
                   <button
                     onClick={handleResetToReturns}
-                    className="px-4 py-2 border border-[#DDE2EC] rounded text-[13px] font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-1.5 transition-colors shadow-sm"
+                    className="px-4 py-2 border border-[#E2E8F0] rounded text-[13px] font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-1.5 transition-colors shadow-sm"
                   >
                     ← Back to Returns
                   </button>
@@ -1180,7 +1177,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
           )}
 
           {/* Section 3: Recent Returns Audit History */}
-          <div className="bg-white rounded border border-[#DDE2EC] p-6 space-y-4 shadow-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-6 space-y-4 shadow-sm">
             <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
               <div>
                 <h4 className="font-bold text-[15px] text-[#0F1624]">
@@ -1196,13 +1193,13 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
             </div>
 
             {recentReturns.length === 0 ? (
-              <div className="p-8 text-center text-[#94A3B8] text-[13px] border border-dashed border-[#DDE2EC] rounded">
+              <div className="p-8 text-center text-[#94A3B8] text-[13px] border border-dashed border-[#E2E8F0] rounded">
                 No return transactions have been processed yet.
               </div>
             ) : (
-              <div className="border border-[#DDE2EC] rounded overflow-hidden">
+              <div className="border border-[#E2E8F0] rounded overflow-hidden">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-[#F8FAFC] border-b border-[#DDE2EC]">
+                  <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0]">
                     <tr>
                       <th className="p-3 text-[11px] font-bold text-[#475569] uppercase">
                         Return ID
@@ -1235,7 +1232,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                   </thead>
                   <tbody className="divide-y divide-[#F1F5F9]">
                     {recentReturns.map((ret) => (
-                      <tr key={ret.id} className="hover:bg-[#F8FAFC]">
+                      <tr key={ret.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-[#EDF7F5]">
                         <td className="p-3 font-mono text-[12px] font-bold text-amber-700">
                           {ret.returnNumber}
                         </td>
@@ -1269,7 +1266,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                         <td className="p-3 text-center">
                           <button
                             onClick={() => handlePrintPastReturn(ret)}
-                            className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-[#DDE2EC] text-[#334155] rounded hover:bg-gray-50 flex items-center gap-1 mx-auto transition-colors"
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-[#E2E8F0] text-[#334155] rounded hover:bg-gray-50 flex items-center gap-1 mx-auto transition-colors"
                           >
                             <Printer size={12} /> Print
                           </button>
@@ -1277,7 +1274,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                             <button
                               onClick={() => handlePrintPastReturn(ret)}
                               title="Print Return Bill"
-                              className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-[#DDE2EC] text-[#334155] rounded hover:bg-gray-50 flex items-center gap-1 transition-colors"
+                              className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-[#E2E8F0] text-[#334155] rounded hover:bg-gray-50 flex items-center gap-1 transition-colors"
                             >
                               <Printer size={12} /> Print
                             </button>
@@ -1356,7 +1353,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                 </div>
               </div>
               <table className="w-full text-left">
-                <thead className="bg-[#F8FAFC]">
+                <thead className="bg-[#EDF7F5]">
                   <tr>
                     <th className="px-5 py-3 text-[12px] font-bold text-[#475569] uppercase">
                       Medicine
@@ -1382,7 +1379,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                     const discount = item.discount || 0
                     const total = qty * mrp * (1 - discount / 100)
                     return (
-                      <tr key={i}>
+                      <tr className="hover:bg-[#F0FDFA] transition-colors" key={i}>
                         <td className="px-5 py-3 text-[13px] font-medium text-[#0F1624]">
                           {item.medicine || item.medicineName}
                         </td>
@@ -1413,13 +1410,13 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                 </div>
               </div>
             </div>
-            <div className="p-5 border-t border-[#DDE2EC] flex gap-3">
+            <div className="p-5 border-t border-[#E2E8F0] flex gap-3">
               <button
                 onClick={() => {
                   setPrintInv(selectedInv)
                   setSelectedInv(null)
                 }}
-                className="flex items-center gap-1.5 flex-1 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors justify-center"
+                className="flex items-center gap-1.5 flex-1 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors justify-center"
               >
                 <Printer size={13} /> Print / Download
               </button>

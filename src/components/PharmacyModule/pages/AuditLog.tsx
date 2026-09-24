@@ -17,7 +17,7 @@ const actionColors: Record<string, string> = {
   Rejected: "#dc2626",
   Cancelled: "#dc2626",
   Approved: "#15803d",
-  Updated: "#1B4FD8",
+  Updated: "#0F766E",
   Created: "#15803d",
   Deleted: "#dc2626",
 }
@@ -129,7 +129,7 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
         actions={
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#DDE2EC] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#E2E8F0] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors"
           >
             <Download size={13} /> Export
           </button>
@@ -139,7 +139,7 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-2 bg-white border border-[#DDE2EC] rounded px-3 py-2">
+        <div className="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded px-3 py-2">
           <Search size={14} className="text-[#94A3B8]" />
           <input
             value={search}
@@ -153,7 +153,7 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
             <button
               key={m}
               onClick={() => setModuleFilter(m)}
-              className="px-3 py-1.5 rounded text-[12px] font-medium transition-colors border border-[#DDE2EC]"
+              className="px-3 py-1.5 rounded text-[12px] font-medium transition-colors border border-[#E2E8F0]"
               style={{
                 background: moduleFilter === m ? "#0F1624" : "#fff",
                 color: moduleFilter === m ? "#fff" : "#64748B",
@@ -165,17 +165,17 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
         </div>
       </div>
       {/* Log Table */}
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
         <table>
-          <thead>
+          <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
             <tr>
-              <th>Timestamp</th>
-              <th>User</th>
-              <th>Module</th>
-              <th>Action</th>
-              <th>Record</th>
-              <th>IP / Device</th>
-              <th>Details</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Timestamp</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">User</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Module</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Action</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Record</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">IP / Device</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Details</th>
             </tr>
           </thead>
           <tbody>
@@ -192,7 +192,7 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
                     <div className="flex items-center gap-2">
                       <div
                         className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold"
-                        style={{ background: "#E8EDF5", color: "#1B4FD8" }}
+                        style={{ background: "#E8EDF5", color: "#0F766E" }}
                       >
                         {log.user[0]}
                       </div>
@@ -219,7 +219,7 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
                   </td>
                   <td
                     className="font-mono text-[12px] font-semibold"
-                    style={{ color: "#1B4FD8" }}
+                    style={{ color: "#0F766E" }}
                   >
                     {log.record}
                   </td>
@@ -229,7 +229,7 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
                   <td>
                     <button
                       className="flex items-center gap-1 text-[12px] font-medium"
-                      style={{ color: "#1B4FD8" }}
+                      style={{ color: "#0F766E" }}
                     >
                       Details{" "}
                       <ChevronDown
@@ -287,7 +287,7 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="p-1 rounded border border-[#DDE2EC] hover:bg-[#F5F7FA] disabled:opacity-50"
+              className="p-1 rounded border border-[#E2E8F0] hover:bg-[#F5F7FA] disabled:opacity-50"
             >
               <ChevronLeft size={16} />
             </button>
@@ -297,7 +297,7 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="p-1 rounded border border-[#DDE2EC] hover:bg-[#F5F7FA] disabled:opacity-50"
+              className="p-1 rounded border border-[#E2E8F0] hover:bg-[#F5F7FA] disabled:opacity-50"
             >
               <ChevronRight size={16} />
             </button>

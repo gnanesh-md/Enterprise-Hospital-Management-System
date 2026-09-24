@@ -2120,7 +2120,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
   }
 
   return (
-    <div className="p-6 space-y-5 bg-[#F8FAFC] min-h-screen">
+    <div className="p-6 space-y-5 bg-[#EDF7F5] min-h-screen">
       {/* Print Styles: Strict read-only printable layout */}
       <style>{`
         @media print {
@@ -2132,14 +2132,14 @@ export default function Reports({ onNavigate }: ReportsProps) {
       `}</style>
 
       {/* TOP HEADER */}
-      <div className="bg-white rounded border border-[#DDE2EC] px-6 py-4 shadow-sm flex items-center justify-between flex-wrap gap-4 no-print">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] px-6 py-4 shadow-sm flex items-center justify-between flex-wrap gap-4 no-print">
         <div>
           <nav className="flex items-center gap-1.5 text-[12px] text-[#64748B] mb-1">
             <span>HospAI</span>
             <ChevronRight size={11} />
             <button
               onClick={() => onNavigate("dashboard")}
-              className="hover:text-[#1B4FD8]"
+              className="hover:text-[#0F766E]"
             >
               Pharmacy
             </button>
@@ -2161,7 +2161,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
           <button
             onClick={handlePrint}
             title="Print Report"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#DDE2EC] bg-white text-[12px] font-medium text-[#334155] hover:bg-gray-50 transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-[#E2E8F0] bg-white text-[12px] font-medium text-[#334155] hover:bg-gray-50 transition-colors shadow-sm"
           >
             <Printer size={13} className="text-gray-600" /> Print
           </button>
@@ -2178,11 +2178,11 @@ export default function Reports({ onNavigate }: ReportsProps) {
       </div>
 
       {/* DATE FILTER TOOLBAR (Compact, professional) */}
-      <div className="bg-white rounded border border-[#DDE2EC] px-5 py-3 shadow-sm no-print">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] px-5 py-3 shadow-sm no-print">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-2 text-[12px] font-semibold text-[#475569]">
-              <Calendar size={14} className="text-[#1B4FD8]" />
+              <Calendar size={14} className="text-[#0F766E]" />
               <span>Date Range:</span>
             </div>
 
@@ -2194,7 +2194,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   setStartDate(e.target.value)
                   setActivePreset("Custom")
                 }}
-                className="px-2.5 py-1.5 rounded border border-[#DDE2EC] text-[12px] text-[#0F1624] focus:border-[#1B4FD8] focus:outline-none"
+                className="px-2.5 py-1.5 rounded border border-[#E2E8F0] text-[12px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none"
               />
               <span className="text-[#94A3B8]">—</span>
               <input
@@ -2204,7 +2204,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   setEndDate(e.target.value)
                   setActivePreset("Custom")
                 }}
-                className="px-2.5 py-1.5 rounded border border-[#DDE2EC] text-[12px] text-[#0F1624] focus:border-[#1B4FD8] focus:outline-none"
+                className="px-2.5 py-1.5 rounded border border-[#E2E8F0] text-[12px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none"
               />
             </div>
 
@@ -2222,7 +2222,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   onClick={() => applyPreset(preset)}
                   className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
                     activePreset === preset
-                      ? "bg-[#1B4FD8] text-white"
+                      ? "bg-[#0F766E] text-white"
                       : "bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
                   }`}
                 >
@@ -2236,7 +2236,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
             <button
               onClick={handleResetFilters}
               title="Reset Filters"
-              className="p-1.5 rounded border border-[#DDE2EC] text-[#64748B] hover:text-[#0F1624] hover:bg-gray-50 transition-colors"
+              className="p-1.5 rounded border border-[#E2E8F0] text-[#64748B] hover:text-[#0F1624] hover:bg-gray-50 transition-colors"
             >
               <RotateCcw size={13} />
             </button>
@@ -2247,14 +2247,14 @@ export default function Reports({ onNavigate }: ReportsProps) {
       {/* MAIN CONTAINER: SIDEBAR + CONTENT */}
       <div className="flex gap-5 items-start">
         {/* LEFT SIDEBAR: Collapsible Categories */}
-        <div className="w-64 shrink-0 bg-white rounded border border-[#DDE2EC] shadow-sm overflow-hidden no-print">
+        <div className="w-64 shrink-0 bg-white rounded-xl shadow-sm border border-[#E2E8F0] shadow-sm overflow-hidden no-print">
           {/* Executive Overview Link */}
           <div className="p-2 border-b border-[#F1F5F9]">
             <button
               onClick={() => setActiveReport("Overview")}
               className={`w-full text-left px-3 py-2.5 rounded text-[13px] font-bold flex items-center gap-2 transition-colors ${
                 activeReport === "Overview"
-                  ? "bg-[#E8EDF5] text-[#1B4FD8]"
+                  ? "bg-[#E8EDF5] text-[#0F766E]"
                   : "text-[#334155] hover:bg-gray-50"
               }`}
             >
@@ -2271,7 +2271,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 <div key={cat.id}>
                   <button
                     onClick={() => toggleCategory(cat.id)}
-                    className="w-full text-left px-3.5 py-2.5 flex items-center justify-between text-[11px] font-bold tracking-wider text-[#64748B] bg-[#F8FAFC] hover:bg-[#F1F5F9] transition-colors"
+                    className="w-full text-left px-3.5 py-2.5 flex items-center justify-between text-[11px] font-bold tracking-wider text-[#64748B] bg-[#EDF7F5] hover:bg-[#F1F5F9] transition-colors"
                   >
                     <span>{cat.label}</span>
                     {isExpanded ? (
@@ -2294,13 +2294,13 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             }}
                             className={`w-full text-left px-4 py-2 text-[12px] transition-colors flex items-center justify-between ${
                               isSelected
-                                ? "bg-[#E8EDF5] text-[#1B4FD8] font-semibold border-r-2 border-[#1B4FD8]"
+                                ? "bg-[#E8EDF5] text-[#0F766E] font-semibold border-r-2 border-[#0F766E]"
                                 : "text-[#475569] hover:bg-gray-50 hover:text-[#0F1624]"
                             }`}
                           >
                             <span>{item}</span>
                             {isSelected && (
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#1B4FD8]" />
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#0F766E]" />
                             )}
                           </button>
                         )
@@ -2323,12 +2323,12 @@ export default function Reports({ onNavigate }: ReportsProps) {
               {/* SECTION 4: 4-CARD OVERVIEW KPI SECTION */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* 1. Total Revenue */}
-                <div className="bg-white rounded border border-[#DDE2EC] p-4 shadow-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
                       Total Revenue
                     </span>
-                    <div className="w-7 h-7 rounded bg-blue-50 text-[#1B4FD8] flex items-center justify-center">
+                    <div className="w-7 h-7 rounded bg-teal-50 text-[#0F766E] flex items-center justify-center">
                       <ShoppingCart size={15} />
                     </div>
                   </div>
@@ -2346,7 +2346,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 </div>
 
                 {/* 2. Total Transactions */}
-                <div className="bg-white rounded border border-[#DDE2EC] p-4 shadow-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
                       Total Transactions
@@ -2364,7 +2364,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 </div>
 
                 {/* 3. Average Bill */}
-                <div className="bg-white rounded border border-[#DDE2EC] p-4 shadow-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
                       Average Bill
@@ -2386,7 +2386,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 </div>
 
                 {/* 4. Total Refund */}
-                <div className="bg-white rounded border border-[#DDE2EC] p-4 shadow-sm">
+                <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
                       Total Refund
@@ -2406,7 +2406,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                     Total refund amount issued for returned medicines.
                   </p>
                   {totalRefund > 0 && (
-                    <div className="mt-2 pt-2 border-t border-[#F1F5F9] text-[11px] font-medium text-[#1B4FD8]">
+                    <div className="mt-2 pt-2 border-t border-[#F1F5F9] text-[11px] font-medium text-[#0F766E]">
                       Net Revenue: ₹
                       {netRevenue.toLocaleString("en-IN", {
                         minimumFractionDigits: 2,
@@ -2417,7 +2417,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
               </div>
 
               {/* SECTION 5: SALES ANALYTICS (2-Column Layout) */}
-              <div className="bg-white rounded border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+              <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
                   <div>
                     <h2 className="text-[15px] font-bold text-[#0F1624]">
@@ -2427,7 +2427,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       Revenue performance and medicine demand trends
                     </p>
                   </div>
-                  <span className="text-[11px] font-medium px-2.5 py-1 bg-blue-50 text-blue-700 rounded">
+                  <span className="text-[11px] font-medium px-2.5 py-1 bg-teal-50 text-blue-700 rounded">
                     Period: {startDate} to {endDate}
                   </span>
                 </div>
@@ -2454,12 +2454,12 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             >
                               <stop
                                 offset="5%"
-                                stopColor="#1B4FD8"
+                                stopColor="#0F766E"
                                 stopOpacity={0.25}
                               />
                               <stop
                                 offset="95%"
-                                stopColor="#1B4FD8"
+                                stopColor="#0F766E"
                                 stopOpacity={0.0}
                               />
                             </linearGradient>
@@ -2491,7 +2491,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                           <Area
                             type="monotone"
                             dataKey="revenue"
-                            stroke="#1B4FD8"
+                            stroke="#0F766E"
                             strokeWidth={2}
                             fill="url(#salesGrad)"
                           />
@@ -2506,7 +2506,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       <span>Top Medicines by Sales</span>
                       <button
                         onClick={() => setActiveReport("Medicine-wise Sales")}
-                        className="text-[11px] text-[#1B4FD8] hover:underline flex items-center gap-1 font-medium"
+                        className="text-[11px] text-[#0F766E] hover:underline flex items-center gap-1 font-medium"
                       >
                         View Full Report <ArrowRight size={11} />
                       </button>
@@ -2565,7 +2565,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
               </div>
 
               {/* SECTION 6: INVENTORY OVERVIEW */}
-              <div className="bg-white rounded border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+              <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
                   <div>
                     <h2 className="text-[15px] font-bold text-[#0F1624]">
@@ -2577,7 +2577,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                   <span className="text-[12px] font-semibold text-gray-700">
                     Stock Valuation:{" "}
-                    <span className="font-bold text-[#1B4FD8]">
+                    <span className="font-bold text-[#0F766E]">
                       ₹
                       {totalStockValuation.toLocaleString("en-IN", {
                         minimumFractionDigits: 2,
@@ -2588,7 +2588,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                 {/* Compact Visual Summary Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded text-center">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded text-center">
                     <span className="text-[11px] font-semibold text-[#64748B] block">
                       Total Items
                     </span>
@@ -2681,7 +2681,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       <div className="pt-2 border-t border-dashed border-[#E2E8F0] flex justify-between items-center text-[11px]">
                         <button
                           onClick={() => setActiveReport("Stock Valuation")}
-                          className="text-[#1B4FD8] font-semibold hover:underline"
+                          className="text-[#0F766E] font-semibold hover:underline"
                         >
                           View Full Stock Valuation Report &rarr;
                         </button>
@@ -2692,7 +2692,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
               </div>
 
               {/* SECTION 7: PURCHASE OVERVIEW */}
-              <div className="bg-white rounded border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+              <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
                   <div>
                     <h2 className="text-[15px] font-bold text-[#0F1624]">
@@ -2704,14 +2704,14 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                   <button
                     onClick={() => setActiveReport("Purchase Order Report")}
-                    className="text-[11px] text-[#1B4FD8] hover:underline flex items-center gap-1 font-medium"
+                    className="text-[11px] text-[#0F766E] hover:underline flex items-center gap-1 font-medium"
                   >
                     View All Orders &rarr;
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Purchase Orders
                     </span>
@@ -2719,18 +2719,18 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {totalPurchaseOrders}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Purchase Value
                     </span>
-                    <span className="text-[18px] font-bold text-[#1B4FD8] block mt-1">
+                    <span className="text-[18px] font-bold text-[#0F766E] block mt-1">
                       ₹
                       {totalPurchaseValue.toLocaleString("en-IN", {
                         minimumFractionDigits: 2,
                       })}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Pending Deliveries
                     </span>
@@ -2738,7 +2738,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {pendingPurchaseOrders}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Goods Received (GRN)
                     </span>
@@ -2750,7 +2750,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                 {supplierPurchasesData.length > 0 && (
                   <div className="border border-[#F1F5F9] rounded overflow-hidden">
-                    <div className="bg-[#F8FAFC] px-4 py-2 border-b border-[#E2E8F0] text-[11px] font-bold text-[#475569] uppercase">
+                    <div className="bg-[#EDF7F5] px-4 py-2 border-b border-[#E2E8F0] text-[11px] font-bold text-[#475569] uppercase">
                       Top Suppliers by Purchase Value
                     </div>
                     <table className="w-full text-left border-collapse text-[12px]">
@@ -2767,12 +2767,12 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       </thead>
                       <tbody className="divide-y divide-[#F1F5F9]">
                         {supplierPurchasesData.map((s) => (
-                          <tr key={s.supplier} className="hover:bg-gray-50">
+                          <tr key={s.supplier} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-2.5 font-medium text-[#0F1624]">
                               {s.supplier}
                             </td>
                             <td className="p-2.5 text-center">{s.orders}</td>
-                            <td className="p-2.5 text-right font-bold text-[#1B4FD8]">
+                            <td className="p-2.5 text-right font-bold text-[#0F766E]">
                               ₹
                               {s.totalValue.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
@@ -2787,7 +2787,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
               </div>
 
               {/* SECTION 8: RETURNS & REFUNDS ANALYTICS */}
-              <div className="bg-white rounded border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+              <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
                   <div>
                     <h2 className="text-[15px] font-bold text-[#0F1624]">
@@ -2800,14 +2800,14 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                   <button
                     onClick={() => setActiveReport("Medicine Returns")}
-                    className="text-[11px] text-[#1B4FD8] hover:underline flex items-center gap-1 font-medium"
+                    className="text-[11px] text-[#0F766E] hover:underline flex items-center gap-1 font-medium"
                   >
                     View All Returns &rarr;
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Return Cases
                     </span>
@@ -2815,7 +2815,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {totalReturnTransactions}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Refund Amount
                     </span>
@@ -2826,7 +2826,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       })}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Returned Units
                     </span>
@@ -2834,7 +2834,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {totalReturnedQuantity}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Return Rate
                     </span>
@@ -2877,7 +2877,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
               </div>
 
               {/* SECTION 9: SUPPLIER OVERVIEW */}
-              <div className="bg-white rounded border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+              <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
                   <div>
                     <h2 className="text-[15px] font-bold text-[#0F1624]">
@@ -2890,14 +2890,14 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                   <button
                     onClick={() => setActiveReport("Supplier Overview")}
-                    className="text-[11px] text-[#1B4FD8] hover:underline flex items-center gap-1 font-medium"
+                    className="text-[11px] text-[#0F766E] hover:underline flex items-center gap-1 font-medium"
                   >
                     View Suppliers Table &rarr;
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Active Suppliers
                     </span>
@@ -2905,15 +2905,15 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {suppliers.length}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Total Orders Placed
                     </span>
-                    <span className="text-[18px] font-bold text-[#1B4FD8] block mt-1">
+                    <span className="text-[18px] font-bold text-[#0F766E] block mt-1">
                       {purchaseOrders.length}
                     </span>
                   </div>
-                  <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                  <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                     <span className="text-[11px] font-semibold text-[#64748B]">
                       Pending Shipments
                     </span>
@@ -2925,7 +2925,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
               </div>
 
               {/* SECTION 10: EXPIRY OVERVIEW */}
-              <div className="bg-white rounded border border-[#DDE2EC] p-5 shadow-sm space-y-4">
+              <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
                   <div>
                     <h2 className="text-[15px] font-bold text-[#0F1624]">
@@ -2937,7 +2937,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                   <button
                     onClick={() => setActiveReport("Expiry Report")}
-                    className="text-[11px] text-[#1B4FD8] hover:underline flex items-center gap-1 font-medium"
+                    className="text-[11px] text-[#0F766E] hover:underline flex items-center gap-1 font-medium"
                   >
                     View All Expiring Batches &rarr;
                   </button>
@@ -2968,7 +2968,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {expiryGroups.within60} batches
                     </span>
                   </div>
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                  <div className="p-3 bg-teal-50 border border-blue-200 rounded">
                     <span className="text-[11px] font-bold text-blue-800 uppercase block">
                       Within 90 Days
                     </span>
@@ -2981,7 +2981,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 {expiringMedicines.length > 0 && (
                   <div className="border border-[#F1F5F9] rounded overflow-hidden">
                     <table className="w-full text-left border-collapse text-[12px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-2.5 font-semibold">Medicine</th>
                           <th className="p-2.5 font-semibold">Batch</th>
@@ -2996,7 +2996,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       </thead>
                       <tbody className="divide-y divide-[#F1F5F9]">
                         {expiringMedicines.slice(0, 5).map((item) => (
-                          <tr key={item.id} className="hover:bg-gray-50">
+                          <tr key={item.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-2.5 font-medium text-[#0F1624]">
                               {item.name || item.medicine}
                             </td>
@@ -3032,13 +3032,13 @@ export default function Reports({ onNavigate }: ReportsProps) {
             /* ========================================================== */
             /* 2. DRILL-DOWN DETAILED REPORT VIEW                         */
             /* ========================================================== */
-            <div className="bg-white rounded border border-[#DDE2EC] p-6 shadow-sm space-y-5">
+            <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-6 shadow-sm space-y-5">
               {/* Detailed Report Header */}
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#F1F5F9] pb-4">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setActiveReport("Overview")}
-                    className="p-1.5 rounded border border-[#DDE2EC] hover:bg-gray-50 text-[#334155] flex items-center gap-1 text-[12px] font-medium transition-colors"
+                    className="p-1.5 rounded border border-[#E2E8F0] hover:bg-gray-50 text-[#334155] flex items-center gap-1 text-[12px] font-medium transition-colors"
                   >
                     <ArrowLeft size={14} /> Back to Overview
                   </button>
@@ -3060,7 +3060,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       value={tableSearch}
                       onChange={(e) => setTableSearch(e.target.value)}
                       placeholder="Search this report..."
-                      className="pl-8 pr-3 py-1.5 rounded border border-[#DDE2EC] text-[12px] focus:border-[#1B4FD8] focus:outline-none w-48"
+                      className="pl-8 pr-3 py-1.5 rounded border border-[#E2E8F0] text-[12px] focus:border-[#0F766E] focus:outline-none w-48"
                     />
                     <Search
                       size={13}
@@ -3081,7 +3081,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 {activeReport === "Daily Sales" ||
                 activeReport === "Monthly Sales" ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Date</th>
                         <th className="p-3 font-semibold text-center">
@@ -3093,7 +3093,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                         <th className="p-3 font-semibold text-right">
                           Refunds
                         </th>
-                        <th className="p-3 font-semibold text-right text-[#1B4FD8]">
+                        <th className="p-3 font-semibold text-right text-[#0F766E]">
                           Net Revenue
                         </th>
                       </tr>
@@ -3102,7 +3102,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       {salesTrendData
                         .filter((d) => d.date !== "No Sales")
                         .map((d, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-3 font-medium text-[#0F1624]">
                               {d.date}
                             </td>
@@ -3116,7 +3116,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             <td className="p-3 text-right text-amber-700">
                               ₹0.00
                             </td>
-                            <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                            <td className="p-3 text-right font-bold text-[#0F766E]">
                               ₹
                               {d.revenue.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
@@ -3140,7 +3140,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </table>
                 ) : activeReport === "Medicine-wise Sales" ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Medicine Name</th>
                         <th className="p-3 font-semibold text-center">
@@ -3164,14 +3164,14 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               .includes(tableSearch.toLowerCase()),
                         )
                         .map((m, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-3 font-semibold text-[#0F1624]">
                               {m.name}
                             </td>
                             <td className="p-3 text-center font-bold">
                               {m.quantity}
                             </td>
-                            <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                            <td className="p-3 text-right font-bold text-[#0F766E]">
                               ₹
                               {m.sales.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
@@ -3205,7 +3205,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </table>
                 ) : activeReport === "Category-wise Sales" ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Category Name</th>
                         <th className="p-3 font-semibold text-center">
@@ -3232,7 +3232,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               .includes(tableSearch.toLowerCase()),
                         )
                         .map((c, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-3 font-semibold text-[#0F1624]">
                               {c.category}
                             </td>
@@ -3240,7 +3240,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             <td className="p-3 text-center font-medium">
                               {c.unitsSold}
                             </td>
-                            <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                            <td className="p-3 text-right font-bold text-[#0F766E]">
                               ₹
                               {c.revenue.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
@@ -3275,7 +3275,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </table>
                 ) : activeReport === "Pharmacist-wise Sales" ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">
                           Pharmacist / Staff Name
@@ -3304,7 +3304,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               .includes(tableSearch.toLowerCase()),
                         )
                         .map((p, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-3 font-semibold text-[#0F1624]">
                               {p.name}
                             </td>
@@ -3312,7 +3312,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             <td className="p-3 text-center font-medium">
                               {p.unitsSold}
                             </td>
-                            <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                            <td className="p-3 text-right font-bold text-[#0F766E]">
                               ₹
                               {p.revenue.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
@@ -3372,7 +3372,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                           {expiryGroups.within60} batches
                         </span>
                       </div>
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="p-3 bg-teal-50 border border-blue-200 rounded">
                         <span className="text-[11px] font-bold text-blue-800 uppercase block">
                           Within 90 Days
                         </span>
@@ -3383,7 +3383,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                     </div>
 
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Medicine Name</th>
                           <th className="p-3 font-semibold">Batch No</th>
@@ -3413,7 +3413,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                 .includes(tableSearch.toLowerCase()),
                           )
                           .map((b, i) => (
-                            <tr key={i} className="hover:bg-gray-50">
+                            <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-semibold text-[#0F1624]">
                                 {b.medicineName}
                                 {b.genericName && (
@@ -3481,18 +3481,18 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Stock Valuation" ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                      <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                         <span className="text-[11px] font-semibold text-[#64748B]">
                           Total Stock Valuation
                         </span>
-                        <span className="text-[18px] font-bold text-[#1B4FD8] block mt-1">
+                        <span className="text-[18px] font-bold text-[#0F766E] block mt-1">
                           ₹
                           {totalStockValuation.toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
                           })}
                         </span>
                       </div>
-                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                      <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                         <span className="text-[11px] font-semibold text-[#64748B]">
                           Total Distinct SKUs
                         </span>
@@ -3500,7 +3500,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                           {medicines.length}
                         </span>
                       </div>
-                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                      <div className="p-3 bg-[#EDF7F5] border border-[#E2E8F0] rounded">
                         <span className="text-[11px] font-semibold text-[#64748B]">
                           Total Physical Batches
                         </span>
@@ -3511,7 +3511,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                     </div>
 
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Medicine Name</th>
                           <th className="p-3 font-semibold">Category</th>
@@ -3542,7 +3542,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                 .includes(tableSearch.toLowerCase()),
                           )
                           .map((m, i) => (
-                            <tr key={i} className="hover:bg-gray-50">
+                            <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-semibold text-[#0F1624]">
                                 {m.name}
                                 {m.generic && (
@@ -3560,7 +3560,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               <td className="p-3 text-right">
                                 ₹{m.price.toFixed(2)}
                               </td>
-                              <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                              <td className="p-3 text-right font-bold text-[#0F766E]">
                                 ₹
                                 {m.valuation.toLocaleString("en-IN", {
                                   minimumFractionDigits: 2,
@@ -3610,7 +3610,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport.includes("Stock") ||
                   activeReport.includes("Moving") ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Medicine Name</th>
                         <th className="p-3 font-semibold">Category</th>
@@ -3665,7 +3665,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                           return 0
                         })
                         .map((m, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-3 font-semibold text-[#0F1624]">
                               {m.name}
                               <span className="block text-[11px] text-[#94A3B8]">
@@ -3680,7 +3680,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               {m.reorderLevel}
                             </td>
                             {activeReport.includes("Moving") && (
-                              <td className="p-3 text-center font-bold text-[#1B4FD8]">
+                              <td className="p-3 text-center font-bold text-[#0F766E]">
                                 {m.unitsSold}
                               </td>
                             )}
@@ -3741,7 +3741,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </table>
                 ) : activeReport.includes("GRN") ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">GRN Number</th>
                         <th className="p-3 font-semibold">PO Reference</th>
@@ -3771,7 +3771,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               .includes(tableSearch.toLowerCase()),
                         )
                         .map((g, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-3 font-mono font-bold text-green-700">
                               {g.grnNumber}
                             </td>
@@ -3791,7 +3791,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             <td className="p-3 text-center font-bold">
                               {g.itemsCount} items
                             </td>
-                            <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                            <td className="p-3 text-right font-bold text-[#0F766E]">
                               ₹
                               {g.totalValue.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
@@ -3820,7 +3820,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   <div className="space-y-4">
                     {/* Summary Metrics Cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="p-3 bg-teal-50 border border-blue-200 rounded">
                         <div className="flex items-center justify-between text-blue-700 mb-1">
                           <span className="text-[11px] font-bold uppercase">
                             Total Purchase Value
@@ -3907,7 +3907,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Procurement Activity Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Purchase Date</th>
                           <th className="p-3 font-semibold">Supplier</th>
@@ -3944,12 +3944,12 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             )
                           })
                           .map((item) => (
-                            <tr key={item.id} className="hover:bg-gray-50">
+                            <tr key={item.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 text-[#475569]">
                                 <span className="font-medium text-[#0F1624] block">
                                   {item.purchaseDate}
                                 </span>
-                                <span className="text-[11px] font-mono text-blue-600 block">
+                                <span className="text-[11px] font-mono text-teal-700 block">
                                   {item.poNumber}
                                 </span>
                               </td>
@@ -3979,7 +3979,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                   <span className="text-[#94A3B8]">0</span>
                                 )}
                               </td>
-                              <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                              <td className="p-3 text-right font-bold text-[#0F766E]">
                                 ₹
                                 {item.purchaseValue.toLocaleString("en-IN", {
                                   minimumFractionDigits: 2,
@@ -3995,7 +3995,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                         ? "bg-amber-100 text-amber-800"
                                         : item.grnStatus === "Cancelled"
                                           ? "bg-red-100 text-red-800"
-                                          : "bg-blue-50 text-blue-700 border border-blue-200"
+                                          : "bg-teal-50 text-blue-700 border border-blue-200"
                                   }`}
                                 >
                                   {item.grnStatus}
@@ -4021,7 +4021,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   <div className="space-y-4">
                     {/* Summary Metrics Cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="p-3 bg-teal-50 border border-blue-200 rounded">
                         <div className="flex items-center justify-between text-blue-700 mb-1">
                           <span className="text-[11px] font-bold uppercase">
                             Total Purchase Orders
@@ -4108,7 +4108,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* PO Lifecycle / Tracking Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">PO Number</th>
                           <th className="p-3 font-semibold">Supplier</th>
@@ -4156,7 +4156,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               p.status !== "Cancelled"
 
                             return (
-                              <tr key={p.id} className="hover:bg-gray-50">
+                              <tr key={p.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                                 <td className="p-3 font-mono font-bold text-blue-700">
                                   {p.id}
                                 </td>
@@ -4192,7 +4192,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                     <span className="text-[#94A3B8]">0</span>
                                   )}
                                 </td>
-                                <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                                <td className="p-3 text-right font-bold text-[#0F766E]">
                                   ₹
                                   {p.totalOrderValue.toLocaleString("en-IN", {
                                     minimumFractionDigits: 2,
@@ -4242,7 +4242,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Pending Purchase Report" ? (
                   <div className="space-y-4">
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">PO Number</th>
                           <th className="p-3 font-semibold">Supplier Name</th>
@@ -4290,7 +4290,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                 new Date().toISOString().split("T")[0]
 
                             return (
-                              <tr key={p.id} className="hover:bg-gray-50">
+                              <tr key={p.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                                 <td className="p-3 font-mono font-bold text-blue-700">
                                   {p.id}
                                 </td>
@@ -4317,7 +4317,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                 <td className="p-3 text-center font-bold text-amber-700">
                                   {p.pendingQuantity.toLocaleString()}
                                 </td>
-                                <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                                <td className="p-3 text-right font-bold text-[#0F766E]">
                                   ₹
                                   {p.totalOrderValue.toLocaleString("en-IN", {
                                     minimumFractionDigits: 2,
@@ -4363,7 +4363,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   <div className="space-y-4">
                     {/* Summary Metrics Cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="p-3 bg-teal-50 border border-blue-200 rounded">
                         <div className="flex items-center justify-between text-blue-700 mb-1">
                           <span className="text-[11px] font-bold uppercase">
                             Total Suppliers
@@ -4431,7 +4431,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Supplier Name</th>
                           <th className="p-3 font-semibold">Contact Person</th>
@@ -4464,7 +4464,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             )
                           })
                           .map((s) => (
-                            <tr key={s.id} className="hover:bg-gray-50">
+                            <tr key={s.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-semibold text-[#0F1624]">
                                 {s.name}
                               </td>
@@ -4494,7 +4494,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                   {s.pendingDeliveries}
                                 </span>
                               </td>
-                              <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                              <td className="p-3 text-right font-bold text-[#0F766E]">
                                 ₹
                                 {s.totalPurchaseValue.toLocaleString("en-IN", {
                                   minimumFractionDigits: 2,
@@ -4531,7 +4531,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   <div className="space-y-4">
                     {/* Summary Metrics Cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="p-3 bg-teal-50 border border-blue-200 rounded">
                         <div className="flex items-center justify-between text-blue-700 mb-1">
                           <span className="text-[11px] font-bold uppercase">
                             Suppliers Purchased From
@@ -4611,7 +4611,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Supplier Name</th>
                           <th className="p-3 font-semibold text-center">
@@ -4643,14 +4643,14 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               .includes(tableSearch.toLowerCase())
                           })
                           .map((s) => (
-                            <tr key={s.id} className="hover:bg-gray-50">
+                            <tr key={s.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-semibold text-[#0F1624]">
                                 {s.supplierName}
                               </td>
                               <td className="p-3 text-center font-bold">
                                 {s.purchaseOrdersCount}
                               </td>
-                              <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                              <td className="p-3 text-right font-bold text-[#0F766E]">
                                 ₹
                                 {s.totalPurchaseValue.toLocaleString("en-IN", {
                                   minimumFractionDigits: 2,
@@ -4703,7 +4703,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   <div className="space-y-4">
                     {/* Summary Metrics Cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="p-3 bg-teal-50 border border-blue-200 rounded">
                         <div className="flex items-center justify-between text-blue-700 mb-1">
                           <span className="text-[11px] font-bold uppercase">
                             Total Orders
@@ -4770,7 +4770,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">PO Number</th>
                           <th className="p-3 font-semibold">Supplier Name</th>
@@ -4807,7 +4807,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             )
                           })
                           .map((p) => (
-                            <tr key={p.id} className="hover:bg-gray-50">
+                            <tr key={p.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-mono font-bold text-blue-700">
                                 {p.id}
                               </td>
@@ -4827,7 +4827,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               <td className="p-3 text-center font-bold text-green-700">
                                 {p.receivedQuantity.toLocaleString()}
                               </td>
-                              <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                              <td className="p-3 text-right font-bold text-[#0F766E]">
                                 ₹
                                 {p.totalOrderValue.toLocaleString("en-IN", {
                                   minimumFractionDigits: 2,
@@ -4921,7 +4921,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Return ID</th>
                           <th className="p-3 font-semibold">Supplier Name</th>
@@ -4953,7 +4953,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             )
                           })
                           .map((r) => (
-                            <tr key={r.id} className="hover:bg-gray-50">
+                            <tr key={r.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-mono font-bold text-purple-700">
                                 {r.id}
                               </td>
@@ -5010,7 +5010,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   <div className="space-y-4">
                     {/* Summary Metrics Cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="p-3 bg-teal-50 border border-blue-200 rounded">
                         <div className="flex items-center justify-between text-blue-700 mb-1">
                           <span className="text-[11px] font-bold uppercase">
                             Pending Deliveries
@@ -5080,7 +5080,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">PO Number</th>
                           <th className="p-3 font-semibold">Supplier Name</th>
@@ -5120,7 +5120,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             )
                           })
                           .map((p) => (
-                            <tr key={p.id} className="hover:bg-gray-50">
+                            <tr key={p.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-mono font-bold text-blue-700">
                                 {p.id}
                               </td>
@@ -5151,7 +5151,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               <td className="p-3 text-center font-bold text-amber-700">
                                 {p.itemsPending.toLocaleString()}
                               </td>
-                              <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                              <td className="p-3 text-right font-bold text-[#0F766E]">
                                 ₹
                                 {p.pendingValue.toLocaleString("en-IN", {
                                   minimumFractionDigits: 2,
@@ -5191,7 +5191,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                 ) : activeReport.includes("Supplier") ? (
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Supplier Name</th>
                         <th className="p-3 font-semibold">Contact Person</th>
@@ -5221,7 +5221,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                               .includes(tableSearch.toLowerCase()),
                         )
                         .map((s, i) => (
-                          <tr key={i} className="hover:bg-gray-50">
+                          <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                             <td className="p-3 font-semibold text-[#0F1624]">
                               {s.name}
                             </td>
@@ -5249,7 +5249,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                 {s.pendingDeliveries}
                               </span>
                             </td>
-                            <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                            <td className="p-3 text-right font-bold text-[#0F766E]">
                               ₹
                               {s.totalPurchaseValue.toLocaleString("en-IN", {
                                 minimumFractionDigits: 2,
@@ -5262,7 +5262,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Medicine Returns" ? (
                   <div className="space-y-4">
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Return ID</th>
                           <th className="p-3 font-semibold">Original Bill</th>
@@ -5301,7 +5301,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             )
                           })
                           .map((item) => (
-                            <tr key={item.id} className="hover:bg-gray-50">
+                            <tr key={item.id} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-mono font-bold text-amber-700">
                                 {item.returnNumber}
                               </td>
@@ -5399,7 +5399,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                         </span>
                       </div>
 
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded">
+                      <div className="p-4 bg-teal-50 border border-blue-200 rounded">
                         <span className="text-[11px] font-bold text-blue-800 uppercase block">
                           Average Refund Value
                         </span>
@@ -5413,7 +5413,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             },
                           )}
                         </span>
-                        <span className="text-[11px] text-blue-600 block mt-1">
+                        <span className="text-[11px] text-teal-700 block mt-1">
                           Per return transaction
                         </span>
                       </div>
@@ -5421,7 +5421,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Financial Refund Transactions Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Return ID</th>
                           <th className="p-3 font-semibold">Original Bill</th>
@@ -5453,7 +5453,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             )
                           })
                           .map((r, i) => (
-                            <tr key={r.id || i} className="hover:bg-gray-50">
+                            <tr key={r.id || i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-mono font-bold text-amber-700">
                                 {r.returnNumber}
                               </td>
@@ -5503,7 +5503,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Return Reasons" ? (
                   <div className="space-y-4">
                     {/* Visual Breakdown of Reasons */}
-                    <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded space-y-3">
+                    <div className="bg-[#EDF7F5] border border-[#E2E8F0] p-4 rounded space-y-3">
                       <span className="text-[12px] font-bold text-[#0F1624] block uppercase tracking-wider">
                         Return Reasons Distribution
                       </span>
@@ -5544,7 +5544,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Aggregate Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Return Reason</th>
                           <th className="p-3 font-semibold text-center">
@@ -5574,7 +5574,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                 .includes(tableSearch.toLowerCase()),
                           )
                           .map((entry, idx) => (
-                            <tr key={idx} className="hover:bg-gray-50">
+                            <tr key={idx} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-semibold text-[#0F1624]">
                                 {entry.reason}
                               </td>
@@ -5614,7 +5614,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Medicine-wise Returns" ? (
                   <div className="space-y-4">
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Medicine Name</th>
                           <th className="p-3 font-semibold">
@@ -5647,7 +5647,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                 .includes(tableSearch.toLowerCase()),
                           )
                           .map((entry, idx) => (
-                            <tr key={idx} className="hover:bg-gray-50">
+                            <tr key={idx} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-semibold text-[#0F1624]">
                                 {entry.medicineName}
                                 {entry.genericName && (
@@ -5671,7 +5671,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                   minimumFractionDigits: 2,
                                 })}
                               </td>
-                              <td className="p-3 text-right font-semibold text-[#1B4FD8]">
+                              <td className="p-3 text-right font-semibold text-[#0F766E]">
                                 {entry.sharePercentage.toFixed(1)}%
                               </td>
                             </tr>
@@ -5693,7 +5693,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : activeReport === "Return Trends" ? (
                   <div className="space-y-5">
                     {/* Return Trends Chart */}
-                    <div className="bg-[#F8FAFC] border border-[#E2E8F0] p-4 rounded">
+                    <div className="bg-[#EDF7F5] border border-[#E2E8F0] p-4 rounded">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-[12px] font-bold text-[#0F1624] uppercase tracking-wider">
                           Return Value Trend Over Time
@@ -5760,7 +5760,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
                     {/* Daily Trends Table */}
                     <table className="w-full text-left border-collapse text-[13px]">
-                      <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                      <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                         <tr>
                           <th className="p-3 font-semibold">Date</th>
                           <th className="p-3 font-semibold text-center">
@@ -5788,7 +5788,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                                 .includes(tableSearch.toLowerCase()),
                           )
                           .map((entry, idx) => (
-                            <tr key={idx} className="hover:bg-gray-50">
+                            <tr key={idx} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                               <td className="p-3 font-semibold text-[#0F1624]">
                                 {entry.dateStr}
                               </td>
@@ -5825,7 +5825,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 ) : (
                   /* Fallback Table */
                   <table className="w-full text-left border-collapse text-[13px]">
-                    <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">
+                    <thead className="bg-[#EDF7F5] border-b border-[#E2E8F0] text-[#475569]">
                       <tr>
                         <th className="p-3 font-semibold">Item / Entity</th>
                         <th className="p-3 font-semibold">Reference</th>
@@ -5842,7 +5842,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                     </thead>
                     <tbody className="divide-y divide-[#F1F5F9]">
                       {purchaseOrders.slice(0, 10).map((p, i) => (
-                        <tr key={i} className="hover:bg-gray-50">
+                        <tr key={i} className="hover:bg-[#F0FDFA] transition-colors hover:bg-gray-50">
                           <td className="p-3 font-medium text-[#0F1624]">
                             {p.supplier}
                           </td>
@@ -5850,7 +5850,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
                             {p.id}
                           </td>
                           <td className="p-3 text-center">{p.itemsCount}</td>
-                          <td className="p-3 text-right font-bold text-[#1B4FD8]">
+                          <td className="p-3 text-right font-bold text-[#0F766E]">
                             ₹
                             {(p.total || 0).toLocaleString("en-IN", {
                               minimumFractionDigits: 2,

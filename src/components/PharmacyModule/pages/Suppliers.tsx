@@ -105,7 +105,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
           <button
             onClick={handleAdd}
             className="flex items-center gap-1.5 px-4 py-2 rounded text-white text-[13px] font-medium"
-            style={{ background: "#1B4FD8" }}
+            style={{ background: "#0F766E" }}
           >
             <Plus size={14} /> Add Supplier
           </button>
@@ -113,21 +113,21 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
         onNavigate={onNavigate}
       />
 
-      <div className="bg-white rounded border border-[#DDE2EC] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
         <table>
-          <thead>
+          <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0]">
             <tr>
-              <th>Supplier</th>
-              <th>Contact Person</th>
-              <th>Phone / Email</th>
-              <th>GSTIN</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Supplier</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Contact Person</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Phone / Email</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">GSTIN</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Status</th>
+              <th className="py-3 px-4 text-[11px] font-bold text-[#065F46] uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody>
             {suppliers.map((s) => (
-              <tr key={s.id}>
+              <tr className="hover:bg-[#F0FDFA] transition-colors" key={s.id}>
                 <td>
                   <p className="font-semibold text-[13px] text-[#0F1624]">
                     {s.supplierName || s.name}
@@ -161,7 +161,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     </button>
                     <button
                       onClick={() => handleEdit(s)}
-                      className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#1B4FD8] transition-colors"
+                      className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#0F766E] transition-colors"
                     >
                       <Edit2 size={13} />
                     </button>
@@ -183,7 +183,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
       {selected && (
         <div className="fixed inset-0 z-50 flex">
           <div className="flex-1" onClick={() => setSelected(null)} />
-          <div className="w-[480px] bg-white shadow-2xl border-l border-[#DDE2EC] flex flex-col overflow-hidden">
+          <div className="w-[480px] bg-white shadow-2xl border-l border-[#E2E8F0] flex flex-col overflow-hidden">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0F2F5]">
               <p className="font-bold text-[16px] text-[#0F1624]">
                 {selected.supplierName || selected.name}
@@ -226,13 +226,13 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                 <Row label="Payment Terms" value={selected.paymentTerms} />
               </Section>
             </div>
-            <div className="p-5 border-t border-[#DDE2EC] flex gap-3">
+            <div className="p-5 border-t border-[#E2E8F0] flex gap-3">
               <button
                 onClick={() => {
                   setSelected(null)
                   handleEdit(selected)
                 }}
-                className="flex-1 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+                className="flex-1 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
               >
                 Edit Supplier
               </button>
@@ -273,7 +273,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, supplierName: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -285,7 +285,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, contactInformation: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -297,7 +297,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, phone: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -309,7 +309,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, email: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div className="col-span-2">
@@ -321,7 +321,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, address: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -333,7 +333,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, gstInformation: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -345,7 +345,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, licenseDetails: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -357,7 +357,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, paymentTerms: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   />
                 </div>
                 <div>
@@ -369,7 +369,7 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                     onChange={(e) =>
                       setForm({ ...form, status: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-[#DDE2EC] text-[13px]"
+                    className="w-full px-3 py-2 border border-[#E2E8F0] text-[13px]"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
@@ -380,13 +380,13 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
                 <button
                   onClick={handleSave}
                   className="flex-1 py-2.5 rounded text-white font-semibold text-[13px]"
-                  style={{ background: "#1B4FD8" }}
+                  style={{ background: "#0F766E" }}
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 py-2.5 rounded border border-[#DDE2EC] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
+                  className="flex-1 py-2.5 rounded border border-[#E2E8F0] text-[13px] font-medium text-[#334155] hover:bg-[#F5F7FA] transition-colors"
                 >
                   Cancel
                 </button>
