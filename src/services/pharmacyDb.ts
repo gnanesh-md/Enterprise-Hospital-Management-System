@@ -60,6 +60,7 @@ export interface AppMedicine {
   genericName: string
   brandName: string
   hsnCode?: string
+  categoryId?: string
   manufacturer: string
   dosageForm: string
   strength: string
