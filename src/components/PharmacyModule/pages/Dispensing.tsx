@@ -15,8 +15,10 @@ import {
   RefreshCw,
   QrCode,
   Play,
+  ShieldCheck,
 } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
+import { BillingDatabase } from "../../../services/billingDb"
 import PageHeader from "../components/PageHeader"
 import InvoicePrintModal from "../components/InvoicePrintModal"
 
@@ -136,6 +138,13 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     amount: number
     ref: string
   } | null>(null)
+
+  // Inpatient Insurance State
+  const [isInsuranceMode, setIsInsuranceMode] = useState(false)
+  const [insuranceApprovedAmount, setInsuranceApprovedAmount] = useState<number | "">("")
+  const [insuranceProvider, setInsuranceProvider] = useState("Star Health Insurance")
+  const [insurancePolicyNo, setInsurancePolicyNo] = useState("")
+  const [insuranceApprovalNo, setInsuranceApprovalNo] = useState("")
 
   const playPaymentChime = () => {
     try {
@@ -417,12 +426,19 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     setSearchQuery("")
   }
 
+  const approvedAmtNum = typeof insuranceApprovedAmount === "number" ? insuranceApprovedAmount : 0
+  const coveredByInsurance = isInsuranceMode ? Math.min(finalAmount, approvedAmtNum) : 0
+  const patientExcessDue = isInsuranceMode ? Math.max(0, finalAmount - approvedAmtNum) : finalAmount
+  const currentPayable = isInsuranceMode ? patientExcessDue : finalAmount
+
   const totalPaid = Object.values(payments).reduce(
     (a, b) => a + (Number(b) || 0),
     0,
   )
-  const balanceDue = finalAmount - totalPaid
-  const isPaid = balanceDue <= 0 && finalAmount > 0
+  const balanceDue = currentPayable - totalPaid
+  const isPaid = isInsuranceMode
+    ? (patientExcessDue === 0 || balanceDue <= 0) && finalAmount > 0
+    : balanceDue <= 0 && finalAmount > 0
 
   const confirmCardPayment = (amount: number, refCode?: string) => {
     const amt = Number(amount) || (balanceDue > 0 ? balanceDue : finalAmount) || 1
@@ -562,13 +578,20 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       uhid: rxMeta?.uhid || "",
       doctorName: rxMeta?.doctorName || "Self",
       department: rxMeta?.department || "Pharmacy",
-      billType: "Cash",
-      paymentStatus: "Paid",
-      paymentMode:
-        Object.keys(payments).length > 0
-          ? Object.keys(payments).join(",")
-          : "Cash",
+      billType: isInsuranceMode ? "Inpatient Insurance" : "Cash",
+      paymentStatus: isInsuranceMode && patientExcessDue === 0 ? "Cashless (Covered by Insurance)" : "Paid",
+      paymentMode: isInsuranceMode
+        ? (patientExcessDue === 0 ? "Insurance (100% Cashless)" : `Insurance + ${Object.keys(payments).join(",") || "Excess"}`)
+        : (Object.keys(payments).length > 0 ? Object.keys(payments).join(",") : "Cash"),
       paymentsData: { amounts: payments, refs: paymentRefs },
+      isInsurance: isInsuranceMode,
+      insuranceProvider: isInsuranceMode ? insuranceProvider : undefined,
+      insurancePolicyNo: isInsuranceMode ? insurancePolicyNo : undefined,
+      insuranceApprovalNo: isInsuranceMode ? insuranceApprovalNo : undefined,
+      insuranceApprovedAmount: isInsuranceMode ? approvedAmtNum : undefined,
+      insuranceCovered: isInsuranceMode ? coveredByInsurance : undefined,
+      patientExcessDue: isInsuranceMode ? patientExcessDue : undefined,
+      patientAmountPaid: isInsuranceMode ? (patientExcessDue === 0 ? 0 : totalPaid) : totalPaid,
       prescriptionId: rxId || undefined,
       items: cart.map((c: any) => ({
         medicineId: c.medicineId,
@@ -596,13 +619,61 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       cgstTotal: totalCGST,
       sgstTotal: totalSGST,
       totalAmount: finalAmount,
-      totalPaid: totalPaid,
+      totalPaid: isInsuranceMode ? (patientExcessDue === 0 ? 0 : totalPaid) : totalPaid,
       balanceDue: Math.max(0, balanceDue),
       createdBy: "Pharmacist",
       createdAt: new Date().toISOString(),
     }
 
     PharmacyDatabase.addPharmacyBill(bill as any)
+
+    // Dispatch Claim to Hospital Insurance Module
+    if (isInsuranceMode && coveredByInsurance > 0) {
+      try {
+        BillingDatabase.createClaim({
+          id: "CLM-" + Math.floor(10000 + Math.random() * 90000),
+          invoiceNo: billId,
+          patientId: rxMeta?.patientId || "IPD-" + Date.now().toString().slice(-6),
+          patientName: patientName || "Inpatient",
+          mrn: rxMeta?.uhid || "MRN-" + Date.now().toString().slice(-6),
+          policyNumber: insurancePolicyNo || "POL-" + Math.floor(100000 + Math.random() * 900000),
+          preAuthCode: insuranceApprovalNo || "AUTH-" + Math.floor(100000 + Math.random() * 900000),
+          insuranceProvider: insuranceProvider || "Star Health Insurance",
+          department: "Pharmacy (Inpatient)" as any,
+          dateOfService: new Date().toISOString().split("T")[0],
+          totalAmount: finalAmount,
+          insurancePortion: coveredByInsurance,
+          patientPortion: patientExcessDue,
+          amountPaid: patientExcessDue === 0 ? 0 : totalPaid,
+          balanceDue: 0,
+          status: "Submitted" as any,
+          items: cart.map((c: any) => ({
+            id: "ITEM-" + Math.floor(100000 + Math.random() * 900000),
+            description: c.medicine,
+            cptCode: c.hsnCode || "3004 039",
+            category: "Consumables",
+            quantity: c.qty,
+            unitPrice: c.mrp,
+            total: c.total,
+            insuranceCovered: (c.total / (finalAmount || 1)) * coveredByInsurance,
+            patientPayable: (c.total / (finalAmount || 1)) * patientExcessDue,
+          })),
+        })
+        BillingDatabase.dispatchUpdate()
+      } catch (err) {
+        console.error("Error creating insurance claim:", err)
+      }
+
+      PharmacyDatabase.addNotification(
+        `Inpatient Insurance Claim: ₹${coveredByInsurance.toFixed(2)}`,
+        `Bill ${billId} for ${patientName || "Inpatient"}: ₹${coveredByInsurance.toFixed(2)} dispatched to ${insuranceProvider}. Patient excess: ₹${patientExcessDue.toFixed(2)}.`,
+        "info",
+        "Insurance",
+        "View Claim",
+        "prescription"
+      )
+    }
+
     setLastBillId(bill) // Pass the whole bill object to the modal
 
     // Update Batches
@@ -1227,24 +1298,176 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                     <span className="text-[12px] font-bold text-[#334155] uppercase tracking-wide block">
                       {balanceDue <= 0 ? "Payment Status" : "Remaining to Pay"}
                     </span>
-                    {balanceDue > 0 && (
-                      <span className="text-[10px] text-[#64748B]">After deducting paid ₹{totalPaid.toFixed(2)}</span>
+                    {isInsuranceMode ? (
+                      patientExcessDue <= 0 ? (
+                        <span className="text-[10px] text-emerald-700 font-bold">100% Covered by Insurance</span>
+                      ) : (
+                        <span className="text-[10px] text-amber-700 font-bold">Patient Excess after Insurance</span>
+                      )
+                    ) : (
+                      balanceDue > 0 && (
+                        <span className="text-[10px] text-[#64748B]">After deducting paid ₹{totalPaid.toFixed(2)}</span>
+                      )
                     )}
                   </div>
                   <div className="text-right">
-                    <span className={`text-[28px] font-black leading-none ${balanceDue <= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                      {balanceDue <= 0 ? "PAID ✓" : `₹${balanceDue.toFixed(2)}`}
+                    <span className={`text-[28px] font-black leading-none ${
+                      isInsuranceMode && patientExcessDue === 0
+                        ? "text-emerald-600"
+                        : balanceDue <= 0 ? "text-emerald-600" : "text-rose-600"
+                    }`}>
+                      {isInsuranceMode && patientExcessDue === 0
+                        ? "CASHLESS (₹0)"
+                        : balanceDue <= 0 ? "PAID ✓" : `₹${balanceDue.toFixed(2)}`}
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
+            {/* INPATIENT INSURANCE TOGGLE & CONFIGURATION */}
+            <div className={`rounded-xl p-3.5 space-y-3 transition-all ${
+              isInsuranceMode
+                ? "bg-gradient-to-r from-teal-50 to-emerald-50 border-2 border-[#0F766E] shadow-sm"
+                : "bg-gray-50 border border-gray-200"
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    isInsuranceMode ? "bg-[#0F766E] text-white shadow-xs" : "bg-white text-gray-500 border border-gray-200"
+                  }`}>
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-[13px] font-bold text-[#0F1624]">Inpatient Insurance / Pre-Auth Mode</h4>
+                    <p className="text-[11px] text-[#64748B]">Auto-calculates insurance amount & patient excess</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !isInsuranceMode
+                    setIsInsuranceMode(next)
+                    if (next && !insuranceApprovalNo) {
+                      setInsuranceApprovalNo("CCN-" + Math.floor(100000 + Math.random() * 900000))
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    isInsuranceMode
+                      ? "bg-[#0F766E] text-white shadow-xs"
+                      : "bg-white border border-[#CBD5E1] text-[#334155] hover:bg-gray-100"
+                  }`}
+                >
+                  {isInsuranceMode ? "✓ Insurance Mode Active" : "+ Enable Insurance"}
+                </button>
+              </div>
+
+              {isInsuranceMode && (
+                <div className="space-y-3 pt-2 border-t border-teal-200/60 animate-in fade-in duration-150">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#334155] uppercase mb-1">
+                        Insurance Provider
+                      </label>
+                      <select
+                        value={insuranceProvider}
+                        onChange={(e) => setInsuranceProvider(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white border border-[#CBD5E1] rounded text-[11px] font-semibold text-[#0F1624] outline-none focus:border-[#0F766E]"
+                      >
+                        <option value="Star Health Insurance">Star Health Insurance</option>
+                        <option value="HDFC ERGO Health">HDFC ERGO Health</option>
+                        <option value="ICICI Lombard">ICICI Lombard</option>
+                        <option value="Care Health Insurance">Care Health Insurance</option>
+                        <option value="Bajaj Allianz">Bajaj Allianz</option>
+                        <option value="PM-JAY (Ayushman Bharat)">PM-JAY (Ayushman Bharat)</option>
+                        <option value="Medi Assist TPA">Medi Assist TPA</option>
+                        <option value="Vidal Health TPA">Vidal Health TPA</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#334155] uppercase mb-1">
+                        Policy / Card No
+                      </label>
+                      <input
+                        type="text"
+                        value={insurancePolicyNo}
+                        onChange={(e) => setInsurancePolicyNo(e.target.value)}
+                        placeholder="e.g. STAR-982144"
+                        className="w-full px-2 py-1.5 bg-white border border-[#CBD5E1] rounded text-[11px] font-mono text-[#0F1624] outline-none focus:border-[#0F766E]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-[#334155] uppercase mb-1">
+                        Pre-Auth / Approval No *
+                      </label>
+                      <input
+                        type="text"
+                        value={insuranceApprovalNo}
+                        onChange={(e) => setInsuranceApprovalNo(e.target.value)}
+                        placeholder="CCN-2026-8812"
+                        className="w-full px-2 py-1.5 bg-white border border-[#CBD5E1] rounded text-[11px] font-mono font-bold text-[#0F766E] outline-none focus:border-[#0F766E]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* INSURANCE AMOUNT INPUT */}
+                  <div className="bg-white p-2.5 rounded-lg border-2 border-teal-400 flex items-center justify-between gap-3 shadow-2xs">
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#0F766E]">
+                        Enter Insurance Approved Amount (₹) *
+                      </label>
+                      <p className="text-[10px] text-[#64748B]">Pre-auth sanctioned amount for this medicine bill</p>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px] font-bold text-gray-500">₹</span>
+                      <input
+                        type="number"
+                        value={insuranceApprovedAmount}
+                        onChange={(e) => setInsuranceApprovedAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                        placeholder="1000.00"
+                        className="w-32 pl-6 pr-2 py-1 text-right text-[14px] font-bold border border-[#0F766E] rounded outline-none focus:ring-1 focus:ring-[#0F766E] bg-teal-50/40 text-[#0F1624]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* REAL TIME SPLIT SUMMARY */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="p-2 rounded-lg bg-gray-50 border border-gray-200">
+                      <p className="text-[9px] text-[#64748B] font-semibold uppercase">Total Bill</p>
+                      <p className="text-xs font-bold text-[#0F1624] mt-0.5">₹{finalAmount.toFixed(2)}</p>
+                    </div>
+                    <div className="p-2 rounded-lg bg-teal-50 border border-teal-200">
+                      <p className="text-[9px] text-[#0F766E] font-semibold uppercase">Insurance Covers</p>
+                      <p className="text-xs font-bold text-[#0F766E] mt-0.5">
+                        ₹{coveredByInsurance.toFixed(2)}
+                      </p>
+                      <p className="text-[8px] text-[#115E59] font-medium">To Insurance Module</p>
+                    </div>
+                    <div className={`p-2 rounded-lg border ${patientExcessDue > 0 ? "bg-amber-50 border-amber-300" : "bg-emerald-50 border-emerald-300"}`}>
+                      <p className={`text-[9px] font-semibold uppercase ${patientExcessDue > 0 ? "text-amber-800" : "text-emerald-800"}`}>
+                        Patient Excess Due
+                      </p>
+                      <p className={`text-xs font-bold mt-0.5 ${patientExcessDue > 0 ? "text-amber-900" : "text-emerald-900"}`}>
+                        ₹{patientExcessDue.toFixed(2)}
+                      </p>
+                      <p className="text-[8px] font-medium text-gray-600">
+                        {patientExcessDue > 0 ? "Pay Excess Below" : "100% Cashless (₹0)"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Payment Allocation */}
             <div>
               <div className="flex justify-between items-end mb-3">
                 <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">
-                  Payment Allocation
+                  {isInsuranceMode && patientExcessDue > 0
+                    ? `Collect Patient Excess (₹${patientExcessDue.toFixed(2)})`
+                    : "Payment Allocation"}
                 </label>
                 <span className="text-[12px] font-bold text-[#dc2626]">
                   Balance: ₹{Math.max(0, balanceDue).toFixed(2)}
@@ -1570,7 +1793,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
             <button
               onClick={completeTransaction}
               disabled={cart.length === 0}
-              className={`w-full py-4 text-[14px] font-bold rounded-lg shadow-sm transition-colors uppercase tracking-wide flex items-center justify-center gap-2 ${
+              className={`w-full py-4 text-[13px] font-bold rounded-lg shadow-sm transition-colors uppercase tracking-wide flex items-center justify-center gap-2 cursor-pointer ${
                 cart.length > 0
                   ? isPaid
                     ? "bg-[#0F766E] text-white hover:bg-[#0c5e58]"
@@ -1578,7 +1801,21 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                   : "bg-[#F0F2F5] text-[#94A3B8] cursor-not-allowed"
               }`}
             >
-              {isPaid ? (
+              {isInsuranceMode && patientExcessDue === 0 ? (
+                <>
+                  <CheckCircle size={18} /> Dispense & Print Cashless Inpatient Bill (₹0 to Patient)
+                </>
+              ) : isInsuranceMode && patientExcessDue > 0 ? (
+                isPaid ? (
+                  <>
+                    <CheckCircle size={18} /> Dispense & Print Bill (₹{patientExcessDue.toFixed(2)} Excess Paid)
+                  </>
+                ) : (
+                  <>
+                    <Play size={18} /> Pay Patient Excess ₹{balanceDue.toFixed(2)} (UPI / Cash / Card)
+                  </>
+                )
+              ) : isPaid ? (
                 <>
                   <CheckCircle size={18} /> Dispense & Print Invoice (Full Paid)
                 </>
