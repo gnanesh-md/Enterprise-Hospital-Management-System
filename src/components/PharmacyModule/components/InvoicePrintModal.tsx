@@ -314,24 +314,36 @@ export default function InvoicePrintModal({
 
           {/* Inpatient Insurance Header Banner */}
           {effectiveBill.isInsurance && (
-            <div className="mb-3 p-2.5 border-2 border-black rounded bg-teal-50/40 text-[11px] print:text-[8px] print:bg-white flex items-center justify-between">
-              <div>
-                <span className="font-bold uppercase tracking-wider text-[#0F766E] print:text-black">
-                  [ INPATIENT CASHLESS INSURANCE BILL ]
-                </span>
-                <span className="ml-2 font-semibold">
-                  Insurer: {effectiveBill.insuranceProvider || "Star Health Insurance"}
-                </span>
-                {effectiveBill.insurancePolicyNo && (
-                  <span className="ml-2 font-mono">Policy: {effectiveBill.insurancePolicyNo}</span>
-                )}
+            <div className="mb-3 p-2.5 border-2 border-black rounded bg-teal-50/40 text-[11px] print:text-[8px] print:bg-white space-y-1">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-bold uppercase tracking-wider text-[#0F766E] print:text-black">
+                    [ INPATIENT CASHLESS INSURANCE BILL ]
+                  </span>
+                  <span className="ml-2 font-semibold">
+                    Insurer: {effectiveBill.insuranceProvider || "Star Health Insurance"}
+                  </span>
+                  {effectiveBill.insurancePolicyNo && (
+                    <span className="ml-2 font-mono">Policy: {effectiveBill.insurancePolicyNo}</span>
+                  )}
+                </div>
+                <div className="font-mono">
+                  <span className="font-bold">PRE-AUTH / CLAIM REF: </span>
+                  <span className="font-bold text-[#0F766E] print:text-black">
+                    {effectiveBill.insuranceApprovalNo || "CCN-PREAUTH"}
+                  </span>
+                </div>
               </div>
-              <div className="font-mono">
-                <span className="font-bold">PRE-AUTH / CLAIM REF: </span>
-                <span className="font-bold text-[#0F766E] print:text-black">
-                  {effectiveBill.insuranceApprovalNo || "CCN-PREAUTH"}
-                </span>
-              </div>
+              {effectiveBill.inpatientDetails && (
+                <div className="flex items-center justify-between text-[10px] print:text-[7.5px] text-gray-700 font-medium border-t border-teal-200/60 pt-1">
+                  <span>
+                    Ward: <strong>{effectiveBill.inpatientDetails.ward || "Inpatient Ward"}</strong> · Bed: <strong>{effectiveBill.inpatientDetails.bedNo || "IP Bed"}</strong>
+                  </span>
+                  {effectiveBill.inpatientDetails.admissionId && (
+                    <span className="font-mono">Admission ID: <strong>#{effectiveBill.inpatientDetails.admissionId}</strong></span>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

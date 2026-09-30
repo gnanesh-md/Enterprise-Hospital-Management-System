@@ -16,9 +16,18 @@ import {
   QrCode,
   Play,
   ShieldCheck,
+  Bed,
+  Building2,
+  UserCheck,
+  Shield,
+  ChevronRight,
 } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
-import { BillingDatabase } from "../../../services/billingDb"
+import {
+  BillingDatabase,
+  InsurancePreAuthRecord,
+  InpatientSearchItem,
+} from "../../../services/billingDb"
 import PageHeader from "../components/PageHeader"
 import InvoicePrintModal from "../components/InvoicePrintModal"
 
@@ -139,12 +148,61 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     ref: string
   } | null>(null)
 
-  // Inpatient Insurance State
-  const [isInsuranceMode, setIsInsuranceMode] = useState(false)
+  // Inpatient Insurance & Pre-Auth State
+  const [patientEncounterType, setPatientEncounterType] = useState<"ip" | "op">("ip")
+  const [ipSearchQuery, setIpSearchQuery] = useState("")
+  const [activeIpPatient, setActiveIpPatient] = useState<InpatientSearchItem | null>(null)
+  const [activePreAuth, setActivePreAuth] = useState<InsurancePreAuthRecord | null>(null)
+  const [isIpDropdownOpen, setIsIpDropdownOpen] = useState(false)
+  const [isInsuranceMode, setIsInsuranceMode] = useState(true)
   const [insuranceApprovedAmount, setInsuranceApprovedAmount] = useState<number | "">("")
   const [insuranceProvider, setInsuranceProvider] = useState("Star Health Insurance")
   const [insurancePolicyNo, setInsurancePolicyNo] = useState("")
   const [insuranceApprovalNo, setInsuranceApprovalNo] = useState("")
+
+  const selectInpatient = (ip: InpatientSearchItem) => {
+    setActiveIpPatient(ip)
+    setPatientName(ip.patientName)
+    setIpSearchQuery("")
+    setIsIpDropdownOpen(false)
+
+    // Auto-load Insurance Pre-Auth from Admission/Insurance module
+    const pa = ip.preAuth || BillingDatabase.getInpatientPreAuth(ip.patientId) || BillingDatabase.getInpatientPreAuth(ip.patientName)
+    if (pa) {
+      setActivePreAuth(pa)
+      setIsInsuranceMode(true)
+      setInsuranceProvider(pa.insuranceProvider)
+      setInsurancePolicyNo(pa.policyNumber)
+      setInsuranceApprovalNo(pa.preAuthCode)
+      setInsuranceApprovedAmount(pa.availableAmount) // Auto-loads live available approved amount!
+    } else {
+      setIsInsuranceMode(true)
+      setActivePreAuth(null)
+      setInsuranceProvider("Star Health Insurance")
+      setInsurancePolicyNo(`POL-${ip.mrn}`)
+      setInsuranceApprovalNo(`AUTH-${Date.now().toString().slice(-6)}`)
+      setInsuranceApprovedAmount(25000)
+    }
+
+    setLoadedRxMeta({
+      patientId: ip.patientId,
+      uhid: ip.mrn,
+      patientName: ip.patientName,
+      ward: ip.ward,
+      bed: ip.bedNo,
+      admissionId: ip.admissionId,
+    })
+  }
+
+  const clearInpatientSelection = () => {
+    setActiveIpPatient(null)
+    setActivePreAuth(null)
+    setPatientName("")
+    setIsInsuranceMode(false)
+    setInsuranceApprovedAmount("")
+    setInsurancePolicyNo("")
+    setInsuranceApprovalNo("")
+  }
 
   const playPaymentChime = () => {
     try {
@@ -426,10 +484,14 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     setSearchQuery("")
   }
 
-  const approvedAmtNum = typeof insuranceApprovedAmount === "number" ? insuranceApprovedAmount : 0
+  const approvedAmtNum =
+    typeof insuranceApprovedAmount === "number"
+      ? insuranceApprovedAmount
+      : (activePreAuth ? activePreAuth.availableAmount : 0)
   const coveredByInsurance = isInsuranceMode ? Math.min(finalAmount, approvedAmtNum) : 0
   const patientExcessDue = isInsuranceMode ? Math.max(0, finalAmount - approvedAmtNum) : finalAmount
   const currentPayable = isInsuranceMode ? patientExcessDue : finalAmount
+  const remainingPreAuthBalance = Math.max(0, approvedAmtNum - coveredByInsurance)
 
   const totalPaid = Object.values(payments).reduce(
     (a, b) => a + (Number(b) || 0),
@@ -584,14 +646,6 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
         ? (patientExcessDue === 0 ? "Insurance (100% Cashless)" : `Insurance + ${Object.keys(payments).join(",") || "Excess"}`)
         : (Object.keys(payments).length > 0 ? Object.keys(payments).join(",") : "Cash"),
       paymentsData: { amounts: payments, refs: paymentRefs },
-      isInsurance: isInsuranceMode,
-      insuranceProvider: isInsuranceMode ? insuranceProvider : undefined,
-      insurancePolicyNo: isInsuranceMode ? insurancePolicyNo : undefined,
-      insuranceApprovalNo: isInsuranceMode ? insuranceApprovalNo : undefined,
-      insuranceApprovedAmount: isInsuranceMode ? approvedAmtNum : undefined,
-      insuranceCovered: isInsuranceMode ? coveredByInsurance : undefined,
-      patientExcessDue: isInsuranceMode ? patientExcessDue : undefined,
-      patientAmountPaid: isInsuranceMode ? (patientExcessDue === 0 ? 0 : totalPaid) : totalPaid,
       prescriptionId: rxId || undefined,
       items: cart.map((c: any) => ({
         medicineId: c.medicineId,
@@ -621,21 +675,36 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       totalAmount: finalAmount,
       totalPaid: isInsuranceMode ? (patientExcessDue === 0 ? 0 : totalPaid) : totalPaid,
       balanceDue: Math.max(0, balanceDue),
+      isInsurance: isInsuranceMode,
+      insuranceProvider: isInsuranceMode ? insuranceProvider : undefined,
+      insurancePolicyNo: isInsuranceMode ? insurancePolicyNo : undefined,
+      insuranceApprovalNo: isInsuranceMode ? insuranceApprovalNo : undefined,
+      insuranceApprovedAmount: isInsuranceMode ? approvedAmtNum : 0,
+      insuranceCovered: isInsuranceMode ? coveredByInsurance : 0,
+      patientExcessDue: isInsuranceMode ? patientExcessDue : 0,
+      patientAmountPaid: isInsuranceMode ? (patientExcessDue === 0 ? 0 : totalPaid) : totalPaid,
+      inpatientDetails: activeIpPatient ? {
+        ward: activeIpPatient.ward,
+        roomNo: activeIpPatient.roomNo,
+        bedNo: activeIpPatient.bedNo,
+        bedType: activeIpPatient.bedType,
+        admissionId: activeIpPatient.admissionId,
+      } : undefined,
       createdBy: "Pharmacist",
       createdAt: new Date().toISOString(),
     }
 
     PharmacyDatabase.addPharmacyBill(bill as any)
 
-    // Dispatch Claim to Hospital Insurance Module
+    // Dispatch Claim to Hospital Insurance Module & Debit Pre-Auth
     if (isInsuranceMode && coveredByInsurance > 0) {
       try {
         BillingDatabase.createClaim({
           id: "CLM-" + Math.floor(10000 + Math.random() * 90000),
           invoiceNo: billId,
-          patientId: rxMeta?.patientId || "IPD-" + Date.now().toString().slice(-6),
+          patientId: activeIpPatient?.patientId || rxMeta?.patientId || "IPD-" + Date.now().toString().slice(-6),
           patientName: patientName || "Inpatient",
-          mrn: rxMeta?.uhid || "MRN-" + Date.now().toString().slice(-6),
+          mrn: activeIpPatient?.mrn || rxMeta?.uhid || "MRN-" + Date.now().toString().slice(-6),
           policyNumber: insurancePolicyNo || "POL-" + Math.floor(100000 + Math.random() * 900000),
           preAuthCode: insuranceApprovalNo || "AUTH-" + Math.floor(100000 + Math.random() * 900000),
           insuranceProvider: insuranceProvider || "Star Health Insurance",
@@ -659,6 +728,22 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
             patientPayable: (c.total / (finalAmount || 1)) * patientExcessDue,
           })),
         })
+
+        // Automatically record pre-auth utilization and deduct balance
+        const updatedPreAuth = BillingDatabase.recordInsuranceUtilization({
+          preAuthCode: insuranceApprovalNo,
+          patientId: activeIpPatient?.patientId || rxMeta?.patientId || patientName,
+          amountCovered: coveredByInsurance,
+          claimId: billId,
+          invoiceNo: billId,
+        })
+        if (updatedPreAuth) {
+          setActivePreAuth(updatedPreAuth)
+          if (typeof insuranceApprovedAmount === "number") {
+            setInsuranceApprovedAmount(updatedPreAuth.availableAmount)
+          }
+        }
+
         BillingDatabase.dispatchUpdate()
       } catch (err) {
         console.error("Error creating insurance claim:", err)
@@ -743,6 +828,12 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     setCart([])
     setRxId("")
     setPatientName("")
+    setActiveIpPatient(null)
+    setActivePreAuth(null)
+    setIsInsuranceMode(true)
+    setInsuranceApprovedAmount("")
+    setInsurancePolicyNo("")
+    setInsuranceApprovalNo("")
     setPayments({})
     setPaymentRefs({})
     setTenderedCash(0)
@@ -1022,37 +1113,305 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 flex flex-col">
-            {/* Patient / Rx Info */}
-            <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-5 flex gap-4 items-end hover:shadow-md transition-shadow">
-              <div className="grid grid-cols-2 gap-4 flex-1">
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
-                    Prescription ID
-                  </label>
-                  <input
-                    value={rxId}
-                    onChange={(e) => setRxId(e.target.value)}
-                    placeholder="e.g. RX-2026-1041"
-                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
-                  />
+            {/* Inpatient (IP) / Outpatient (OP) Workflow Mode Switcher & Patient Search */}
+            <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-4 space-y-3 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between border-b border-[#F0F2F5] pb-2.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPatientEncounterType("ip")
+                      setIsInsuranceMode(true)
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[12px] font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      patientEncounterType === "ip"
+                        ? "bg-[#0F766E] text-white shadow-xs"
+                        : "bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
+                    }`}
+                  >
+                    <Bed size={15} />
+                    <span>Inpatient (IP Admission)</span>
+                    <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                      patientEncounterType === "ip" ? "bg-teal-800 text-teal-100" : "bg-gray-200 text-gray-700"
+                    }`}>
+                      {BillingDatabase.getActiveInpatients().length} Admitted
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPatientEncounterType("op")
+                      clearInpatientSelection()
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[12px] font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                      patientEncounterType === "op"
+                        ? "bg-[#1E293B] text-white shadow-xs"
+                        : "bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]"
+                    }`}
+                  >
+                    <Building2 size={15} />
+                    <span>Walk-In / Outpatient (OP)</span>
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
-                    Patient Name
-                  </label>
-                  <input
-                    value={patientName}
-                    onChange={(e) => setPatientName(e.target.value)}
-                    className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
-                  />
+
+                <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
+                  {activeIpPatient && (
+                    <span className="font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 flex items-center gap-1">
+                      <CheckCircle size={12} className="text-teal-600" />
+                      IP Active: {activeIpPatient.ward} · Bed {activeIpPatient.bedNo}
+                    </span>
+                  )}
+                  {activePreAuth && (
+                    <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Pre-Auth Available: ₹{activePreAuth.availableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    </span>
+                  )}
                 </div>
               </div>
-              <button
-                onClick={loadPrescriptionFEFO}
-                className="bg-[#0F766E] text-white px-5 py-2 h-[42px] rounded-lg text-[13px] font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all whitespace-nowrap"
-              >
-                Load Rx & Auto-Allocate
-              </button>
+
+              {/* INPATIENT SEARCH & AUTO-LOADED PRE-AUTH CARD */}
+              {patientEncounterType === "ip" ? (
+                <div>
+                  {!activeIpPatient ? (
+                    <div className="relative">
+                      <label className="block text-[11px] font-bold text-[#0F766E] uppercase tracking-wide mb-1 flex items-center gap-1.5">
+                        <Search size={13} />
+                        Search Inpatient (Name, Bed 204-A, Ward 3N, Adm ID, or Policy)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={ipSearchQuery}
+                          onFocus={() => setIsIpDropdownOpen(true)}
+                          onChange={(e) => {
+                            setIpSearchQuery(e.target.value)
+                            setIsIpDropdownOpen(true)
+                          }}
+                          placeholder="Type patient name (e.g. John Smith, Mary Jones) or Bed No (e.g. 204-A, 208-A)..."
+                          className="w-full px-3.5 py-2.5 rounded-xl border-2 border-teal-300 text-[13px] text-[#0F1624] font-medium focus:border-[#0F766E] focus:outline-none transition-colors bg-teal-50/20 focus:bg-white placeholder:text-gray-400"
+                        />
+                        {ipSearchQuery && (
+                          <button
+                            onClick={() => setIpSearchQuery("")}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            <X size={15} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Dropdown of Admitted Inpatients */}
+                      {isIpDropdownOpen && (
+                        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-teal-200 rounded-xl shadow-2xl overflow-hidden max-h-72 overflow-y-auto divide-y divide-gray-100">
+                          <div className="px-3 py-1.5 bg-teal-50 text-[11px] font-bold text-[#0F766E] uppercase tracking-wide flex justify-between items-center">
+                            <span>Select Currently Admitted Inpatient</span>
+                            <button
+                              onClick={() => setIsIpDropdownOpen(false)}
+                              className="text-gray-400 hover:text-gray-600 text-xs"
+                            >
+                              ✕ Close
+                            </button>
+                          </div>
+                          {BillingDatabase.getActiveInpatients()
+                            .filter((ip) => {
+                              if (!ipSearchQuery.trim()) return true
+                              const q = ipSearchQuery.toLowerCase().trim()
+                              return (
+                                ip.patientName.toLowerCase().includes(q) ||
+                                ip.patientId.toLowerCase().includes(q) ||
+                                ip.mrn.toLowerCase().includes(q) ||
+                                ip.bedNo.toLowerCase().includes(q) ||
+                                ip.ward.toLowerCase().includes(q) ||
+                                (ip.preAuth && (
+                                  ip.preAuth.insuranceProvider.toLowerCase().includes(q) ||
+                                  ip.preAuth.preAuthCode.toLowerCase().includes(q)
+                                ))
+                              )
+                            })
+                            .map((ip) => {
+                              const pa = ip.preAuth
+                              return (
+                                <button
+                                  key={ip.patientId}
+                                  type="button"
+                                  onClick={() => selectInpatient(ip)}
+                                  className="w-full text-left p-3 hover:bg-teal-50/70 transition-colors flex items-center justify-between gap-3 group"
+                                >
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[13px] font-bold text-gray-900 group-hover:text-[#0F766E]">
+                                        {ip.patientName}
+                                      </span>
+                                      <span className="text-[11px] font-mono text-gray-500">
+                                        ({ip.gender || "Patient"}{ip.age ? `, ${ip.age}y` : ""})
+                                      </span>
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-100 text-teal-800">
+                                        {ip.ward} · Bed {ip.bedNo}
+                                      </span>
+                                    </div>
+                                    <div className="text-[11px] text-gray-600 mt-0.5 flex items-center gap-2">
+                                      <span>UMR: <strong>{ip.patientId}</strong></span>
+                                      <span>·</span>
+                                      <span>Adm ID: <strong>#{ip.admissionId || "501"}</strong></span>
+                                    </div>
+                                  </div>
+
+                                  <div className="text-right flex-shrink-0">
+                                    {pa ? (
+                                      <div>
+                                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                          ✓ {pa.insuranceProvider}
+                                        </span>
+                                        <p className="text-[11px] font-bold text-emerald-700 mt-0.5">
+                                          Available: ₹{pa.availableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                                        </p>
+                                        <p className="text-[9px] text-gray-500 font-mono">Pre-Auth: {pa.preAuthCode}</p>
+                                      </div>
+                                    ) : (
+                                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-700">
+                                        Self-Pay / Add Insurance
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              )
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* ACTIVE SELECTED INPATIENT CARD */
+                    <div className="border-2 border-teal-500 bg-teal-50/40 rounded-xl p-3.5 space-y-2">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 bg-[#0F766E] text-white text-[11px] font-bold rounded flex items-center gap-1">
+                              <Bed size={13} /> INPATIENT SELECTED
+                            </span>
+                            <h3 className="text-[15px] font-bold text-gray-900">
+                              {activeIpPatient.patientName}
+                            </h3>
+                            <span className="text-[12px] font-medium text-gray-600">
+                              ({activeIpPatient.gender || "Patient"}{activeIpPatient.age ? `, ${activeIpPatient.age} yrs` : ""})
+                            </span>
+                            <span className="px-2 py-0.5 bg-teal-100 text-teal-900 font-bold text-[11px] rounded">
+                              {activeIpPatient.ward} · Bed {activeIpPatient.bedNo} ({activeIpPatient.bedType})
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-600">
+                            UMR / MRN: <strong className="font-mono">{activeIpPatient.patientId}</strong> · Inpatient Admission: <strong className="font-mono">#{activeIpPatient.admissionId || "501"}</strong>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={clearInpatientSelection}
+                            className="px-3 py-1 rounded-lg text-[11px] font-bold bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                          >
+                            Change IP Patient
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Live Insurance Pre-Auth Summary Banner */}
+                      {activePreAuth ? (
+                        <div className="bg-white border border-teal-300 rounded-lg p-2.5 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <ShieldCheck size={16} className="text-[#0F766E]" />
+                              <span className="font-bold text-[#0F766E] uppercase tracking-wide text-[11px]">
+                                Auto-Loaded Pre-Authorization ({activePreAuth.insuranceProvider})
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-gray-600 mt-0.5 flex items-center gap-2 font-mono">
+                              <span>Policy: <strong>{activePreAuth.policyNumber}</strong></span>
+                              <span>·</span>
+                              <span>Pre-Auth Ref: <strong className="text-teal-800">{activePreAuth.preAuthCode}</strong></span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4 bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-200">
+                            <div className="text-right">
+                              <p className="text-[9px] uppercase font-semibold text-gray-500">Sanctioned Limit</p>
+                              <p className="text-[11px] font-bold text-gray-700 font-mono">₹{activePreAuth.sanctionedAmount.toLocaleString("en-IN")}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[9px] uppercase font-semibold text-gray-500">Hospital Used</p>
+                              <p className="text-[11px] font-bold text-gray-700 font-mono">₹{activePreAuth.utilizedAmount.toLocaleString("en-IN")}</p>
+                            </div>
+                            <div className="text-right border-l border-teal-300 pl-3">
+                              <p className="text-[9px] uppercase font-bold text-[#0F766E]">Available Pre-Auth</p>
+                              <p className="text-[14px] font-extrabold text-[#0F766E] font-mono">₹{activePreAuth.availableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800 flex items-center justify-between">
+                          <span>No existing Pre-Authorization on file. You can enter TPA details manually in payment allocation below.</span>
+                        </div>
+                      )}
+
+                      {/* Doctor Prescription ID (Optional) */}
+                      <div className="flex items-center gap-3 pt-1">
+                        <div className="flex-1 flex items-center gap-2">
+                          <label className="text-[11px] font-semibold text-[#64748B] whitespace-nowrap">
+                            Doctor Rx ID (Optional):
+                          </label>
+                          <input
+                            value={rxId}
+                            onChange={(e) => setRxId(e.target.value)}
+                            placeholder="e.g. RX-2026-1041"
+                            className="flex-1 px-3 py-1.5 rounded border border-[#E2E8F0] text-[12px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none transition-colors bg-white font-mono"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={loadPrescriptionFEFO}
+                          className="bg-[#0F766E] text-white px-4 py-1.5 rounded-lg text-[12px] font-bold shadow-xs hover:bg-[#0c5e58] transition-colors whitespace-nowrap cursor-pointer"
+                        >
+                          Load Rx Items
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* OUTPATIENT / WALK-IN MODE */
+                <div className="flex gap-4 items-end">
+                  <div className="grid grid-cols-2 gap-4 flex-1">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
+                        Prescription ID
+                      </label>
+                      <input
+                        value={rxId}
+                        onChange={(e) => setRxId(e.target.value)}
+                        placeholder="e.g. RX-2026-1041"
+                        className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
+                        Patient Name
+                      </label>
+                      <input
+                        value={patientName}
+                        onChange={(e) => setPatientName(e.target.value)}
+                        placeholder="Walk-in patient name..."
+                        className="w-full px-3 py-2 rounded border border-[#E2E8F0] text-[13px] text-[#0F1624] focus:border-[#0F766E] focus:outline-none transition-colors bg-[#F5F7FA] focus:bg-white"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={loadPrescriptionFEFO}
+                    className="bg-[#0F766E] text-white px-5 py-2 h-[42px] rounded-lg text-[13px] font-bold shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all whitespace-nowrap cursor-pointer"
+                  >
+                    Load Rx & Auto-Allocate
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Medicine Search */}
@@ -1432,7 +1791,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                     </div>
                   </div>
 
-                  {/* REAL TIME SPLIT SUMMARY */}
+                  {/* REAL TIME SPLIT & BALANCE TRACKING */}
                   <div className="grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="p-2 rounded-lg bg-gray-50 border border-gray-200">
                       <p className="text-[9px] text-[#64748B] font-semibold uppercase">Total Bill</p>
@@ -1457,6 +1816,14 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                       </p>
                     </div>
                   </div>
+
+                  {/* Pre-Auth Balance After Current Dispense */}
+                  {approvedAmtNum > 0 && (
+                    <div className="bg-white border border-teal-200 rounded p-2 text-[10px] flex items-center justify-between text-[#0F766E]">
+                      <span className="font-semibold">Pre-Auth Balance After This Bill:</span>
+                      <span className="font-mono font-bold text-xs">₹{remainingPreAuthBalance.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
