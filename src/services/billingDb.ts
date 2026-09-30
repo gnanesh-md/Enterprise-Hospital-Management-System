@@ -523,7 +523,7 @@ const STORAGE_KEY_LAB_ORDERS = "hosp_lab_orders_v1"
 
 const STORAGE_KEY_RAD_STUDIES = "hosp_rad_studies_v1"
 
-const STORAGE_KEY_PREAUTHS = "hosp_insurance_preauths_v2"
+const STORAGE_KEY_PREAUTHS = "hosp_insurance_preauths_v3"
 
 const BILLING_UPDATE_EVENT = "hospital_billing_updated"
 
@@ -542,8 +542,8 @@ export const INITIAL_INSURANCE_PREAUTHS: InsurancePreAuthRecord[] = [
     policyNumber: "SH-28847291",
     preAuthCode: "AUTH-2026-18845",
     sanctionedAmount: 50000,
-    utilizedAmount: 18500,
-    availableAmount: 31500,
+    utilizedAmount: 20000,
+    availableAmount: 30000,
     status: "Active",
     validUntil: "2026-10-15",
     lastUpdated: "2026-09-30T10:00:00Z",
