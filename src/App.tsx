@@ -122,6 +122,7 @@ import PatientExperience from "./components/PatientExperience"
 import HRMS from "./components/HRMS"
 
 import Employees from "./components/Employees"
+import UserProfileModal from "./components/UserProfileModal"
 
 import Admissions from "./components/Admissions"
 
@@ -1097,6 +1098,7 @@ export default function App() {
   const [activeDoctor, setActiveDoctor] = useState<DoctorAccount | null>(null)
 
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
 
   const [notice, setNotice] = useState<Notice | null>(null)
 
@@ -1769,13 +1771,22 @@ export default function App() {
                 ?
               </button>
 
-              {/* Role Switcher Menu */}
-              <div className="relative ml-1 pl-3 border-l border-white/10">
+              {/* Role Switcher & User Profile Menu */}
+              <div className="relative ml-1 pl-3 border-l border-white/10 flex items-center gap-1.5">
+                <button
+                  onClick={() => setProfileModalOpen(true)}
+                  className="px-2 py-1 text-[11px] font-bold bg-white/15 hover:bg-white/25 text-white rounded-md border border-white/20 transition-all flex items-center gap-1 cursor-pointer"
+                  title="View User Profile Card"
+                >
+                  <span>👤</span>
+                  <span className="hidden sm:inline">View Profile</span>
+                </button>
+
                 <button
                   onClick={() => setRoleMenuOpen(!roleMenuOpen)}
                   className="flex items-center gap-2 text-left hover:bg-white/10 p-1.5 rounded transition-colors cursor-pointer"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#1B4FD8] flex items-center justify-center text-[11px] font-semibold text-white flex-shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-[#1B4FD8] flex items-center justify-center text-[11px] font-semibold text-white flex-shrink-0 border border-white/30">
                     {activeStaff.name
                       .split(" ")
                       .map((n) => n[0])
@@ -1796,7 +1807,24 @@ export default function App() {
                 </button>
 
                 {roleMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-64 bg-white border border-[#CBD5E1] shadow-2xl rounded-none z-50 p-2 text-[12px] space-y-1">
+                  <div className="absolute right-0 top-full mt-1.5 w-64 bg-white border border-[#CBD5E1] shadow-2xl rounded-xl z-50 p-2 text-[12px] space-y-1">
+                    <div className="p-1 border-b border-[#E2E8F0] mb-1">
+                      <button
+                        onClick={() => {
+                          setRoleMenuOpen(false)
+                          setProfileModalOpen(true)
+                        }}
+                        className="w-full text-left px-3 py-2 bg-[#EFF6FF] text-[#1B4FD8] hover:bg-[#DBEAFE] font-bold rounded-lg flex items-center justify-between transition-colors cursor-pointer text-[12px] border border-[#BFDBFE]"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>👤</span> View Full Profile Card
+                        </span>
+                        <span className="text-[9px] font-mono bg-[#1B4FD8] text-white px-1.5 py-0.5 rounded">
+                          CARD
+                        </span>
+                      </button>
+                    </div>
+
                     <div className="px-2 py-1 text-[10px] font-bold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Switch Active Portal / Role
                     </div>
@@ -1885,7 +1913,7 @@ export default function App() {
                     <div className="border-t border-[#E2E8F0] pt-1 mt-1">
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-2.5 py-1 text-[11px] text-[#B91C1C] hover:bg-red-50 font-semibold"
+                        className="w-full text-left px-2.5 py-1 text-[11px] text-[#B91C1C] hover:bg-red-50 font-semibold rounded transition-colors"
                       >
                         Sign Out
                       </button>
@@ -2758,6 +2786,23 @@ export default function App() {
 
               setModule("chart")
             }}
+          />
+
+          <UserProfileModal
+            isOpen={profileModalOpen}
+            onClose={() => setProfileModalOpen(false)}
+            profile={{
+              id: activeStaff.id,
+              name: activeStaff.name,
+              role: activeStaff.role,
+              title: activeStaff.title,
+              department: activeStaff.department,
+              activeShift: activeStaff.activeShift || "Morning Shift (08:00 AM - 04:30 PM)",
+              permissions: userPermissions.length > 0 ? userPermissions : ["Dashboard", "Patients", "Appointments", "EMR & Consultations", "Billing & Revenue", "Pharmacy Management", "Laboratory Worklist", "ICU Flowsheet", "Insurance Claims"],
+            }}
+            onSwitchRole={() => setRoleMenuOpen(true)}
+            onSignOut={handleLogout}
+            isCurrentUser={true}
           />
         </>
       )}
