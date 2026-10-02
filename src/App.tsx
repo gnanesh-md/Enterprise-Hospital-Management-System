@@ -51,6 +51,7 @@ import LabBillingQueue from "./components/LabBillingQueue"
 import InsuranceClaims from "./components/insurance/ClaimsHome"
 import InsuranceSettlementPage from "./components/insurance/SettlementPage"
 import InsuranceMastersPage from "./components/insurance/MastersPage"
+import EnhancedAuditRulesPage from "./components/insurance/EnhancedAuditRulesPage"
 import InsuranceDashboardView from "./components/insurance/InsuranceDashboardView"
 import InsuranceCommandDashboard from "./components/insurance/InsuranceCommandDashboard"
 import CashlessCaseBoard from "./components/insurance/CashlessCaseBoard"
@@ -382,9 +383,7 @@ const NAV: NavItem[] = [
       { key: "insurance_claims", label: "Claims & Queries" },
       { key: "insurance_emails", label: "Email & TPA Decision Hub" },
       { key: "insurance_settlement", label: "Settlements" },
-      { key: "insurance_packages", label: "Billing & Packages" },
-      { key: "insurance_masters", label: "Master Data" },
-      { key: "insurance_reports", label: "Reports" },
+      { key: "insurance_masters", label: "Master Setup" },
       { key: "insurance_docrules", label: "Audit Log & Rules" },
     ],
 
@@ -2556,13 +2555,10 @@ export default function App() {
               )}
               {module === "insurance_masters" && <InsuranceMastersPage section="insurers" />}
               {module === "insurance_tpas" && <InsuranceMastersPage section="tpas" />}
-              {module === "insurance_packages" && <InsuranceMastersPage section="packages" />}
-              {module === "insurance_pricing" && <InsuranceMastersPage section="pricing" />}
-              {module === "insurance_docrules" && <InsuranceMastersPage section="docrules" />}
-              {/* Page 15: Insurance Reports */}
-              {(module === "insurance_reports" as any) && (
-                <InsuranceReportsView onBack={() => setModule("insurance_overview" as any)} />
-              )}
+              {module === "insurance_packages" && <EnhancedAuditRulesPage initialTab="packages" />}
+              {module === "insurance_pricing" && <EnhancedAuditRulesPage initialTab="packages" />}
+              {module === "insurance_docrules" && <EnhancedAuditRulesPage initialTab="audit" />}
+              {(module === "insurance_reports" as any) && <EnhancedAuditRulesPage initialTab="reports" />}
 
               {(module === "reports" || module === "reports_overview") && (
                 <GeneralReportsOverviewPage
