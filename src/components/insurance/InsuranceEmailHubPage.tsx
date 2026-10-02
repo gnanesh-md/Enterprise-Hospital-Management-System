@@ -147,6 +147,7 @@ export default function InsuranceEmailHubPage({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50 overflow-hidden">
+      {toastNode}
       <PageHeader
         title="Email &amp; TPA Decision Hub"
         subtitle="Hospital-wide live inbox, pre-auth sanctions, deficiency query notices, and settlement advice across all TPAs."
@@ -156,7 +157,7 @@ export default function InsuranceEmailHubPage({
               type="button"
               onClick={handleSimulateInboundDecision}
               disabled={isRefreshing}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12.5px] font-semibold rounded-[6px] transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} />
               {isRefreshing ? "Syncing Gateways…" : "⚡ Sync Inbound TPA Gateways"}
@@ -165,227 +166,251 @@ export default function InsuranceEmailHubPage({
         }
       />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
-        {/* ── METRIC TILES ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[8px] shadow-2xs">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 max-w-[1700px] mx-auto w-full">
+        {/* ── 4 Compact Executive KPI Metric Cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white border border-slate-200/90 p-3.5 rounded-xl shadow-2xs hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[11.5px] font-bold uppercase tracking-wider text-slate-500">Total Email Threads</span>
-              <Inbox size={16} className="text-slate-400" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Email Threads</span>
+              <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                <Inbox size={14} />
+              </div>
             </div>
-            <div className="text-[22px] font-bold text-slate-900 mt-1 tabular-nums">{allMails.length}</div>
-            <span className="text-[11.5px] text-slate-400">Across {claims.length} active claims</span>
+            <div className="text-xl font-bold text-slate-900 mt-2 tabular-nums">{allMails.length}</div>
+            <span className="text-[10.5px] text-slate-400">Across {claims.length} active claims</span>
           </div>
 
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[8px] shadow-2xs">
+          <div className="bg-white border border-slate-200/90 p-3.5 rounded-xl shadow-2xs hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[11.5px] font-bold uppercase tracking-wider text-emerald-700">TPA Approvals Received</span>
-              <CheckCircle2 size={16} className="text-emerald-500" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">TPA Approvals Received</span>
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 size={14} />
+              </div>
             </div>
-            <div className="text-[22px] font-bold text-emerald-800 mt-1 tabular-nums">
+            <div className="text-xl font-bold text-emerald-800 mt-2 tabular-nums">
               {allMails.filter((m) => m.direction === "in" && (m.subject.toLowerCase().includes("approval") || m.subject.toLowerCase().includes("sanction"))).length}
             </div>
-            <span className="text-[11.5px] text-emerald-600">Sanctioned &amp; Applied</span>
+            <span className="text-[10.5px] text-emerald-600 font-medium">Sanctioned &amp; Applied</span>
           </div>
 
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[8px] shadow-2xs">
+          <div className="bg-white border border-slate-200/90 p-3.5 rounded-xl shadow-2xs hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[11.5px] font-bold uppercase tracking-wider text-blue-700">Outbound Claims Sent</span>
-              <Send size={16} className="text-blue-500" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Outbound Claims Sent</span>
+              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <Send size={14} />
+              </div>
             </div>
-            <div className="text-[22px] font-bold text-blue-800 mt-1 tabular-nums">
+            <div className="text-xl font-bold text-blue-800 mt-2 tabular-nums">
               {allMails.filter((m) => m.direction === "out").length}
             </div>
-            <span className="text-[11.5px] text-blue-600">Delivered via SMTP Gateway</span>
+            <span className="text-[10.5px] text-blue-600 font-medium">Delivered via SMTP Gateway</span>
           </div>
 
-          <div className="bg-white border border-slate-200/80 p-4 rounded-[8px] shadow-2xs">
+          <div className="bg-white border border-slate-200/90 p-3.5 rounded-xl shadow-2xs hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[11.5px] font-bold uppercase tracking-wider text-amber-700">Deficiency Queries</span>
-              <AlertTriangle size={16} className="text-amber-500" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700">Deficiency Queries</span>
+              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <AlertTriangle size={14} />
+              </div>
             </div>
-            <div className="text-[22px] font-bold text-amber-800 mt-1 tabular-nums">
+            <div className="text-xl font-bold text-amber-800 mt-2 tabular-nums">
               {allMails.filter((m) => m.subject.toLowerCase().includes("query")).length}
             </div>
-            <span className="text-[11.5px] text-amber-600">Awaiting hospital responses</span>
+            <span className="text-[10.5px] text-amber-600 font-medium">Awaiting hospital responses</span>
           </div>
         </div>
 
-        {/* ── FILTER BAR ── */}
-        <div className="flex flex-wrap items-center gap-2 bg-white border border-slate-200 p-2.5 rounded-[8px] shadow-2xs">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by Patient, Claim ID, Subject, or TPA…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-[12.5px] bg-slate-50 border border-slate-200 rounded-[6px] focus:bg-white focus:outline-none focus:border-blue-500"
-            />
+        {/* ── Compact Filter Control Bar ── */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 bg-white border border-slate-200/90 p-2.5 rounded-xl shadow-2xs">
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[240px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by Patient, Claim ID, Subject, or TPA…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 h-8.5 text-[11.5px] bg-slate-50 border border-slate-200 rounded-lg text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
+              />
+            </div>
+
+            {/* Segmented Filter Pills */}
+            <div className="flex items-center gap-1 bg-slate-100/70 p-0.5 rounded-lg border border-slate-200/60 overflow-x-auto scrollbar-none">
+              {[
+                { id: "all", label: "All Messages" },
+                { id: "in", label: "Inbound TPA ↙" },
+                { id: "out", label: "Hospital Out ↗" },
+                { id: "approvals", label: "Sanction Approvals 🟢" },
+                { id: "queries", label: "Queries 🟡" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFilterType(f.id as typeof filterType)}
+                  className={`px-3 py-1 rounded-md text-[11.5px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                    filterType === f.id
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 text-[12px]">
-            {[
-              { id: "all", label: "All Messages" },
-              { id: "in", label: "Inbound TPA ↙" },
-              { id: "out", label: "Hospital Out ↗" },
-              { id: "approvals", label: "Sanction Approvals 🟢" },
-              { id: "queries", label: "Queries 🟡" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setFilterType(f.id as typeof filterType)}
-                className={`px-3 py-1 rounded-[6px] font-medium transition-colors cursor-pointer ${
-                  filterType === f.id
-                    ? "bg-blue-600 text-white shadow-2xs"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+          {/* Insurer Selector Dropdown */}
+          <div className="w-48">
+            <select
+              value={selectedInsurer}
+              onChange={(e) => setSelectedInsurer(e.target.value)}
+              className="w-full h-8.5 text-[11.5px] bg-slate-50 border border-slate-200 rounded-lg px-3 text-slate-700 font-semibold focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer transition-all"
+            >
+              <option value="">All TPAs &amp; Insurers</option>
+              {insurers.map((ins) => (
+                <option key={ins} value={ins}>{ins}</option>
+              ))}
+            </select>
           </div>
-
-          <select
-            value={selectedInsurer}
-            onChange={(e) => setSelectedInsurer(e.target.value)}
-            className="text-[12px] bg-slate-50 border border-slate-200 rounded-[6px] px-2.5 py-1.5 text-slate-700 focus:outline-none focus:bg-white cursor-pointer ml-auto"
-          >
-            <option value="">All TPAs &amp; Insurers</option>
-            {insurers.map((ins) => (
-              <option key={ins} value={ins}>{ins}</option>
-            ))}
-          </select>
         </div>
 
         {/* ── TWO-COLUMN EMAIL EXPLORER ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)] border border-slate-200 rounded-[8px] bg-white overflow-hidden shadow-xs min-h-[580px]">
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_minmax(0,1fr)] border border-slate-200/90 rounded-xl bg-white overflow-hidden shadow-2xs min-h-[580px] max-h-[calc(100vh-270px)]">
           {/* Left Column: Messages List */}
-          <div className="border-r border-slate-200 flex flex-col bg-slate-50/40 divide-y divide-slate-100 overflow-y-auto max-h-[620px]">
-            {filteredMails.length === 0 ? (
-              <div className="p-8 text-center text-[12.5px] text-slate-400">
-                No emails found matching your filters.
-              </div>
-            ) : (
-              filteredMails.map((m) => {
-                const key = `${m.claimId}_${m.id}`
-                const isSelected = (selectedMailKey ? selectedMailKey === key : activeMail?.id === m.id && activeMail?.claimId === m.claimId)
-                const isInbound = m.direction === "in"
-                const isApproval = m.subject.toLowerCase().includes("approval") || m.subject.toLowerCase().includes("sanction")
+          <div className="border-r border-slate-200/90 flex flex-col bg-slate-50/30 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-slate-200/80 bg-slate-100/60 flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <span>Inbox Threads</span>
+              <span className="bg-slate-200/80 text-slate-700 px-1.5 py-0.2 rounded font-mono text-[10.5px]">
+                {filteredMails.length}
+              </span>
+            </div>
 
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setSelectedMailKey(key)}
-                    className={`w-full text-left p-4 transition-all cursor-pointer block ${
-                      isSelected
-                        ? "bg-blue-50/90 border-l-4 border-l-blue-600 text-slate-900 shadow-2xs"
-                        : "hover:bg-white text-slate-700 border-l-4 border-l-transparent"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                      <span className={`inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                        isInbound
-                          ? isApproval ? "bg-emerald-100 text-emerald-800" : "bg-teal-100 text-teal-800"
-                          : "bg-blue-100 text-blue-800"
-                      }`}>
-                        {isInbound ? <ArrowDownLeft size={11} /> : <ArrowUpRight size={11} />}
-                        {isInbound ? "Inbound TPA" : "Hospital Out"}
-                      </span>
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+              {filteredMails.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">
+                  No emails found matching your active filters.
+                </div>
+              ) : (
+                filteredMails.map((m) => {
+                  const key = `${m.claimId}_${m.id}`
+                  const isSelected = (selectedMailKey ? selectedMailKey === key : activeMail?.id === m.id && activeMail?.claimId === m.claimId)
+                  const isInbound = m.direction === "in"
+                  const isApproval = m.subject.toLowerCase().includes("approval") || m.subject.toLowerCase().includes("sanction")
 
-                      <span className="text-[11px] text-slate-400 tabular-nums">
-                        {fmtDateTime(m.at).split(",")[0]}
-                      </span>
-                    </div>
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setSelectedMailKey(key)}
+                      className={`w-full text-left p-3.5 transition-all cursor-pointer block ${
+                        isSelected
+                          ? "bg-blue-50/80 border-l-4 border-l-blue-600 text-slate-900 shadow-2xs"
+                          : "hover:bg-white text-slate-700 border-l-4 border-l-transparent"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1.5">
+                        <span className={`inline-flex items-center gap-1 text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${
+                          isInbound
+                            ? isApproval ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-teal-50 text-teal-800 border-teal-200"
+                            : "bg-blue-50 text-blue-800 border-blue-200"
+                        }`}>
+                          {isInbound ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
+                          {isInbound ? "Inbound TPA" : "Hospital Out"}
+                        </span>
 
-                    <div className="text-[13px] font-bold text-slate-900 leading-snug truncate">
-                      {m.subject}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-[11.5px] text-slate-600 mt-1">
-                      <span className="font-semibold text-slate-800">{m.patientName}</span>
-                      <span className="text-slate-300">·</span>
-                      <span className="font-mono text-slate-500">{m.claimId}</span>
-                    </div>
-
-                    <div className="text-[11px] text-slate-400 truncate mt-0.5">
-                      {isInbound ? `From: ${m.from}` : `To: ${m.to}`}
-                    </div>
-
-                    {m.attachments && m.attachments.length > 0 && (
-                      <div className="flex items-center gap-1 text-[11px] text-blue-700 mt-1.5 font-medium">
-                        <Paperclip size={11} /> {m.attachments.length} attachment{m.attachments.length > 1 ? "s" : ""}
+                        <span className="text-[10.5px] font-mono text-slate-400">
+                          {fmtDateTime(m.at).split(",")[0]}
+                        </span>
                       </div>
-                    )}
-                  </button>
-                )
-              })
-            )}
+
+                      <div className="text-[12.5px] font-bold text-slate-900 leading-snug truncate">
+                        {m.subject}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600 mt-1">
+                        <span className="font-bold text-blue-600">{m.patientName}</span>
+                        <span className="text-slate-300">•</span>
+                        <span className="font-mono text-slate-400 text-[10.5px]">{m.claimId}</span>
+                      </div>
+
+                      <div className="text-[10.5px] text-slate-400 truncate mt-0.5 font-mono">
+                        {isInbound ? `From: ${m.from}` : `To: ${m.to}`}
+                      </div>
+
+                      {m.attachments && m.attachments.length > 0 && (
+                        <div className="inline-flex items-center gap-1 text-[10.5px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 mt-2 font-semibold">
+                          <Paperclip size={10} /> {m.attachments.length} attachment{m.attachments.length > 1 ? "s" : ""}
+                        </div>
+                      )}
+                    </button>
+                  )
+                })
+              )}
+            </div>
           </div>
 
           {/* Right Column: Full Email Viewer & Case Link */}
-          <div className="flex flex-col bg-white overflow-y-auto max-h-[620px]">
+          <div className="flex flex-col bg-white overflow-y-auto">
             {activeMail ? (
               <div className="p-6 space-y-5">
                 {/* Header with Case Jump Control */}
-                <div className="border-b border-slate-100 pb-4">
+                <div className="border-b border-slate-200/80 pb-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                    <h3 className="text-[16px] font-bold text-slate-900 leading-snug">
+                    <h3 className="text-base font-extrabold text-slate-900 leading-snug">
                       {activeMail.subject}
                     </h3>
 
                     <button
                       type="button"
                       onClick={() => onNavigateToClaim(activeMail.claimId)}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-[12px] font-semibold rounded-[6px] transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
                     >
                       <span>Open Claim #{activeMail.claimId}</span> <ExternalLink size={13} />
                     </button>
                   </div>
 
                   {/* Header Meta Box */}
-                  <div className="bg-slate-50 border border-slate-100 rounded-[8px] p-3.5 space-y-1.5 text-[12.5px]">
+                  <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3.5 space-y-2 text-xs">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <span className="text-slate-400 font-medium">From:</span>{" "}
-                        <span className="font-bold text-slate-800">{activeMail.from}</span>
+                        <span className="font-bold text-slate-900">{activeMail.from}</span>
                       </div>
-                      <span className="text-[11px] font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+                      <span className="text-[10.5px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-full flex items-center gap-1">
                         ✓ TLS &amp; SMTP Authenticated
                       </span>
                     </div>
                     <div>
                       <span className="text-slate-400 font-medium">To:</span>{" "}
-                      <span className="text-slate-700">{activeMail.to}</span>
+                      <span className="text-slate-700 font-medium">{activeMail.to}</span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 text-[11.5px] pt-1 border-t border-slate-200/60 mt-1">
-                      <div><span className="text-slate-400">Patient:</span> <strong className="text-slate-800">{activeMail.patientName}</strong></div>
-                      <div><span className="text-slate-400">Claim ID:</span> <strong className="font-mono text-blue-700">{activeMail.claimId}</strong></div>
+                    <div className="flex flex-wrap items-center gap-4 text-[11px] pt-2 border-t border-slate-200/70 mt-1">
+                      <div><span className="text-slate-400">Patient:</span> <strong className="text-slate-900">{activeMail.patientName}</strong></div>
+                      <div><span className="text-slate-400">Claim ID:</span> <strong className="font-mono text-blue-600">{activeMail.claimId}</strong></div>
                       <div><span className="text-slate-400">TPA / Insurer:</span> <strong className="text-slate-800">{activeMail.tpaName || activeMail.insurerName}</strong></div>
-                      <div className="ml-auto text-slate-400 tabular-nums">{fmtDateTime(activeMail.at)}</div>
+                      <div className="ml-auto text-slate-400 font-mono">{fmtDateTime(activeMail.at)}</div>
                     </div>
                   </div>
                 </div>
 
                 {/* TPA Sanction Banner (If Inbound Approval) */}
                 {activeMail.direction === "in" && (activeMail.subject.toLowerCase().includes("approval") || activeMail.subject.toLowerCase().includes("sanction")) && (
-                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-[8px] p-4 shadow-2xs">
+                  <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/90 rounded-xl p-4 shadow-2xs">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
-                        <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[13.5px]">
-                          <CheckCircle2 size={16} /> Official Cashless Sanction Letter
+                        <div className="flex items-center gap-1.5 text-emerald-900 font-extrabold text-[13.5px]">
+                          <CheckCircle2 size={16} className="text-emerald-600" /> Official Cashless Sanction Letter
                         </div>
-                        <p className="text-[12px] text-slate-600 mt-0.5">
-                          Approved pre-authorization decision received for patient {activeMail.patientName}.
+                        <p className="text-xs text-slate-600 mt-0.5 font-medium">
+                          Approved pre-authorization decision received for patient <span className="font-bold text-slate-900">{activeMail.patientName}</span>.
                         </p>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => onNavigateToClaim(activeMail.claimId)}
-                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-semibold rounded-[6px] transition-all flex items-center gap-1 cursor-pointer shadow-xs shrink-0"
+                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-xs shrink-0"
                       >
                         <Sparkles size={13} /> View in Claim Workspace
                       </button>
@@ -393,32 +418,32 @@ export default function InsuranceEmailHubPage({
                   </div>
                 )}
 
-                {/* Formatted Message Body */}
-                <div className="bg-slate-50/50 border border-slate-100 rounded-[8px] p-4">
-                  <pre className="whitespace-pre-wrap font-sans text-[13px] text-slate-800 leading-relaxed">
+                {/* Formatted Message Body Card */}
+                <div className="bg-white border border-slate-200/90 rounded-xl p-4.5 shadow-2xs">
+                  <pre className="whitespace-pre-wrap font-sans text-xs text-slate-800 leading-relaxed font-medium">
                     {activeMail.body}
                   </pre>
                 </div>
 
                 {/* Verified Attachments */}
                 {activeMail.attachments && activeMail.attachments.length > 0 && (
-                  <div className="pt-2 border-t border-slate-100">
-                    <div className="text-[12px] font-bold text-slate-700 mb-2.5 flex items-center gap-1.5">
-                      <Paperclip size={13} /> Verified Email Attachments ({activeMail.attachments.length})
+                  <div className="pt-2 border-t border-slate-200/80">
+                    <div className="text-xs font-bold text-slate-800 mb-2.5 flex items-center gap-1.5">
+                      <Paperclip size={13} className="text-slate-500" /> Verified Email Attachments ({activeMail.attachments.length})
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {activeMail.attachments.map((att, i) => (
                         <div
                           key={i}
-                          className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-[6px] hover:bg-slate-100 transition-colors"
+                          className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl hover:bg-blue-50/50 hover:border-blue-200 transition-colors cursor-pointer group"
                         >
-                          <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex items-center gap-2.5 min-w-0">
                             <FileText className="text-blue-600 shrink-0" size={16} />
-                            <span className="text-[12px] font-medium text-slate-800 truncate">
+                            <span className="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition-colors truncate">
                               {att}
                             </span>
                           </div>
-                          <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
+                          <span className="text-[10.5px] font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200/80">
                             PDF
                           </span>
                         </div>
@@ -430,7 +455,7 @@ export default function InsuranceEmailHubPage({
             ) : (
               <div className="p-12 text-center text-slate-400">
                 <Mail size={32} className="mx-auto mb-2 text-slate-300" />
-                <p className="text-[13px] font-medium">Select an email to view full conversation</p>
+                <p className="text-xs font-medium">Select an email to view full conversation</p>
               </div>
             )}
           </div>
