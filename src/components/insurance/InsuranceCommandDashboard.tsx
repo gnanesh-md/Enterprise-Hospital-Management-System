@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react"
 import {
   ShieldCheck, AlertTriangle, Clock, CheckCircle2, FileText, Wallet, Plus,
   RefreshCw, ChevronRight, TrendingUp, Users, AlertCircle, XCircle,
-  Bell, Search, Filter, Activity, Zap
+  Bell, Search, Filter, Activity, Zap, Mail
 } from "lucide-react"
 import { StatusPill, inr, fmtDate, useCases, useNotify, btn } from "./ui"
 import { InsuranceEngineService, STATUS_META } from "../../services/insuranceDb"
@@ -180,6 +180,9 @@ export default function InsuranceCommandDashboard({
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setRefreshKey(k => k + 1)} className={`${btn.soft} gap-1.5`}>
             <RefreshCw size={13} /> Refresh
+          </button>
+          <button type="button" onClick={() => onNavigate("emails" as any)} className={`${btn.soft} gap-1.5`}>
+            <Mail size={13} /> Email & TPA Hub
           </button>
           <button type="button" onClick={() => onNavigate("preauth")} className={btn.soft}>
             Pre-Auth Queue

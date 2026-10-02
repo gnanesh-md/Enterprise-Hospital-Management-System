@@ -795,7 +795,7 @@ export default function DoctorPortal({
                         onClick={() => setTab(t.key)}
                         title={t.hint}
                         aria-current={isActive ? "step" : undefined}
-                        className={`group flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full border transition-colors cursor-pointer ${
+                        className={`group flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-none border transition-colors cursor-pointer ${
                           isActive
                             ? "bg-[#1B4FD8] border-[#1B4FD8] text-white"
                             : isPast
@@ -804,7 +804,7 @@ export default function DoctorPortal({
                         }`}
                       >
                         <span
-                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                          className={`w-5 h-5 rounded-none flex items-center justify-center text-[10px] font-bold ${
                             isActive
                               ? "bg-white/20 text-white"
                               : isPast
@@ -820,7 +820,7 @@ export default function DoctorPortal({
                         </span>
                         {badge > 0 && (
                           <span
-                            className={`text-[10px] font-bold font-mono px-1.5 rounded-full ${
+                            className={`text-[10px] font-bold font-mono px-1.5 rounded-none ${
                               isActive
                                 ? "bg-white text-[#1B4FD8]"
                                 : "bg-[#EFF6FF] text-[#1B4FD8]"
@@ -1019,7 +1019,7 @@ function PortalHeader({
   return (
     <div className="bg-white border-b border-[#DDE2EC] px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
       <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#1E3A8A] to-[#1B4FD8] text-white flex items-center justify-center text-lg font-bold">
+        <div className="w-11 h-11 rounded-none bg-gradient-to-tr from-[#1E3A8A] to-[#1B4FD8] text-white flex items-center justify-center text-lg font-bold">
           {doctor.name
             .replace("Dr. ", "")
             .split(" ")
@@ -1030,7 +1030,7 @@ function PortalHeader({
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-base font-bold text-gray-900">{doctor.name}</h1>
-            <span className="text-[10px] font-mono font-bold bg-blue-100 text-[#1B4FD8] px-2 py-0.5 rounded border border-blue-200 uppercase">
+            <span className="text-[10px] font-mono font-bold bg-blue-100 text-[#1B4FD8] px-2 py-0.5 rounded-none border border-blue-200 uppercase">
               Workspace
             </span>
           </div>
@@ -1042,7 +1042,7 @@ function PortalHeader({
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex bg-[#F1F5F9] border border-[#DDE2EC] rounded-lg p-0.5">
+        <div className="flex bg-[#F1F5F9] border border-[#DDE2EC] rounded-none p-0.5">
           {[
             {
               key: "live" as const,
@@ -1055,7 +1055,7 @@ function PortalHeader({
               key={option.key}
               type="button"
               onClick={() => onView(option.key)}
-              className={`px-3 py-1.5 text-[12px] font-semibold rounded-md transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 text-[12px] font-semibold rounded-none transition-colors flex items-center gap-1.5 ${
                 view === option.key
                   ? "bg-white text-[#1B4FD8] shadow-sm"
                   : "text-[#64748B] hover:text-[#334155]"
@@ -1066,7 +1066,7 @@ function PortalHeader({
               )}
               {option.label}
               {option.badge > 0 && (
-                <span className="text-[9.5px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 py-0.5 rounded">
+                <span className="text-[9.5px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 py-0.5 rounded-none">
                   {option.badge}
                 </span>
               )}
@@ -1074,7 +1074,7 @@ function PortalHeader({
           ))}
         </div>
 
-        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#DDE2EC] px-3 py-1.5 rounded-lg">
+        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#DDE2EC] px-3 py-1.5 rounded-none">
           <Icon.Bell className="w-4 h-4 text-[#64748B]" />
           <span className="text-[12px] text-[#475569]">
             <span className="font-bold text-[#0F172A]">{unreadCount}</span> new
@@ -1085,7 +1085,7 @@ function PortalHeader({
             my queue
           </span>
         </div>
-        <div className="text-right flex items-center gap-2 bg-[#0F172A] text-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-700">
+        <div className="text-right flex items-center gap-2 bg-[#0F172A] text-white px-3 py-1.5 rounded-none shadow-sm border border-slate-700">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <div>
             <div className="text-[12.5px] font-bold tracking-wider font-mono text-emerald-300">
@@ -2094,7 +2094,7 @@ function ConsultationConversation({
   return (
     <div className="max-w-[1400px] mx-auto space-y-4">
       {/* Recorder */}
-      <section className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden">
+      <section className="bg-white border border-[#E2E8F0] rounded-none shadow-sm overflow-hidden">
         <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <button
@@ -2118,7 +2118,7 @@ function ConsultationConversation({
                 <h2 className="text-[14px] font-bold text-[#0F172A]">
                   Consultation conversation
                 </h2>
-                <span className="text-[9.5px] font-bold uppercase tracking-wider bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0] px-1.5 py-0.5 rounded">
+                <span className="text-[9.5px] font-bold uppercase tracking-wider bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0] px-1.5 py-0.5 rounded-none">
                   History &amp; advice only
                 </span>
               </div>
@@ -2134,7 +2134,7 @@ function ConsultationConversation({
 
           <div className="flex items-center gap-2.5 flex-wrap">
             <div
-              className={`font-mono text-[15px] font-bold tabular-nums px-3 py-1.5 rounded-lg border ${
+              className={`font-mono text-[15px] font-bold tabular-nums px-3 py-1.5 rounded-none border ${
                 listening
                   ? "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
                   : "bg-[#F8FAFC] border-[#E2E8F0] text-[#475569]"
@@ -2150,7 +2150,7 @@ function ConsultationConversation({
               }
               disabled={listening}
               title="Recognition language. Switching mid-consultation needs the recording restarted."
-              className="text-[12px] font-semibold border border-[#E2E8F0] rounded-lg px-2.5 py-2 bg-white text-[#334155] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:border-[#1B4FD8]"
+              className="text-[12px] font-semibold border border-[#E2E8F0] rounded-none px-2.5 py-2 bg-white text-[#334155] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:border-[#1B4FD8]"
             >
               <option value="auto">Auto (English-India)</option>
               <option value="en-IN">English</option>
@@ -2163,7 +2163,7 @@ function ConsultationConversation({
             <button
               type="button"
               onClick={() => setPasteOpen((open) => !open)}
-              className="text-[12px] font-semibold border border-[#E2E8F0] rounded-lg px-3 py-2 bg-white text-[#334155] hover:bg-[#F8FAFC] cursor-pointer"
+              className="text-[12px] font-semibold border border-[#E2E8F0] rounded-none px-3 py-2 bg-white text-[#334155] hover:bg-[#F8FAFC] cursor-pointer"
             >
               Type / paste
             </button>
@@ -2172,7 +2172,7 @@ function ConsultationConversation({
               <button
                 type="button"
                 onClick={clearAll}
-                className="text-[12px] font-semibold border border-[#FECACA] rounded-lg px-3 py-2 bg-white text-[#B91C1C] hover:bg-[#FEF2F2] cursor-pointer"
+                className="text-[12px] font-semibold border border-[#FECACA] rounded-none px-3 py-2 bg-white text-[#B91C1C] hover:bg-[#FEF2F2] cursor-pointer"
               >
                 Clear
               </button>
@@ -2185,7 +2185,7 @@ function ConsultationConversation({
           <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#94A3B8]">
             Who is speaking
           </span>
-          <div className="flex bg-white border border-[#E2E8F0] rounded-lg p-0.5">
+          <div className="flex bg-white border border-[#E2E8F0] rounded-none p-0.5">
             {[
               {
                 key: "auto" as const,
@@ -2213,7 +2213,7 @@ function ConsultationConversation({
                   else setSpeakerViewFilter("all")
                 }}
                 title={option.hint}
-                className={`px-3 py-1.5 text-[12px] font-semibold rounded-md transition-colors cursor-pointer ${
+                className={`px-3 py-1.5 text-[12px] font-semibold rounded-none transition-colors cursor-pointer ${
                   speakerMode === option.key
                     ? option.key === "patient"
                       ? "bg-[#16A34A] text-white"
@@ -2285,7 +2285,7 @@ function ConsultationConversation({
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
         {/* Transcript */}
-        <section className="xl:col-span-7 bg-white border border-[#E2E8F0] rounded-xl shadow-sm flex flex-col min-h-[420px]">
+        <section className="xl:col-span-7 bg-white border border-[#E2E8F0] rounded-none shadow-sm flex flex-col min-h-[420px]">
           <header className="px-4 py-3 border-b border-[#F1F5F9] flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-[13px] font-bold text-[#0F172A]">
@@ -2293,7 +2293,7 @@ function ConsultationConversation({
               </h3>
               
               {/* Filter view tabs */}
-              <div className="flex bg-[#F1F5F9] border border-[#E2E8F0] rounded-lg p-0.5">
+              <div className="flex bg-[#F1F5F9] border border-[#E2E8F0] rounded-none p-0.5">
                 <button
                   type="button"
                   onClick={() => setSpeakerViewFilter("all")}
@@ -2495,7 +2495,7 @@ function ConsultationConversation({
         </section>
 
         {/* Clinical note */}
-        <section className="xl:col-span-5 bg-white border border-[#E2E8F0] rounded-xl shadow-sm sticky top-4">
+        <section className="xl:col-span-5 bg-white border border-[#E2E8F0] rounded-none shadow-sm sticky top-4">
           <header className="px-4 py-3 border-b border-[#F1F5F9] flex items-center justify-between gap-2">
             <h3 className="text-[13px] font-bold text-[#0F172A]">
               Doctor's note

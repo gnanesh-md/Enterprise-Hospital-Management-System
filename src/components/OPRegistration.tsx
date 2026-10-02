@@ -724,7 +724,7 @@ export default function OPRegistration({
 
                   <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-3.5 mb-4">
                     <div className="flex items-center gap-2.5">
-                      <HospAILogo variant="icon" theme="light" className="w-8 h-8 shrink-0" />
+                      <HospAILogo variant="icon" className="w-10 h-10 shrink-0" />
                       <div>
                         <div className="font-bold text-[14px] text-gray-900">
                           HospAI General Hospital

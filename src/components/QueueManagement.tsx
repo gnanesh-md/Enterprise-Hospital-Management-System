@@ -1545,7 +1545,7 @@ export default function QueueManagement({
           {/* TV Top Header */}
           <div className="flex justify-between items-center border-b border-slate-800 pb-3">
             <div className="flex items-center gap-3">
-              <HospAILogo variant="icon" className="w-9 h-9 shrink-0" />
+              <HospAILogo variant="icon" className="w-14 h-14 shrink-0" />
               <div>
                 <div className="text-lg font-black text-white tracking-wider">
                   HOSPAI GENERAL HOSPITAL

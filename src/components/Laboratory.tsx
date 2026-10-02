@@ -98,7 +98,6 @@ export default function Laboratory({
       const isCompleted = isOrderCompleted(order)
 
       // 1. Queue filter
-      // Active queues: completed orders are hidden so they ONLY appear under "Completed & Verified"
       if (activeQueue === "all" && isCompleted) return false
       if (activeQueue === "paid" && (order.billing.status !== "Paid" || isCompleted)) return false
       if (activeQueue === "pending" && (order.billing.status !== "Pending" || isCompleted)) return false
@@ -355,8 +354,7 @@ export default function Laboratory({
           </button>
           <button
             onClick={() => setShowNewOrderModal(true)}
-            className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-none shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
+            className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-none shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"          >
             <span>+</span> New Lab Order
           </button>
         </div>
@@ -381,8 +379,7 @@ export default function Laboratory({
           <strong className="text-base font-bold text-red-800">{stats.critical}</strong>
         </div>
         <div className="p-2.5 rounded-none bg-white border border-gray-200 border-l-4 border-l-indigo-600">
-          <span className="text-indigo-700 block text-[11px] font-medium">Completed & Signed</span>
-          <strong className="text-base font-bold text-indigo-800">{stats.completed}</strong>
+          <span className="text-indigo-700 block text-[11px] font-medium">Completed & Signed</span>          <strong className="text-base font-bold text-indigo-800">{stats.completed}</strong>
         </div>
       </div>
 
@@ -406,41 +403,39 @@ export default function Laboratory({
           /* ========================================================================= */
           <div className="flex-1 bg-white rounded-none shadow-xs border border-gray-200 flex flex-col overflow-hidden">
             
-            {/* Header / Actions Bar */}
-            <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+            {/* Header / Actions Bar (Clean Eye-Friendly Soft Light Theme) */}
+            <div className="bg-white text-gray-900 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setSelectedOrderId(null)}
-                  className="px-3 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-none border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-none border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"                >
                   <span>←</span> Back to Patient List
                 </button>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-bold text-white">
+                    <h2 className="text-base font-bold text-gray-900">
                       {selectedOrder.patientName}
                     </h2>
                     <span className="text-xs px-2 py-0.5 rounded-none bg-blue-500/40 text-blue-200 font-mono">
                       {selectedOrder.umr}
                     </span>
                     <span
-                      className={`text-xs px-2 py-0.5 rounded-none font-bold ${
-                        selectedOrder.billing.status === "Paid"
-                          ? "bg-emerald-500 text-white"
-                          : "bg-amber-500 text-white"
+                      className={`text-xs px-2 py-0.5 rounded-none font-bold ${                        selectedOrder.billing.status === "Paid"
+                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          : "bg-amber-50 text-amber-800 border border-amber-200"
                       }`}
                     >
                       Billing: {selectedOrder.billing.status}
                     </span>
                   </div>
-                  <span className="text-xs text-gray-300">
+                  <span className="text-xs text-gray-500 mt-0.5 block">
                     Visit: {selectedOrder.opNumber || selectedOrder.encounterId} · Order: {selectedOrder.id} · Age/Sex: {selectedOrder.age}y/{selectedOrder.sex}
                   </span>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center gap-3">
+              {/* Action Buttons (Soft, eye-pleasing executive tones) */}
+              <div className="flex items-center gap-2.5">
                 <button
                   disabled={selectedOrder.billing.status !== "Paid"}
                   onClick={() => {
@@ -452,23 +447,20 @@ export default function Laboratory({
                       ? "Action Restricted: Billing payment is pending at reception desk"
                       : "Batch enter results for all ordered tests"
                   }
-                  className={`px-4 py-2 text-xs font-bold rounded-none transition-colors flex items-center gap-1.5 shadow-sm ${
-                    selectedOrder.billing.status === "Paid"
-                      ? "text-emerald-950 bg-emerald-400 hover:bg-emerald-300 cursor-pointer"
-                      : "text-gray-400 bg-slate-800 border border-slate-700 cursor-not-allowed opacity-60"
+                  className={`px-4 py-2 text-xs font-bold rounded-none transition-colors flex items-center gap-1.5 shadow-sm ${                    selectedOrder.billing.status === "Paid"
+                      ? "text-teal-800 bg-teal-50 hover:bg-teal-100 border-teal-200 cursor-pointer"
+                      : "text-gray-400 bg-slate-100 border-slate-200 cursor-not-allowed opacity-60"
                   }`}
                 >
                   <span>⚡</span> Import All Test Results
                 </button>
                 <button
                   onClick={() => setShowCompleteReportModal(selectedOrder)}
-                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-none transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
-                >
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-none transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"                >
                   <span>📋</span> Complete Laboratory Report
                 </button>
                 {isOrderCompleted(selectedOrder) && (
-                  <span className="px-3 py-1.5 rounded-none text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center gap-1">
-                    ✓ Completed & Verified
+                  <span className="px-3 py-1.5 rounded-none text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center gap-1">                    ✓ Completed & Verified
                   </span>
                 )}
               </div>
@@ -627,16 +619,14 @@ export default function Laboratory({
                                 {test.status === "Pending" && (
                                   <button
                                     onClick={() => handleAdvanceTestStatus(selectedOrder, test, "Sample Collected")}
-                                    className="px-2.5 py-1 text-xs font-bold text-purple-800 bg-purple-100 hover:bg-purple-200 rounded-none transition-colors cursor-pointer"
-                                  >
+                                    className="px-2.5 py-1 text-xs font-bold text-purple-800 bg-purple-100 hover:bg-purple-200 rounded-none transition-colors cursor-pointer"                                  >
                                     Collect Sample
                                   </button>
                                 )}
                                 {test.status === "Sample Collected" && (
                                   <button
                                     onClick={() => handleAdvanceTestStatus(selectedOrder, test, "Processing")}
-                                    className="px-2.5 py-1 text-xs font-bold text-blue-800 bg-blue-100 hover:bg-blue-200 rounded-none transition-colors cursor-pointer"
-                                  >
+                                    className="px-2.5 py-1 text-xs font-bold text-blue-800 bg-blue-100 hover:bg-blue-200 rounded-none transition-colors cursor-pointer"                                  >
                                     Start Processing
                                   </button>
                                 )}
@@ -647,8 +637,7 @@ export default function Laboratory({
                                       test,
                                     })
                                   }
-                                  className={`px-3 py-1 text-xs font-bold rounded-none transition-colors cursor-pointer ${
-                                    test.status === "Completed" || test.status === "Verified"
+                                  className={`px-3 py-1 text-xs font-bold rounded-none transition-colors cursor-pointer ${                                    test.status === "Completed" || test.status === "Verified"
                                       ? "text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300"
                                       : "text-white bg-blue-600 hover:bg-blue-700 shadow-xs"
                                   }`}
@@ -695,14 +684,12 @@ export default function Laboratory({
                       onClick={() => setActiveQueue(tab.key)}
                       className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 rounded-none cursor-pointer ${
                         isActive
-                          ? "border-blue-600 text-blue-600 bg-white shadow-2xs"
-                          : "border-transparent text-gray-500 hover:text-gray-900"
+                          ? "border-blue-600 text-blue-600 bg-white shadow-2xs"                          : "border-transparent text-gray-500 hover:text-gray-900"
                       }`}
                     >
                       <span>{tab.label}</span>
                       <span
-                        className={`text-[10.5px] px-1.5 py-0.2 rounded-none font-mono ${
-                          isActive
+                        className={`text-[10.5px] px-1.5 py-0.2 rounded-none font-mono ${                          isActive
                             ? "bg-blue-100 text-blue-800"
                             : "bg-gray-200 text-gray-700"
                         }`}
@@ -723,8 +710,7 @@ export default function Laboratory({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by Patient Name, ID (PAT-xxxx), Lab Order ID, Doctor, Test..."
-                  className="w-full text-xs pl-8 pr-3 py-2 rounded-none border border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
+                  className="w-full text-xs pl-8 pr-3 py-2 rounded-none border border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"                />
                 <span className="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
               </div>
 
@@ -734,8 +720,7 @@ export default function Laboratory({
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="text-xs font-semibold px-2.5 py-1.5 border rounded-none border-gray-300 bg-white"
-                  >
+                    className="text-xs font-semibold px-2.5 py-1.5 border rounded-none border-gray-300 bg-white"                  >
                     <option value="all">All Modules</option>
                     <option value="hematology">Hematology</option>
                     <option value="pathology">Pathology</option>
@@ -883,8 +868,7 @@ export default function Laboratory({
                           <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => setSelectedOrderId(order.id)}
-                              className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors shadow-2xs cursor-pointer"
-                            >
+                              className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors shadow-2xs cursor-pointer"                            >
                               Open Details →
                             </button>
                           </td>
@@ -904,7 +888,6 @@ export default function Laboratory({
       {/* ========================================================================= */}
       {/* MODALS                                                                    */}
       {/* ========================================================================= */}
-
 
       {/* 2. Import All Test Results Modal */}
       {showImportAllModal && (
@@ -955,8 +938,7 @@ export default function Laboratory({
                     setNewOrderForm({ ...newOrderForm, patientName: e.target.value })
                   }
                   placeholder="e.g. Ramesh Chandra"
-                  className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
-                />
+                  className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"                />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -971,8 +953,7 @@ export default function Laboratory({
                       setNewOrderForm({ ...newOrderForm, umr: e.target.value })
                     }
                     placeholder="PAT-xxxxx"
-                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
-                  />
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"                  />
                 </div>
                 <div>
                   <label className="font-semibold text-gray-700 block mb-1">
@@ -984,8 +965,7 @@ export default function Laboratory({
                     onChange={(e) =>
                       setNewOrderForm({ ...newOrderForm, age: Number(e.target.value) })
                     }
-                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
-                  />
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"                  />
                 </div>
                 <div>
                   <label className="font-semibold text-gray-700 block mb-1">
@@ -996,8 +976,7 @@ export default function Laboratory({
                     onChange={(e) =>
                       setNewOrderForm({ ...newOrderForm, sex: e.target.value })
                     }
-                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300 bg-white"
-                  >
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300 bg-white"                  >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
                     <option value="Other">Other</option>
@@ -1016,8 +995,7 @@ export default function Laboratory({
                     onChange={(e) =>
                       setNewOrderForm({ ...newOrderForm, doctorName: e.target.value })
                     }
-                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
-                  />
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"                  />
                 </div>
                 <div>
                   <label className="font-semibold text-gray-700 block mb-1">
@@ -1029,8 +1007,7 @@ export default function Laboratory({
                     onChange={(e) =>
                       setNewOrderForm({ ...newOrderForm, department: e.target.value })
                     }
-                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
-                  />
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"                  />
                 </div>
               </div>
 
@@ -1038,8 +1015,7 @@ export default function Laboratory({
                 <label className="font-semibold text-gray-700 block mb-1">
                   Select Investigations to Order
                 </label>
-                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-none p-2 space-y-1.5 bg-gray-50">
-                  {ALL_LAB_TESTS.slice(0, 25).map((test) => {
+                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-none p-2 space-y-1.5 bg-gray-50">                  {ALL_LAB_TESTS.slice(0, 25).map((test) => {
                     const isChecked = newOrderForm.selectedTests.includes(test.name)
                     return (
                       <label
@@ -1079,14 +1055,12 @@ export default function Laboratory({
                 <button
                   type="button"
                   onClick={() => setShowNewOrderModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-none text-gray-700 hover:bg-gray-100 cursor-pointer"
-                >
+                  className="px-4 py-2 border border-gray-300 rounded-none text-gray-700 hover:bg-gray-100 cursor-pointer"                >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 text-white font-bold rounded-none hover:bg-blue-700 shadow-sm cursor-pointer"
-                >
+                  className="px-5 py-2 bg-blue-600 text-white font-bold rounded-none hover:bg-blue-700 shadow-sm cursor-pointer"                >
                   Create & Send to Billing
                 </button>
               </div>

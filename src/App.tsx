@@ -57,6 +57,7 @@ import CashlessCaseBoard from "./components/insurance/CashlessCaseBoard"
 import InsuranceCaseDetailView from "./components/insurance/InsuranceCaseDetailView"
 import DischargeFinalizationView from "./components/insurance/DischargeFinalizationView"
 import InsuranceReportsView from "./components/insurance/InsuranceReportsView"
+import InsuranceEmailHubPage from "./components/insurance/InsuranceEmailHubPage"
 import InsuranceIntakeView from "./components/insurance/InsuranceIntakeView"
 import PreAuthRequestView from "./components/insurance/PreAuthRequestView"
 import { InsuranceEngineService } from "./services/insuranceDb"
@@ -163,12 +164,12 @@ const insuranceModule = (m: string): string =>
     ? "insurance_settlement"
     : m === "insurance_desk"
       ? "insurance_overview"
-      : m === "insurance" || m === "insurance_claims"
-        ? "insurance_board"
+      : m === "insurance"
+        ? "insurance_claims"
         : m
 
 
-type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
+type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
 
 interface NavItem {
   key: Module
@@ -268,8 +269,6 @@ const NAV: NavItem[] = [
       { key: "icu_picu", label: "Pediatric ICU (PICU)" },
     ],
   },
-
-  { key: "nursing", label: "Nursing", Icon: Syringe },
 
   { key: "laboratory", label: "Laboratory", Icon: FlaskConical },
 
@@ -376,10 +375,11 @@ const NAV: NavItem[] = [
 
     children: [
       { key: "insurance_overview", label: "Command Dashboard" },
-      { key: "insurance_board", label: "Cashless Case Board" },
       { key: "insurance_eligibility", label: "New Patient / Intake" },
       { key: "insurance_preauth", label: "Pre-Authorization" },
+      { key: "insurance_board", label: "Cashless Case Board" },
       { key: "insurance_claims", label: "Claims & Queries" },
+      { key: "insurance_emails", label: "Email & TPA Decision Hub" },
       { key: "insurance_settlement", label: "Settlements" },
       { key: "insurance_packages", label: "Billing & Packages" },
       { key: "insurance_masters", label: "Master Data" },
@@ -792,8 +792,8 @@ function NotificationPanel({
                   <div className="flex items-center justify-between gap-1">
                     <span
                       className={`text-[12px] truncate ${!isRead
-                          ? "font-bold text-gray-900"
-                          : "font-medium text-gray-700"
+                        ? "font-bold text-gray-900"
+                        : "font-medium text-gray-700"
                         }`}
                     >
                       {n.title}
@@ -892,10 +892,10 @@ function NursingDashboard() {
             <div
               key={i}
               className={`bg-white border rounded p-4 ${p.status === "Concern"
-                  ? "border-[#FECACA]"
-                  : p.status === "Isolation"
-                    ? "border-[#FED7AA]"
-                    : "border-[#DDE2EC]"
+                ? "border-[#FECACA]"
+                : p.status === "Isolation"
+                  ? "border-[#FED7AA]"
+                  : "border-[#DDE2EC]"
                 }`}
             >
               <div className="flex items-start justify-between mb-2">
@@ -906,10 +906,10 @@ function NursingDashboard() {
                     </span>
                     <span
                       className={`text-[10.5px] font-semibold px-1.5 py-px rounded ${p.acuity === 2
-                          ? "bg-[#FEE2E2] text-[#B91C1C]"
-                          : p.acuity === 3
-                            ? "bg-[#FEF3C7] text-[#B45309]"
-                            : "bg-[#DCFCE7] text-[#15803D]"
+                        ? "bg-[#FEE2E2] text-[#B91C1C]"
+                        : p.acuity === 3
+                          ? "bg-[#FEF3C7] text-[#B45309]"
+                          : "bg-[#DCFCE7] text-[#15803D]"
                         }`}
                     >
                       Acuity {p.acuity}
@@ -924,12 +924,12 @@ function NursingDashboard() {
                 </div>
                 <span
                   className={`text-[11px] font-semibold px-2 py-0.5 rounded ${p.status === "Concern"
-                      ? "bg-[#FEE2E2] text-[#B91C1C]"
-                      : p.status === "Isolation"
-                        ? "bg-[#FEF3C7] text-[#B45309]"
-                        : p.status === "Active"
-                          ? "bg-[#EFF6FF] text-[#1D4ED8]"
-                          : "bg-[#F0FDF4] text-[#15803D]"
+                    ? "bg-[#FEE2E2] text-[#B91C1C]"
+                    : p.status === "Isolation"
+                      ? "bg-[#FEF3C7] text-[#B45309]"
+                      : p.status === "Active"
+                        ? "bg-[#EFF6FF] text-[#1D4ED8]"
+                        : "bg-[#F0FDF4] text-[#15803D]"
                     }`}
                 >
                   {p.status}
@@ -940,10 +940,10 @@ function NursingDashboard() {
                   <span className="text-[#64748B]">Vitals</span>
                   <span
                     className={`font-medium ${p.vitals.includes("Overdue")
-                        ? "text-[#DC2626]"
-                        : p.vitals.includes("Due")
-                          ? "text-[#D97706]"
-                          : "text-[#16A34A]"
+                      ? "text-[#DC2626]"
+                      : p.vitals.includes("Due")
+                        ? "text-[#D97706]"
+                        : "text-[#16A34A]"
                       }`}
                   >
                     {p.vitals}
@@ -953,10 +953,10 @@ function NursingDashboard() {
                   <span className="text-[#64748B]">Medications</span>
                   <span
                     className={`font-medium ${p.meds.includes("Overdue")
-                        ? "text-[#DC2626]"
-                        : p.meds.includes("▲")
-                          ? "text-[#D97706]"
-                          : "text-[#16A34A]"
+                      ? "text-[#DC2626]"
+                      : p.meds.includes("▲")
+                        ? "text-[#D97706]"
+                        : "text-[#16A34A]"
                       }`}
                   >
                     {p.meds}
@@ -1709,8 +1709,8 @@ export default function App() {
                   title="Reset text size to 100%"
                   onClick={() => setZoomLevel(1)}
                   className={`h-6 min-w-6 px-1 flex items-center justify-center font-bold hover:text-white ${zoomLevel === 1
-                      ? "text-[#94A3B8] text-[12px]"
-                      : "text-[#F59E0B] text-[10px]"
+                    ? "text-[#94A3B8] text-[12px]"
+                    : "text-[#F59E0B] text-[10px]"
                     }`}
                 >
                   {zoomLevel === 1 ? "A" : `${Math.round(zoomLevel * 100)}%`}
@@ -1865,8 +1865,8 @@ export default function App() {
                             switchRole(r.roleId, r.username, permissions)
                           }
                           className={`w-full text-left px-2.5 py-1.5 rounded flex items-center justify-between transition-colors cursor-pointer ${userRole === r.roleId
-                              ? "bg-[#EFF6FF] text-[#1B4FD8] font-bold"
-                              : "hover:bg-[#F8FAFC] text-[#334155]"
+                            ? "bg-[#EFF6FF] text-[#1B4FD8] font-bold"
+                            : "hover:bg-[#F8FAFC] text-[#334155]"
                             }`}
                         >
                           <span className="flex items-center gap-2">
@@ -1898,10 +1898,10 @@ export default function App() {
           {notice && (
             <div
               className={`px-4 py-2 text-[12.5px] font-medium flex items-center justify-between flex-shrink-0 ${notice.type === "error"
-                  ? "bg-red-50 text-red-800 border-b border-red-200"
-                  : notice.type === "success"
-                    ? "bg-green-50 text-green-800 border-b border-green-200"
-                    : "bg-blue-50 text-blue-800 border-b border-blue-200"
+                ? "bg-red-50 text-red-800 border-b border-red-200"
+                : notice.type === "success"
+                  ? "bg-green-50 text-green-800 border-b border-green-200"
+                  : "bg-blue-50 text-blue-800 border-b border-blue-200"
                 }`}
             >
               <span>{notice.message}</span>
@@ -1919,11 +1919,11 @@ export default function App() {
                 }`}
             >
               {/* Top Logo Section */}
-              <div className="flex items-center justify-center py-3.5 px-3 border-b border-[#1E2D42]/80 flex-shrink-0">
+              <div className="flex items-center justify-center py-3.5 px-3 border-b border-[#1E2D42]/80 flex-shrink-0 text-center w-full">
                 {sidebarCollapsed ? (
-                  <HospAILogo variant="icon" className="w-8 h-8" />
+                  <HospAILogo variant="icon" className="w-10 h-10 mx-auto" />
                 ) : (
-                  <HospAILogo variant="horizontal" theme="dark" className="h-9 w-full" />
+                  <HospAILogo variant="horizontal" className="h-40 w-full justify-center mx-auto" />
                 )}
               </div>
               <div
@@ -1952,6 +1952,8 @@ export default function App() {
                       c.key === item.key ||
                       (item.key === "reports" &&
                         userPermissions.includes("reports")) ||
+                      (item.key === "insurance" &&
+                        userPermissions.includes("insurance")) ||
                       !subModulesGranted ||
                       userPermissions.includes(c.key),
                   )
@@ -1996,6 +1998,7 @@ export default function App() {
                               toggleExpand(item.key)
 
                               if (!expanded.includes(item.key)) {
+                                setInsuranceCaseId(undefined)
                                 if (item.key === "intelligence") {
                                   setModule("intelligence")
                                 } else {
@@ -2004,6 +2007,7 @@ export default function App() {
                               }
                             }
                           } else {
+                            setInsuranceCaseId(undefined)
                             setModule(item.key)
                           }
                         }}
@@ -2012,8 +2016,8 @@ export default function App() {
                         <item.Icon
                           size={sidebarCollapsed ? 20 : 18}
                           className={`${sidebarCollapsed
-                              ? "w-5 h-5 transition-transform duration-150 group-hover:scale-110 flex-shrink-0"
-                              : "w-4.5 h-4.5 mr-3 flex-shrink-0"
+                            ? "w-5 h-5 transition-transform duration-150 group-hover:scale-110 flex-shrink-0"
+                            : "w-4.5 h-4.5 mr-3 flex-shrink-0"
                             } ${isActive ? "text-white" : "text-[#94A3B8] group-hover:text-white"}`}
                         />
 
@@ -2068,10 +2072,13 @@ export default function App() {
                                 <div
                                   key={`${child.key}_${child.label}`}
                                   className={`nav-item sub ${module === child.key && isActive
-                                      ? "active"
-                                      : ""
+                                    ? "active"
+                                    : ""
                                     }`}
-                                  onClick={() => setModule(child.key)}
+                                  onClick={() => {
+                                    setInsuranceCaseId(undefined)
+                                    setModule(child.key)
+                                  }}
                                 >
                                   {child.label}
                                 </div>
@@ -2204,8 +2211,8 @@ export default function App() {
                                       className={`text-[#64748B] transition-transform ${collapsedGroups.includes(
                                         `${item.key}:${group}`,
                                       )
-                                          ? "-rotate-90"
-                                          : ""
+                                        ? "-rotate-90"
+                                        : ""
                                         }`}
                                     >
                                       <Icon.ChevronDown size={14} />
@@ -2218,8 +2225,8 @@ export default function App() {
                                       <div
                                         key={`${child.key}_${child.label}`}
                                         className={`nav-item sub justify-between ${module === child.key && isActive
-                                            ? "active"
-                                            : ""
+                                          ? "active"
+                                          : ""
                                           }`}
                                         onClick={() => setModule(child.key)}
                                       >
@@ -2452,6 +2459,7 @@ export default function App() {
                     else if (page === "preauth") setModule("insurance_preauth" as any)
                     else if (page === "intake") setModule("insurance_eligibility" as any)
                     else if (page === "claims") setModule("insurance_claims" as any)
+                    else if (page === "emails") setModule("insurance_emails" as any)
                     else if (page === "settlements") setModule("insurance_settlement" as any)
                     else if (page === "masters") setModule("insurance_masters" as any)
                     else if (page === "case" && caseId) {
@@ -2524,6 +2532,12 @@ export default function App() {
               {/* Pages: Legacy claim / settlement / masters */}
               {(module === "insurance" || module === "insurance_claims" || module === "insurance_queries") && (
                 <InsuranceClaims onNavigate={openInsurance} initialCaseId={insuranceCaseId} initialView="needs" />
+              )}
+              {module === "insurance_emails" && (
+                <InsuranceEmailHubPage
+                  onNavigateToClaim={(claimId) => openInsurance("insurance_claims", claimId)}
+                  initialClaimId={insuranceCaseId}
+                />
               )}
               {(module === "insurance_settlement" || module === "insurance_reconciliation") && (
                 <InsuranceSettlementPage onNavigate={openInsurance} initialCaseId={insuranceCaseId} />

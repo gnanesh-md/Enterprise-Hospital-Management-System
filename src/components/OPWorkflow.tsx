@@ -1527,7 +1527,7 @@ export default function OPWorkflow({
 
               <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3.5 mb-4">
                 <div className="flex items-center gap-2.5">
-                  <HospAILogo variant="icon" theme="light" className="w-8 h-8 shrink-0" />
+                  <HospAILogo variant="icon" className="w-10 h-10 shrink-0" />
                   <div>
                     <div className="font-bold text-[14px] text-gray-900">
                       HospAI General Hospital
@@ -3417,7 +3417,7 @@ export default function OPWorkflow({
                       {/* Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#E2E8F0] pb-4 pt-1 gap-2">
                         <div className="flex items-center gap-3">
-                          <HospAILogo variant="icon" theme="light" className="w-10 h-10 shrink-0" />
+                          <HospAILogo variant="icon" className="w-12 h-12 shrink-0" />
                           <div>
                             <div className="font-bold text-[16px] text-gray-900">
                               HospAI General Hospital

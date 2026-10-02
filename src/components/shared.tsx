@@ -504,22 +504,24 @@ export function QueueTab({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex flex-col items-center px-4 py-3 border-r border-[#DDE2EC] last:border-r-0 transition-colors min-w-[80px]
-        ${
-          active
-            ? "bg-[#EFF6FF] text-[#1B4FD8]"
-            : "bg-white text-[#64748B] hover:bg-[#F8FAFC]"
-        }`}
+      className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold transition-all cursor-pointer whitespace-nowrap border-b-2 -mb-px ${
+        active
+          ? "border-blue-600 text-blue-600 font-bold"
+          : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+      }`}
     >
+      <span>{label}</span>
       <span
-        className={`text-xl font-semibold font-mono leading-none ${
-          active ? "text-[#1B4FD8]" : "text-gray-800"
+        className={`px-2.5 py-0.5 rounded-full text-xs font-bold font-mono transition-colors ${
+          active
+            ? "bg-blue-100 text-blue-700"
+            : "bg-slate-100 text-slate-600"
         }`}
       >
         {count}
       </span>
-      <span className="text-[11px] font-medium mt-1">{label}</span>
     </button>
   )
 }

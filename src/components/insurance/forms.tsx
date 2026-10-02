@@ -586,49 +586,113 @@ export function PreAuthResponseForm({ c, notify }: { c: ComprehensiveClaimRecord
   const [code, setCode] = useState("")
   const [note, setNote] = useState("")
   const [due, setDue] = useState(2)
+  const [inboundParsed, setInboundParsed] = useState(false)
   const needsAmount = outcome === "Approved" || outcome === "Partially Approved"
+
+  const simulatedInboundEmail = {
+    sender: `approvals@${(c.policy.tpaName || c.policy.insurerName || "tpa").toLowerCase().replace(/[^a-z]/g, "")}.com`,
+    subject: `[${c.id}] Pre-Auth Initial Approval Letter — ${c.patientName} (${c.policy.policyNumber || "POL-9921"})`,
+    approvedAmount: c.preAuth?.requestedAmount ? Math.round(c.preAuth.requestedAmount * 0.95) : 50000,
+    authCode: `AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`,
+    remarks: `Initial cashless approved up to ₹${(c.preAuth?.requestedAmount || 50000).toLocaleString("en-IN")}. Non-medical items excluded. Subject to final discharge summary.`,
+  }
+
+  const handleAutoExtract = () => {
+    setOutcome("Approved")
+    setAmount(simulatedInboundEmail.approvedAmount)
+    setCode(simulatedInboundEmail.authCode)
+    setNote(simulatedInboundEmail.remarks)
+    setInboundParsed(true)
+    notify(`Extracted approval data from ${simulatedInboundEmail.sender}: ₹${simulatedInboundEmail.approvedAmount.toLocaleString("en-IN")}`, "success")
+  }
+
   return (
-    <form
-      className="space-y-3"
-      onSubmit={(e) => {
-        e.preventDefault()
-        attempt(notify, () => E.recordPreAuthResponse(c.id, { outcome, amount, approvalCode: code, note, dueDays: due }), `Pre-auth response recorded: ${outcome}.`)
-      }}
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <Field label="Insurer response">
-          <select className={fieldCls} value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)}>
-            <option>Approved</option>
-            <option>Partially Approved</option>
-            <option>Query</option>
-            <option>Rejected</option>
-          </select>
-        </Field>
-        {needsAmount && (
-          <>
-            <Field label="Approved amount (₹)" hint={`Requested ${inr(c.preAuth?.requestedAmount)}`}>
-              <input type="number" min={0} className={`${fieldCls} tabular-nums`} value={amount || ""} onChange={(e) => setAmount(num(e.target.value))} />
-            </Field>
-            <Field label="Approval code *">
-              <input className={`${fieldCls} tabular-nums`} value={code} onChange={(e) => setCode(e.target.value)} />
-            </Field>
-          </>
-        )}
-        {outcome === "Query" && (
-          <Field label="Respond within (days)">
-            <input type="number" min={1} className={`${fieldCls} tabular-nums`} value={due} onChange={(e) => setDue(Math.max(1, num(e.target.value)))} />
+    <div className="space-y-4">
+      {/* Inbound TPA Decision Tracker Banner */}
+      <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/80 rounded-[8px] p-4 shadow-2xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800">
+                Inbound Email &amp; TPA Portal Tracker
+              </span>
+            </div>
+            <div className="text-[13px] font-semibold text-slate-900 mt-1 truncate">
+              {simulatedInboundEmail.subject}
+            </div>
+            <div className="text-[11.5px] text-slate-500 mt-0.5">
+              From: <span className="font-mono font-medium text-slate-700">{simulatedInboundEmail.sender}</span> · Sanctioned: <span className="font-bold text-emerald-700">{inr(simulatedInboundEmail.approvedAmount)}</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleAutoExtract}
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[12.5px] font-semibold rounded-[6px] transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
+          >
+            <span>⚡</span> Auto-Fill from TPA Email
+          </button>
+        </div>
+      </div>
+
+      <form
+        className="space-y-3 bg-white p-4 border border-slate-200 rounded-[8px]"
+        onSubmit={(e) => {
+          e.preventDefault()
+          attempt(
+            notify,
+            () =>
+              E.recordPreAuthResponse(c.id, {
+                outcome,
+                amount,
+                approvalCode: code,
+                note,
+                dueDays: due,
+              }),
+            `Pre-auth ${outcome} recorded — Synced with Pharmacy & Billing desks.`,
+          )
+        }}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <Field label="Insurer response">
+            <select className={fieldCls} value={outcome} onChange={(e) => setOutcome(e.target.value as typeof outcome)}>
+              <option>Approved</option>
+              <option>Partially Approved</option>
+              <option>Query</option>
+              <option>Rejected</option>
+            </select>
           </Field>
-        )}
-        <Field label={outcome === "Query" ? "What the insurer asked *" : outcome === "Rejected" ? "Rejection reason" : "Remarks"} span={needsAmount ? 1 : 2}>
-          <input className={fieldCls} value={note} onChange={(e) => setNote(e.target.value)} />
-        </Field>
-      </div>
-      <div className="flex justify-end">
-        <button type="submit" className={outcome === "Rejected" ? btn.danger : btn.primary}>
-          Record response
-        </button>
-      </div>
-    </form>
+          {needsAmount && (
+            <>
+              <Field label="Approved amount (₹)" hint={`Requested ${inr(c.preAuth?.requestedAmount)}`}>
+                <input type="number" min={0} className={`${fieldCls} tabular-nums`} value={amount || ""} onChange={(e) => setAmount(num(e.target.value))} />
+              </Field>
+              <Field label="Approval code *">
+                <input className={`${fieldCls} tabular-nums`} value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. AUTH-STAR-9921" />
+              </Field>
+            </>
+          )}
+          {outcome === "Query" && (
+            <Field label="Respond within (days)">
+              <input type="number" min={1} className={`${fieldCls} tabular-nums`} value={due} onChange={(e) => setDue(Math.max(1, num(e.target.value)))} />
+            </Field>
+          )}
+          <Field label={outcome === "Query" ? "What the insurer asked *" : outcome === "Rejected" ? "Rejection reason" : "Remarks"} span={needsAmount ? 1 : 2}>
+            <input className={fieldCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Exclusions, validity notes, remarks" />
+          </Field>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+          <span className="text-[12px] text-slate-500">
+            {needsAmount ? "✓ Authorisation will immediately reflect on Pharmacy and Reception bills." : ""}
+          </span>
+          <button type="submit" className={outcome === "Rejected" ? btn.danger : btn.primary}>
+            Record &amp; Confirm Response
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }
 

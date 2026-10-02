@@ -3,6 +3,14 @@ import type { FormEvent } from "react"
 import { FiClipboard } from "react-icons/fi"
 import { apiFetch, reportError } from "../lib/api"
 import type { Notice } from "../types"
+import { db } from "../services/db"
+import { BillingDatabase } from "../services/billingDb"
+import { priceForTest } from "../services/labOrdersDb"
+import {
+  isRadiologyTest,
+  getModalityForTest,
+  getRoomForModality,
+} from "../utils/testClassifier"
 
 const ORDER_TYPES = [
   { value: "radiology", label: "Radiology" },
@@ -61,6 +69,36 @@ export default function AddClinicalOrderModal({
           ordered_by: orderedBy.trim() || undefined,
         }),
       })
+
+      if (orderType === "radiology" || isRadiologyTest(description)) {
+        const modality = getModalityForTest(description)
+        const price = priceForTest(description)
+        const p =
+          db.getPatientByUmr(patientId) ||
+          db
+            .getPatients()
+            .find((pt) => pt.umr === patientId || pt.name === patientId)
+        const resolvedPatientName = p ? p.name : patientId
+        const resolvedMrn = p ? p.umr : patientId
+
+        BillingDatabase.createRadiologyStudy({
+          patient: resolvedPatientName,
+          mrn: resolvedMrn,
+          umr: resolvedMrn,
+          study: description.trim(),
+          modality,
+          priority: priority === "stat" ? "STAT" : priority === "urgent" ? "Routine" : "Routine",
+          ordered: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          provider: orderedBy.trim() || "Attending Nurse / Doctor",
+          status: "Orders",
+          room: getRoomForModality(modality),
+          price,
+          paymentStatus: "Payment Pending",
+          indication: notes.trim() || description.trim(),
+          technique: `Diagnostic ${modality} imaging scan`,
+        })
+      }
+
       onSaved()
     } catch (error: any) {
       reportError(setNotice, error, "Failed to place this order.")

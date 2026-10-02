@@ -87,10 +87,9 @@ export default function Login({ onLogin }: LoginProps) {
       AuditDatabase.logEvent(
         "Login Successful",
         "Authentication",
-        `User ${username} logged in successfully${
-          backendSession
-            ? ""
-            : " (local session only -- AI services unavailable)"
+        `User ${username} logged in successfully${backendSession
+          ? ""
+          : " (local session only -- AI services unavailable)"
         }.`,
         "Success",
         local.user.staffId,
@@ -146,7 +145,7 @@ export default function Login({ onLogin }: LoginProps) {
         <div className="relative z-10">
           {/* Logo */}
           <div className="mb-6">
-            <HospAILogo variant="horizontal" theme="dark" className="h-16" />
+            <HospAILogo variant="horizontal" className="h-40" />
           </div>
 
           {/* Title & Subtitle directly below Logo */}
@@ -209,7 +208,7 @@ export default function Login({ onLogin }: LoginProps) {
           <span className="text-[11.5px] text-[#475569] font-medium whitespace-nowrap mb-0.5">
             Powered by
           </span>
-          <KalpraLogo dark={false} className="h-7" />
+          <KalpraLogo className="h-25" />
         </div>
       </div>
 
@@ -230,7 +229,7 @@ export default function Login({ onLogin }: LoginProps) {
 
         <div className="w-full max-w-sm mx-auto my-auto relative z-10">
           <div className="flex justify-center mb-6 lg:hidden">
-            <HospAILogo variant="horizontal" theme="light" className="h-10 justify-center" />
+            <HospAILogo variant="horizontal" className="h-16 justify-center" />
           </div>
 
           <div className="mb-6">
@@ -313,9 +312,8 @@ export default function Login({ onLogin }: LoginProps) {
                   )}
                 </div>
                 <svg
-                  className={`w-4 h-4 text-[#64748B] transition-transform duration-150 flex-shrink-0 ${
-                    openRoleDropdown ? "rotate-180 text-[#1B4FD8]" : ""
-                  }`}
+                  className={`w-4 h-4 text-[#64748B] transition-transform duration-150 flex-shrink-0 ${openRoleDropdown ? "rotate-180 text-[#1B4FD8]" : ""
+                    }`}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -338,11 +336,10 @@ export default function Login({ onLogin }: LoginProps) {
                       setPass("")
                       setOpenRoleDropdown(false)
                     }}
-                    className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                      user === ""
-                        ? "bg-[#EFF6FF] text-[#1B4FD8]"
-                        : "hover:bg-[#F8FAFC] text-[#64748B]"
-                    }`}
+                    className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${user === ""
+                      ? "bg-[#EFF6FF] text-[#1B4FD8]"
+                      : "hover:bg-[#F8FAFC] text-[#64748B]"
+                      }`}
                   >
                     <span className="text-[12.5px] font-medium text-[#64748B]">
                       Select Role
@@ -363,23 +360,21 @@ export default function Login({ onLogin }: LoginProps) {
                           setUser(r.value)
                           setPass(
                             credentialsForRole(r.value)?.localPassword ||
-                              "password123",
+                            "password123",
                           )
                           setOpenRoleDropdown(false)
                         }}
-                        className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                          isSelected
-                            ? "bg-[#EFF6FF] text-[#1B4FD8]"
-                            : "hover:bg-[#F8FAFC] text-[#334155]"
-                        }`}
+                        className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${isSelected
+                          ? "bg-[#EFF6FF] text-[#1B4FD8]"
+                          : "hover:bg-[#F8FAFC] text-[#334155]"
+                          }`}
                       >
                         <div className="min-w-0 truncate">
                           <span
-                            className={`text-[12.5px] ${
-                              isSelected
-                                ? "font-bold text-[#1B4FD8]"
-                                : "font-medium text-[#0F172A]"
-                            }`}
+                            className={`text-[12.5px] ${isSelected
+                              ? "font-bold text-[#1B4FD8]"
+                              : "font-medium text-[#0F172A]"
+                              }`}
                           >
                             {r.label}
                           </span>
@@ -436,11 +431,10 @@ export default function Login({ onLogin }: LoginProps) {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-2.5 rounded-none text-white font-semibold text-[13px] transition-colors mt-3 ${
-                loading
-                  ? "bg-[#94A3B8] cursor-not-allowed"
-                  : "bg-[#1B4FD8] hover:bg-[#1740B4]"
-              }`}
+              className={`w-full py-2.5 rounded-none text-white font-semibold text-[13px] transition-colors mt-3 ${loading
+                ? "bg-[#94A3B8] cursor-not-allowed"
+                : "bg-[#1B4FD8] hover:bg-[#1740B4]"
+                }`}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

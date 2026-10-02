@@ -2,8 +2,7 @@ import React from "react"
 import kalpraLogoImg from "../assets/Kalpra-logo.png"
 
 export function KalpraLogo({
-  className = "h-8",
-  dark = false,
+  className = "h-10",
 }: {
   className?: string
   dark?: boolean

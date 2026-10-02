@@ -345,7 +345,7 @@ export default function PrescriptionWhiteboard({
   }
 
   const toolButton = (active: boolean) =>
-    `px-3 py-1.5 text-[11.5px] font-semibold rounded-lg border transition-all duration-150 flex items-center gap-1.5 ${
+    `px-3 py-1.5 text-[11.5px] font-semibold rounded-none border transition-all duration-150 flex items-center gap-1.5 ${
       active
         ? "bg-[#1B4FD8] text-white border-[#1B4FD8] shadow-sm"
         : "bg-white text-[#475569] border-[#CBD5E1] hover:border-[#94A3B8] hover:bg-[#F8FAFC]"
@@ -354,16 +354,16 @@ export default function PrescriptionWhiteboard({
   const content = (
     <div className="space-y-3">
       {/* Dynamic Styling Toolbar */}
-      <div className="flex flex-wrap items-center gap-2.5 bg-white border border-[#DDE2EC] p-3 rounded-xl shadow-sm">
+      <div className="flex flex-wrap items-center gap-2.5 bg-white border border-[#DDE2EC] p-3 rounded-none shadow-sm">
         {/* Pen Modes */}
-        <div className="flex items-center bg-[#F1F5F9] p-1 rounded-lg border border-[#E2E8F0] gap-1">
+        <div className="flex items-center bg-[#F1F5F9] p-1 rounded-none border border-[#E2E8F0] gap-1">
           <button
             type="button"
             onClick={() => {
               setPenType("fountain")
               setErasing(false)
             }}
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+            className={`px-2.5 py-1 text-[11px] font-bold rounded-none transition-all ${
               penType === "fountain" && !erasing
                 ? "bg-white text-[#1B4FD8] shadow-sm"
                 : "text-[#64748B] hover:text-[#0F172A]"
@@ -377,7 +377,7 @@ export default function PrescriptionWhiteboard({
               setPenType("ballpoint")
               setErasing(false)
             }}
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+            className={`px-2.5 py-1 text-[11px] font-bold rounded-none transition-all ${
               penType === "ballpoint" && !erasing
                 ? "bg-white text-[#1B4FD8] shadow-sm"
                 : "text-[#64748B] hover:text-[#0F172A]"
@@ -391,7 +391,7 @@ export default function PrescriptionWhiteboard({
               setPenType("highlighter")
               setErasing(false)
             }}
-            className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
+            className={`px-2.5 py-1 text-[11px] font-bold rounded-none transition-all ${
               penType === "highlighter" && !erasing
                 ? "bg-white text-[#1B4FD8] shadow-sm"
                 : "text-[#64748B] hover:text-[#0F172A]"
@@ -487,7 +487,7 @@ export default function PrescriptionWhiteboard({
               key={style.id}
               type="button"
               onClick={() => setPaperStyle(style.id)}
-              className={`px-2 py-1 text-[11px] font-semibold rounded border transition-colors ${
+              className={`px-2 py-1 text-[11px] font-semibold rounded-none border transition-colors ${
                 paperStyle === style.id
                   ? "bg-[#0F172A] text-white border-[#0F172A]"
                   : "bg-white text-[#64748B] border-[#CBD5E1] hover:border-[#94A3B8]"
@@ -502,7 +502,7 @@ export default function PrescriptionWhiteboard({
         <button
           type="button"
           onClick={() => setIsFullScreen((fs) => !fs)}
-          className="ml-auto px-3 py-1.5 text-[11.5px] font-bold rounded-lg border border-[#CBD5E1] bg-white text-[#1E293B] hover:bg-[#F8FAFC]"
+          className="ml-auto px-3 py-1.5 text-[11.5px] font-bold rounded-none border border-[#CBD5E1] bg-white text-[#1E293B] hover:bg-[#F8FAFC]"
         >
           {isFullScreen ? "📉 Exit Fullscreen" : "⛶ Fullscreen Canvas"}
         </button>
@@ -510,7 +510,7 @@ export default function PrescriptionWhiteboard({
 
       {/* Interactive Drawing Canvas Container */}
       <div
-        className={`border border-[#DDE2EC] rounded-xl overflow-hidden shadow-sm relative transition-all ${
+        className={`border border-[#DDE2EC] rounded-none overflow-hidden shadow-sm relative transition-all ${
           paperStyle === "dark" ? "bg-[#0F172A]" : "bg-white"
         }`}
       >
@@ -529,7 +529,7 @@ export default function PrescriptionWhiteboard({
         />
 
         {/* Footer status text */}
-        <div className="absolute bottom-3 right-4 bg-white/80 backdrop-blur px-3 py-1 rounded-full border border-slate-200 text-[11px] text-[#64748B] shadow-sm pointer-events-none">
+        <div className="absolute bottom-3 right-4 bg-white/80 backdrop-blur px-3 py-1 rounded-none border border-slate-200 text-[11px] text-[#64748B] shadow-sm pointer-events-none">
           {strokeCount
             ? `✍️ ${strokeCount} active stroke${strokeCount === 1 ? "" : "s"}`
             : "🖊️ Draw or write clinical prescription here"}
@@ -541,7 +541,7 @@ export default function PrescriptionWhiteboard({
   if (isFullScreen) {
     return (
       <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-md p-6 flex flex-col justify-center overflow-y-auto">
-        <div className="max-w-6xl w-full mx-auto bg-white p-4 rounded-2xl shadow-2xl space-y-4">
+        <div className="max-w-6xl w-full mx-auto bg-white p-4 rounded-none shadow-2xl space-y-4">
           <div className="flex items-center justify-between border-b pb-3">
             <div>
               <h2 className="text-lg font-bold text-slate-900">
@@ -554,7 +554,7 @@ export default function PrescriptionWhiteboard({
             </div>
             <button
               onClick={() => setIsFullScreen(false)}
-              className="px-4 py-2 bg-slate-900 text-white rounded-lg text-xs font-bold hover:bg-slate-800"
+              className="px-4 py-2 bg-slate-900 text-white rounded-none text-xs font-bold hover:bg-slate-800"
             >
               Done & Return ✕
             </button>

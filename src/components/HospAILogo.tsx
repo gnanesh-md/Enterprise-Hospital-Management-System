@@ -9,14 +9,10 @@ interface HospAILogoProps {
 }
 
 export function HospAILogo({
-  className = "h-10",
+  className = "h-12",
   variant = "horizontal",
-  theme = "dark",
   size,
 }: HospAILogoProps) {
-  const isDark = theme === "dark"
-
-  // Base image with optional dark-background container enhancement
   const containerStyle = size
     ? { width: size, height: size }
     : undefined
@@ -25,14 +21,12 @@ export function HospAILogo({
     return (
       <div
         style={containerStyle}
-        className={`inline-flex items-center justify-center shrink-0 ${
-          isDark ? "bg-white/95 rounded-lg p-0.5 shadow-sm" : ""
-        } ${className}`}
+        className={`inline-flex items-center justify-center shrink-0 ${className}`}
       >
         <img
           src={hospaiLogoImg}
           alt="HospAI"
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain drop-shadow-sm"
         />
       </div>
     )
@@ -42,14 +36,12 @@ export function HospAILogo({
     return (
       <div
         style={containerStyle}
-        className={`inline-flex items-center gap-2 select-none ${
-          isDark ? "bg-white/95 rounded-lg p-1 px-2 shadow-sm" : ""
-        } ${className}`}
+        className={`inline-flex items-center justify-center shrink-0 select-none ${className}`}
       >
         <img
           src={hospaiLogoImg}
           alt="HospAI"
-          className="h-full w-auto max-h-full object-contain"
+          className="h-full w-auto max-h-full object-contain mx-auto drop-shadow-sm"
         />
       </div>
     )
@@ -59,14 +51,12 @@ export function HospAILogo({
   return (
     <div
       style={containerStyle}
-      className={`inline-flex flex-col items-center justify-center select-none ${
-        isDark ? "bg-white/95 rounded-xl p-3 shadow-md" : ""
-      } ${className}`}
+      className={`inline-flex flex-col items-center justify-center select-none ${className}`}
     >
       <img
         src={hospaiLogoImg}
         alt="HospAI"
-        className="w-full h-auto max-h-36 object-contain"
+        className="w-full h-auto max-h-48 object-contain drop-shadow-md"
       />
     </div>
   )
