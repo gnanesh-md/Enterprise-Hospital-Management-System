@@ -33,6 +33,7 @@ import { AuditTable, BillLines, Consumption, Readiness } from "./widgets"
 import ClaimPharmacyBillsView from "./ClaimPharmacyBillsView"
 import ClaimPatientJourneyView from "./ClaimPatientJourneyView"
 import ClaimEmailTrackerView from "./ClaimEmailTrackerView"
+import PatientProfileModal from "./PatientProfileModal"
 
 const TABS = ["Current Step", "Bills & Pharmacy", "Patient Journey", "Emails", "Documents", "Details", "History"] as const
 type Tab = (typeof TABS)[number]
@@ -51,6 +52,7 @@ export default function ClaimWorkspace({
   onOpenEmailHub?: () => void
 }) {
   const [tab, setTab] = useState<Tab>("Current Step")
+  const [patientModalOpen, setPatientModalOpen] = useState(false)
   const stage = stepOf(c)
   const closed = c.status === "CLOSED"
   const stopped = ["NOT_ELIGIBLE", "PREAUTH_REJECTED", "REJECTED"].includes(c.status)
@@ -138,6 +140,13 @@ export default function ClaimWorkspace({
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
                   Claim ready
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setPatientModalOpen(true)}
+                  className="px-2.5 py-1 text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg border border-purple-200 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <span>👤</span> View Full Profile
+                </button>
               </div>
               <div className="text-xs text-slate-500 mt-1 font-medium flex flex-wrap items-center gap-2">
                 <span className="font-mono text-slate-600">{c.id}</span>
@@ -675,6 +684,32 @@ export default function ClaimWorkspace({
           </div>
         </div>
       </div>
+
+      <PatientProfileModal
+        isOpen={patientModalOpen}
+        onClose={() => setPatientModalOpen(false)}
+        patient={{
+          patientName: c.patientName,
+          uhid: (c as any).uhid || "UH001256",
+          ipNo: (c as any).ipNo || "IP20250928012",
+          gender: (c as any).gender || "Male",
+          age: String((c as any).age || 45),
+          contact: (c as any).mobile || "9876543210",
+          email: (c as any).email || "ramesh.kumar@gmail.com",
+          address: (c as any).address || "Flat 402, Sea Pearl Apartments, MVP Colony, Visakhapatnam - 530017",
+          admissionType: c.encounterType || "Planned Surgical / Medical",
+          department: (c as any).department || "General Surgery",
+          admittedOn: fmtDate(c.admissionDate),
+          insurerName: c.policy.insurerName,
+          tpaName: c.policy.tpaName,
+          policyNo: c.policy.policyNumber,
+          memberId: c.policy.memberId,
+          sumInsured: String(c.policy.sumInsured || 500000),
+          estimateAmount: String((c as any).totalEstimatedAmount || (c as any).estimatedBill || 185000),
+          preAuthApproved: String(c.approvedPreAuthAmount || 150000),
+          corporateName: (c.policy as any).corporateName || "TECHCORP SOLUTIONS PVT LTD",
+        }}
+      />
     </div>
   )
 }

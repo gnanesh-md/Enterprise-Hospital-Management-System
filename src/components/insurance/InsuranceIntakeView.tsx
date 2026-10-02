@@ -33,6 +33,7 @@ import {
 import { useNotify } from "./ui"
 import { InsuranceEngineService } from "../../services/insuranceDb"
 import type { InsuranceCompanyConfig } from "../../types/insurance"
+import PatientProfileModal from "./PatientProfileModal"
 
 // Pure 0 border-radius field styles with crisp standard enterprise scale and subtle focus
 const sqField = "h-9 px-3 bg-white border border-slate-300 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 rounded-none w-full transition-colors shadow-xs"
@@ -46,6 +47,7 @@ export default function InsuranceIntakeView({
 }) {
   const { notify, toastNode } = useNotify()
   const [step, setStep] = useState(1) // Step 1: Patient Identity & EMR, Step 2: Policy & Card Upload, Step 3: Verify & Handover
+  const [patientModalOpen, setPatientModalOpen] = useState(false)
 
   // Search tab state
   const [searchTab, setSearchTab] = useState<"uhid" | "name" | "mobile" | "ip">("uhid")
@@ -736,8 +738,8 @@ export default function InsuranceIntakeView({
                   </div>
                   <button
                     type="button"
-                    onClick={() => notify(`Viewing full hospital profile for ${patientName} (${uhid})`, "success")}
-                    className="text-xs font-semibold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer"
+                    onClick={() => setPatientModalOpen(true)}
+                    className="text-xs font-semibold text-purple-700 hover:text-purple-900 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <ExternalLink size={13} /> View Full Profile
                   </button>
@@ -1298,6 +1300,33 @@ export default function InsuranceIntakeView({
           </div>
         </div>
       )}
+
+      {/* Patient Profile Pop-Up Card Modal */}
+      <PatientProfileModal
+        isOpen={patientModalOpen}
+        onClose={() => setPatientModalOpen(false)}
+        patient={{
+          patientName,
+          uhid,
+          ipNo,
+          gender,
+          age,
+          dob,
+          contact,
+          email,
+          address,
+          admissionType,
+          department,
+          admittedOn,
+          insurerName,
+          tpaName,
+          policyNo,
+          memberId,
+          policyType,
+          sumInsured,
+          corporateName: corporate,
+        }}
+      />
     </div>
   )
 }
