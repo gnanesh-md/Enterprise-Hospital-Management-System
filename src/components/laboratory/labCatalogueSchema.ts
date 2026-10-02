@@ -1407,7 +1407,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Serum",
-            price: 180,
+            price: 250,
             parameters: [
               { id: "bun", name: "BUN", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 7, high: 20, text: "7–20 mg/dL" }, defaultValue: "13" },
             ],

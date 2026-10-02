@@ -13,7 +13,13 @@
 
 import { db, DBOPEncounter } from "./db"
 import { AuditDatabase } from "./auditDb"
-import { LabOrderDatabase } from "./labOrdersDb"
+import { LabOrderDatabase, priceForTest } from "./labOrdersDb"
+import { BillingDatabase } from "./billingDb"
+import {
+  isRadiologyTest,
+  getModalityForTest,
+  getRoomForModality,
+} from "../utils/testClassifier"
 import {
   ConsultationRecord,
   DoctorAccount,
@@ -228,28 +234,62 @@ export function dispatchConsultation(
     }
   }
 
-  // ── Investigations -> reception/billing, then the lab ────────────────────
+  // ── Investigations -> reception/billing, laboratory & radiology ─────────────
   if (toLab) {
     try {
-      const order = LabOrderDatabase.createOrder({
-        consultationId: record.id,
-        encounterId: encounter.id,
-        umr: encounter.umr,
-        patientName: encounter.patientName,
-        age: encounter.age,
-        sex: encounter.sex,
-        phone: encounter.phone,
-        opNumber: encounter.opNumber,
-        doctorId: doctor.id,
-        doctorName: doctor.name,
-        department: encounter.dept || doctor.specialty,
-        diagnosis: record.diagnosis || encounter.diagnosis,
-        clinicalNotes: record.summary,
-        tests: labTests,
-      })
-      result.labOrderId = order.id
-      result.labTotal = order.billing.total
-      result.sentToLab = true
+      const radiologyTests = labTests.filter((t) => isRadiologyTest(t.name, t.category))
+      const pureLabTests = labTests.filter((t) => !isRadiologyTest(t.name, t.category))
+
+      // Route Radiology Tests to Radiology & Central Billing
+      if (radiologyTests.length > 0) {
+        radiologyTests.forEach((t) => {
+          const modality = getModalityForTest(t.name)
+          const room = getRoomForModality(modality)
+          const price = priceForTest(t.name)
+          BillingDatabase.createRadiologyStudy({
+            patient: encounter.patientName,
+            mrn: encounter.umr,
+            umr: encounter.umr,
+            encounterId: encounter.id,
+            department: encounter.dept || doctor.specialty,
+            diagnosis: record.diagnosis || encounter.diagnosis,
+            study: t.name,
+            modality,
+            priority: t.urgency === "STAT" ? "STAT" : "Routine",
+            ordered: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            provider: doctor.name,
+            status: "Orders",
+            room,
+            price,
+            paymentStatus: "Payment Pending",
+            indication: record.summary || record.diagnosis || "Doctor Consultation Order",
+            technique: `Diagnostic ${modality} imaging scan`,
+          })
+        })
+      }
+
+      // Route All Diagnostic Investigations (Lab + Radiology) to Central Billing Queue
+      if (labTests.length > 0) {
+        const order = LabOrderDatabase.createOrder({
+          consultationId: record.id,
+          encounterId: encounter.id,
+          umr: encounter.umr,
+          patientName: encounter.patientName,
+          age: encounter.age,
+          sex: encounter.sex,
+          phone: encounter.phone,
+          opNumber: encounter.opNumber,
+          doctorId: doctor.id,
+          doctorName: doctor.name,
+          department: encounter.dept || doctor.specialty,
+          diagnosis: record.diagnosis || encounter.diagnosis,
+          clinicalNotes: record.summary,
+          tests: labTests,
+        })
+        result.labOrderId = order.id
+        result.labTotal = order.billing.total
+        result.sentToLab = true
+      }
     } catch (err) {
       result.errors.push(
         `Investigations could not be sent for billing: ${

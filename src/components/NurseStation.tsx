@@ -119,6 +119,28 @@ function flagFor(
   }
 }
 
+/** Strictly sanitize vitals input: only allow numbers, slash for BP, decimal for temp/weight */
+function sanitizeVitalInput(key: keyof DBOPEncounter["vitals"], val: string): string {
+  if (key === "bp") {
+    // Blood Pressure: strictly numbers 0-9 and /
+    return val.replace(/[^0-9/]/g, "")
+  }
+  if (key === "temp" || key === "weight") {
+    // Temperature / Weight: strictly numbers 0-9 and decimal point
+    const sanitized = val.replace(/[^0-9.]/g, "")
+    const parts = sanitized.split(".")
+    if (parts.length > 2) {
+      return parts[0] + "." + parts.slice(1).join("")
+    }
+    return sanitized
+  }
+  if (key === "pulse" || key === "spo2") {
+    // Pulse / SpO2: strictly numbers 0-9
+    return val.replace(/[^0-9]/g, "")
+  }
+  return val
+}
+
 /** Calculate NEWS2 warnings */
 function calcNEWS2(
   v: DBOPEncounter["vitals"],
@@ -910,12 +932,20 @@ export default function NurseStation({
                           <input
                             value={vitals[f.key] || ""}
                             placeholder={f.placeholder}
-                            onChange={(e) =>
+                            inputMode={f.key === "bp" ? "text" : f.key === "temp" || f.key === "weight" ? "decimal" : "numeric"}
+                            onKeyDown={(e) => {
+                              // Directly block alphabet keys (A-Z, a-z)
+                              if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+                                e.preventDefault()
+                              }
+                            }}
+                            onChange={(e) => {
+                              const cleanVal = sanitizeVitalInput(f.key, e.target.value)
                               setVitals((v) => ({
                                 ...v,
-                                [f.key]: e.target.value,
+                                [f.key]: cleanVal,
                               }))
-                            }
+                            }}
                             className={`w-full border rounded-none px-3 py-2 text-sm font-mono font-bold focus:outline-none ${
                               flag
                                 ? flag.level === "danger"

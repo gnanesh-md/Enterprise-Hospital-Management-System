@@ -537,11 +537,17 @@ export interface RadiologyStudyRecord {
 
   reportStatus?: "Draft" | "Final"
 
-  signedAt?: string
-
-  addendum?: string
-
   dicomImages?: string[]
+
+  digitalStudyUrl?: string
+
+  technicianNotes?: string
+
+  technicianSignature?: string
+
+  digitalReceiptRef?: string
+
+  signedAt?: string
 }
 
 const STORAGE_KEY_CLAIMS = "hosp_billing_claims_inr_v11"
@@ -5789,6 +5795,22 @@ export class BillingDatabase {
       }),
     }).catch(() => {})
 
+    // Automatically dispatch financial clearance to Radiology & Laboratory
+    try {
+      this.dispatchClearanceToDepartment(
+        claim.patientName || claim.patientId,
+        "Radiology",
+        newPayment.receiptNo,
+      )
+      this.dispatchClearanceToDepartment(
+        claim.patientName || claim.patientId,
+        "Laboratory",
+        newPayment.receiptNo,
+      )
+    } catch (err) {
+      console.warn("Radiology/Lab clearance dispatch error:", err)
+    }
+
     return { claim: updatedClaim, payment: newPayment }
   }
 
@@ -7098,7 +7120,121 @@ export class BillingDatabase {
       }
     })
 
-    return syncedStudies
+    const seenStudyKeys = new Set<string>()
+    const deduplicatedStudies: RadiologyStudyRecord[] = []
+    for (const s of syncedStudies) {
+      const pKey = (s.encounterId || s.umr || s.mrn || s.patient || "").toLowerCase().trim()
+      const sBase = (s.study || "").toLowerCase().replace(/\s*\([^\)]*\)/g, "").trim()
+      const key = `${pKey}::${sBase}`
+      if (!seenStudyKeys.has(key)) {
+        seenStudyKeys.add(key)
+        deduplicatedStudies.push(s)
+      }
+    }
+    return deduplicatedStudies
+  }
+
+  static ensureRadiologyClaim(study: RadiologyStudyRecord): void {
+    try {
+      const claims = this.load<ClaimRecord[]>(
+        STORAGE_KEY_CLAIMS,
+        INITIAL_HOSPITAL_CLAIMS,
+      )
+      const targetMrn = (study.mrn || study.umr || "")
+        .toLowerCase()
+        .replace("umr", "")
+        .replace("p-", "")
+        .trim()
+
+      const existingIdx = claims.findIndex(
+        (c) =>
+          c.invoiceNo === study.invoiceNo ||
+          c.id === `CLM-${study.id}` ||
+          (study.encounterId && c.encounterId === study.encounterId) ||
+          ((c.mrn || c.patientId || "")
+            .toLowerCase()
+            .replace("umr", "")
+            .replace("p-", "")
+            .trim() === targetMrn && c.status !== "Paid"),
+      )
+
+      const radItem: InvoiceItem = {
+        id: `ITEM-RAD-${study.id}`,
+        description: `${study.study} (${study.modality})`,
+        category: "Radiology / Imaging",
+        cptCode: `RAD-${study.modality}`,
+        quantity: 1,
+        unitPrice: study.price,
+        total: study.price,
+        insuranceCovered: 0,
+        patientPayable: study.price,
+        orderedBy: study.provider || "Attending Doctor",
+      }
+
+      if (existingIdx >= 0) {
+        const existing = claims[existingIdx]
+        const hasItem = existing.items.some(
+          (it) => it.id === radItem.id || it.description.includes(study.study),
+        )
+        if (!hasItem) {
+          const updatedItems = [...existing.items, radItem]
+          const subtotal = existing.subtotal + study.price
+          const totalAmount = existing.totalAmount + study.price
+          const patientPortion = existing.patientPortion + study.price
+          const balanceDue = existing.balanceDue + study.price
+
+          claims[existingIdx] = {
+            ...existing,
+            items: updatedItems,
+            subtotal,
+            totalAmount,
+            patientPortion,
+            balanceDue,
+            status: existing.status === "Paid" ? "Draft" : existing.status,
+            updatedAt: new Date().toISOString(),
+          }
+          this.save(STORAGE_KEY_CLAIMS, claims)
+        }
+      } else {
+        const newClaim: ClaimRecord = {
+          id: `CLM-${study.id}`,
+          invoiceNo:
+            study.invoiceNo ||
+            `INV-RAD-${study.id.replace(/\D/g, "") || Date.now().toString().slice(-4)}`,
+          encounterId: study.encounterId || study.id,
+          patientId: study.umr || study.mrn,
+          patientName: study.patient,
+          mrn: study.mrn,
+          age: 35,
+          gender: "Male",
+          phone: "+91 98765 43210",
+          payments: [],
+          department: "Radiology",
+          carePathway: `Radiology Imaging — ${study.study}`,
+          dateOfService: new Date().toISOString().split("T")[0],
+          insuranceProvider: "Self-Pay",
+          policyNumber: "N/A",
+          status: "Draft",
+          attendingDoctor: study.provider || "Attending Doctor",
+          diagnosisCodes: [study.diagnosis || "Z01.89"],
+          items: [radItem],
+          subtotal: study.price,
+          discount: 0,
+          tax: 0,
+          totalAmount: study.price,
+          insurancePortion: 0,
+          patientPortion: study.price,
+          amountPaid: 0,
+          balanceDue: study.price,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        claims.unshift(newClaim)
+        this.save(STORAGE_KEY_CLAIMS, claims)
+      }
+    } catch (err) {
+      console.warn("ensureRadiologyClaim error:", err)
+    }
   }
 
   static createRadiologyStudy(
@@ -7106,13 +7242,36 @@ export class BillingDatabase {
   ): RadiologyStudyRecord {
     const studies = this.getRadiologyStudies()
 
+    let resolvedPatientName = studyData.patient
+    if (
+      resolvedPatientName.startsWith("PAT-") ||
+      resolvedPatientName.startsWith("UMR") ||
+      /^\d+$/.test(resolvedPatientName)
+    ) {
+      try {
+        const p =
+          db.getPatientByUmr(resolvedPatientName) ||
+          db
+            .getPatients()
+            .find(
+              (pt) =>
+                pt.umr === resolvedPatientName ||
+                pt.name === resolvedPatientName,
+            )
+        if (p && p.name) resolvedPatientName = p.name
+      } catch {}
+    }
+
     const id = studyData.id || `RAD-${Math.floor(200 + Math.random() * 800)}`
+    const invoiceNo =
+      studyData.invoiceNo ||
+      `INV-RAD-${Math.floor(1000 + Math.random() * 9000)}`
 
     const newStudy: RadiologyStudyRecord = {
       ...studyData,
-
       id,
-
+      patient: resolvedPatientName,
+      invoiceNo,
       accessionNo:
         studyData.accessionNo ||
         `RAD-ACC-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -7125,11 +7284,20 @@ export class BillingDatabase {
         }),
 
       status: studyData.status || "Orders",
+      paymentStatus: studyData.paymentStatus || "Payment Pending",
     }
 
     const updated = [newStudy, ...studies.filter((s) => s.id !== id)]
 
     this.save(STORAGE_KEY_RAD_STUDIES, updated)
+
+    if (newStudy.paymentStatus === "Payment Pending") {
+      this.ensureRadiologyClaim(newStudy)
+    }
+
+    try {
+      new BroadcastChannel("hospai_rad_channel").postMessage("changed")
+    } catch {}
 
     this.emitUpdate()
 
