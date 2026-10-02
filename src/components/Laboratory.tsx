@@ -316,7 +316,7 @@ export default function Laboratory({
       {/* Toast Notification */}
       {toastMessage && (
         <div
-          className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg shadow-lg text-xs font-bold text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-200 ${
+          className={`fixed top-4 right-4 z-50 px-4 py-2.5 rounded-none shadow-lg text-xs font-bold text-white flex items-center gap-2 animate-in slide-in-from-top-2 duration-200 ${
             toastMessage.type === "success"
               ? "bg-emerald-600"
               : toastMessage.type === "error"
@@ -332,7 +332,7 @@ export default function Laboratory({
       <div className="bg-white border-b border-gray-200 px-6 py-3 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 uppercase tracking-wider">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-none bg-blue-100 text-blue-800 uppercase tracking-wider">
               Diagnostic Pathology
             </span>
             <span className="text-xs text-gray-400">•</span>
@@ -349,13 +349,13 @@ export default function Laboratory({
           <button
             type="button"
             onClick={() => setShowTestCatalogModal(true)}
-            className="px-3.5 py-1.5 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300 cursor-pointer"
+            className="px-3.5 py-1.5 text-xs font-bold rounded-none shadow-xs transition-colors flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300 cursor-pointer"
           >
             <span>📖</span> Test Catalog
           </button>
           <button
             onClick={() => setShowNewOrderModal(true)}
-            className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-none shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <span>+</span> New Lab Order
           </button>
@@ -364,24 +364,24 @@ export default function Laboratory({
 
       {/* Quick Statistics Strip */}
       <div className="bg-white border-b border-gray-200 px-6 py-2.5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-xs">
-        <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
-          <span className="text-gray-400 block text-[10.5px]">Active Orders</span>
+        <div className="p-2.5 rounded-none bg-white border border-gray-200 border-l-4 border-l-slate-600">
+          <span className="text-gray-500 block text-[11px] font-medium">Active Orders</span>
           <strong className="text-base font-bold text-gray-900">{stats.total}</strong>
         </div>
-        <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-100">
-          <span className="text-emerald-700 block text-[10.5px]">Pre-Paid (Ready)</span>
+        <div className="p-2.5 rounded-none bg-white border border-gray-200 border-l-4 border-l-emerald-600">
+          <span className="text-emerald-700 block text-[11px] font-medium">Pre-Paid (Ready)</span>
           <strong className="text-base font-bold text-emerald-800">{stats.paid}</strong>
         </div>
-        <div className="p-2 rounded-lg bg-amber-50 border border-amber-100">
-          <span className="text-amber-700 block text-[10.5px]">Awaiting Billing</span>
+        <div className="p-2.5 rounded-none bg-white border border-gray-200 border-l-4 border-l-amber-500">
+          <span className="text-amber-700 block text-[11px] font-medium">Awaiting Billing</span>
           <strong className="text-base font-bold text-amber-800">{stats.pending}</strong>
         </div>
-        <div className="p-2 rounded-lg bg-red-50 border border-red-100">
-          <span className="text-red-700 block text-[10.5px]">Critical Alerts</span>
+        <div className="p-2.5 rounded-none bg-white border border-gray-200 border-l-4 border-l-red-600">
+          <span className="text-red-700 block text-[11px] font-medium">Critical Alerts</span>
           <strong className="text-base font-bold text-red-800">{stats.critical}</strong>
         </div>
-        <div className="p-2 rounded-lg bg-indigo-50 border border-indigo-100">
-          <span className="text-indigo-700 block text-[10.5px]">Completed & Signed</span>
+        <div className="p-2.5 rounded-none bg-white border border-gray-200 border-l-4 border-l-indigo-600">
+          <span className="text-indigo-700 block text-[11px] font-medium">Completed & Signed</span>
           <strong className="text-base font-bold text-indigo-800">{stats.completed}</strong>
         </div>
       </div>
@@ -404,14 +404,14 @@ export default function Laboratory({
           /* ========================================================================= */
           /* PATIENT DETAILS & ORDERED TESTS VIEW                                      */
           /* ========================================================================= */
-          <div className="flex-1 bg-white rounded-xl shadow-xs border border-gray-200 flex flex-col overflow-hidden">
+          <div className="flex-1 bg-white rounded-none shadow-xs border border-gray-200 flex flex-col overflow-hidden">
             
             {/* Header / Actions Bar */}
             <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setSelectedOrderId(null)}
-                  className="px-3 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5"
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-none border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>←</span> Back to Patient List
                 </button>
@@ -420,11 +420,11 @@ export default function Laboratory({
                     <h2 className="text-lg font-bold text-white">
                       {selectedOrder.patientName}
                     </h2>
-                    <span className="text-xs px-2 py-0.5 rounded bg-blue-500/40 text-blue-200 font-mono">
+                    <span className="text-xs px-2 py-0.5 rounded-none bg-blue-500/40 text-blue-200 font-mono">
                       {selectedOrder.umr}
                     </span>
                     <span
-                      className={`text-xs px-2 py-0.5 rounded font-bold ${
+                      className={`text-xs px-2 py-0.5 rounded-none font-bold ${
                         selectedOrder.billing.status === "Paid"
                           ? "bg-emerald-500 text-white"
                           : "bg-amber-500 text-white"
@@ -452,7 +452,7 @@ export default function Laboratory({
                       ? "Action Restricted: Billing payment is pending at reception desk"
                       : "Batch enter results for all ordered tests"
                   }
-                  className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm ${
+                  className={`px-4 py-2 text-xs font-bold rounded-none transition-colors flex items-center gap-1.5 shadow-sm ${
                     selectedOrder.billing.status === "Paid"
                       ? "text-emerald-950 bg-emerald-400 hover:bg-emerald-300 cursor-pointer"
                       : "text-gray-400 bg-slate-800 border border-slate-700 cursor-not-allowed opacity-60"
@@ -462,12 +462,12 @@ export default function Laboratory({
                 </button>
                 <button
                   onClick={() => setShowCompleteReportModal(selectedOrder)}
-                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+                  className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-none transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
                 >
                   <span>📋</span> Complete Laboratory Report
                 </button>
                 {isOrderCompleted(selectedOrder) && (
-                  <span className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center gap-1">
+                  <span className="px-3 py-1.5 rounded-none text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center gap-1">
                     ✓ Completed & Verified
                   </span>
                 )}
@@ -512,7 +512,7 @@ export default function Laboratory({
                     <strong>Payment Pending in Billing Desk:</strong> Investigations are listed as ordered by the doctor. Processing and verification are restricted until billing is settled.
                   </span>
                 </div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100 px-2 py-0.5 rounded-none">
                   Awaiting Billing Settlement
                 </span>
               </div>
@@ -531,7 +531,7 @@ export default function Laboratory({
                 </div>
               </div>
 
-              <div className="border border-gray-200 rounded-lg overflow-hidden shadow-2xs">
+              <div className="border border-gray-200 rounded-none overflow-hidden shadow-2xs">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-gray-100 text-gray-700 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-200">
                     <tr>
@@ -561,13 +561,13 @@ export default function Laboratory({
                             </span>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-[11px] font-medium uppercase">
+                            <span className="px-2 py-0.5 rounded-none bg-gray-100 text-gray-700 text-[11px] font-medium uppercase">
                               {def?.category || test.category}
                             </span>
                           </td>
                           <td className="py-3 px-4">
                             {test.urgency === "STAT" ? (
-                              <span className="px-2 py-0.5 rounded bg-red-100 text-red-800 font-bold text-[10.5px]">
+                              <span className="px-2 py-0.5 rounded-none bg-red-100 text-red-800 font-bold text-[10.5px]">
                                 STAT
                               </span>
                             ) : (
@@ -579,7 +579,7 @@ export default function Laboratory({
                           </td>
                           <td className="py-3 px-4">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] inline-flex items-center gap-1 ${
+                              className={`px-2.5 py-0.5 rounded-none font-bold text-[11px] inline-flex items-center gap-1 ${
                                 isPaid
                                   ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                                   : "bg-amber-100 text-amber-800 border border-amber-300"
@@ -596,17 +596,17 @@ export default function Laboratory({
                                   {Object.values(test.results!)[0]?.unit}
                                 </span>
                                 {test.flag === "H" && (
-                                  <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded">
+                                  <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded-none">
                                     ▲ High
                                   </span>
                                 )}
                                 {test.flag === "L" && (
-                                  <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.2 bg-blue-100 text-blue-800 rounded">
+                                  <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.2 bg-blue-100 text-blue-800 rounded-none">
                                     ▼ Low
                                   </span>
                                 )}
                                 {test.flag === "Critical" && (
-                                  <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.2 bg-red-600 text-white rounded">
+                                  <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.2 bg-red-600 text-white rounded-none">
                                     CRITICAL
                                   </span>
                                 )}
@@ -619,7 +619,7 @@ export default function Laboratory({
                           </td>
                           <td className="py-3 px-4 text-right">
                             {!isPaid ? (
-                              <span className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-100 rounded border border-gray-200 cursor-not-allowed">
+                              <span className="px-3 py-1 text-xs font-semibold text-gray-400 bg-gray-100 rounded-none border border-gray-200 cursor-not-allowed">
                                 Restricted
                               </span>
                             ) : (
@@ -627,7 +627,7 @@ export default function Laboratory({
                                 {test.status === "Pending" && (
                                   <button
                                     onClick={() => handleAdvanceTestStatus(selectedOrder, test, "Sample Collected")}
-                                    className="px-2.5 py-1 text-xs font-bold text-purple-800 bg-purple-100 hover:bg-purple-200 rounded transition-colors"
+                                    className="px-2.5 py-1 text-xs font-bold text-purple-800 bg-purple-100 hover:bg-purple-200 rounded-none transition-colors cursor-pointer"
                                   >
                                     Collect Sample
                                   </button>
@@ -635,7 +635,7 @@ export default function Laboratory({
                                 {test.status === "Sample Collected" && (
                                   <button
                                     onClick={() => handleAdvanceTestStatus(selectedOrder, test, "Processing")}
-                                    className="px-2.5 py-1 text-xs font-bold text-blue-800 bg-blue-100 hover:bg-blue-200 rounded transition-colors"
+                                    className="px-2.5 py-1 text-xs font-bold text-blue-800 bg-blue-100 hover:bg-blue-200 rounded-none transition-colors cursor-pointer"
                                   >
                                     Start Processing
                                   </button>
@@ -647,7 +647,7 @@ export default function Laboratory({
                                       test,
                                     })
                                   }
-                                  className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
+                                  className={`px-3 py-1 text-xs font-bold rounded-none transition-colors cursor-pointer ${
                                     test.status === "Completed" || test.status === "Verified"
                                       ? "text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300"
                                       : "text-white bg-blue-600 hover:bg-blue-700 shadow-xs"
@@ -673,7 +673,7 @@ export default function Laboratory({
           /* ========================================================================= */
           /* LABORATORY PATIENT LIST VIEW                                              */
           /* ========================================================================= */
-          <div className="flex-1 bg-white rounded-xl shadow-xs border border-gray-200 flex flex-col overflow-hidden">
+          <div className="flex-1 bg-white rounded-none shadow-xs border border-gray-200 flex flex-col overflow-hidden">
             
             {/* Filter Tabs */}
             <div className="border-b border-gray-200 px-6 pt-3 flex items-center justify-between overflow-x-auto bg-gray-50/50">
@@ -693,15 +693,15 @@ export default function Laboratory({
                     <button
                       key={tab.key}
                       onClick={() => setActiveQueue(tab.key)}
-                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${
+                      className={`px-4 py-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2 rounded-none cursor-pointer ${
                         isActive
-                          ? "border-blue-600 text-blue-600 bg-white shadow-2xs rounded-t-lg"
+                          ? "border-blue-600 text-blue-600 bg-white shadow-2xs"
                           : "border-transparent text-gray-500 hover:text-gray-900"
                       }`}
                     >
                       <span>{tab.label}</span>
                       <span
-                        className={`text-[10.5px] px-1.5 py-0.2 rounded-full ${
+                        className={`text-[10.5px] px-1.5 py-0.2 rounded-none font-mono ${
                           isActive
                             ? "bg-blue-100 text-blue-800"
                             : "bg-gray-200 text-gray-700"
@@ -723,7 +723,7 @@ export default function Laboratory({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by Patient Name, ID (PAT-xxxx), Lab Order ID, Doctor, Test..."
-                  className="w-full text-xs pl-8 pr-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full text-xs pl-8 pr-3 py-2 rounded-none border border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <span className="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
               </div>
@@ -734,7 +734,7 @@ export default function Laboratory({
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="text-xs font-semibold px-2.5 py-1.5 border rounded-lg bg-white"
+                    className="text-xs font-semibold px-2.5 py-1.5 border rounded-none border-gray-300 bg-white"
                   >
                     <option value="all">All Modules</option>
                     <option value="hematology">Hematology</option>
@@ -753,7 +753,7 @@ export default function Laboratory({
             <div className="flex-1 overflow-y-auto">
               {filteredOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-12 text-center text-gray-400">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl mb-2">
+                  <div className="w-12 h-12 rounded-none bg-gray-100 flex items-center justify-center text-2xl mb-2">
                     🧪
                   </div>
                   <h3 className="text-sm font-bold text-gray-700">No Laboratory Orders Found</h3>
@@ -797,7 +797,7 @@ export default function Laboratory({
                                 {order.patientName}
                               </strong>
                               {hasCritical && (
-                                <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-red-600 text-white animate-pulse">
+                                <span className="px-1.5 py-0.2 rounded-none text-[10px] font-extrabold bg-red-600 text-white animate-pulse">
                                   CRITICAL
                                 </span>
                               )}
@@ -837,7 +837,7 @@ export default function Laboratory({
                               {order.tests.slice(0, 3).map((t) => (
                                 <span
                                   key={t.id}
-                                  className={`px-2 py-0.5 rounded text-[10.5px] font-semibold border ${
+                                  className={`px-2 py-0.5 rounded-none text-[10.5px] font-semibold border ${
                                     t.status === "Completed" || t.status === "Verified"
                                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                       : "bg-gray-100 text-gray-700 border border-gray-200"
@@ -858,7 +858,7 @@ export default function Laboratory({
                           {/* Billing Status */}
                           <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                             <span
-                              className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] inline-flex items-center gap-1 ${
+                              className={`px-2.5 py-0.5 rounded-none font-bold text-[11px] inline-flex items-center gap-1 ${
                                 isPaid
                                   ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                                   : "bg-amber-100 text-amber-800 border border-amber-300"
@@ -883,7 +883,7 @@ export default function Laboratory({
                           <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={() => setSelectedOrderId(order.id)}
-                              className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors shadow-2xs"
+                              className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors shadow-2xs cursor-pointer"
                             >
                               Open Details →
                             </button>
@@ -926,7 +926,7 @@ export default function Laboratory({
       {/* 4. New Lab Order Modal */}
       {showNewOrderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-150">
+          <div className="bg-white rounded-none shadow-2xl border border-gray-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-150">
             <div className="bg-blue-700 text-white px-6 py-4 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold">Create Laboratory Order</h3>
@@ -936,7 +936,7 @@ export default function Laboratory({
               </div>
               <button
                 onClick={() => setShowNewOrderModal(false)}
-                className="text-white hover:text-gray-200 font-bold"
+                className="text-white hover:text-gray-200 font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -955,7 +955,7 @@ export default function Laboratory({
                     setNewOrderForm({ ...newOrderForm, patientName: e.target.value })
                   }
                   placeholder="e.g. Ramesh Chandra"
-                  className="w-full text-xs px-3 py-2 border rounded-lg"
+                  className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
                 />
               </div>
 
@@ -971,7 +971,7 @@ export default function Laboratory({
                       setNewOrderForm({ ...newOrderForm, umr: e.target.value })
                     }
                     placeholder="PAT-xxxxx"
-                    className="w-full text-xs px-3 py-2 border rounded-lg"
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
                   />
                 </div>
                 <div>
@@ -984,7 +984,7 @@ export default function Laboratory({
                     onChange={(e) =>
                       setNewOrderForm({ ...newOrderForm, age: Number(e.target.value) })
                     }
-                    className="w-full text-xs px-3 py-2 border rounded-lg"
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
                   />
                 </div>
                 <div>
@@ -996,7 +996,7 @@ export default function Laboratory({
                     onChange={(e) =>
                       setNewOrderForm({ ...newOrderForm, sex: e.target.value })
                     }
-                    className="w-full text-xs px-3 py-2 border rounded-lg bg-white"
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300 bg-white"
                   >
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -1016,7 +1016,7 @@ export default function Laboratory({
                     onChange={(e) =>
                       setNewOrderForm({ ...newOrderForm, doctorName: e.target.value })
                     }
-                    className="w-full text-xs px-3 py-2 border rounded-lg"
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
                   />
                 </div>
                 <div>
@@ -1029,7 +1029,7 @@ export default function Laboratory({
                     onChange={(e) =>
                       setNewOrderForm({ ...newOrderForm, department: e.target.value })
                     }
-                    className="w-full text-xs px-3 py-2 border rounded-lg"
+                    className="w-full text-xs px-3 py-2 border rounded-none border-gray-300"
                   />
                 </div>
               </div>
@@ -1038,13 +1038,13 @@ export default function Laboratory({
                 <label className="font-semibold text-gray-700 block mb-1">
                   Select Investigations to Order
                 </label>
-                <div className="max-h-40 overflow-y-auto border rounded-lg p-2 space-y-1.5 bg-gray-50">
+                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-none p-2 space-y-1.5 bg-gray-50">
                   {ALL_LAB_TESTS.slice(0, 25).map((test) => {
                     const isChecked = newOrderForm.selectedTests.includes(test.name)
                     return (
                       <label
                         key={test.id}
-                        className="flex items-center gap-2 text-xs text-gray-800 cursor-pointer hover:bg-white p-1 rounded"
+                        className="flex items-center gap-2 text-xs text-gray-800 cursor-pointer hover:bg-white p-1 rounded-none"
                       >
                         <input
                           type="checkbox"
@@ -1075,17 +1075,17 @@ export default function Laboratory({
                 </div>
               </div>
 
-              <div className="bg-gray-50 -mx-6 -mb-6 p-4 border-t flex items-center justify-end gap-3 mt-4">
+              <div className="bg-gray-50 -mx-6 -mb-6 p-4 border-t border-gray-200 flex items-center justify-end gap-3 mt-4">
                 <button
                   type="button"
                   onClick={() => setShowNewOrderModal(false)}
-                  className="px-4 py-2 border rounded-lg text-gray-700 hover:bg-gray-100"
+                  className="px-4 py-2 border border-gray-300 rounded-none text-gray-700 hover:bg-gray-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-sm"
+                  className="px-5 py-2 bg-blue-600 text-white font-bold rounded-none hover:bg-blue-700 shadow-sm cursor-pointer"
                 >
                   Create & Send to Billing
                 </button>

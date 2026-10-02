@@ -55,16 +55,16 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
+      <div className="bg-white rounded-none shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
         
         {/* Top Header */}
         <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/30 text-blue-300 uppercase tracking-wider">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-none bg-blue-500/30 text-blue-300 uppercase tracking-wider">
                 Reference Catalogue
               </span>
-              <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold font-mono">
+              <span className="text-xs px-2 py-0.5 rounded-none bg-emerald-500/20 text-emerald-300 font-bold font-mono">
                 {ALL_LAB_TESTS.length} Tests Available
               </span>
             </div>
@@ -80,7 +80,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors font-bold text-base cursor-pointer"
+              className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-none transition-colors font-bold text-base cursor-pointer"
               title="Close Test Catalog"
             >
               ✕
@@ -109,7 +109,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search tests by name or code..."
-                className="w-full text-xs pl-8 pr-8 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full text-xs pl-8 pr-8 py-2 rounded-none border border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
               />
               <span className="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
               {searchQuery && (
@@ -136,14 +136,14 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
             <button
               type="button"
               onClick={() => setSelectedCategory("all")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                 selectedCategory === "all"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
               }`}
             >
               <span>All Tests</span>
-              <span className={`text-[10.5px] px-1.5 py-0.2 rounded font-mono ${
+              <span className={`text-[10.5px] px-1.5 py-0.2 rounded-none font-mono ${
                 selectedCategory === "all" ? "bg-blue-700 text-white" : "bg-gray-200 text-gray-700"
               }`}>
                 {ALL_LAB_TESTS.length}
@@ -158,14 +158,14 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                   type="button"
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
                     isSelected
                       ? "bg-blue-600 text-white shadow-xs"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
                   }`}
                 >
                   <span>{cat}</span>
-                  <span className={`text-[10.5px] px-1.5 py-0.2 rounded font-mono ${
+                  <span className={`text-[10.5px] px-1.5 py-0.2 rounded-none font-mono ${
                     isSelected ? "bg-blue-700 text-white" : "bg-gray-200 text-gray-700"
                   }`}>
                     {count}
@@ -180,7 +180,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
         <div className="flex-1 overflow-y-auto">
           {filteredTests.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center text-gray-400">
-              <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl mb-2">
+              <div className="w-12 h-12 rounded-none bg-gray-100 flex items-center justify-center text-2xl mb-2">
                 🧪
               </div>
               <p className="text-sm font-semibold text-gray-600">No laboratory tests found</p>
@@ -193,7 +193,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                   setSearchQuery("")
                   setSelectedCategory("all")
                 }}
-                className="mt-3 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg cursor-pointer"
+                className="mt-3 px-3 py-1.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none cursor-pointer"
               >
                 Reset Filters
               </button>
@@ -223,7 +223,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                       {/* Test Name & Code */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10.5px] px-1.5 py-0.5 rounded bg-gray-100 border border-gray-300 font-bold text-gray-700 group-hover:bg-blue-100 group-hover:border-blue-300 group-hover:text-blue-900 transition-colors">
+                          <span className="font-mono text-[10.5px] px-1.5 py-0.5 rounded-none bg-gray-100 border border-gray-300 font-bold text-gray-700 group-hover:bg-blue-100 group-hover:border-blue-300 group-hover:text-blue-900 transition-colors">
                             {test.code}
                           </span>
                           <div>
@@ -242,7 +242,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                       {/* Category & Sub-Module */}
                       <td className="py-3 px-4">
                         <div>
-                          <span className="inline-block px-2 py-0.5 rounded text-[10.5px] font-bold uppercase bg-slate-100 text-slate-800 border border-slate-200">
+                          <span className="inline-block px-2 py-0.5 rounded-none text-[10.5px] font-bold uppercase bg-slate-100 text-slate-800 border border-slate-200">
                             {test.category}
                           </span>
                           {test.subModule && (
@@ -279,7 +279,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
 
                       {/* Parameters Count */}
                       <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                        <span className="px-2 py-0.5 rounded-none text-[11px] font-semibold bg-gray-100 text-gray-700 border border-gray-200 font-mono">
                           {paramCount} {paramCount === 1 ? "param" : "params"}
                         </span>
                       </td>
@@ -299,7 +299,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                             e.stopPropagation()
                             setSelectedTest(test)
                           }}
-                          className="px-2.5 py-1 text-xs font-bold text-blue-700 bg-blue-50 group-hover:bg-blue-600 group-hover:text-white rounded-lg transition-colors border border-blue-200 group-hover:border-blue-600 cursor-pointer"
+                          className="px-2.5 py-1 text-xs font-bold text-blue-700 bg-blue-50 group-hover:bg-blue-600 group-hover:text-white rounded-none transition-colors border border-blue-200 group-hover:border-blue-600 cursor-pointer"
                         >
                           View Details →
                         </button>
@@ -320,7 +320,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer shadow-xs"
+            className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-50 cursor-pointer shadow-xs"
           >
             Close
           </button>
@@ -333,19 +333,19 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
       {/* ========================================================================= */}
       {selectedTest && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
+          <div className="bg-white rounded-none shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
             
             {/* Modal Header */}
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/30 text-blue-300 uppercase tracking-wider font-mono">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-none bg-blue-500/30 text-blue-300 uppercase tracking-wider font-mono">
                     {selectedTest.code}
                   </span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 uppercase">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-none bg-slate-800 text-slate-300 uppercase">
                     {selectedTest.category}
                   </span>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-none bg-emerald-500/20 text-emerald-300">
                     Active in Catalogue
                   </span>
                 </div>
@@ -356,7 +356,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
               <button
                 type="button"
                 onClick={() => setSelectedTest(null)}
-                className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors font-bold text-base cursor-pointer"
+                className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-none transition-colors font-bold text-base cursor-pointer"
                 title="Back to Catalog List"
               >
                 ✕
@@ -424,7 +424,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                   This investigation is reported as a single global clinical observation.
                 </div>
               ) : (
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="border border-gray-200 rounded-none overflow-hidden">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-gray-100 text-gray-700 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-200">
                       <tr>
@@ -453,7 +453,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                             )}
                           </td>
                           <td className="py-2 px-3">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gray-100 text-gray-700 border border-gray-200">
+                            <span className="px-1.5 py-0.5 rounded-none text-[10px] font-mono bg-gray-100 text-gray-700 border border-gray-200">
                               {param.inputType}
                             </span>
                           </td>
@@ -462,11 +462,11 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                           </td>
                           <td className="py-2 px-3 text-gray-800">
                             {param.referenceRange?.text ? (
-                              <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
+                              <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-200 text-[11px]">
                                 {param.referenceRange.text}
                               </span>
                             ) : param.referenceRange?.low !== undefined && param.referenceRange?.high !== undefined ? (
-                              <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
+                              <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-200 text-[11px]">
                                 {param.referenceRange.low} – {param.referenceRange.high} {param.unit || ""}
                               </span>
                             ) : (
@@ -475,7 +475,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
                           </td>
                           <td className="py-2 px-3">
                             {param.referenceRange?.criticalLow !== undefined || param.referenceRange?.criticalHigh !== undefined ? (
-                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-800 border border-red-300 rounded">
+                              <span className="px-1.5 py-0.5 text-[10px] font-bold bg-red-100 text-red-800 border border-red-300 rounded-none">
                                 {param.referenceRange.criticalLow !== undefined ? `< ${param.referenceRange.criticalLow}` : ""}
                                 {param.referenceRange.criticalLow !== undefined && param.referenceRange.criticalHigh !== undefined ? " or " : ""}
                                 {param.referenceRange.criticalHigh !== undefined ? `> ${param.referenceRange.criticalHigh}` : ""}
@@ -500,7 +500,7 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
               <button
                 type="button"
                 onClick={() => setSelectedTest(null)}
-                className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer shadow-xs"
+                className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-50 cursor-pointer shadow-xs"
               >
                 Back to Catalog List
               </button>
