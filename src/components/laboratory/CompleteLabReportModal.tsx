@@ -45,12 +45,12 @@ export default function CompleteLabReportModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
+      <div className="bg-white rounded-none shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
         
         {/* Modal Top Control Bar */}
         <div className="bg-gray-900 text-white px-6 py-3 flex items-center justify-between no-print">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold px-2 py-0.5 rounded bg-blue-600 uppercase">
+            <span className="text-xs font-bold px-2 py-0.5 rounded-none bg-blue-600 uppercase">
               Official Diagnostic Report
             </span>
             <span className="text-xs text-gray-300">
@@ -60,13 +60,13 @@ export default function CompleteLabReportModal({
           <div className="flex items-center gap-3">
             <button
               onClick={handlePrint}
-              className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm"
+              className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-none transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <span>🖨️</span> Print / Save PDF
             </button>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-white text-lg font-bold px-2"
+              className="text-gray-400 hover:text-white text-lg font-bold px-2 cursor-pointer"
             >
               ✕
             </button>
@@ -91,7 +91,7 @@ export default function CompleteLabReportModal({
                 </p>
               </div>
               <div className="text-right">
-                <div className="inline-block px-3 py-1 bg-blue-50 border border-blue-200 rounded text-center">
+                <div className="inline-block px-3 py-1 bg-blue-50 border border-blue-200 rounded-none text-center">
                   <span className="text-[10px] text-gray-500 uppercase block font-semibold">
                     Accreditation ID
                   </span>
@@ -104,7 +104,7 @@ export default function CompleteLabReportModal({
           </div>
 
           {/* Patient Demographics & Order Metadata */}
-          <div className="bg-gray-50/80 rounded-lg p-3.5 border border-gray-200 text-xs mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-gray-50/80 rounded-none p-3.5 border border-gray-200 text-xs mb-6 grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <span className="text-gray-400 block text-[10.5px]">Patient Name</span>
               <strong className="text-gray-900 text-sm">{order.patientName}</strong>
@@ -145,7 +145,7 @@ export default function CompleteLabReportModal({
           {/* Module-wise Test Results */}
           <div className="space-y-6">
             {Object.entries(testsByCategory).map(([category, items]) => (
-              <div key={category} className="border border-gray-300 rounded-lg overflow-hidden shadow-2xs">
+              <div key={category} className="border border-gray-300 rounded-none overflow-hidden shadow-2xs">
                 
                 {/* Category Header */}
                 <div className="bg-slate-800 text-white px-4 py-2 flex items-center justify-between">
@@ -177,7 +177,7 @@ export default function CompleteLabReportModal({
                             )}
                           </div>
                           <span
-                            className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                            className={`px-2 py-0.5 rounded-none text-[11px] font-bold ${
                               test.status === "Completed" || test.status === "Verified"
                                 ? "bg-emerald-100 text-emerald-800"
                                 : test.status === "Result Entered"
@@ -213,17 +213,17 @@ export default function CompleteLabReportModal({
                                     </td>
                                     <td className="py-1.5 px-3">
                                       {res.flag === "H" && (
-                                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-none bg-amber-100 text-amber-800">
                                           ▲ High
                                         </span>
                                       )}
                                       {res.flag === "L" && (
-                                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-none bg-blue-100 text-blue-800">
                                           ▼ Low
                                         </span>
                                       )}
                                       {res.flag === "Critical" && (
-                                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-red-600 text-white">
+                                        <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-none bg-red-600 text-white">
                                           CRITICAL
                                         </span>
                                       )}
@@ -251,7 +251,7 @@ export default function CompleteLabReportModal({
 
                         {/* AST Antibiotic Susceptibility Table if present */}
                         {isCulture && test.tableData && test.tableData.length > 0 && (
-                          <div className="mt-3 border rounded-md overflow-hidden bg-slate-50">
+                          <div className="mt-3 border border-gray-300 rounded-none overflow-hidden bg-slate-50">
                             <div className="bg-slate-200/80 px-3 py-1 text-[11px] font-bold text-slate-800">
                               Antimicrobial Susceptibility Profile
                             </div>
@@ -292,7 +292,7 @@ export default function CompleteLabReportModal({
 
                         {/* Comments */}
                         {test.clinicalComments && (
-                          <p className="text-[11px] text-gray-600 mt-2 bg-gray-50 p-2 rounded border border-gray-100">
+                          <p className="text-[11px] text-gray-600 mt-2 bg-gray-50 p-2 rounded-none border border-gray-200">
                             <strong>Note:</strong> {test.clinicalComments}
                           </p>
                         )}
@@ -311,7 +311,7 @@ export default function CompleteLabReportModal({
               This is an electronically validated diagnostic report. Results relate strictly to the sample specimen received.
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-6 pt-4 text-xs">
+            <div className="grid grid-cols-2 gap-8 pt-4 text-xs">
               <div className="border-t border-gray-400 pt-2">
                 <span className="text-[10px] text-gray-400 uppercase block font-semibold">
                   Prepared & Tested By
@@ -335,17 +335,6 @@ export default function CompleteLabReportModal({
                   Consultant Pathologist · Reg No: 48921
                 </span>
               </div>
-
-              <div className="border-t border-gray-400 pt-2 col-span-2 md:col-span-1 text-right">
-                <div className="inline-block p-1 border border-gray-300 rounded text-center">
-                  <span className="text-[9px] text-gray-400 font-mono block">
-                    SECURE QR VERIFICATION
-                  </span>
-                  <div className="w-16 h-16 bg-gray-100 mx-auto flex items-center justify-center text-[10px] text-gray-400 font-mono">
-                    [QR CODE]
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -359,13 +348,13 @@ export default function CompleteLabReportModal({
           <div className="flex items-center gap-3">
             <button
               onClick={handlePrint}
-              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs"
+              className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-none shadow-xs cursor-pointer"
             >
               Print Report
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-50 cursor-pointer"
             >
               Close
             </button>
