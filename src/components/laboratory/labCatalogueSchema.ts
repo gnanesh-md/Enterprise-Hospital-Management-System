@@ -87,7 +87,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Complete Blood Count / Hemogram",
             sampleType: "Whole Blood (Lavender Top EDTA)",
-            price: 350,
+            price: 740,
             turnaroundTime: "2 Hours",
             parameters: [
               {
@@ -163,7 +163,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Complete Blood Count / Hemogram",
             sampleType: "Whole Blood (Lavender Top EDTA)",
-            price: 200,
+            price: 150,
             turnaroundTime: "2 Hours",
             parameters: [
               {
@@ -213,7 +213,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Additional Hematology Parameters",
             sampleType: "Whole Blood (EDTA)",
-            price: 250,
+            price: 200,
             parameters: [
               {
                 id: "aec",
@@ -232,7 +232,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Additional Hematology Parameters",
             sampleType: "Sodium Citrate / EDTA",
-            price: 150,
+            price: 140,
             parameters: [
               {
                 id: "esr",
@@ -257,7 +257,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Blood Group & Coagulation",
             sampleType: "Whole Blood (EDTA)",
-            price: 200,
+            price: 170,
             parameters: [
               {
                 id: "abo_group",
@@ -282,7 +282,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Blood Group & Coagulation",
             sampleType: "In Vivo (Duke / Ivy Method)",
-            price: 150,
+            price: 240,
             parameters: [
               {
                 id: "bleeding_time",
@@ -301,7 +301,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Blood Group & Coagulation",
             sampleType: "Capillary / Tube Method",
-            price: 150,
+            price: 240,
             parameters: [
               {
                 id: "clotting_time",
@@ -320,7 +320,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Blood Group & Coagulation",
             sampleType: "Citrated Plasma (Light Blue Top)",
-            price: 450,
+            price: 430,
             parameters: [
               {
                 id: "pt",
@@ -354,7 +354,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Blood Group & Coagulation",
             sampleType: "Citrated Plasma (Light Blue Top)",
-            price: 450,
+            price: 410,
             parameters: [
               {
                 id: "aptt",
@@ -387,7 +387,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Peripheral Smear / Screening",
             sampleType: "Whole Blood (EDTA)",
-            price: 300,
+            price: 740,
             parameters: [
               {
                 id: "rbc_morphology",
@@ -428,7 +428,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "HEMATOLOGY",
             subModule: "Peripheral Smear / Screening",
             sampleType: "Capillary / Venous Blood (QBC tube)",
-            price: 400,
+            price: 660,
             parameters: [
               {
                 id: "qbc_result",
@@ -467,7 +467,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Urine Examination",
             sampleType: "Clean Catch Midstream Urine",
-            price: 250,
+            price: 300,
             parameters: [
               {
                 id: "colour",
@@ -582,7 +582,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Urine Examination",
             sampleType: "Urine",
-            price: 200,
+            price: 180,
             parameters: [
               {
                 id: "physical_exam",
@@ -617,7 +617,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Urine Examination",
             sampleType: "Unspun Midstream Urine",
-            price: 250,
+            price: 500,
             parameters: [
               {
                 id: "organisms_seen",
@@ -646,7 +646,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Urine Examination",
             sampleType: "Fresh Urine",
-            price: 200,
+            price: 100,
             parameters: [
               {
                 id: "bile_salts",
@@ -671,7 +671,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Urine Examination",
             sampleType: "Fresh Urine",
-            price: 100,
+            price: 80,
             parameters: [
               {
                 id: "urine_ph",
@@ -689,7 +689,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Urine Examination",
             sampleType: "Fresh Urine",
-            price: 100,
+            price: 80,
             parameters: [
               {
                 id: "specific_gravity",
@@ -707,7 +707,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Urine Examination",
             sampleType: "Fresh Urine",
-            price: 100,
+            price: 80,
             parameters: [
               {
                 id: "urine_sugar",
@@ -743,7 +743,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Urine Examination",
             sampleType: "Fresh Urine",
-            price: 100,
+            price: 180,
             parameters: [
               {
                 id: "ketone_bodies",
@@ -825,7 +825,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Viral / Serology Screening",
             sampleType: "Serum (Red / SST)",
-            price: 450,
+            price: 830,
             parameters: [
               {
                 id: "test_result",
@@ -855,7 +855,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Viral / Serology Screening",
             sampleType: "Serum (Red / SST)",
-            price: 450,
+            price: 910,
             parameters: [
               {
                 id: "test_result",
@@ -885,7 +885,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "PATHOLOGY",
             subModule: "Viral / Serology Screening",
             sampleType: "Serum (Red / SST)",
-            price: 450,
+            price: 660,
             parameters: [
               {
                 id: "test_result",
@@ -931,7 +931,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Culture & Sensitivity",
             sampleType: "Midstream Urine (Sterile Container)",
-            price: 750,
+            price: 660,
             parameters: [
               { id: "specimen", name: "Specimen", inputType: "text", defaultValue: "Midstream Urine" },
               { id: "culture_growth", name: "Culture Growth", inputType: "text", defaultValue: "No significant growth after 48 hours of incubation at 37°C" },
@@ -948,7 +948,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Culture & Sensitivity",
             sampleType: "Venous Blood (BD BACTEC Bottle)",
-            price: 1200,
+            price: 1650,
             parameters: [
               { id: "specimen", name: "Specimen", inputType: "text", defaultValue: "Venous Blood (Paired aerobic/anaerobic bottles)" },
               { id: "culture_result", name: "Culture Result", inputType: "text", defaultValue: "No bacterial or fungal growth observed after 5 days of incubation" },
@@ -964,7 +964,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Culture & Sensitivity",
             sampleType: "Pus Aspirate / Swab",
-            price: 750,
+            price: 660,
             parameters: [
               { id: "specimen", name: "Specimen", inputType: "text", defaultValue: "Wound Aspirate / Pus Swab" },
               { id: "culture_growth", name: "Culture Growth", inputType: "text", defaultValue: "Moderate growth of Staphylococcus aureus" },
@@ -980,7 +980,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Culture & Sensitivity",
             sampleType: "Aspirated Body Fluid",
-            price: 850,
+            price: 660,
             parameters: [
               { id: "fluid_type", name: "Fluid Type", inputType: "select", options: ["Pleural Fluid", "Ascitic Fluid", "Synovial Fluid", "Peritoneal Fluid", "Pericardial Fluid"], defaultValue: "Pleural Fluid" },
               { id: "culture_growth", name: "Culture Growth", inputType: "text", defaultValue: "No growth after 48h incubation" },
@@ -996,7 +996,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Culture & Sensitivity",
             sampleType: "Early Morning Sputum",
-            price: 750,
+            price: 660,
             parameters: [
               { id: "specimen_quality", name: "Specimen Quality", inputType: "text", defaultValue: "Acceptable (> 25 WBCs, < 10 Epithelial cells/LPF)" },
               { id: "culture_growth", name: "Culture Growth", inputType: "text", defaultValue: "Normal upper respiratory tract flora only" },
@@ -1012,7 +1012,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Culture & Sensitivity",
             sampleType: "Bronchoalveolar Lavage (Sterile Container)",
-            price: 950,
+            price: 660,
             parameters: [
               { id: "specimen", name: "Specimen", inputType: "text", defaultValue: "Bronchoalveolar Lavage" },
               { id: "culture_growth", name: "Culture Growth", inputType: "text", defaultValue: "No significant organism isolated" },
@@ -1034,7 +1034,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Stains / Direct Microscopy",
             sampleType: "Early Morning Sputum",
-            price: 250,
+            price: 440,
             parameters: [
               { id: "afb_smear_result", name: "AFB Smear Result", inputType: "grade", defaultValue: "Negative for Acid Fast Bacilli" },
               { id: "remarks", name: "Remarks", inputType: "text", defaultValue: "No acid-fast bacilli seen after examining 100 oil immersion fields (RNTCP guidelines)." },
@@ -1047,7 +1047,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Stains / Direct Microscopy",
             sampleType: "Purulent portion of Sputum",
-            price: 200,
+            price: 500,
             parameters: [
               { id: "gram_reaction", name: "Gram Reaction", inputType: "text", defaultValue: "Gram-positive cocci in pairs and short chains" },
               { id: "organisms", name: "Organisms", inputType: "text", defaultValue: "Suggestive of Streptococcus species" },
@@ -1062,7 +1062,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Stains / Direct Microscopy",
             sampleType: "Sputum",
-            price: 250,
+            price: 500,
             parameters: [
               { id: "zn_afb_result", name: "ZN / AFB Result", inputType: "grade", defaultValue: "Negative for AFB" },
               { id: "remarks", name: "Remarks", inputType: "text", defaultValue: "Examined > 100 microscopic fields. No mycobacteria seen." },
@@ -1075,7 +1075,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Stains / Direct Microscopy",
             sampleType: "BAL Centrifuged Deposit",
-            price: 300,
+            price: 500,
             parameters: [
               { id: "afb_result", name: "AFB Result", inputType: "grade", defaultValue: "Negative" },
               { id: "remarks", name: "Remarks", inputType: "text", defaultValue: "No AFB detected in concentrated cytospin smear." },
@@ -1088,7 +1088,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Stains / Direct Microscopy",
             sampleType: "BAL Fluid",
-            price: 250,
+            price: 500,
             parameters: [
               { id: "gram_reaction", name: "Gram Reaction", inputType: "text", defaultValue: "No predominant bacterial morphotype" },
               { id: "organisms", name: "Organisms", inputType: "text", defaultValue: "None seen" },
@@ -1102,7 +1102,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Stains / Direct Microscopy",
             sampleType: "BAL Fluid",
-            price: 300,
+            price: 500,
             parameters: [
               { id: "zn_afb_result", name: "ZN / AFB Result", inputType: "grade", defaultValue: "Negative for AFB" },
               { id: "remarks", name: "Remarks", inputType: "text", defaultValue: "Negative on Ziehl-Neelsen staining." },
@@ -1115,7 +1115,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Stains / Direct Microscopy",
             sampleType: "BAL Fluid",
-            price: 350,
+            price: 500,
             parameters: [
               { id: "fungal_elements", name: "Fungal Elements", inputType: "present_absent", options: ["Absent", "Present"], defaultValue: "Absent" },
               { id: "organism_morphology", name: "Organism / Morphology", inputType: "text", defaultValue: "No hyphae, yeast cells, or pseudohyphae seen" },
@@ -1135,7 +1135,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Fluid Analysis",
             sampleType: "Thoracentesis Fluid (EDTA + Plain)",
-            price: 850,
+            price: 560,
             parameters: [
               { id: "appearance_colour", name: "Appearance / Colour", inputType: "text", defaultValue: "Straw coloured, clear" },
               { id: "total_cell_count", name: "Total Cell Count", inputType: "numeric", unit: "cells/µL", referenceRange: { low: 0, high: 1000, text: "< 1,000 cells/µL" }, defaultValue: "450" },
@@ -1156,7 +1156,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Fluid Analysis",
             sampleType: "Paracentesis Fluid",
-            price: 850,
+            price: 560,
             parameters: [
               { id: "appearance_colour", name: "Appearance / Colour", inputType: "text", defaultValue: "Pale yellow, slightly hazy" },
               { id: "total_cell_count", name: "Total Cell Count", inputType: "numeric", unit: "cells/µL", referenceRange: { low: 0, high: 500, text: "< 500 cells/µL" }, defaultValue: "280" },
@@ -1177,7 +1177,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Fluid Analysis",
             sampleType: "Arthrocentesis Fluid",
-            price: 900,
+            price: 560,
             parameters: [
               { id: "appearance_colour", name: "Appearance / Colour", inputType: "text", defaultValue: "Clear, pale straw" },
               { id: "viscosity", name: "Viscosity", inputType: "text", defaultValue: "High (String test > 3 cm)" },
@@ -1198,7 +1198,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "Fluid Analysis",
             sampleType: "Peritoneal Aspirate",
-            price: 850,
+            price: 560,
             parameters: [
               { id: "appearance_colour", name: "Appearance / Colour", inputType: "text", defaultValue: "Straw coloured, clear" },
               { id: "total_cell_count", name: "Total Cell Count", inputType: "numeric", unit: "cells/µL", referenceRange: { low: 0, high: 300, text: "< 300 cells/µL" }, defaultValue: "120" },
@@ -1224,7 +1224,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "CSF Investigations",
             sampleType: "Lumbar Puncture CSF (Sterile Plain Tubes)",
-            price: 1100,
+            price: 1160,
             parameters: [
               { id: "appearance_colour", name: "Appearance / Colour", inputType: "text", defaultValue: "Clear, colorless (Crystal clear)" },
               { id: "opening_pressure", name: "Opening Pressure (if measured)", inputType: "numeric", unit: "cm H2O", referenceRange: { low: 10, high: 20, text: "10–20 cm H2O" }, defaultValue: "14" },
@@ -1244,7 +1244,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "CSF Investigations",
             sampleType: "CSF Deposit",
-            price: 350,
+            price: 500,
             parameters: [
               { id: "afb_result", name: "AFB Result", inputType: "grade", defaultValue: "Negative for Acid Fast Bacilli" },
               { id: "remarks", name: "Remarks", inputType: "text", defaultValue: "Centrifuged cytospin deposit examined for 100 fields." },
@@ -1257,7 +1257,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "CSF Investigations",
             sampleType: "CSF Deposit",
-            price: 300,
+            price: 500,
             parameters: [
               { id: "gram_reaction", name: "Gram Reaction", inputType: "text", defaultValue: "No organisms seen" },
               { id: "organisms", name: "Organisms", inputType: "text", defaultValue: "None" },
@@ -1271,7 +1271,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "CSF Investigations",
             sampleType: "CSF (Fresh Sterile)",
-            price: 3500,
+            price: 5500,
             parameters: [
               { id: "panel_result", name: "Panel Result", inputType: "detected_not_detected", options: ["Not Detected", "Detected"], defaultValue: "Not Detected" },
               { id: "organism_target", name: "Organism / Target", inputType: "text", defaultValue: "Multiplex PCR panel covering common bacterial & viral pathogens negative" },
@@ -1285,7 +1285,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "MICROBIOLOGY",
             subModule: "CSF Investigations",
             sampleType: "CSF (Fresh Sterile)",
-            price: 6500,
+            price: 5500,
             parameters: [
               { id: "panel_result", name: "Panel Result", inputType: "detected_not_detected", options: ["Not Detected", "Detected"], defaultValue: "Not Detected" },
               { id: "detected_target", name: "Detected Target", inputType: "text", defaultValue: "None" },
@@ -1315,7 +1315,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Liver Function / Related Tests",
             sampleType: "Serum (Gold Top SST)",
-            price: 750,
+            price: 1320,
             parameters: [
               { id: "total_bilirubin", name: "Total Bilirubin", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 0.2, high: 1.2, text: "0.2–1.2 mg/dL" }, defaultValue: "0.8" },
               { id: "direct_bilirubin", name: "Direct Bilirubin", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 0.0, high: 0.3, text: "0.0–0.3 mg/dL" }, defaultValue: "0.2" },
@@ -1337,7 +1337,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Liver Function / Related Tests",
             sampleType: "Serum",
-            price: 200,
+            price: 370,
             parameters: [
               { id: "ast_sgot", name: "AST / SGOT", inputType: "numeric", unit: "U/L", referenceRange: { low: 10, high: 40, text: "10–40 U/L" }, defaultValue: "28" },
             ],
@@ -1349,7 +1349,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Liver Function / Related Tests",
             sampleType: "Serum",
-            price: 200,
+            price: 370,
             parameters: [
               { id: "alt_sgpt", name: "ALT / SGPT", inputType: "numeric", unit: "U/L", referenceRange: { low: 7, high: 56, text: "7–56 U/L" }, defaultValue: "30" },
             ],
@@ -1361,7 +1361,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Liver Function / Related Tests",
             sampleType: "Serum",
-            price: 300,
+            price: 750,
             parameters: [
               { id: "gamma_gt_ggt", name: "Gamma GT / GGT", inputType: "numeric", unit: "U/L", referenceRange: { low: 9, high: 48, text: "9–48 U/L" }, defaultValue: "22" },
             ],
@@ -1373,7 +1373,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Liver Function / Related Tests",
             sampleType: "Serum",
-            price: 180,
+            price: 300,
             parameters: [
               { id: "total_bilirubin", name: "Total Bilirubin", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 0.2, high: 1.2, text: "0.2–1.2 mg/dL" }, defaultValue: "0.7" },
             ],
@@ -1391,7 +1391,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Serum (Gold Top SST)",
-            price: 700,
+            price: 660,
             parameters: [
               { id: "bun", name: "Blood Urea Nitrogen (BUN)", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 7, high: 20, text: "7–20 mg/dL" }, defaultValue: "14" },
               { id: "creatinine", name: "Creatinine", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 0.7, high: 1.3, text: "0.7–1.3 mg/dL" }, defaultValue: "0.9" },
@@ -1407,7 +1407,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Serum",
-            price: 180,
+            price: 250,
             parameters: [
               { id: "bun", name: "BUN", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 7, high: 20, text: "7–20 mg/dL" }, defaultValue: "13" },
             ],
@@ -1419,7 +1419,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Serum",
-            price: 200,
+            price: 260,
             parameters: [
               { id: "serum_creatinine", name: "Serum Creatinine", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 0.7, high: 1.3, text: "0.7–1.3 mg/dL" }, defaultValue: "0.95" },
             ],
@@ -1455,7 +1455,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Serum",
-            price: 220,
+            price: 500,
             parameters: [
               { id: "uric_acid", name: "Uric Acid", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 3.5, high: 7.2, text: "3.5–7.2 mg/dL" }, defaultValue: "5.4" },
             ],
@@ -1467,7 +1467,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Fluoride Plasma",
-            price: 120,
+            price: 80,
             parameters: [
               { id: "fasting_blood_sugar", name: "Fasting Blood Sugar", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 70, high: 99, criticalLow: 50, criticalHigh: 350, text: "70–99 mg/dL" }, defaultValue: "88" },
             ],
@@ -1479,7 +1479,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Fluoride Plasma (2h Post-prandial)",
-            price: 120,
+            price: 80,
             parameters: [
               { id: "ppbs", name: "Post-Prandial Blood Sugar", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 70, high: 140, text: "< 140 mg/dL" }, defaultValue: "124" },
             ],
@@ -1491,7 +1491,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Fluoride Plasma",
-            price: 100,
+            price: 80,
             parameters: [
               { id: "random_blood_sugar", name: "Random Blood Sugar", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 70, high: 140, text: "70–140 mg/dL" }, defaultValue: "110" },
             ],
@@ -1503,7 +1503,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Renal / Metabolic / Routine Chemistry",
             sampleType: "Whole Blood (EDTA)",
-            price: 550,
+            price: 1120,
             parameters: [
               { id: "hba1c", name: "HbA1c", inputType: "numeric", unit: "%", referenceRange: { low: 4.0, high: 5.6, text: "< 5.7 % (Non-diabetic), 5.7–6.4 % (Prediabetes), >= 6.5 % (Diabetic)" }, defaultValue: "5.4" },
               { id: "estimated_avg_glucose", name: "Estimated Average Glucose (if reported)", inputType: "numeric", unit: "mg/dL", referenceRange: { text: "100–125 mg/dL" }, defaultValue: "108" },
@@ -1522,7 +1522,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Lipid / Protein / Enzymes",
             sampleType: "Serum (12h Fasting)",
-            price: 650,
+            price: 1250,
             parameters: [
               { id: "total_cholesterol", name: "Total Cholesterol", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 120, high: 200, text: "< 200 mg/dL" }, defaultValue: "175" },
               { id: "triglycerides", name: "Triglycerides", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 40, high: 150, text: "< 150 mg/dL" }, defaultValue: "128" },
@@ -1539,7 +1539,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Lipid / Protein / Enzymes",
             sampleType: "Serum",
-            price: 180,
+            price: 250,
             parameters: [
               { id: "total_protein", name: "Total Protein", inputType: "numeric", unit: "g/dL", referenceRange: { low: 6.0, high: 8.3, text: "6.0–8.3 g/dL" }, defaultValue: "7.2" },
             ],
@@ -1551,7 +1551,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Lipid / Protein / Enzymes",
             sampleType: "Serum",
-            price: 180,
+            price: 210,
             parameters: [
               { id: "serum_albumin", name: "Serum Albumin", inputType: "numeric", unit: "g/dL", referenceRange: { low: 3.5, high: 5.0, text: "3.5–5.0 g/dL" }, defaultValue: "4.4" },
             ],
@@ -1563,7 +1563,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Lipid / Protein / Enzymes",
             sampleType: "Serum",
-            price: 350,
+            price: 660,
             parameters: [
               { id: "amylase", name: "Amylase", inputType: "numeric", unit: "U/L", referenceRange: { low: 28, high: 100, text: "28–100 U/L" }, defaultValue: "55" },
             ],
@@ -1575,7 +1575,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Lipid / Protein / Enzymes",
             sampleType: "Serum",
-            price: 450,
+            price: 1970,
             parameters: [
               { id: "lipase", name: "Lipase", inputType: "numeric", unit: "U/L", referenceRange: { low: 13, high: 60, text: "13–60 U/L" }, defaultValue: "35" },
             ],
@@ -1587,7 +1587,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Lipid / Protein / Enzymes",
             sampleType: "Serum",
-            price: 400,
+            price: 1250,
             parameters: [
               { id: "cpk_total", name: "Creatine Kinase / CPK Total", inputType: "numeric", unit: "U/L", referenceRange: { low: 30, high: 200, text: "30–200 U/L" }, defaultValue: "90" },
             ],
@@ -1599,7 +1599,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Lipid / Protein / Enzymes",
             sampleType: "Serum",
-            price: 450,
+            price: 1250,
             parameters: [
               { id: "cpk_mb", name: "CK-MB", inputType: "numeric", unit: "U/L", referenceRange: { low: 0, high: 25, text: "0–25 U/L (or < 5.0 ng/mL)" }, defaultValue: "12" },
             ],
@@ -1617,7 +1617,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Electrolytes / Minerals",
             sampleType: "Serum (Plain / Heparin)",
-            price: 450,
+            price: 1050,
             parameters: [
               { id: "sodium", name: "Sodium (Na+)", inputType: "numeric", unit: "mmol/L", referenceRange: { low: 135, high: 145, criticalLow: 120, criticalHigh: 160, text: "135–145 mmol/L" }, defaultValue: "140" },
               { id: "potassium", name: "Potassium (K+)", inputType: "numeric", unit: "mmol/L", referenceRange: { low: 3.5, high: 5.1, criticalLow: 2.8, criticalHigh: 6.2, text: "3.5–5.1 mmol/L" }, defaultValue: "4.2" },
@@ -1631,7 +1631,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Electrolytes / Minerals",
             sampleType: "Serum",
-            price: 180,
+            price: 500,
             parameters: [
               { id: "sodium", name: "Sodium (Na+)", inputType: "numeric", unit: "mmol/L", referenceRange: { low: 135, high: 145, text: "135–145 mmol/L" }, defaultValue: "141" },
             ],
@@ -1643,7 +1643,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Electrolytes / Minerals",
             sampleType: "Serum",
-            price: 180,
+            price: 500,
             parameters: [
               { id: "potassium", name: "Potassium (K+)", inputType: "numeric", unit: "mmol/L", referenceRange: { low: 3.5, high: 5.1, text: "3.5–5.1 mmol/L" }, defaultValue: "4.3" },
             ],
@@ -1655,7 +1655,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Electrolytes / Minerals",
             sampleType: "Serum",
-            price: 200,
+            price: 660,
             parameters: [
               { id: "calcium", name: "Calcium", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 8.6, high: 10.2, text: "8.6–10.2 mg/dL" }, defaultValue: "9.4" },
             ],
@@ -1667,7 +1667,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Electrolytes / Minerals",
             sampleType: "Serum",
-            price: 250,
+            price: 1780,
             parameters: [
               { id: "magnesium", name: "Magnesium", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 1.7, high: 2.2, text: "1.7–2.2 mg/dL" }, defaultValue: "2.0" },
             ],
@@ -1679,7 +1679,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Electrolytes / Minerals",
             sampleType: "Serum",
-            price: 220,
+            price: 500,
             parameters: [
               { id: "phosphorus", name: "Phosphorus", inputType: "numeric", unit: "mg/dL", referenceRange: { low: 2.5, high: 4.5, text: "2.5–4.5 mg/dL" }, defaultValue: "3.6" },
             ],
@@ -1697,7 +1697,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Cardiac / Critical Care Markers",
             sampleType: "Serum / Heparin Plasma",
-            price: 1500,
+            price: 1000,
             parameters: [
               { id: "troponin_i", name: "Troponin I", inputType: "numeric", unit: "ng/mL", referenceRange: { low: 0, high: 0.04, criticalHigh: 0.1, text: "< 0.04 ng/mL" }, defaultValue: "0.01" },
               { id: "interpretation", name: "Interpretation", inputType: "text", defaultValue: "Within normal limits. Below cut-off for myocardial injury." },
@@ -1710,7 +1710,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Cardiac / Critical Care Markers",
             sampleType: "Serum / EDTA Plasma",
-            price: 2200,
+            price: 3450,
             parameters: [
               { id: "nt_probnp", name: "NT-proBNP", inputType: "numeric", unit: "pg/mL", referenceRange: { low: 0, high: 125, text: "< 125 pg/mL (< 75y: < 125, >= 75y: < 450)" }, defaultValue: "72" },
               { id: "interpretation", name: "Interpretation", inputType: "text", defaultValue: "Normal ventricular wall stress." },
@@ -1723,7 +1723,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Cardiac / Critical Care Markers",
             sampleType: "Serum (SST)",
-            price: 1800,
+            price: 3000,
             parameters: [
               { id: "procalcitonin", name: "Procalcitonin", inputType: "numeric", unit: "ng/mL", referenceRange: { low: 0, high: 0.1, text: "< 0.1 ng/mL (< 0.5: Sepsis unlikely, >= 2.0: High risk)" }, defaultValue: "0.05" },
               { id: "interpretation", name: "Interpretation", inputType: "text", defaultValue: "Low risk of systemic bacterial infection." },
@@ -1736,7 +1736,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Cardiac / Critical Care Markers",
             sampleType: "Fluoride / Heparin Plasma (on Ice)",
-            price: 550,
+            price: 1450,
             parameters: [
               { id: "lactate", name: "Lactate", inputType: "numeric", unit: "mmol/L", referenceRange: { low: 0.5, high: 2.0, criticalHigh: 4.0, text: "0.5–2.0 mmol/L" }, defaultValue: "1.2" },
             ],
@@ -1748,7 +1748,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Cardiac / Critical Care Markers",
             sampleType: "Citrated Plasma (Light Blue Top)",
-            price: 1200,
+            price: 2800,
             parameters: [
               { id: "d_dimer", name: "D-Dimer", inputType: "numeric", unit: "µg/mL FEU", referenceRange: { low: 0, high: 0.5, text: "< 0.5 µg/mL FEU" }, defaultValue: "0.25" },
             ],
@@ -1766,7 +1766,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "Serum",
-            price: 1200,
+            price: 2640,
             parameters: [
               { id: "vitamin_d_25oh", name: "25-OH Vitamin D", inputType: "numeric", unit: "ng/mL", referenceRange: { low: 30, high: 100, text: "30–100 ng/mL (Deficient: < 20)" }, defaultValue: "36.5" },
             ],
@@ -1778,7 +1778,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "Serum",
-            price: 900,
+            price: 2640,
             parameters: [
               { id: "vitamin_b12", name: "Vitamin B12", inputType: "numeric", unit: "pg/mL", referenceRange: { low: 200, high: 900, text: "200–900 pg/mL" }, defaultValue: "485" },
             ],
@@ -1790,7 +1790,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "Serum",
-            price: 700,
+            price: 1650,
             parameters: [
               { id: "cholinesterase", name: "Cholinesterase", inputType: "numeric", unit: "U/L", referenceRange: { low: 5320, high: 12920, text: "5,320–12,920 U/L" }, defaultValue: "8600" },
             ],
@@ -1802,7 +1802,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "Serum",
-            price: 550,
+            price: 1320,
             parameters: [
               { id: "fsh", name: "FSH", inputType: "numeric", unit: "mIU/mL", referenceRange: { low: 1.5, high: 12.4, text: "1.5–12.4 mIU/mL (Follicular)" }, defaultValue: "6.2" },
             ],
@@ -1814,7 +1814,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "Serum",
-            price: 550,
+            price: 1320,
             parameters: [
               { id: "lh", name: "LH", inputType: "numeric", unit: "mIU/mL", referenceRange: { low: 1.7, high: 8.6, text: "1.7–8.6 mIU/mL" }, defaultValue: "4.8" },
             ],
@@ -1826,7 +1826,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "Serum",
-            price: 550,
+            price: 1980,
             parameters: [
               { id: "prolactin", name: "Prolactin", inputType: "numeric", unit: "ng/mL", referenceRange: { low: 4.0, high: 23.0, text: "4.0–23.0 ng/mL" }, defaultValue: "11.5" },
             ],
@@ -1838,7 +1838,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "Serum",
-            price: 650,
+            price: 1310,
             parameters: [
               { id: "beta_hcg", name: "β-HCG", inputType: "numeric", unit: "mIU/mL", referenceRange: { low: 0, high: 5, text: "< 5.0 mIU/mL (Non-pregnant)" }, defaultValue: "1.2" },
             ],
@@ -1850,7 +1850,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "Serum",
-            price: 750,
+            price: 2110,
             parameters: [
               { id: "psa", name: "PSA", inputType: "numeric", unit: "ng/mL", referenceRange: { low: 0, high: 4.0, text: "< 4.0 ng/mL" }, defaultValue: "1.1" },
             ],
@@ -1862,7 +1862,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Vitamins / Hormones / Special Chemistry",
             sampleType: "EDTA Plasma (Frozen)",
-            price: 1100,
+            price: 2450,
             parameters: [
               { id: "pth", name: "Parathyroid Hormone (PTH)", inputType: "numeric", unit: "pg/mL", referenceRange: { low: 15, high: 65, text: "15–65 pg/mL" }, defaultValue: "32.0" },
             ],
@@ -1880,7 +1880,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Iron Studies",
             sampleType: "Serum (Morning Fasting)",
-            price: 850,
+            price: 1920,
             parameters: [
               { id: "serum_iron", name: "Serum Iron", inputType: "numeric", unit: "µg/dL", referenceRange: { low: 60, high: 170, text: "60–170 µg/dL" }, defaultValue: "95" },
               { id: "tibc", name: "TIBC", inputType: "numeric", unit: "µg/dL", referenceRange: { low: 240, high: 450, text: "240–450 µg/dL" }, defaultValue: "320" },
@@ -1896,7 +1896,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Iron Studies",
             sampleType: "Serum",
-            price: 300,
+            price: 1920,
             parameters: [
               { id: "serum_iron", name: "Serum Iron", inputType: "numeric", unit: "µg/dL", referenceRange: { low: 60, high: 170, text: "60–170 µg/dL" }, defaultValue: "92" },
             ],
@@ -1908,7 +1908,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "BIOCHEMISTRY",
             subModule: "Iron Studies",
             sampleType: "Serum",
-            price: 350,
+            price: 1920,
             parameters: [
               { id: "total_iron_binding_capacity", name: "Total Iron Binding Capacity", inputType: "numeric", unit: "µg/dL", referenceRange: { low: 240, high: 450, text: "240–450 µg/dL" }, defaultValue: "315" },
             ],
@@ -1936,7 +1936,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Autoimmune Tests",
             sampleType: "Serum",
-            price: 800,
+            price: 2200,
             parameters: [
               { id: "ana_result", name: "ANA Result", inputType: "positive_negative", options: ["Negative", "Positive"], defaultValue: "Negative" },
               { id: "titer", name: "Titer (if applicable)", inputType: "text", defaultValue: "< 1:80" },
@@ -1950,7 +1950,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Autoimmune Tests",
             sampleType: "Serum",
-            price: 2500,
+            price: 6500,
             parameters: [
               { id: "panel_result", name: "Panel Result", inputType: "text", defaultValue: "Negative for 15 autoantibody markers" },
               { id: "individual_antibodies", name: "Individual Antibodies", inputType: "text", defaultValue: "dsDNA: Neg, Sm: Neg, SS-A: Neg, SS-B: Neg, Scl-70: Neg, Jo-1: Neg" },
@@ -1964,7 +1964,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Autoimmune Tests",
             sampleType: "Serum",
-            price: 1100,
+            price: 2030,
             parameters: [
               { id: "anca_result", name: "ANCA Result", inputType: "positive_negative", options: ["Negative", "Positive"], defaultValue: "Negative" },
               { id: "titer", name: "Titer (if applicable)", inputType: "text", defaultValue: "< 1:20" },
@@ -1978,7 +1978,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Autoimmune Tests",
             sampleType: "Serum",
-            price: 850,
+            price: 2030,
             parameters: [
               { id: "p_anca_result", name: "p-ANCA Result", inputType: "positive_negative", options: ["Negative", "Positive"], defaultValue: "Negative" },
               { id: "titer", name: "Titer (if applicable)", inputType: "text", defaultValue: "< 1:20" },
@@ -1991,7 +1991,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Autoimmune Tests",
             sampleType: "Serum",
-            price: 1200,
+            price: 2630,
             parameters: [
               { id: "anti_ccp", name: "Anti-CCP", inputType: "numeric", unit: "U/mL", referenceRange: { low: 0, high: 20, text: "< 20 U/mL (Negative)" }, defaultValue: "4.5" },
               { id: "interpretation", name: "Interpretation", inputType: "text", defaultValue: "Negative for cyclic citrullinated peptide antibodies." },
@@ -2022,7 +2022,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Tumor / Special Markers",
             sampleType: "Serum",
-            price: 1100,
+            price: 2500,
             parameters: [
               { id: "ca_19_9", name: "CA 19-9", inputType: "numeric", unit: "U/mL", referenceRange: { low: 0, high: 37, text: "< 37 U/mL" }, defaultValue: "12.4" },
             ],
@@ -2034,7 +2034,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Tumor / Special Markers",
             sampleType: "Serum",
-            price: 1100,
+            price: 2640,
             parameters: [
               { id: "ca_125", name: "CA 125", inputType: "numeric", unit: "U/mL", referenceRange: { low: 0, high: 35, text: "< 35 U/mL" }, defaultValue: "14.2" },
             ],
@@ -2046,7 +2046,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Tumor / Special Markers",
             sampleType: "Serum",
-            price: 950,
+            price: 1650,
             parameters: [
               { id: "cea", name: "CEA", inputType: "numeric", unit: "ng/mL", referenceRange: { low: 0, high: 3.0, text: "< 3.0 ng/mL (Non-smoker), < 5.0 (Smoker)" }, defaultValue: "1.6" },
             ],
@@ -2058,7 +2058,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "IMMUNOLOGY / SEROLOGY",
             subModule: "Tumor / Special Markers",
             sampleType: "Serum",
-            price: 700,
+            price: 1310,
             parameters: [
               { id: "beta_hcg", name: "β-HCG", inputType: "numeric", unit: "mIU/mL", referenceRange: { low: 0, high: 5.0, text: "< 5.0 mIU/mL" }, defaultValue: "0.8" },
             ],
@@ -2086,7 +2086,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "THYROID FUNCTION",
             subModule: "TFT",
             sampleType: "Serum (Gold Top SST)",
-            price: 750,
+            price: 1320,
             parameters: [
               { id: "t3", name: "T3", inputType: "numeric", unit: "ng/mL", referenceRange: { low: 0.8, high: 2.0, text: "0.8–2.0 ng/mL" }, defaultValue: "1.25" },
               { id: "t4", name: "T4", inputType: "numeric", unit: "µg/dL", referenceRange: { low: 5.1, high: 14.1, text: "5.1–14.1 µg/dL" }, defaultValue: "8.6" },
@@ -2118,7 +2118,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "OTHER SPECIAL TESTS",
             subModule: "Markers / Calculated / Blood Gas",
             sampleType: "Venous Blood Gas (Heparin Syringe)",
-            price: 650,
+            price: 1320,
             parameters: [
               { id: "ph", name: "pH", inputType: "numeric", referenceRange: { low: 7.31, high: 7.41, criticalLow: 7.15, criticalHigh: 7.60, text: "7.31–7.41" }, defaultValue: "7.36" },
               { id: "pco2", name: "pCO2", inputType: "numeric", unit: "mmHg", referenceRange: { low: 40, high: 52, text: "40–52 mmHg" }, defaultValue: "45.0" },
@@ -2136,7 +2136,7 @@ export const LAB_CATALOGUE: LabModule[] = [
             category: "OTHER SPECIAL TESTS",
             subModule: "Markers / Calculated / Blood Gas",
             sampleType: "Urine / Serum",
-            price: 350,
+            price: 130,
             parameters: [
               { id: "beta_hcg_result", name: "β-HCG Result", inputType: "numeric", unit: "mIU/mL", referenceRange: { text: "Negative: < 5 mIU/mL, Positive: > 25 mIU/mL" }, defaultValue: "2.1" },
               { id: "interpretation", name: "Interpretation", inputType: "text", defaultValue: "Negative. No detectable β-HCG elevation." },
