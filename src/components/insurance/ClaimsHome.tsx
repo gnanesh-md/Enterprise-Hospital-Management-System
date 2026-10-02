@@ -469,16 +469,29 @@ export default function ClaimsHome({
                       label: c.policy.insurerName.slice(0, 4).toUpperCase(),
                     }
 
-                    // Compute contextual action label matching standard desk guide
-                    let actionLabel = "Upload discharge papers and send claim"
+                    // Compute contextual action label and icon matching standard desk guide
+                    let actionLabel = "Upload discharge papers & send claim"
+                    let ActionIcon = Upload
+                    let actionToneStyle = "bg-blue-50 text-blue-700 border-blue-200/80 hover:bg-blue-100/90"
+
                     if (openQs.length > 0) {
-                      actionLabel = `Answer Insurer Query${isOverdue ? " (Overdue)" : ""}`
+                      actionLabel = isOverdue ? "Overdue query — reply now" : "Answer insurer query"
+                      ActionIcon = AlertTriangle
+                      actionToneStyle = isOverdue
+                        ? "bg-rose-50 text-rose-800 border-rose-200/80 hover:bg-rose-100"
+                        : "bg-amber-50 text-amber-800 border-amber-200/80 hover:bg-amber-100"
                     } else if (c.status === "APPROVED" || c.status === "PARTIALLY_APPROVED") {
                       actionLabel = "Enter settlement letter number"
+                      ActionIcon = CheckCircle2
+                      actionToneStyle = "bg-emerald-50 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100"
                     } else if (c.status === "PREAUTH_DRAFT" || c.status === "ELIGIBILITY_PENDING") {
                       actionLabel = "Submit pre-auth requisition"
+                      ActionIcon = FileText
+                      actionToneStyle = "bg-sky-50 text-sky-800 border-sky-200/80 hover:bg-sky-100"
                     } else if (c.status === "CLAIM_SUBMITTED") {
                       actionLabel = "Track adjudication response"
+                      ActionIcon = ArrowRight
+                      actionToneStyle = "bg-purple-50 text-purple-800 border-purple-200/80 hover:bg-purple-100"
                     }
 
                     return (
@@ -565,8 +578,9 @@ export default function ClaimsHome({
 
                         {/* Action Link / Button Pill */}
                         <td className="px-4 py-2.5">
-                          <div className="bg-[#EFF6FF] border border-blue-100 group-hover:bg-blue-100/80 text-blue-600 font-bold text-[10.5px] px-2.5 py-1.5 rounded-lg text-center leading-tight transition-colors shadow-2xs max-w-[150px]">
-                            {actionLabel}
+                          <div className={`inline-flex items-center gap-1.5 border font-semibold text-[10.5px] px-2.5 py-1.5 rounded-lg text-left leading-tight transition-all shadow-2xs max-w-[160px] ${actionToneStyle}`}>
+                            <ActionIcon size={12} className="shrink-0" />
+                            <span className="truncate">{actionLabel}</span>
                           </div>
                         </td>
 
