@@ -379,7 +379,6 @@ const NAV: NavItem[] = [
       { key: "insurance_overview", label: "Command Dashboard" },
       { key: "insurance_eligibility", label: "New Patient / Intake" },
       { key: "insurance_preauth", label: "Pre-Authorization" },
-      { key: "insurance_board", label: "Cashless Case Board" },
       { key: "insurance_claims", label: "Claims & Queries" },
       { key: "insurance_emails", label: "Email & TPA Decision Hub" },
       { key: "insurance_settlement", label: "Settlements" },
@@ -2479,11 +2478,22 @@ export default function App() {
                   onOpenIntake={() => setModule("insurance_eligibility" as any)}
                 />
               )}
-              {/* Page 2: Cashless Case Board */}
+              {/* Page 2: Insurance Command Dashboard (reused for board key) */}
               {(module === "insurance_board" as any) && (
-                <CashlessCaseBoard
-                  onOpenCase={(id) => { setInsuranceCaseId(id); setModule("insurance_case" as any) }}
-                  onOpenIntake={() => setModule("insurance_eligibility" as any)}
+                <InsuranceCommandDashboard
+                  onNavigate={(page, caseId) => {
+                    if (page === "preauth") setModule("insurance_preauth" as any)
+                    else if (page === "intake") setModule("insurance_eligibility" as any)
+                    else if (page === "claims") setModule("insurance_claims" as any)
+                    else if (page === "emails") setModule("insurance_emails" as any)
+                    else if (page === "settlements") setModule("insurance_settlement" as any)
+                    else if (page === "masters") setModule("insurance_masters" as any)
+                    else if (page === "case" && caseId) {
+                      setInsuranceCaseId(caseId)
+                      setModule("insurance_case" as any)
+                    }
+                    else setModule("insurance_overview" as any)
+                  }}
                 />
               )}
               {/* Page 3: Intake */}
