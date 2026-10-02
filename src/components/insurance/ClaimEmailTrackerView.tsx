@@ -1,27 +1,19 @@
 import React, { useState, useMemo } from "react"
-import type { ComprehensiveClaimRecord, MailPurpose, MailRecord } from "../../types/insurance"
+import type { ComprehensiveClaimRecord, MailRecord } from "../../types/insurance"
 import { InsuranceEngineService as E } from "../../services/insuranceDb"
 import { inr, fmtDateTime, type Notify } from "./ui"
 import { MailComposer } from "./mail"
 import {
   Mail,
-  MailCheck,
   Send,
-  Inbox,
   Paperclip,
   CheckCircle2,
-  AlertTriangle,
-  Clock,
   RefreshCw,
   FileText,
-  Building2,
   Sparkles,
   ArrowUpRight,
   ArrowDownLeft,
   Search,
-  Filter,
-  Eye,
-  Reply,
 } from "lucide-react"
 
 const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }> = {
@@ -39,7 +31,6 @@ const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }
 export default function ClaimEmailTrackerView({
   c,
   notify,
-  onApplyDecision,
 }: {
   c: ComprehensiveClaimRecord
   notify: Notify
@@ -51,7 +42,7 @@ export default function ClaimEmailTrackerView({
   const [isComposing, setIsComposing] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Seed baseline realistic emails if case has no emails yet
+  // Strictly filter and seed baseline realistic emails for THIS patient only
   const mails: MailRecord[] = useMemo(() => {
     if (c.mails && c.mails.length > 0) return c.mails
 
@@ -94,7 +85,7 @@ export default function ClaimEmailTrackerView({
     return mails[0]
   }, [mails, selectedMailId])
 
-  // Filtered email list
+  // Filtered email list for this patient
   const filteredMails = useMemo(() => {
     return mails.filter((m) => {
       if (filterType === "in" && m.direction !== "in") return false
@@ -126,7 +117,7 @@ export default function ClaimEmailTrackerView({
     }
   }, [mails])
 
-  // Simulate receiving a live decision email
+  // Simulate receiving a live decision email for this patient
   const handleSimulateInboundDecision = () => {
     setIsRefreshing(true)
     setTimeout(() => {
@@ -171,88 +162,41 @@ export default function ClaimEmailTrackerView({
 
   return (
     <div className="space-y-4">
-      {/* ── TOP METRIC STATUS BAR ── */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <h3 className="text-base font-bold text-slate-900">
-                Email &amp; TPA Decision Tracker Hub
-              </h3>
-              <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
-                Live IMAP &amp; Webhook Active
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Live bi-directional communication with <span className="font-bold text-slate-800">{c.policy.tpaName || c.policy.insurerName}</span> for Claim #{c.id}.
-            </p>
+      {/* ── SIMPLE & ATTRACTIVE HEADER FOR THIS PATIENT ONLY ── */}
+      <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+              Email History &amp; TPA Communications
+            </h3>
+            <span className="text-[11px] font-bold bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full border border-blue-200">
+              Patient: {c.patientName}
+            </span>
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSimulateInboundDecision}
-              disabled={isRefreshing}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-            >
-              <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} />
-              {isRefreshing ? "Checking TPA Server…" : "Check / Fetch Inbound Decision"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsComposing(!isComposing)}
-              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-            >
-              <Send size={13} /> {isComposing ? "Close Composer" : "Compose Outbound Email"}
-            </button>
-          </div>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">
+            Case #{c.id} • Insurer: <span className="font-bold text-slate-800">{c.policy.tpaName || c.policy.insurerName}</span> • Policy: <span className="font-mono text-slate-700">{c.policy.policyNumber || "POL-99420"}</span>
+          </p>
         </div>
 
-        {/* Email Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-slate-50/80 border border-slate-200/80 p-3 rounded-xl">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Total Messages
-            </span>
-            <div className="text-lg font-extrabold text-slate-900 mt-0.5 tabular-nums">
-              {mails.length} Emails
-            </div>
-            <span className="text-[10.5px] text-slate-400">Complete Case Thread</span>
-          </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleSimulateInboundDecision}
+            disabled={isRefreshing}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <RefreshCw size={13} className={isRefreshing ? "animate-spin" : ""} />
+            {isRefreshing ? "Checking TPA…" : "Fetch Inbound Decision"}
+          </button>
 
-          <div className="bg-emerald-50/60 border border-emerald-200/80 p-3 rounded-xl">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700">
-              Inbound Decisions
-            </span>
-            <div className="text-lg font-extrabold text-emerald-900 mt-0.5 tabular-nums">
-              {counts.in} Received
-            </div>
-            <span className="text-[10.5px] text-emerald-600 font-semibold">Sanctions &amp; Queries</span>
-          </div>
-
-          <div className="bg-blue-50/60 border border-blue-200/80 p-3 rounded-xl">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">
-              Outbound Dispatched
-            </span>
-            <div className="text-lg font-extrabold text-blue-900 mt-0.5 tabular-nums">
-              {counts.out} Sent
-            </div>
-            <span className="text-[10.5px] text-blue-600 font-semibold">Dossiers &amp; Replies</span>
-          </div>
-
-          <div className="bg-purple-50/60 border border-purple-200/80 p-3 rounded-xl">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700">
-              Active Pre-Auth Status
-            </span>
-            <div className="text-sm font-extrabold text-purple-900 mt-0.5 truncate">
-              {c.approvedPreAuthAmount > 0 ? `Approved: ${inr(c.approvedPreAuthAmount)}` : "Under TPA Review"}
-            </div>
-            <span className="text-[10.5px] text-purple-600 font-semibold">
-              {c.preAuth?.approvalCode ? `Code: ${c.preAuth.approvalCode}` : "Pending Sanction"}
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsComposing(!isComposing)}
+            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Send size={13} /> {isComposing ? "Close Composer" : "Compose Email"}
+          </button>
         </div>
       </div>
 
@@ -271,8 +215,8 @@ export default function ClaimEmailTrackerView({
         </div>
       )}
 
-      {/* ── MASTER-DETAIL EMAIL THREAD & VIEWER ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] border border-slate-200/90 rounded-2xl bg-white overflow-hidden shadow-2xs min-h-[540px]">
+      {/* ── CLEAN & ATTRACTIVE EMAIL THREAD & VIEWER ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] border border-slate-200/90 rounded-2xl bg-white overflow-hidden shadow-2xs min-h-[500px]">
         {/* Left Column: Email List */}
         <div className="border-r border-slate-200/90 flex flex-col bg-slate-50/30 overflow-hidden">
           {/* Search & Filter Bar */}
@@ -281,7 +225,7 @@ export default function ClaimEmailTrackerView({
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search subject or sender…"
+                placeholder="Search subject or body…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 h-8.5 text-xs bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
@@ -308,9 +252,11 @@ export default function ClaimEmailTrackerView({
                   }`}
                 >
                   <span>{f.label}</span>
-                  <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-mono ${
-                    filterType === f.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
-                  }`}>
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-mono ${
+                      filterType === f.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
                     {f.count}
                   </span>
                 </button>
@@ -319,7 +265,7 @@ export default function ClaimEmailTrackerView({
           </div>
 
           {/* Email Item Rows */}
-          <div className="overflow-y-auto divide-y divide-slate-100 max-h-[540px]">
+          <div className="overflow-y-auto divide-y divide-slate-100 max-h-[500px]">
             {filteredMails.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400">
                 No emails match your filter selection.
@@ -347,15 +293,17 @@ export default function ClaimEmailTrackerView({
                         <span className={`px-1.5 py-0.5 rounded text-[8.5px] uppercase tracking-wider shrink-0 ${insLogo.bg} ${insLogo.text}`}>
                           {insLogo.label}
                         </span>
-                        <span className={`inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                          isInbound
-                            ? isApproval
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                              : isQuery
+                        <span
+                          className={`inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                            isInbound
+                              ? isApproval
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                : isQuery
                                 ? "bg-amber-50 text-amber-800 border-amber-200"
                                 : "bg-teal-50 text-teal-800 border-teal-200"
-                            : "bg-blue-50 text-blue-800 border-blue-200"
-                        }`}>
+                              : "bg-blue-50 text-blue-800 border-blue-200"
+                          }`}
+                        >
                           {isInbound ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
                           {isInbound ? "Inbound TPA" : "Hospital Out"}
                         </span>
@@ -385,8 +333,8 @@ export default function ClaimEmailTrackerView({
           </div>
         </div>
 
-        {/* Right Column: Email Inspector & Action Desk */}
-        <div className="flex flex-col bg-white overflow-y-auto max-h-[540px]">
+        {/* Right Column: Email Inspector */}
+        <div className="flex flex-col bg-white overflow-y-auto max-h-[500px]">
           {activeMail ? (
             <div className="p-5 space-y-4">
               {/* Message Header */}
@@ -402,75 +350,91 @@ export default function ClaimEmailTrackerView({
 
                 <div className="text-xs space-y-1.5 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200/80">
                   <div className="flex items-center justify-between">
-                    <div><span className="text-slate-400 font-medium">From:</span> <span className="font-bold text-slate-900">{activeMail.from}</span></div>
+                    <div>
+                      <span className="text-slate-400 font-medium">From:</span>{" "}
+                      <span className="font-bold text-slate-900">{activeMail.from}</span>
+                    </div>
                     <span className="text-[10.5px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-full flex items-center gap-1">
                       ✓ TLS Verified
                     </span>
                   </div>
-                  <div><span className="text-slate-400 font-medium">To:</span> <span className="text-slate-700 font-semibold">{activeMail.to}</span></div>
-                  {activeMail.cc && <div><span className="text-slate-400 font-medium">Cc:</span> <span className="text-slate-600">{activeMail.cc}</span></div>}
-                  <div><span className="text-slate-400 font-medium">Purpose:</span> <span className="font-bold text-blue-700">{activeMail.purpose}</span></div>
+                  <div>
+                    <span className="text-slate-400 font-medium">To:</span>{" "}
+                    <span className="text-slate-700 font-semibold">{activeMail.to}</span>
+                  </div>
+                  {activeMail.cc && (
+                    <div>
+                      <span className="text-slate-400 font-medium">Cc:</span>{" "}
+                      <span className="text-slate-600">{activeMail.cc}</span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-slate-400 font-medium">Purpose:</span>{" "}
+                    <span className="font-bold text-blue-700">{activeMail.purpose}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Inbound TPA Decision Sanction Callout (If Inbound Approval) */}
-              {activeMail.direction === "in" && (activeMail.subject.toLowerCase().includes("approval") || activeMail.subject.toLowerCase().includes("sanction")) && (
-                <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/90 rounded-xl p-4 shadow-2xs space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-1.5 text-emerald-900 font-extrabold text-sm">
-                        <CheckCircle2 size={16} className="text-emerald-600" /> Official TPA Pre-Auth Sanction Decision
+              {/* Inbound TPA Decision Sanction Callout */}
+              {activeMail.direction === "in" &&
+                (activeMail.subject.toLowerCase().includes("approval") ||
+                  activeMail.subject.toLowerCase().includes("sanction")) && (
+                  <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/90 rounded-xl p-4 shadow-2xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-1.5 text-emerald-900 font-extrabold text-sm">
+                          <CheckCircle2 size={16} className="text-emerald-600" /> Official TPA Pre-Auth Sanction Decision
+                        </div>
+                        <p className="text-xs text-slate-600 mt-0.5 font-medium">
+                          This email contains an official sanction code and approval limit for <span className="font-bold text-slate-900">{c.patientName}</span>.
+                        </p>
                       </div>
-                      <p className="text-xs text-slate-600 mt-0.5 font-medium">
-                        This email contains an official sanction code and approval limit for <span className="font-bold text-slate-900">{c.patientName}</span>.
-                      </p>
+
+                      {c.approvedPreAuthAmount === 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const amt = c.preAuth?.requestedAmount ? Math.round(c.preAuth.requestedAmount * 0.95) : 50000
+                            const code = `AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`
+                            try {
+                              E.recordPreAuthResponse(c.id, {
+                                outcome: "Approved",
+                                amount: amt,
+                                approvalCode: code,
+                                note: "Sanction verified from inbound TPA email.",
+                              })
+                              notify(`Approved for ₹${amt.toLocaleString("en-IN")} and synced across Pharmacy & Billing!`, "success")
+                            } catch (err: any) {
+                              notify(err.message, "error")
+                            }
+                          }}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+                        >
+                          <Sparkles size={13} /> Apply Sanction to Claim
+                        </button>
+                      )}
                     </div>
 
-                    {c.approvedPreAuthAmount === 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const amt = c.preAuth?.requestedAmount ? Math.round(c.preAuth.requestedAmount * 0.95) : 50000
-                          const code = `AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`
-                          try {
-                            E.recordPreAuthResponse(c.id, {
-                              outcome: "Approved",
-                              amount: amt,
-                              approvalCode: code,
-                              note: "Sanction verified from inbound TPA email.",
-                            })
-                            notify(`Approved for ₹${amt.toLocaleString("en-IN")} and synced across Pharmacy & Billing!`, "success")
-                          } catch (err: any) {
-                            notify(err.message, "error")
-                          }
-                        }}
-                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
-                      >
-                        <Sparkles size={13} /> Apply Sanction to Claim
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/80 border border-emerald-200/70 rounded-lg p-3">
-                    <div>
-                      <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Authorization Code</div>
-                      <div className="text-xs font-mono font-bold text-slate-900 mt-0.5">
-                        {c.preAuth?.approvalCode || `AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-9921`}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/80 border border-emerald-200/70 rounded-lg p-3">
+                      <div>
+                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Authorization Code</div>
+                        <div className="text-xs font-mono font-bold text-slate-900 mt-0.5">
+                          {c.preAuth?.approvalCode || `AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-9921`}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Sanctioned Amount</div>
+                        <div className="text-sm font-bold text-emerald-700 mt-0.5">
+                          {inr(c.approvedPreAuthAmount || (c.preAuth?.requestedAmount ? Math.round(c.preAuth.requestedAmount * 0.95) : 50000))}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Co-Pay Clause</div>
+                        <div className="text-xs font-bold text-slate-800 mt-0.5">{c.policy.copayPercentage || 0}%</div>
                       </div>
                     </div>
-                    <div>
-                      <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Sanctioned Amount</div>
-                      <div className="text-sm font-bold text-emerald-700 mt-0.5">
-                        {inr(c.approvedPreAuthAmount || (c.preAuth?.requestedAmount ? Math.round(c.preAuth.requestedAmount * 0.95) : 50000))}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Co-Pay Clause</div>
-                      <div className="text-xs font-bold text-slate-800 mt-0.5">{c.policy.copayPercentage || 0}%</div>
-                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Message Body */}
               <div className="bg-white border border-slate-200/90 rounded-xl p-4 shadow-2xs">

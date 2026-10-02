@@ -316,13 +316,16 @@ export default function InsuranceCommandDashboard({
         {/* ── 2. TOP 5 EXECUTIVE KPI STAT CARDS WITH SPARKLINES ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
           {/* KPI 1: Insured Admitted */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3">
+          <div
+            onClick={() => onNavigate("claims")}
+            className="bg-white hover:bg-blue-50/30 border border-slate-200/90 hover:border-blue-300 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3 transition-all cursor-pointer group"
+          >
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors flex items-center justify-center shrink-0">
                   <Users size={16} />
                 </div>
-                <span className="text-xs font-semibold text-slate-500 truncate">Insured Admitted</span>
+                <span className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition-colors truncate">Insured Admitted</span>
               </div>
               <div className="flex items-baseline gap-2 pt-1">
                 <span className="text-2xl font-black text-slate-900 tracking-tight">18</span>
@@ -336,13 +339,16 @@ export default function InsuranceCommandDashboard({
           </div>
 
           {/* KPI 2: Pre-Auth Pending */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3">
+          <div
+            onClick={() => onNavigate("preauth")}
+            className="bg-white hover:bg-amber-50/30 border border-slate-200/90 hover:border-amber-300 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3 transition-all cursor-pointer group"
+          >
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors flex items-center justify-center shrink-0">
                   <Clock size={16} />
                 </div>
-                <span className="text-xs font-semibold text-slate-500 truncate">Pre-Auth Pending</span>
+                <span className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition-colors truncate">Pre-Auth Pending</span>
               </div>
               <div className="flex items-baseline gap-2 pt-1">
                 <span className="text-2xl font-black text-slate-900 tracking-tight">6</span>
@@ -356,13 +362,16 @@ export default function InsuranceCommandDashboard({
           </div>
 
           {/* KPI 3: Enhancements */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3">
+          <div
+            onClick={() => onNavigate("claims")}
+            className="bg-white hover:bg-purple-50/30 border border-slate-200/90 hover:border-purple-300 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3 transition-all cursor-pointer group"
+          >
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors flex items-center justify-center shrink-0">
                   <FileText size={16} />
                 </div>
-                <span className="text-xs font-semibold text-slate-500 truncate">Enhancements</span>
+                <span className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition-colors truncate">Enhancements</span>
               </div>
               <div className="flex items-baseline gap-2 pt-1">
                 <span className="text-2xl font-black text-slate-900 tracking-tight">3</span>
@@ -376,13 +385,16 @@ export default function InsuranceCommandDashboard({
           </div>
 
           {/* KPI 4: Ready to Claim */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3">
+          <div
+            onClick={() => onNavigate("claims")}
+            className="bg-white hover:bg-emerald-50/30 border border-slate-200/90 hover:border-emerald-300 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3 transition-all cursor-pointer group"
+          >
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors flex items-center justify-center shrink-0">
                   <CheckCircle2 size={16} />
                 </div>
-                <span className="text-xs font-semibold text-slate-500 truncate">Ready to Claim</span>
+                <span className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition-colors truncate">Ready to Claim</span>
               </div>
               <div className="flex items-baseline gap-2 pt-1">
                 <span className="text-2xl font-black text-slate-900 tracking-tight">5</span>
@@ -396,13 +408,16 @@ export default function InsuranceCommandDashboard({
           </div>
 
           {/* KPI 5: Outstanding Amount */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3">
+          <div
+            onClick={() => onNavigate("settlements")}
+            className="bg-white hover:bg-rose-50/30 border border-slate-200/90 hover:border-rose-300 rounded-2xl p-4 shadow-2xs flex items-center justify-between gap-3 transition-all cursor-pointer group"
+          >
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors flex items-center justify-center shrink-0">
                   <IndianRupee size={16} />
                 </div>
-                <span className="text-xs font-semibold text-slate-500 truncate">Outstanding Amount</span>
+                <span className="text-xs font-semibold text-slate-500 group-hover:text-slate-900 transition-colors truncate">Outstanding Amount</span>
               </div>
               <div className="flex items-baseline gap-2 pt-1">
                 <span className="text-2xl font-black text-slate-900 tracking-tight">₹15,270</span>
@@ -437,7 +452,7 @@ export default function InsuranceCommandDashboard({
 
           <button
             type="button"
-            onClick={() => setActiveTab("active")}
+            onClick={() => onNavigate("intake")}
             className="bg-white hover:bg-emerald-50/50 border border-slate-200/90 hover:border-emerald-200 rounded-2xl p-3.5 text-left shadow-2xs transition-all cursor-pointer group flex items-center justify-between gap-3"
           >
             <div className="flex items-center gap-3">
@@ -445,8 +460,8 @@ export default function InsuranceCommandDashboard({
                 <Activity size={16} />
               </div>
               <div>
-                <div className="text-xs font-bold text-slate-900">Cashless Board</div>
-                <div className="text-[11px] text-slate-400">Track admitted cashless cases</div>
+                <div className="text-xs font-bold text-slate-900">Patient Intake</div>
+                <div className="text-[11px] text-slate-400">Verify patient &amp; policy eligibility</div>
               </div>
             </div>
             <ChevronRight size={15} className="text-slate-300 group-hover:text-emerald-600 transition-colors" />
@@ -506,33 +521,8 @@ export default function InsuranceCommandDashboard({
 
         {/* ── 4. MAIN LAYOUT: LEFT TABLE PANE (72%) + RIGHT SIDEBAR WIDGETS (28%) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 items-start">
-          {/* LEFT COLUMN: TABS + FILTERS + ACTIVE CASES TABLE */}
+          {/* LEFT COLUMN: FILTERS + ACTIVE CASES TABLE */}
           <div className="space-y-4 min-w-0">
-            {/* Stage Filter Tabs */}
-            <div className="border-b border-slate-200/90 flex items-center gap-6 overflow-x-auto scrollbar-none text-xs font-bold">
-              {[
-                { id: "active", label: "Active Cashless Cases" },
-                { id: "preauth", label: "Pre-Auth Pending" },
-                { id: "enhancements", label: "Enhancements" },
-                { id: "submitted", label: "Submitted" },
-                { id: "decision", label: "Insurer Decision" },
-                { id: "settlements", label: "Settlements" },
-                { id: "closed", label: "Closed Cases" },
-              ].map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setActiveTab(t.id)}
-                  className={`pb-3 transition-all cursor-pointer whitespace-nowrap border-b-2 ${
-                    activeTab === t.id
-                      ? "border-b-blue-600 text-blue-600 font-extrabold"
-                      : "border-b-transparent text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
 
             {/* Filter Control Bar */}
             <div className="bg-white border border-slate-200/90 rounded-2xl p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
