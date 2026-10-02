@@ -606,9 +606,6 @@ export default function InsuranceCommandDashboard({
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="p-3 w-8 text-center">
-                        <input type="checkbox" className="rounded accent-blue-600" />
-                      </th>
                       <th className="py-3 px-4">Patient &amp; UHID</th>
                       <th className="py-3 px-4">Insurer / TPA</th>
                       <th className="py-3 px-4">Admission Details</th>
@@ -634,10 +631,6 @@ export default function InsuranceCommandDashboard({
                           className="hover:bg-blue-50/40 transition-colors cursor-pointer"
                           onClick={() => onNavigate("case", r.id)}
                         >
-                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <input type="checkbox" className="rounded accent-blue-600" />
-                          </td>
-
                           {/* Patient & UHID */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
