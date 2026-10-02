@@ -28,6 +28,18 @@ interface EnrichedMail extends MailRecord {
   approvedAmount?: number
 }
 
+const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }> = {
+  "Care Health Insurance": { bg: "bg-amber-400", text: "text-blue-950 font-black", label: "CARE" },
+  "Care Health": { bg: "bg-amber-400", text: "text-blue-950 font-black", label: "CARE" },
+  "Star Health & Allied Insurance": { bg: "bg-sky-900", text: "text-white font-black", label: "STAR" },
+  "Star Health": { bg: "bg-sky-900", text: "text-white font-black", label: "STAR" },
+  "ICICI Lombard General Insurance": { bg: "bg-amber-700", text: "text-white font-black", label: "ICICI" },
+  "ICICI Lombard": { bg: "bg-amber-700", text: "text-white font-black", label: "ICICI" },
+  "HDFC ERGO General Insurance": { bg: "bg-red-600", text: "text-white font-black", label: "HDFC" },
+  "FHPL (Family Health Plan TPA)": { bg: "bg-purple-600", text: "text-white font-black", label: "FHPL" },
+  "Medi Assist TPA": { bg: "bg-teal-600", text: "text-white font-black", label: "MEDI" },
+}
+
 export default function InsuranceEmailHubPage({
   onNavigateToClaim,
   notify: propNotify,
@@ -330,54 +342,64 @@ export default function InsuranceEmailHubPage({
                   const isInbound = m.direction === "in"
                   const isApproval = m.subject.toLowerCase().includes("approval") || m.subject.toLowerCase().includes("sanction")
                   const isQuery = m.subject.toLowerCase().includes("query")
+                  const insLogo = INSURER_BADGES[m.tpaName || m.insurerName] || {
+                    bg: "bg-blue-700",
+                    text: "text-white font-black",
+                    label: (m.tpaName || m.insurerName).slice(0, 4).toUpperCase(),
+                  }
 
                   return (
                     <button
                       key={key}
                       type="button"
                       onClick={() => setSelectedMailKey(key)}
-                      className={`w-full text-left p-3.5 transition-all cursor-pointer block ${
+                      className={`w-full text-left p-4 transition-all cursor-pointer block ${
                         isSelected
                           ? "bg-blue-50/90 border-l-4 border-l-blue-600 text-slate-900 shadow-2xs"
                           : "hover:bg-white text-slate-700 border-l-4 border-l-transparent"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-1 mb-1.5">
-                        <span className={`inline-flex items-center gap-1 text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${
-                          isInbound
-                            ? isApproval
-                              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                              : isQuery
-                                ? "bg-amber-50 text-amber-800 border-amber-200"
-                                : "bg-teal-50 text-teal-800 border-teal-200"
-                            : "bg-blue-50 text-blue-800 border-blue-200"
-                        }`}>
-                          {isInbound ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
-                          {isInbound ? "Inbound TPA" : "Hospital Out"}
-                        </span>
+                      <div className="flex items-center justify-between gap-1 mb-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider shrink-0 ${insLogo.bg} ${insLogo.text}`}>
+                            {insLogo.label}
+                          </span>
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                            isInbound
+                              ? isApproval
+                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                : isQuery
+                                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                                  : "bg-teal-50 text-teal-800 border-teal-200"
+                              : "bg-blue-50 text-blue-800 border-blue-200"
+                          }`}>
+                            {isInbound ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
+                            {isInbound ? "Inbound TPA" : "Hospital Out"}
+                          </span>
+                        </div>
 
-                        <span className="text-[10.5px] font-mono text-slate-400">
+                        <span className="text-xs font-mono text-slate-400">
                           {fmtDateTime(m.at).split(",")[0]}
                         </span>
                       </div>
 
-                      <div className="text-[12.5px] font-bold text-slate-900 leading-snug truncate">
+                      <div className="text-sm font-bold text-slate-900 leading-snug truncate">
                         {m.subject}
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-600 mt-1">
+                      <div className="flex items-center gap-2 text-xs text-slate-600 mt-1.5">
                         <span className="font-bold text-blue-600 hover:underline">{m.patientName}</span>
                         <span className="text-slate-300">•</span>
-                        <span className="font-mono text-slate-500 text-[10.5px]">{m.claimId}</span>
+                        <span className="font-mono text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded text-[11px] font-bold">{m.claimId}</span>
                       </div>
 
-                      <div className="text-[10.5px] text-slate-400 truncate mt-0.5 font-mono">
+                      <div className="text-xs text-slate-400 truncate mt-1 font-mono">
                         {isInbound ? `From: ${m.from}` : `To: ${m.to}`}
                       </div>
 
                       {m.attachments && m.attachments.length > 0 && (
-                        <div className="inline-flex items-center gap-1 text-[10.5px] text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 mt-2 font-semibold">
-                          <Paperclip size={10} /> {m.attachments.length} attachment{m.attachments.length > 1 ? "s" : ""}
+                        <div className="inline-flex items-center gap-1.5 text-xs text-blue-700 bg-blue-50/80 px-2.5 py-0.5 rounded-full border border-blue-100 mt-2 font-semibold">
+                          <Paperclip size={11} /> {m.attachments.length} attachment{m.attachments.length > 1 ? "s" : ""}
                         </div>
                       )}
                     </button>
