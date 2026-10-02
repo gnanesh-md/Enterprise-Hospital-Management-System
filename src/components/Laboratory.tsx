@@ -16,7 +16,7 @@ import {
 import TestResultModal from "./laboratory/TestResultModal"
 import ImportAllResultsModal from "./laboratory/ImportAllResultsModal"
 import CompleteLabReportModal from "./laboratory/CompleteLabReportModal"
-import TestCatalogView from "./laboratory/TestCatalogView"
+import TestCatalogModal from "./laboratory/TestCatalogModal"
 import { AuditDatabase } from "../services/auditDb"
 
 const QUEUE_TABS = [
@@ -37,7 +37,7 @@ export default function Laboratory({
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"orders" | "catalog">("orders")
+  const [showTestCatalogModal, setShowTestCatalogModal] = useState(false)
   
   // Modals state
   const [activeTestForResult, setActiveTestForResult] = useState<{
@@ -348,12 +348,8 @@ export default function Laboratory({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setViewMode(viewMode === "catalog" ? "orders" : "catalog")}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 border cursor-pointer ${
-              viewMode === "catalog"
-                ? "bg-slate-800 text-white border-slate-700"
-                : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
-            }`}
+            onClick={() => setShowTestCatalogModal(true)}
+            className="px-3.5 py-1.5 text-xs font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-blue-600 hover:border-blue-300 cursor-pointer"
           >
             <span>📖</span> Test Catalog
           </button>
@@ -394,13 +390,10 @@ export default function Laboratory({
       <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-4">
         
         {/* CONDITIONAL:
-            1. If viewing Test Catalog, show dedicated TEST CATALOG VIEW
-            2. If entering test result, show FULL PAGE RESULT VIEW
-            3. If patient selected, show PATIENT DETAILS view
-            4. Otherwise PATIENT LIST view */}
-        {viewMode === "catalog" ? (
-          <TestCatalogView onBackToOrders={() => setViewMode("orders")} />
-        ) : activeTestForResult ? (
+            1. If entering test result, show FULL PAGE RESULT VIEW
+            2. If patient selected, show PATIENT DETAILS view
+            3. Otherwise PATIENT LIST view */}
+        {activeTestForResult ? (
           <TestResultModal
             order={activeTestForResult.order}
             test={activeTestForResult.test}
@@ -1100,6 +1093,11 @@ export default function Laboratory({
             </form>
           </div>
         </div>
+      )}
+
+      {/* 5. Test Catalog Pop-up Modal */}
+      {showTestCatalogModal && (
+        <TestCatalogModal onClose={() => setShowTestCatalogModal(false)} />
       )}
 
     </div>
