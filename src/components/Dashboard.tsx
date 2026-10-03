@@ -14,82 +14,66 @@ const QUICK_ACTIONS = [
     label: "Patient Registration",
     desc: "Demographics & Triage",
     icon: Icon.Patients,
-    emoji: "🏥",
     actionKey: "patients",
     subKey: "register",
     color: "#2563EB",
-    bg: "from-blue-500/10 to-indigo-500/5",
-    hoverBorder: "hover:border-blue-400",
+    bg: "bg-blue-50/50 hover:bg-blue-50",
   },
   {
     label: "Schedule Appointment",
     desc: "Outpatient Consults",
     icon: Icon.Calendar,
-    emoji: "📅",
     actionKey: "appointments",
     color: "#4F46E5",
-    bg: "from-indigo-500/10 to-purple-500/5",
-    hoverBorder: "hover:border-indigo-400",
+    bg: "bg-indigo-50/50 hover:bg-indigo-50",
   },
   {
     label: "ED Track Board",
     desc: "Emergency Room Grid",
     icon: Icon.Emergency,
-    emoji: "🚨",
     actionKey: "emergency",
     color: "#E11D48",
-    bg: "from-rose-500/10 to-red-500/5",
-    hoverBorder: "hover:border-rose-400",
+    bg: "bg-rose-50/50 hover:bg-rose-50",
   },
   {
     label: "Bed Allocation Board",
     desc: "Inpatient Bed Census",
     icon: Icon.Bed,
-    emoji: "🛏️",
     actionKey: "inpatient",
     color: "#7C3AED",
-    bg: "from-purple-500/10 to-violet-500/5",
-    hoverBorder: "hover:border-purple-400",
+    bg: "bg-purple-50/50 hover:bg-purple-50",
   },
   {
     label: "Lab Orders & Diagnostics",
     desc: "Chemistry, CBC, Pathology",
     icon: Icon.FlaskConical,
-    emoji: "🔬",
     actionKey: "laboratory",
     color: "#D97706",
-    bg: "from-amber-500/10 to-orange-500/5",
-    hoverBorder: "hover:border-amber-400",
+    bg: "bg-amber-50/50 hover:bg-amber-50",
   },
   {
     label: "Pharmacy Dispensing",
     desc: "Rx Queue & E-Prescribe",
     icon: Icon.Pharmacy,
-    emoji: "💊",
     actionKey: "pharmacy",
     color: "#0891B2",
-    bg: "from-cyan-500/10 to-sky-500/5",
-    hoverBorder: "hover:border-cyan-400",
+    bg: "bg-cyan-50/50 hover:bg-cyan-50",
   },
   {
     label: "Surgery OR Board",
     desc: "Operating Suites Status",
     icon: Icon.Surgery,
-    emoji: "🔪",
     actionKey: "surgery",
     color: "#059669",
-    bg: "from-emerald-500/10 to-teal-500/5",
-    hoverBorder: "hover:border-emerald-400",
+    bg: "bg-emerald-50/50 hover:bg-emerald-50",
   },
   {
     label: "Billing & Claims",
     desc: "Invoices & Coverage",
     icon: Icon.Billing,
-    emoji: "💳",
     actionKey: "billing",
     color: "#6366F1",
-    bg: "from-blue-600/10 to-indigo-600/5",
-    hoverBorder: "hover:border-blue-400",
+    bg: "bg-indigo-50/50 hover:bg-indigo-50",
   },
 ]
 
@@ -279,7 +263,6 @@ export default function Dashboard({
           occupied: 28,
           critical: 2,
           icon: Icon.Bed,
-          emoji: "🩺",
           targetWard: "3N Medical/Surgical",
         },
         {
@@ -288,7 +271,6 @@ export default function Dashboard({
           occupied: 24,
           critical: 1,
           icon: Icon.Inpatient,
-          emoji: "🏨",
           targetWard: "4S Special Care",
         },
         {
@@ -297,7 +279,6 @@ export default function Dashboard({
           occupied: 12,
           critical: 6,
           icon: Icon.Stethoscope,
-          emoji: "🫀",
           targetWard: "ICU",
         },
         {
@@ -306,7 +287,6 @@ export default function Dashboard({
           occupied: 18,
           critical: 0,
           icon: Icon.Clinical,
-          emoji: "🎗️",
           targetWard: "General Medical Ward",
         },
         {
@@ -315,7 +295,6 @@ export default function Dashboard({
           occupied: 10,
           critical: 0,
           icon: Icon.Surgery,
-          emoji: "🔪",
           targetWard: "4S Special Care",
         },
       ]
@@ -331,11 +310,6 @@ export default function Dashboard({
         : ward.includes("4S") || ward.toLowerCase().includes("surgical")
           ? Icon.Surgery
           : Icon.Bed,
-      emoji: ward.toUpperCase().includes("ICU")
-        ? "🫀"
-        : ward.includes("4S") || ward.toLowerCase().includes("surgical")
-          ? "🔪"
-          : "🛏️",
       targetWard: ward,
     }))
   }, [allBeds])
@@ -395,7 +369,6 @@ export default function Dashboard({
       {
         dept: "Emergency Department",
         code: "ED",
-        emoji: "🚨",
         inCare: erInCare,
         waiting: erWaiting,
         critical: erCritical,
@@ -410,7 +383,6 @@ export default function Dashboard({
       {
         dept: "Inpatient 3-North (Medical)",
         code: "3N",
-        emoji: "🩺",
         inCare: inCare3N || 24,
         waiting: 0,
         critical: 2,
@@ -425,7 +397,6 @@ export default function Dashboard({
       {
         dept: "Inpatient 4-South (Surgical)",
         code: "4S",
-        emoji: "🔪",
         inCare: inCare4S || 28,
         waiting: 0,
         critical: 1,
@@ -440,7 +411,6 @@ export default function Dashboard({
       {
         dept: "Intensive Care Unit (ICU)",
         code: "ICU",
-        emoji: "🫀",
         inCare: inCareICU || 12,
         waiting: 0,
         critical: inCareICU || 6,
@@ -455,7 +425,6 @@ export default function Dashboard({
       {
         dept: "Surgical Operating Rooms",
         code: "OR",
-        emoji: "🔬",
         inCare: inCareOR || 3,
         waiting: waitingOR || 2,
         critical: 0,
@@ -491,7 +460,7 @@ export default function Dashboard({
         top.tests?.find((t) => t.flag === "Critical")?.name || "Lab Result"
       alerts.push({
         type: "critical",
-        title: `🚨 Critical Lab Result — ${top.patientName} (MRN #${top.umr})`,
+        title: `Critical Lab Result — ${top.patientName} (MRN #${top.umr})`,
         body: `${critTestName} marked STAT Critical. Requires immediate physician review.`,
         action: "Review Now",
         target: "laboratory",
@@ -502,7 +471,7 @@ export default function Dashboard({
     if (activeErVisits.length > 0) {
       alerts.push({
         type: "warning",
-        title: "⚡ Emergency Dept Live Census Alert",
+        title: "Emergency Dept Live Census Alert",
         body: `ED census at ${activeErVisits.length} active patients. ${criticalErCount} high-priority ESI-1/2 cases in care.`,
         action: "View ED Board",
         target: "emergency",
@@ -513,7 +482,7 @@ export default function Dashboard({
     if (icuDischarges.length > 0) {
       alerts.push({
         type: "warning",
-        title: `🚪 ICU Discharge Handoffs Pending (${icuDischarges.length})`,
+        title: `ICU Discharge Handoffs Pending (${icuDischarges.length})`,
         body: `Patients discharged from ICU awaiting reception ward bed allocation or final settlement.`,
         action: "Process Discharges",
         target: "discharge",
@@ -529,7 +498,6 @@ export default function Dashboard({
       {
         id: "patients",
         label: "Patients Today",
-        emoji: "👥",
         value: String(
           db.getPatients().length + ErDatabase.getPatients().length,
         ),
@@ -547,7 +515,6 @@ export default function Dashboard({
       {
         id: "appointments",
         label: "Appointments",
-        emoji: "📅",
         value: String(db.getEncounters().length),
         sub: `${liveAppointments.length} scheduled today`,
         trend: "Live queue",
@@ -563,7 +530,6 @@ export default function Dashboard({
       {
         id: "admissions",
         label: "Inpatient Admissions",
-        emoji: "🛌",
         value: String(occupiedBeds.length),
         sub: `${allBeds.filter((b) => b.status === "Available").length} beds available`,
         trend: "In care",
@@ -579,7 +545,6 @@ export default function Dashboard({
       {
         id: "discharges",
         label: "Discharges Ready",
-        emoji: "🚪",
         value: String(dischargesReadyCount),
         sub: `${icuDischarges.length} from ICU portal`,
         trend: "Clearance queue",
@@ -595,7 +560,6 @@ export default function Dashboard({
       {
         id: "ed_waiting",
         label: "ED Waiting Room",
-        emoji: "🚑",
         value: String(activeErVisits.length),
         sub: `${criticalErCount} ESI-1 or ESI-2 critical`,
         trend: "Live ER Feed",
@@ -611,7 +575,6 @@ export default function Dashboard({
       {
         id: "alerts",
         label: "Critical Alerts",
-        emoji: "🚨",
         value: String(dynamicAlerts.length),
         sub: "Action required",
         trend: "High Urgency",
@@ -650,86 +613,87 @@ export default function Dashboard({
         title: "Super Admin Platform Control Suite",
         badge: "SUPER ADMIN",
         color: "bg-[#1E3A8A] text-white",
-        icon: "👑",
+        icon: Icon.Cmd,
       }
     : isAdmin
       ? {
           title: "Hospital Operations & Census Command",
           badge: "HOSPITAL ADMIN",
           color: "bg-[#166534] text-white",
-          icon: "🏢",
+          icon: Icon.Cmd,
         }
       : isDoctor
         ? {
             title: "Doctor Clinical EMR & Orders Portal",
             badge: "PHYSICIAN PORTAL",
             color: "bg-[#78350F] text-white",
-            icon: "👨‍⚕️",
+            icon: Icon.Stethoscope,
           }
         : isReception
           ? {
               title: "Receptionist & Patient Services Portal",
               badge: "FRONT DESK",
               color: "bg-[#581C87] text-white",
-              icon: "📋",
+              icon: Icon.Patients,
             }
           : isPharmacy
             ? {
                 title: "Pharmacy Dispensing & Paper Rx OCR Portal",
                 badge: "PHARMACY PORTAL",
                 color: "bg-[#064E3B] text-white",
-                icon: "💊",
+                icon: Icon.Pharmacy,
               }
             : isLab
               ? {
                   title: "Laboratory & Diagnostic Testing Portal",
                   badge: "PATHOLOGY & LAB",
                   color: "bg-[#831843] text-white",
-                  icon: "🔬",
+                  icon: Icon.FlaskConical,
                 }
               : {
                   title: "Registered Nurse & ICU Station Portal",
                   badge: "NURSE WARD",
                   color: "bg-[#7C2D12] text-white",
-                  icon: "👩‍⚕️",
+                  icon: Icon.Inpatient,
                 }
 
+  const BannerIcon = portalBanner.icon
+
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F4F6F9] space-y-6 pb-12">
-      {/* ── Domain Hero Header ────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-white via-blue-50/40 to-indigo-50/30 border-b border-[#DDE2EC] px-6 py-5 shadow-xs">
+    <div className="flex-1 overflow-y-auto bg-[#F4F6F9] space-y-5 pb-10">
+      {/* ── Domain Hero Header (Squared Borders, Sleek & Executive) ────────────── */}
+      <div className="bg-white border-b border-[#DDE2EC] px-6 py-4 rounded-none shadow-2xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#1B4FD8]/10 text-[#1B4FD8] border border-[#BFDBFE] flex items-center justify-center text-2xl shadow-sm transform hover:scale-110 transition-transform">
-                {portalBanner.icon}
+              <div className="w-10 h-10 rounded-none bg-[#1B4FD8] text-white flex items-center justify-center shadow-xs shrink-0">
+                <BannerIcon className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl font-black text-gray-900 tracking-tight leading-none flex items-center gap-1.5">
-                    <span>{portalBanner.title}</span>
-                    <span>✨</span>
+                  <h1 className="text-lg font-extrabold text-slate-900 tracking-tight leading-none">
+                    {portalBanner.title}
                   </h1>
                   <span
-                    className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full shadow-xs tracking-wider ${portalBanner.color}`}
+                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-none tracking-wider uppercase ${portalBanner.color}`}
                   >
                     {portalBanner.badge}
                   </span>
                 </div>
-                <p className="text-[12.5px] text-[#64748B] mt-1.5 flex items-center gap-2 flex-wrap font-medium">
+                <p className="text-[12px] text-slate-500 mt-1 flex items-center gap-2 flex-wrap font-medium">
                   <span>
-                    👋 Welcome, <strong className="text-gray-900">{activeStaff?.name || "User"}</strong> (
+                    Welcome, <strong className="text-slate-900">{activeStaff?.name || "User"}</strong> (
                     {activeStaff?.title || "Staff"})
                   </span>
                   <span>•</span>
-                  <span className="text-[#1B4FD8] font-bold">🏢 {activeStaff?.department || "General Hospital"}</span>
+                  <span className="text-blue-700 font-bold">{activeStaff?.department || "General Hospital"}</span>
                   <span>•</span>
-                  <span className="font-mono text-[#475569]">
-                    🗓️ {formattedToday}
+                  <span className="font-mono text-slate-600">
+                    {formattedToday}
                   </span>
                   <span>•</span>
-                  <span className="font-mono text-[11px] bg-blue-100/80 text-blue-900 px-2 py-0.5 rounded-md border border-blue-200 font-bold">
-                    🏥 {hospitalCode}
+                  <span className="font-mono text-[11px] bg-slate-100 text-slate-800 px-2 py-0.5 rounded-none border border-slate-200 font-bold">
+                    {hospitalCode}
                   </span>
                 </p>
               </div>
@@ -738,40 +702,40 @@ export default function Dashboard({
 
           <div className="flex items-center gap-3">
             {/* Operational Status Pill */}
-            <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] text-[#047857] text-[12px] font-bold shadow-xs hover:scale-105 transition-transform">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#10B981] animate-pulse" />
-              <span>⚡ Live Systems Operational</span>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-none bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11.5px] font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+              <span>Operational Status: Live</span>
             </div>
 
             {/* ED Alert Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#FFF1F2] border border-[#FECDD3] text-[#BE123C] text-[12px] font-bold shadow-xs hover:scale-105 transition-transform">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#E11D48] animate-ping" />
-              <span>🚑 ED Active: {activeErVisits.length}</span>
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-rose-50 border border-rose-200 text-rose-800 text-[11.5px] font-bold shadow-2xs">
+              <span className="w-2 h-2 rounded-full bg-rose-600" />
+              <span>ED Census: {activeErVisits.length}</span>
             </div>
 
-            {/* Animated Refresh Button */}
+            {/* Refresh Button */}
             <Btn
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="shadow-sm transition-all active:scale-90 hover:shadow-md cursor-pointer hover:bg-blue-50 border-blue-200"
+              className="rounded-none shadow-2xs transition-all active:scale-95 cursor-pointer hover:bg-slate-50 border-slate-300 font-bold text-xs"
             >
               <Icon.Refresh
-                className={`w-3.5 h-3.5 text-[#1B4FD8] transition-transform duration-500 ${
+                className={`w-3.5 h-3.5 text-blue-700 transition-transform duration-500 ${
                   isRefreshing ? "animate-spin" : ""
                 }`}
               />
-              <span className="font-bold text-[#1B4FD8]">{isRefreshing ? "Syncing..." : "🔄 Refresh"}</span>
+              <span className="text-blue-700">{isRefreshing ? "Syncing..." : "Refresh"}</span>
             </Btn>
           </div>
         </div>
       </div>
 
-      <div className="px-6 w-full space-y-6">
+      <div className="px-6 w-full space-y-5">
         {/* ── High-Urgency Alerts ────────────────────────────────────────────── */}
         {dynamicAlerts.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {dynamicAlerts.map((a, i) => (
               <AlertBanner
                 key={i}
@@ -782,47 +746,46 @@ export default function Dashboard({
           </div>
         )}
 
-        {/* ── Domain Key Metrics Grid (6 Grid Cards with Hover & Emojis) ────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {/* ── Domain Key Metrics Grid (6 Squared Cards) ────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
           {METRICS.map((m) => {
             const IconComp = m.icon
             return (
               <div
                 key={m.id}
                 onClick={() => navigate(m.target)}
-                className="group relative bg-white border border-[#E2E8F0] rounded-2xl p-4.5 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 hover:border-[#2563EB] transition-all duration-300 transform hover:-translate-y-1.5 cursor-pointer overflow-hidden"
+                className="group relative bg-white border border-slate-200/90 rounded-none p-4 shadow-2xs hover:shadow-md hover:border-blue-600 transition-all cursor-pointer overflow-hidden"
               >
-                {/* Domain top accent strip */}
+                {/* Accent top line */}
                 <div
-                  className="absolute top-0 left-0 right-0 h-1.5 transition-all group-hover:h-2"
+                  className="absolute top-0 left-0 right-0 h-1"
                   style={{ backgroundColor: m.color }}
                 />
 
                 <div className="flex items-start justify-between mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] flex items-center gap-1">
-                    <span>{m.emoji}</span>
-                    <span>{m.label}</span>
+                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
+                    {m.label}
                   </span>
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-125 group-hover:rotate-6 shadow-xs"
+                    className="w-7 h-7 rounded-none flex items-center justify-center transition-transform group-hover:scale-110"
                     style={{ backgroundColor: m.bgColor, color: m.color }}
                   >
-                    <IconComp className="w-4.5 h-4.5" />
+                    <IconComp className="w-4 h-4" />
                   </div>
                 </div>
 
-                <div className="flex items-baseline gap-2 mt-2">
-                  <span className="text-2xl font-black text-gray-900 tracking-tight font-mono group-hover:text-[#1B4FD8] transition-colors">
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono group-hover:text-blue-700 transition-colors">
                     {m.value}
                   </span>
                   {m.trend && (
                     <span
-                      className={`text-[11px] font-bold font-mono px-1.5 py-0.5 rounded-full ${
+                      className={`text-[10.5px] font-bold font-mono px-1.5 py-0.5 rounded-none ${
                         m.trendDir === "up" && m.id !== "discharges"
-                          ? "bg-rose-50 text-[#DC2626] border border-rose-200"
+                          ? "bg-rose-50 text-rose-700 border border-rose-200"
                           : m.trendDir === "down" || m.id === "discharges"
-                            ? "bg-emerald-50 text-[#16A34A] border border-emerald-200"
-                            : "bg-gray-100 text-[#64748B]"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-slate-100 text-slate-600 border border-slate-200"
                       }`}
                     >
                       {m.trend}
@@ -830,18 +793,18 @@ export default function Dashboard({
                   )}
                 </div>
 
-                <div className="text-[11.5px] font-medium text-[#64748B] mt-1 truncate">
+                <div className="text-[11px] font-medium text-slate-500 mt-1 truncate">
                   {m.sub}
                 </div>
 
-                <div className="mt-3.5 pt-2.5 border-t border-[#F1F5F9] flex items-center justify-between text-[11.5px]">
+                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                   <span
                     className="font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform"
                     style={{ color: m.color }}
                   >
                     {m.action} →
                   </span>
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wider border border-slate-200">
+                  <span className="px-1.5 py-0.5 rounded-none text-[10px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wider border border-slate-200">
                     {m.domain}
                   </span>
                 </div>
@@ -851,21 +814,20 @@ export default function Dashboard({
         </div>
 
         {/* ── Department Census & Today's Appointments ──────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Department Census Table (2 Cols) */}
-          <div className="lg:col-span-2 bg-white border border-[#E2E8F0] rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#E2E8F0] bg-gradient-to-r from-[#FAFCFF] to-blue-50/20 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE] flex items-center justify-center text-base shadow-xs">
-                  🏥
+          <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-none shadow-2xs overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-none bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center">
+                  <Icon.Inpatient className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                    <span>Department Census &amp; Capacity</span>
-                    <span className="text-[11px] font-mono text-[#2563EB] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">Live</span>
+                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                    Department Census &amp; Capacity
                   </h2>
-                  <p className="text-[11.5px] text-[#64748B] font-medium">
-                    Real-time patient distribution &amp; bed occupancy meters across care units
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Real-time patient distribution &amp; bed occupancy meters
                   </p>
                 </div>
               </div>
@@ -873,7 +835,7 @@ export default function Dashboard({
                 variant="ghost"
                 size="xs"
                 onClick={() => navigate("inpatient")}
-                className="hover:bg-blue-50 text-[#1B4FD8] font-bold transition-all hover:translate-x-1 cursor-pointer"
+                className="font-bold text-blue-700 hover:bg-blue-50 rounded-none"
               >
                 Full Bed Board →
               </Btn>
@@ -894,73 +856,73 @@ export default function Dashboard({
                 const QueueIcon = q.icon
                 const occPct = Math.round((q.inCare / q.capacity) * 100)
                 return (
-                  <TR key={i} className="hover:bg-blue-50/40 transition-colors group cursor-pointer">
+                  <TR key={i} className="hover:bg-slate-50/80 transition-colors group cursor-pointer">
                     <TD>
                       <div className="flex items-center gap-2.5">
                         <div
-                          className="w-7 h-7 rounded-lg flex items-center justify-center text-sm shadow-xs transition-transform group-hover:scale-110"
+                          className="w-6 h-6 rounded-none flex items-center justify-center text-xs shadow-2xs"
                           style={{
                             backgroundColor: `${q.color}15`,
                             color: q.color,
                           }}
                         >
-                          <span>{q.emoji}</span>
+                          <QueueIcon className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <div className="font-bold text-gray-900 text-[12.5px] group-hover:text-[#1B4FD8] transition-colors">
+                          <div className="font-bold text-slate-900 text-[12.5px] group-hover:text-blue-700 transition-colors">
                             {q.dept}
                           </div>
-                          <div className="text-[10.5px] font-mono text-[#94A3B8]">
+                          <div className="text-[10.5px] font-mono text-slate-400">
                             {q.code} Wing
                           </div>
                         </div>
                       </div>
                     </TD>
                     <TD>
-                      <span className="font-mono text-[13px] font-extrabold text-gray-900">
+                      <span className="font-mono text-[13px] font-bold text-slate-900">
                         {q.inCare}
                       </span>
                     </TD>
                     <TD>
                       {q.waiting > 0 ? (
-                        <span className="font-mono text-[11.5px] font-bold text-[#D97706] bg-[#FEF3C7] px-2.5 py-0.5 rounded-full border border-[#FDE68A]">
-                          ⏳ {q.waiting} waiting
+                        <span className="font-mono text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-none border border-amber-200">
+                          {q.waiting} waiting
                         </span>
                       ) : (
-                        <span className="text-[#94A3B8] font-mono text-[12px]">
+                        <span className="text-slate-400 font-mono text-[12px]">
                           —
                         </span>
                       )}
                     </TD>
                     <TD>
                       {q.critical > 0 ? (
-                        <span className="font-mono text-[11.5px] font-bold text-[#DC2626] bg-[#FEE2E2] px-2.5 py-0.5 rounded-full border border-[#FECACA] animate-pulse">
-                          🚨 {q.critical} ESI-1/2
+                        <span className="font-mono text-[11px] font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded-none border border-rose-200">
+                          {q.critical} ESI-1/2
                         </span>
                       ) : (
-                        <span className="text-[#94A3B8] font-mono text-[12px]">
+                        <span className="text-slate-400 font-mono text-[12px]">
                           —
                         </span>
                       )}
                     </TD>
                     <TD>
-                      <span className="font-mono text-[11.5px] font-bold text-[#16A34A] bg-[#DCFCE7] px-2.5 py-0.5 rounded-full border border-green-200">
-                        🛏️ {q.available} beds
+                      <span className="font-mono text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-200">
+                        {q.available} beds
                       </span>
                     </TD>
                     <TD>
                       <div className="w-28">
                         <div className="flex items-center justify-between text-[10.5px] font-mono mb-1">
-                          <span className="text-gray-700 font-bold">
+                          <span className="text-slate-700 font-bold">
                             {occPct}%
                           </span>
-                          <span className="text-[#94A3B8]">
+                          <span className="text-slate-400">
                             {q.inCare}/{q.capacity}
                           </span>
                         </div>
-                        <div className="w-full h-2 bg-[#E2E8F0] rounded-full overflow-hidden p-0.5">
+                        <div className="w-full h-1.5 bg-slate-200 rounded-none overflow-hidden">
                           <div
-                            className="h-full rounded-full transition-all duration-500 shadow-xs"
+                            className="h-full rounded-none transition-all duration-300"
                             style={{
                               width: `${occPct}%`,
                               backgroundColor:
@@ -979,7 +941,7 @@ export default function Dashboard({
                         variant="ghost"
                         size="xs"
                         onClick={() => navigate(q.target, q.subTarget)}
-                        className="font-bold text-[#1B4FD8] hover:bg-blue-100/60"
+                        className="font-bold text-blue-700 hover:bg-blue-50 rounded-none"
                       >
                         {q.buttonLabel}
                       </Btn>
@@ -990,14 +952,14 @@ export default function Dashboard({
             </Table>
           </div>
 
-          {/* Today's Appointments List (1 Col) - Live Registered Appointments */}
-          <div className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
-            <div className="px-5 py-4 border-b border-[#E2E8F0] bg-gradient-to-r from-[#FAFCFF] to-indigo-50/20 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#EEF2FF] text-[#4F46E5] border border-[#C7D2FE] flex items-center justify-center text-base shadow-xs">
-                  📅
+          {/* Today's Appointments List (1 Col) */}
+          <div className="bg-white border border-slate-200/90 rounded-none shadow-2xs overflow-hidden flex flex-col">
+            <div className="px-4 py-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-none bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center">
+                  <Icon.Calendar className="w-4 h-4" />
                 </div>
-                <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">
+                <h2 className="text-sm font-bold text-slate-900 tracking-tight">
                   Today's Appointments
                 </h2>
               </div>
@@ -1005,25 +967,25 @@ export default function Dashboard({
                 variant="ghost"
                 size="xs"
                 onClick={() => navigate("appointments")}
-                className="hover:bg-indigo-50 text-[#4F46E5] font-bold transition-all hover:translate-x-1 cursor-pointer"
+                className="font-bold text-indigo-700 hover:bg-indigo-50 rounded-none"
               >
                 View All →
               </Btn>
             </div>
 
-            <div className="p-4 flex-1 divide-y divide-[#F1F5F9] overflow-y-auto max-h-[380px] space-y-2">
+            <div className="p-3.5 flex-1 divide-y divide-slate-100 overflow-y-auto max-h-[380px]">
               {liveAppointments.length === 0 ? (
-                <div className="p-8 text-center text-xs text-[#64748B] font-medium">
-                  <span>📅</span> No appointments booked for today.
+                <div className="p-6 text-center text-xs text-slate-500 font-medium">
+                  No appointments booked for today.
                 </div>
               ) : (
                 liveAppointments.map((a, i) => (
                   <div
                     key={a.id || i}
-                    className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2 hover:bg-blue-50/30 p-2 rounded-xl transition-colors group cursor-pointer"
+                    className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2 hover:bg-slate-50 px-2 rounded-none transition-colors cursor-pointer"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-[#E0F2FE] text-[#0369A1] font-extrabold text-[12px] flex items-center justify-center flex-shrink-0 shadow-xs group-hover:scale-110 transition-transform">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-none bg-sky-50 text-sky-800 font-bold text-[11px] flex items-center justify-center border border-sky-200 flex-shrink-0">
                         {a.patient
                           .split(" ")
                           .map((n) => n[0])
@@ -1031,19 +993,18 @@ export default function Dashboard({
                           .slice(0, 2)}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[12.5px] font-bold text-gray-900 truncate group-hover:text-[#1B4FD8] transition-colors">
+                        <div className="text-[12.5px] font-bold text-slate-900 truncate">
                           {a.patient}
                         </div>
-                        <div className="text-[11px] text-[#64748B] truncate font-medium">
-                          👨‍⚕️ {a.provider} ·{" "}
-                          <span className="text-[#475569] font-bold">{a.spec}</span>
+                        <div className="text-[11px] text-slate-500 truncate font-medium">
+                          {a.provider} · <span className="text-slate-700 font-bold">{a.spec}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
-                        ⏰ {a.time}
+                      <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded-none border border-slate-200">
+                        {a.time}
                       </span>
                       <StatusBadge status={a.status} />
                     </div>
@@ -1055,20 +1016,20 @@ export default function Dashboard({
         </div>
 
         {/* ── Pending Labs & Quick Actions Grid ──────────────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Pending Lab Results (2 Cols) - Live Lab Orders */}
-          <div className="lg:col-span-2 bg-white border border-[#E2E8F0] rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#E2E8F0] bg-gradient-to-r from-[#FAFCFF] to-amber-50/20 flex items-center justify-between">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          {/* Pending Lab Results (2 Cols) */}
+          <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-none shadow-2xs overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#FEF3C7] text-[#D97706] border border-[#FDE68A] flex items-center justify-center text-base shadow-xs">
-                  🔬
+                <div className="w-7 h-7 rounded-none bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center">
+                  <Icon.FlaskConical className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">
+                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
                     Pending Diagnostic Labs &amp; Pathology
                   </h2>
-                  <p className="text-[11.5px] text-[#64748B] font-medium">
-                    Active laboratory diagnostic orders in processing or critical STAT review
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Active diagnostic orders in processing or STAT review
                   </p>
                 </div>
               </div>
@@ -1076,7 +1037,7 @@ export default function Dashboard({
                 variant="ghost"
                 size="xs"
                 onClick={() => navigate("laboratory")}
-                className="hover:bg-amber-50 text-[#D97706] font-bold transition-all hover:translate-x-1 cursor-pointer"
+                className="font-bold text-amber-800 hover:bg-amber-50 rounded-none"
               >
                 Laboratory Hub →
               </Btn>
@@ -1095,43 +1056,43 @@ export default function Dashboard({
               {livePendingLabs.length === 0 ? (
                 <TR>
                   <TD colSpan={6}>
-                    <div className="p-6 text-center text-xs text-[#64748B] font-medium">
-                      🧪 No active pending diagnostic lab orders.
+                    <div className="p-5 text-center text-xs text-slate-500 font-medium">
+                      No active pending diagnostic lab orders.
                     </div>
                   </TD>
                 </TR>
               ) : (
                 livePendingLabs.map((l, i) => (
-                  <TR key={l.id || i} className="hover:bg-amber-50/30 transition-colors group cursor-pointer">
+                  <TR key={l.id || i} className="hover:bg-slate-50/80 transition-colors group cursor-pointer">
                     <TD>
-                      <span className="font-bold text-gray-900 text-[12.5px] group-hover:text-[#D97706] transition-colors">
-                        👤 {l.patient}
+                      <span className="font-bold text-slate-900 text-[12.5px] group-hover:text-blue-700 transition-colors">
+                        {l.patient}
                       </span>
                     </TD>
                     <TD>
-                      <span className="font-mono text-[11.5px] text-[#475569] bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 font-bold">
+                      <span className="font-mono text-[11.5px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-none border border-slate-200 font-bold">
                         #{l.mrn}
                       </span>
                     </TD>
                     <TD>
-                      <span className="font-semibold text-gray-800 text-[12px]">
-                        🧪 {l.test}
+                      <span className="font-semibold text-slate-800 text-[12px]">
+                        {l.test}
                       </span>
                     </TD>
                     <TD>
-                      <span className="text-[11px] font-bold text-[#475569]">
+                      <span className="text-[11px] font-bold text-slate-600">
                         {l.dept}
                       </span>
                     </TD>
                     <TD>
-                      <span className="font-mono text-[11.5px] text-gray-700 font-medium">
-                        ⏰ {l.ordered}
+                      <span className="font-mono text-[11.5px] text-slate-700 font-medium">
+                        {l.ordered}
                       </span>
                     </TD>
                     <TD>
                       {l.status === "Critical" ? (
-                        <span className="inline-flex items-center gap-1 bg-[#FEE2E2] text-[#B91C1C] text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-[#FECACA] animate-pulse">
-                          🚨 Critical STAT
+                        <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-800 text-[11px] font-bold px-2 py-0.5 rounded-none border border-rose-200 animate-pulse">
+                          Critical STAT
                         </span>
                       ) : (
                         <StatusBadge status={l.status} />
@@ -1143,43 +1104,43 @@ export default function Dashboard({
             </Table>
           </div>
 
-          {/* Domain Quick Actions (1 Col with Emojis & Animations) */}
-          <div className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
-            <div className="px-5 py-4 border-b border-[#E2E8F0] bg-gradient-to-r from-[#FAFCFF] to-blue-50/20 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#EFF6FF] text-[#2563EB] border border-[#BFDBFE] flex items-center justify-center text-base shadow-xs">
-                  ⚡
+          {/* Domain Quick Actions (1 Col Squared) */}
+          <div className="bg-white border border-slate-200/90 rounded-none shadow-2xs overflow-hidden flex flex-col">
+            <div className="px-4 py-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-none bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center">
+                  <Icon.Cmd className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-extrabold text-gray-900 tracking-tight">
+                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
                     Hospital Quick Actions
                   </h2>
                 </div>
               </div>
-              <span className="text-[10.5px] font-mono text-[#2563EB] bg-[#EFF6FF] px-2.5 py-0.5 rounded-full font-bold border border-[#BFDBFE]">
+              <span className="text-[10.5px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-none border border-blue-200 font-bold">
                 Shortcuts
               </span>
             </div>
 
-            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 flex-1 items-center justify-center">
+            <div className="p-3 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2.5 flex-1 items-center justify-center">
               {QUICK_ACTIONS.map((q, i) => {
                 const ActionIcon = q.icon
                 return (
                   <button
                     key={i}
                     onClick={() => navigate(q.actionKey, q.subKey)}
-                    className={`group flex flex-col items-center justify-center p-3.5 rounded-2xl border transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 hover:shadow-md focus:outline-none cursor-pointer bg-gradient-to-br ${q.bg} ${q.hoverBorder}`}
-                    style={{
-                      borderColor: `${q.color}30`,
-                    }}
+                    className={`group flex flex-col items-center justify-center p-3 rounded-none border border-slate-200 transition-all duration-200 hover:border-blue-600 hover:bg-blue-50/40 focus:outline-none cursor-pointer ${q.bg}`}
                   >
-                    <div className="flex items-center justify-center gap-1 mb-1.5">
-                      <span className="text-xl group-hover:scale-125 transition-transform">{q.emoji}</span>
+                    <div
+                      className="w-8 h-8 rounded-none flex items-center justify-center shadow-2xs transition-transform group-hover:scale-110 mb-1"
+                      style={{ color: q.color }}
+                    >
+                      <ActionIcon className="w-4 h-4 stroke-[2.2]" />
                     </div>
-                    <span className="text-[11.5px] font-extrabold text-gray-900 group-hover:text-[#2563EB] text-center leading-tight transition-colors">
+                    <span className="text-[11.5px] font-bold text-slate-900 group-hover:text-blue-700 text-center leading-tight transition-colors">
                       {q.label}
                     </span>
-                    <span className="text-[10px] text-[#64748B] text-center font-medium mt-0.5">
+                    <span className="text-[10px] text-slate-500 text-center font-medium mt-0.5 truncate max-w-full">
                       {q.desc}
                     </span>
                   </button>
@@ -1189,19 +1150,19 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* ── Hospital Unit Bed Utilization Heatmap ────────────────────────────── */}
-        <div className="bg-white border border-[#E2E8F0] rounded-2xl shadow-sm hover:shadow-md transition-shadow p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#F5F3FF] text-[#7C3AED] border border-[#DDD6FE] flex items-center justify-center text-lg shadow-xs">
-                🛏️
+        {/* ── Hospital Unit Bed Utilization Heatmap (Squared) ─────────────────── */}
+        <div className="bg-white border border-slate-200/90 rounded-none shadow-2xs p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-none bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center">
+                <Icon.Activity className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+                <h2 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
                   <span>Hospital Unit Occupancy &amp; Capacity Overview</span>
-                  <span className="text-[11px] font-mono text-[#7C3AED] bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200 font-bold">Heatmap</span>
+                  <span className="text-[10.5px] font-mono text-purple-800 bg-purple-50 px-2 py-0.5 rounded-none border border-purple-200 font-bold">Heatmap</span>
                 </h2>
-                <p className="text-[11.5px] text-[#64748B] font-medium">
+                <p className="text-[11px] text-slate-500 font-medium">
                   Live bed utilization meters &amp; capacity limits across inpatient care wards
                 </p>
               </div>
@@ -1210,14 +1171,15 @@ export default function Dashboard({
               variant="outline"
               size="xs"
               onClick={() => navigate("inpatient")}
-              className="hover:bg-purple-50 text-[#7C3AED] font-bold border-purple-200 transition-all hover:translate-x-1 cursor-pointer"
+              className="font-bold text-purple-800 hover:bg-purple-50 rounded-none border-purple-200"
             >
               View All Wards →
             </Btn>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
             {UNITS.map((u, i) => {
+              const UnitIcon = u.icon
               const pct = Math.round((u.occupied / u.total) * 100)
               const color =
                 pct >= 85 ? "#DC2626" : pct >= 70 ? "#D97706" : "#16A34A"
@@ -1230,30 +1192,35 @@ export default function Dashboard({
                 <div
                   key={i}
                   onClick={() => navigate("inpatient", u.targetWard)}
-                  className="group bg-gradient-to-b from-[#FAFCFF] to-white border border-[#E2E8F0] hover:border-[#2563EB] cursor-pointer transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg rounded-2xl p-4 flex flex-col justify-between"
+                  className="group bg-slate-50/60 border border-slate-200 hover:border-blue-600 hover:bg-white cursor-pointer transition-all duration-200 rounded-none p-3.5 flex flex-col justify-between"
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-[12.5px] font-bold text-gray-900 truncate group-hover:text-[#2563EB] transition-colors flex items-center gap-1.5">
-                        <span>{u.emoji}</span>
-                        <span>{u.unit}</span>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[12px] font-bold text-slate-900 truncate group-hover:text-blue-700 transition-colors">
+                        {u.unit}
                       </span>
+                      <div
+                        className="w-5 h-5 rounded-none flex items-center justify-center text-xs"
+                        style={{ backgroundColor: bgColor, color }}
+                      >
+                        <UnitIcon className="w-3.5 h-3.5" />
+                      </div>
                     </div>
 
-                    <div className="relative h-2.5 bg-[#E2E8F0] rounded-full overflow-hidden my-2.5 p-0.5">
+                    <div className="relative h-2 bg-slate-200 rounded-none overflow-hidden my-2">
                       <div
-                        className="h-full rounded-full transition-all duration-500 shadow-xs"
+                        className="h-full rounded-none transition-all duration-300"
                         style={{ width: `${pct}%`, backgroundColor: color }}
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] font-mono mt-2 pt-2 border-t border-slate-100">
-                    <span className="font-bold text-xs" style={{ color }}>
-                      🛏️ {u.occupied} / {u.total}
+                  <div className="flex items-center justify-between text-[10.5px] font-mono mt-1 pt-1.5 border-t border-slate-100">
+                    <span className="font-bold" style={{ color }}>
+                      {u.occupied} / {u.total} beds
                     </span>
                     <span
-                      className="font-bold px-2 py-0.5 rounded-full text-[10.5px]"
+                      className="font-bold px-1.5 py-0.5 rounded-none text-[10px]"
                       style={{ backgroundColor: bgColor, color, border: `1px solid ${borderColor}` }}
                     >
                       {pct}% Occupied
