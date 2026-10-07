@@ -102,12 +102,12 @@ export default function LiveBoard({
         .map((c) => {
           const warn = InsuranceEngineService.checkThresholdWarning(c);
           return (
-            <div key={c.id} className="bg-amber-50 border border-amber-300 text-amber-900 text-[12.5px] px-4 py-3 rounded-xl shadow-2xs flex items-center justify-between font-medium">
+            <div key={c.id} className="bg-amber-50 border border-amber-300 text-amber-900 text-[12.5px] px-4 py-3 rounded-none shadow-2xs flex items-center justify-between font-medium">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-amber-800">⚠️ Pre-Auth Threshold Alert:</span>
                 <span>{c.patientName} ({c.mrn}) — {warn.message}</span>
               </div>
-              <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2.5 py-1 rounded-full font-mono">
+              <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2.5 py-1 rounded-none font-mono">
                 {warn.percentageConsumed}% Limit
               </span>
             </div>
@@ -115,7 +115,7 @@ export default function LiveBoard({
         })}
 
       {feedback && (
-        <div className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E40AF] text-[12.5px] px-3.5 py-2.5 rounded flex items-start gap-2">
+        <div className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E40AF] text-[12.5px] px-3.5 py-2.5 rounded-none flex items-start gap-2">
           <span className="flex-1">{feedback}</span>
           <button type="button" onClick={() => setFeedback(null)} className="font-bold">✕</button>
         </div>
@@ -123,7 +123,7 @@ export default function LiveBoard({
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         {/* ── Live queue ───────────────────────────────────────────────── */}
-        <section className="xl:col-span-2 bg-white border border-[#DDE2EC] rounded flex flex-col">
+        <section className="xl:col-span-2 bg-white border border-[#DDE2EC] rounded-none flex flex-col">
           <div className="px-4 py-2.5 border-b border-[#DDE2EC] flex items-center justify-between">
             <h3 className="text-[13px] font-bold text-gray-900">My live queue</h3>
             <span className="flex items-center gap-1.5 text-[11px] text-[#64748B]">
@@ -185,7 +185,7 @@ export default function LiveBoard({
                             {entry.encounter.patientName}
                           </span>
                           <span
-                            className={`text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                            className={`text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded-none ${
                               entry.isNewPatient ? "bg-[#DCFCE7] text-[#15803D]" : "bg-[#F1F5F9] text-[#475569]"
                             }`}
                           >
@@ -219,13 +219,13 @@ export default function LiveBoard({
         </section>
 
         {/* ── Alerts ───────────────────────────────────────────────────── */}
-        <section className="xl:col-span-3 bg-white border border-[#DDE2EC] rounded flex flex-col">
+        <section className="xl:col-span-3 bg-white border border-[#DDE2EC] rounded-none flex flex-col">
           <div className="px-4 py-2.5 border-b border-[#DDE2EC] flex items-center justify-between gap-2 flex-wrap">
             <div>
               <h3 className="text-[13px] font-bold text-gray-900">
                 Needs my attention
                 {needsAction.length > 0 && (
-                  <span className="ml-2 text-[10px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 py-0.5 rounded">
+                  <span className="ml-2 text-[10px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 py-0.5 rounded-none">
                     {needsAction.length}
                   </span>
                 )}
@@ -316,7 +316,7 @@ function LivePulse({ board, now }: { board: ReturnType<typeof buildDoctorLiveBoa
   ];
 
   return (
-    <div className="bg-white border border-[#DDE2EC] rounded px-4 py-3">
+    <div className="bg-white border border-[#DDE2EC] rounded-none px-4 py-3">
       <div className="flex items-center justify-between mb-2.5">
         <h3 className="text-[13px] font-bold text-gray-900">Clinic right now</h3>
         <span className="text-[11px] font-mono text-[#64748B]">
@@ -325,7 +325,7 @@ function LivePulse({ board, now }: { board: ReturnType<typeof buildDoctorLiveBoa
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
         {tiles.map(tile => (
-          <div key={tile.label} className="bg-[#F8FAFC] border border-[#E2E8F0] rounded px-3 py-2">
+          <div key={tile.label} className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-none px-3 py-2">
             <div className="text-[10px] uppercase tracking-wide text-[#94A3B8] font-bold">{tile.label}</div>
             <div className={`text-[17px] font-bold font-mono ${tile.tone || "text-gray-900"}`}>{tile.value}</div>
             {tile.hint && <div className="text-[10px] text-[#94A3B8]">{tile.hint}</div>}
@@ -366,7 +366,7 @@ function AlertRow({
             <span className="text-[12.5px] font-semibold text-gray-900">{alert.title}</span>
             {alert.severity !== "info" && (
               <span
-                className="text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded border"
+                className="text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded-none border"
                 style={{ color: style.text, borderColor: style.border, backgroundColor: "#FFFFFF" }}
               >
                 {style.label}

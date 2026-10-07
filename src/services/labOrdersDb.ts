@@ -10,6 +10,9 @@
  */
 
 import { findTestDefinition } from "../components/laboratory/labCatalogueSchema"
+import { isRadiologyTest } from "../utils/testClassifier"
+import { BillingDatabase } from "./billingDb"
+import { DiagnosticTariffDatabase } from "./diagnosticTariffDb"
 
 const ORDERS_KEY = "hospai_lab_orders_v2"
 const CHANNEL_NAME = "hospai_lab_orders"
@@ -109,39 +112,39 @@ export interface LabOrder {
  * Falls back to lab catalogue schema price, then DEFAULT_TEST_PRICE.
  */
 const PRICE_BOOK: { match: string; price: number }[] = [
-  { match: "complete blood count", price: 350 },
-  { match: "cbc", price: 350 },
-  { match: "esr", price: 200 },
-  { match: "crp", price: 650 },
-  { match: "lipid", price: 850 },
-  { match: "liver function", price: 900 },
-  { match: "lft", price: 900 },
-  { match: "renal function", price: 850 },
-  { match: "kft", price: 850 },
-  { match: "rft", price: 850 },
-  { match: "creatinine", price: 250 },
-  { match: "urea", price: 250 },
-  { match: "electrolyte", price: 600 },
-  { match: "troponin", price: 1800 },
-  { match: "d-dimer", price: 1600 },
-  { match: "bnp", price: 2400 },
-  { match: "hba1c", price: 700 },
-  { match: "blood sugar", price: 150 },
-  { match: "glucose", price: 150 },
-  { match: "thyroid", price: 750 },
-  { match: "tsh", price: 450 },
-  { match: "vitamin", price: 1500 },
-  { match: "ferritin", price: 900 },
-  { match: "urine", price: 250 },
-  { match: "stool", price: 300 },
-  { match: "culture", price: 1200 },
-  { match: "biopsy", price: 3500 },
-  { match: "blood group", price: 200 },
+  { match: "complete blood count", price: 740 },
+  { match: "cbc", price: 740 },
+  { match: "esr", price: 140 },
+  { match: "crp", price: 570 },
+  { match: "lipid", price: 1250 },
+  { match: "liver function", price: 1320 },
+  { match: "lft", price: 1320 },
+  { match: "renal function", price: 660 },
+  { match: "kft", price: 660 },
+  { match: "rft", price: 660 },
+  { match: "creatinine", price: 260 },
+  { match: "urea", price: 260 },
+  { match: "electrolyte", price: 1050 },
+  { match: "troponin", price: 1000 },
+  { match: "d-dimer", price: 2800 },
+  { match: "bnp", price: 3450 },
+  { match: "hba1c", price: 1120 },
+  { match: "blood sugar", price: 80 },
+  { match: "glucose", price: 80 },
+  { match: "thyroid", price: 1320 },
+  { match: "tsh", price: 500 },
+  { match: "vitamin", price: 2640 },
+  { match: "ferritin", price: 1300 },
+  { match: "urine", price: 300 },
+  { match: "stool", price: 250 },
+  { match: "culture", price: 660 },
+  { match: "biopsy", price: 1650 },
+  { match: "blood group", price: 170 },
   { match: "serology", price: 800 },
-  { match: "dengue", price: 1100 },
-  { match: "malaria", price: 450 },
-  { match: "hiv", price: 900 },
-  { match: "hbsag", price: 700 },
+  { match: "dengue", price: 1490 },
+  { match: "malaria", price: 300 },
+  { match: "hiv", price: 830 },
+  { match: "hbsag", price: 660 },
   { match: "x-ray", price: 450 },
   { match: "xray", price: 450 },
   { match: "ultrasound", price: 1400 },
@@ -164,9 +167,19 @@ const PRICE_BOOK: { match: string; price: number }[] = [
 export const DEFAULT_TEST_PRICE = 500
 
 export function priceForTest(testName: string): number {
+  if (!testName) return DEFAULT_TEST_PRICE
+
+  // 1. Check Diagnostic Tariff & Price Master (authoritative hospital rate card)
+  const tariffPrice = DiagnosticTariffDatabase.getTariffPriceByName(testName)
+  if (tariffPrice !== null && tariffPrice !== undefined) {
+    return tariffPrice
+  }
+
+  // 2. Check lab catalogue schema
   const def = findTestDefinition(testName)
   if (def && def.price) return def.price
 
+  // 3. Fallback to PRICE_BOOK
   const normalized = (testName || "").toLowerCase()
   const hit = PRICE_BOOK.filter((entry) =>
     normalized.includes(entry.match),
@@ -194,19 +207,87 @@ function notify() {
   ensureChannel()?.postMessage("changed")
 }
 
+function getBaseTestName(name: string): string {
+  if (!name) return ""
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s*\([^\)]*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 function normalizeOrder(order: LabOrder): LabOrder {
+  let rawTests = [...(order.tests || [])]
+
+  // Auto-attach matching radiology studies for this patient/encounter if missing from billing order
+  try {
+    const radStudies = BillingDatabase.getRadiologyStudies()
+    const matchingRad = radStudies.filter(
+      (s) =>
+        (order.encounterId && s.encounterId === order.encounterId) ||
+        (order.umr && (s.umr === order.umr || s.mrn === order.umr)),
+    )
+
+    matchingRad.forEach((s) => {
+      const sBase = getBaseTestName(s.study)
+      const alreadyInOrder = rawTests.some(
+        (t) => getBaseTestName(t.name) === sBase,
+      )
+      if (!alreadyInOrder) {
+        rawTests.push({
+          id: `RAD-TEST-${s.id}`,
+          name: s.study,
+          category: "RADIOLOGY",
+          urgency: s.priority === "STAT" ? "STAT" : "Routine",
+          price: s.price || priceForTest(s.study),
+          status: s.paymentStatus === "Paid" ? "Completed" : "Pending",
+        })
+      }
+    })
+  } catch {}
+
+  // Strict deduplication by normalized base test name
+  const seenBaseNames = new Set<string>()
+  const deduplicatedTests: typeof rawTests = []
+  for (const t of rawTests) {
+    const base = getBaseTestName(t.name)
+    if (!seenBaseNames.has(base)) {
+      seenBaseNames.add(base)
+      deduplicatedTests.push(t)
+    }
+  }
+
+  const isUnbilled = !order.billing || order.billing.status === "Pending"
+  const normalizedTests = deduplicatedTests.map((t) => {
+    const currentPrice = isUnbilled ? priceForTest(t.name) : t.price
+    return {
+      ...t,
+      price: currentPrice,
+      status: (t.status === "Ordered" ? "Pending" : t.status) as LabTestStatus,
+    }
+  })
+
+  const subtotal = isUnbilled
+    ? normalizedTests.reduce((sum, t) => sum + t.price, 0)
+    : order.billing?.subtotal || 0
+  const discount = order.billing?.discount || 0
+  const total = isUnbilled ? Math.max(0, subtotal - discount) : order.billing?.total || 0
+
   return {
     ...order,
-    tests: (order.tests || []).map((t) => ({
-      ...t,
-      status: (t.status === "Ordered" ? "Pending" : t.status) as LabTestStatus,
-    })),
+    tests: normalizedTests,
     history: order.history || [],
-    billing: order.billing || {
-      status: "Pending",
-      subtotal: 0,
-      discount: 0,
-      total: 0,
+    billing: {
+      status: order.billing?.status || "Pending",
+      invoiceNo: order.billing?.invoiceNo,
+      mode: order.billing?.mode,
+      receiptNo: order.billing?.receiptNo,
+      paidAt: order.billing?.paidAt,
+      collectedBy: order.billing?.collectedBy,
+      subtotal,
+      discount,
+      total,
     },
   }
 }
@@ -555,10 +636,12 @@ export class LabOrderDatabase {
   }
 
   static getOrders(): LabOrder[] {
-    return readOrders().sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
+    return readOrders()
+      .filter((o) => o.tests && o.tests.length > 0)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
   }
 
   static resetToCleanDemoData(): void {
@@ -629,7 +712,7 @@ export class LabOrderDatabase {
         name: def ? def.name : test.name,
         category: def ? def.category : (test.category || "PATHOLOGY"),
         urgency: (test.urgency as LabOrderTest["urgency"]) || "Routine",
-        price: def ? def.price : priceForTest(test.name),
+        price: priceForTest(test.name),
         status: "Pending",
       }
     })
@@ -695,8 +778,6 @@ export class LabOrderDatabase {
       const testPrice =
         testData.price !== undefined
           ? testData.price
-          : def?.price !== undefined
-          ? def.price
           : priceForTest(testData.name)
       const newTestId = `LT-${order.tests.length + 1}-${Date.now().toString().slice(-4)}`
       const now = new Date().toISOString()
@@ -814,6 +895,32 @@ export class LabOrderDatabase {
       }
     })
 
+    // Sync matching Radiology studies for this order/patient to 'Paid'
+    try {
+      if (result) {
+        const radStudies = BillingDatabase.getRadiologyStudies()
+        const pUmr = result.umr
+        const pName = result.patientName
+        const encId = result.encounterId
+        radStudies.forEach((study) => {
+          if (
+            (encId && study.encounterId === encId) ||
+            (pUmr && (study.umr === pUmr || study.mrn === pUmr)) ||
+            (pName && study.patient && study.patient.toLowerCase() === pName.toLowerCase())
+          ) {
+            if (study.paymentStatus !== "Paid") {
+              BillingDatabase.updateRadiologyStudy(study.id, {
+                paymentStatus: "Paid",
+                invoiceNo: result.billing.invoiceNo || study.invoiceNo,
+              })
+            }
+          }
+        })
+      }
+    } catch (err) {
+      console.warn("Radiology payment sync error:", err)
+    }
+
     // Also sync matching claim in Central Billing if present
     try {
       if (typeof window !== "undefined") {
@@ -837,12 +944,19 @@ export class LabOrderDatabase {
             }
             return c
           })
-          if (claimChanged) {
-            window.localStorage.setItem("hosp_billing_claims_inr_v11", JSON.stringify(updatedClaims))
-          }
         }
       }
     } catch {}
+
+    if (result && result.patientName) {
+      try {
+        BillingDatabase.dispatchClearanceToDepartment(
+          result.patientName,
+          "Radiology",
+          result.billing.receiptNo,
+        )
+      } catch {}
+    }
 
     return result
   }
