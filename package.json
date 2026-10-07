@@ -12,9 +12,15 @@
     "dev:stop": "node scripts/dev-stop.mjs"
   },
   "dependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/pg": "^8.23.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.46.0",
+    "pg": "^8.23.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.6.1",

@@ -198,6 +198,27 @@ const INITIAL_ROLES: AppRole[] = [
   },
 
   {
+    id: "ROLE_HR",
+    name: "Human Resources Administrator",
+    allowedModules: [
+      "dashboard",
+      "hrms",
+      "employees",
+      "reports",
+      "reports_staff",
+    ],
+  },
+
+  {
+    id: "ROLE_STAFF",
+    name: "Hospital Staff Member",
+    allowedModules: [
+      "dashboard",
+      "employees",
+    ],
+  },
+
+  {
     id: "ROLE_DOCTOR",
 
     name: "Attending Physician / Doctor",
@@ -230,6 +251,7 @@ const INITIAL_ROLES: AppRole[] = [
       "dpi_ocr",
       "discharge",
       "surgery",
+      "employees",
 
       // Clinical side of insurance: the pre-auth's diagnosis, notes and procedures.
       "insurance_preauth",
@@ -264,6 +286,7 @@ const INITIAL_ROLES: AppRole[] = [
       "payments",
       "lab_billing",
       "laboratory",
+      "employees",
 
       // Insurance: view and basic capture at registration / admission.
       "insurance",
@@ -327,6 +350,7 @@ const INITIAL_ROLES: AppRole[] = [
       "revenue_reports",
       "reports_pharmacy_damaged",
       "reports_supplier_returns",
+      "employees",
     ],
   },
 
@@ -342,6 +366,7 @@ const INITIAL_ROLES: AppRole[] = [
       "patients",
       "chart",
       "reports",
+      "employees",
     ],
   },
 
@@ -364,6 +389,7 @@ const INITIAL_ROLES: AppRole[] = [
       "queue",
       "outpatient",
       "surgery",
+      "employees",
     ],
   },
 
@@ -474,6 +500,26 @@ export function getInitialUsers(): AppUser[] {
       roleId: "ROLE_ADMIN",
       name: "System Administrator",
       staffId: "ADM-001",
+      status: "Active",
+    },
+
+    {
+      id: "U_HR",
+      username: "hr",
+      password: "password123",
+      roleId: "ROLE_HR",
+      name: "Radhika Sharma (HR Admin)",
+      staffId: "HR-001",
+      status: "Active",
+    },
+
+    {
+      id: "U_STAFF",
+      username: "staff",
+      password: "password123",
+      roleId: "ROLE_STAFF",
+      name: "Ramesh Verma (General Staff)",
+      staffId: "STF-101",
       status: "Active",
     },
 
@@ -597,7 +643,19 @@ export class RoleDatabase {
         return INITIAL_ROLES
       }
 
-      return JSON.parse(stored)
+      const parsed: AppRole[] = JSON.parse(stored)
+      // Merge any newly introduced roles that are missing from stored cache
+      let changed = false
+      for (const ir of INITIAL_ROLES) {
+        if (!parsed.some(r => r.id === ir.id)) {
+          parsed.push(ir)
+          changed = true
+        }
+      }
+      if (changed) {
+        window.localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(parsed))
+      }
+      return parsed
     } catch {
       return INITIAL_ROLES
     }
@@ -627,7 +685,7 @@ export class RoleDatabase {
         return initial
       }
 
-      // Seeded accounts added in a later release (e.g. insurance, finance)
+      // Seeded accounts added in a later release (e.g. hr, staff, insurance, finance)
       // join an existing store; accounts already there are left as edited.
       const users: AppUser[] = JSON.parse(stored)
       const missing = initial.filter((u) => !users.some((x) => x.id === u.id || x.username === u.username))
