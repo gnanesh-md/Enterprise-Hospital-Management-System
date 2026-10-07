@@ -359,9 +359,11 @@ export default function GenericReportPage({
   onNavigate,
 }: GenericReportPageProps) {
   const config = REPORT_CONFIGS[reportType] || REPORT_CONFIGS.reports_patients
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Always scroll to top whenever a new report is opened / switched
   useEffect(() => {
+    if (containerRef.current) containerRef.current.scrollTop = 0;
     const mainEl = document.querySelector("main");
     if (mainEl) mainEl.scrollTop = 0;
     window.scrollTo(0, 0);
@@ -614,7 +616,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Daily intake of new vs returning patients
                 </p>
-                <div className="h-40 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_1`} width="100%" height="100%">
                     <LineChart data={regTrend}>
                       <CartesianGrid
@@ -676,7 +678,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Patient volume across hospital departments
                 </p>
-                <div className="h-40 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_2`} width="100%" height="100%">
                     <BarChart data={deptPts}>
                       <CartesianGrid
@@ -725,7 +727,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Patient breakdown by gender
                 </p>
-                <div className="h-36 w-full flex items-center justify-center">
+                <div className="h-72 w-full flex items-center justify-center">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_3`} width="100%" height="100%">
                     <PieChart>
                       <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -767,7 +769,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Patient volume grouped by age brackets
                 </p>
-                <div className="h-36 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_4`} width="100%" height="100%">
                     <BarChart data={ageDist}>
                       <CartesianGrid
@@ -825,7 +827,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Emergency case arrivals over the period
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_5`} width="100%" height="100%">
                   <LineChart data={visitTrend}>
                     <CartesianGrid
@@ -873,7 +875,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Acuity levels across triage categories
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_6`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -915,7 +917,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Patient discharge and admission outcomes
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_7`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -957,7 +959,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Resuscitation and trauma bay demand
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_8`} width="100%" height="100%">
                   <BarChart data={bedUtil}>
                     <CartesianGrid
@@ -1014,7 +1016,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Daily inpatient admissions
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_9`} width="100%" height="100%">
                   <LineChart data={admTrend}>
                     <CartesianGrid
@@ -1062,7 +1064,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Daily patient recovery discharges
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_10`} width="100%" height="100%">
                   <LineChart data={disTrend}>
                     <CartesianGrid
@@ -1110,7 +1112,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Census across inpatient wards and units
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_11`} width="100%" height="100%">
                   <BarChart data={wardOcc}>
                     <CartesianGrid
@@ -1156,7 +1158,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Admissions partitioned by primary clinical service
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_12`} width="100%" height="100%">
                   <BarChart data={deptAdm}>
                     <CartesianGrid
@@ -1213,7 +1215,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Daily booking volume over time
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_13`} width="100%" height="100%">
                   <LineChart data={trend}>
                     <CartesianGrid
@@ -1261,7 +1263,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Patient bookings by physician
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_14`} width="100%" height="100%">
                   <BarChart data={docAppts.slice(0, 7)}>
                     <CartesianGrid
@@ -1307,7 +1309,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Specialty consultation demand
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_15`} width="100%" height="100%">
                   <BarChart data={deptAppts}>
                     <CartesianGrid
@@ -1353,7 +1355,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Completed, pending, cancelled and no-show shares
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_16`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -1405,7 +1407,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Clinical consultation throughput across top physicians
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_17`} width="100%" height="100%">
                   <BarChart data={docVisits}>
                     <CartesianGrid
@@ -1451,7 +1453,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Aggregate doctor consultations over time
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_18`} width="100%" height="100%">
                   <LineChart data={consultTrend}>
                     <CartesianGrid
@@ -1499,7 +1501,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Total consultations aggregated by medical specialty
               </p>
-              <div className="h-36 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_19`} width="100%" height="100%">
                   <BarChart data={deptDoc}>
                     <CartesianGrid
@@ -1556,7 +1558,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Prescription intake over the selected timeframe
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_20`} width="100%" height="100%">
                   <LineChart data={rxTrend}>
                     <CartesianGrid
@@ -1604,7 +1606,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Top dispensed pharmaceuticals
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_21`} width="100%" height="100%">
                   <BarChart data={medCons}>
                     <CartesianGrid
@@ -1650,7 +1652,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Drug utilization by referring clinic
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_22`} width="100%" height="100%">
                   <BarChart data={deptUsage}>
                     <CartesianGrid
@@ -1696,7 +1698,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Dispensed, preparing, pending verification shares
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_23`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -1749,7 +1751,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Daily diagnostic pathology requests
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_24`} width="100%" height="100%">
                   <LineChart data={labTrend}>
                     <CartesianGrid
@@ -1797,7 +1799,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Highest volume ordered diagnostic assays
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_25`} width="100%" height="100%">
                   <BarChart data={testVol}>
                     <CartesianGrid
@@ -1843,7 +1845,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Test orders originating from clinical services
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_26`} width="100%" height="100%">
                   <BarChart data={deptLab}>
                     <CartesianGrid
@@ -1889,7 +1891,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Verified results vs pending and sample collection
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_27`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -1942,7 +1944,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Diagnostic imaging orders over time
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_28`} width="100%" height="100%">
                   <LineChart data={radTrend}>
                     <CartesianGrid
@@ -1990,7 +1992,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 X-Ray, CT, MRI, and Ultrasound proportions
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_29`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -2032,7 +2034,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Volume grouped by anatomical examination
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_30`} width="100%" height="100%">
                   <BarChart data={scanDist.slice(0, 6)}>
                     <CartesianGrid
@@ -2078,7 +2080,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Imaging requests per clinical department
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_31`} width="100%" height="100%">
                   <BarChart data={deptRad}>
                     <CartesianGrid
@@ -2134,7 +2136,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Census occupancy percentage over time
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_32`} width="100%" height="100%">
                   <LineChart data={occTrend}>
                     <CartesianGrid
@@ -2182,7 +2184,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 General, semi-private, private and ICU beds
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_33`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -2224,7 +2226,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Occupied beds count across individual wards
               </p>
-              <div className="h-36 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_34`} width="100%" height="100%">
                   <BarChart data={wardOcc}>
                     <CartesianGrid
@@ -2281,7 +2283,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Daily patient admission flow
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_35`} width="100%" height="100%">
                   <LineChart data={admTrend}>
                     <CartesianGrid
@@ -2329,7 +2331,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Emergency, planned, and direct ICU admissions
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_36`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -2371,7 +2373,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Admissions per admitting specialty
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_37`} width="100%" height="100%">
                   <BarChart data={deptAdm}>
                     <CartesianGrid
@@ -2417,7 +2419,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Bed placement distribution across wards
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_38`} width="100%" height="100%">
                   <BarChart data={wardAdm}>
                     <CartesianGrid
@@ -2473,7 +2475,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Patient discharge clearance volume over time
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_39`} width="100%" height="100%">
                   <LineChart data={disTrend}>
                     <CartesianGrid
@@ -2521,7 +2523,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Routine, transfers, and LAMA dispositions
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_40`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -2563,7 +2565,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Patient recovery clearances by ward
               </p>
-              <div className="h-36 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_41`} width="100%" height="100%">
                   <BarChart data={deptDis}>
                     <CartesianGrid
@@ -2619,7 +2621,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Personnel headcount across hospital units
               </p>
-              <div className="h-40 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_42`} width="100%" height="100%">
                   <BarChart data={deptStaff}>
                     <CartesianGrid
@@ -2665,7 +2667,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Doctors, nurses, pharmacy and lab specialists
               </p>
-              <div className="h-40 w-full flex items-center justify-center">
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_43`} width="100%" height="100%">
                   <PieChart>
                     <Pie isAnimationActive={true} animationDuration={1200} animationEasing="ease-out" animationBegin={250}
@@ -2707,7 +2709,7 @@ export default function GenericReportPage({
               <p className="text-[11px] text-slate-500 mb-2">
                 Duty roster distribution across 24-hour shifts
               </p>
-              <div className="h-36 w-full">
+              <div className="h-72 w-full">
                 <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_44`} width="100%" height="100%">
                   <BarChart data={staffActivity}>
                     <CartesianGrid
@@ -2811,7 +2813,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Recognized billed revenue vs settled cash/digital collections
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_45`} width="100%" height="100%">
                     <LineChart
                       data={trend}
@@ -2887,7 +2889,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Total collection contribution across hospital clinical units
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_46`} width="100%" height="100%">
                     <BarChart
                       data={deptRev}
@@ -2955,7 +2957,7 @@ export default function GenericReportPage({
                   Collections breakdown by payment channel (UPI, Cash, Cards,
                   Bank Transfer)
                 </p>
-                <div className="h-44 w-full flex items-center justify-center">
+                <div className="h-72 w-full flex items-center justify-center">
                   {payDist.length > 0 ? (
                     <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_47`} width="100%" height="100%">
                       <PieChart>
@@ -3014,7 +3016,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Revenue generated by clinical service category
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_48`} width="100%" height="100%">
                     <BarChart
                       data={serviceLines}
@@ -3109,7 +3111,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Write-off loss valuation over the reporting period
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_49`} width="100%" height="100%">
                     <LineChart
                       data={dTrend}
@@ -3172,7 +3174,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Medicines with greatest cumulative write-off valuation
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_50`} width="100%" height="100%">
                     <BarChart
                       data={topProducts}
@@ -3240,7 +3242,7 @@ export default function GenericReportPage({
                   Transit, cold chain excursion, expired, or compromised
                   packaging
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_51`} width="100%" height="100%">
                     <BarChart
                       data={lossReasons}
@@ -3305,7 +3307,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Category-level distribution of inventory write-offs
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_52`} width="100%" height="100%">
                     <BarChart
                       data={catLoss}
@@ -3416,7 +3418,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Debit notes issued to pharmaceutical vendors over time
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_53`} width="100%" height="100%">
                     <LineChart
                       data={rTrend}
@@ -3479,7 +3481,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Claimable return values by pharmaceutical supplier
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_54`} width="100%" height="100%">
                     <BarChart
                       data={supReturns}
@@ -3547,7 +3549,7 @@ export default function GenericReportPage({
                   Near-expiry, packaging defects, batch recalls, or excess
                   orders
                 </p>
-                <div className="h-44 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_55`} width="100%" height="100%">
                     <BarChart
                       data={rReasons}
@@ -3614,7 +3616,7 @@ export default function GenericReportPage({
                 <p className="text-[11px] text-slate-500 mb-2">
                   Resolution status across vendor return workflow
                 </p>
-                <div className="h-44 w-full flex items-center justify-center">
+                <div className="h-72 w-full flex items-center justify-center">
                   {rStatuses.length > 0 ? (
                     <ResponsiveContainer key={`rc_${reportType}_${dateRange}_${selectedDept}_${selectedDoctor}_${selectedStatus}_56`} width="100%" height="100%">
                       <PieChart>
@@ -3670,10 +3672,10 @@ export default function GenericReportPage({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-[#F8FAFC] text-slate-900 font-sans pb-16">
+    <div ref={containerRef} className="flex-1 flex flex-col h-full min-h-0 w-full overflow-y-auto bg-[#F8FAFC] text-slate-900 font-sans pb-16">
       {/* ── 1. PAGE HEADER ────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-[#E2E8F0] px-6 py-3.5 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
               {config.title}
@@ -3765,7 +3767,7 @@ export default function GenericReportPage({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-4 w-full space-y-3.5">
+      <div className="w-full px-6 py-4 space-y-3.5">
         {/* Custom Date Picker (when dateRange === "custom") */}
         {showCustomPicker && (
           <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 flex flex-wrap items-center gap-3 animate-in fade-in duration-150">

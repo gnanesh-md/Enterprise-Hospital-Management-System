@@ -146,7 +146,7 @@ export interface JobStatus {
 export interface OCRJobResult {
   filename: string
   combined_markdown: string
-  pages: { label: string text: string }[]
+  pages: { label: string; text: string }[]
   entities: OCREntity[]
   confidence_score: number
   extraction_time: number | null
@@ -158,7 +158,7 @@ export const ocrApi = {
     const form = new FormData()
     form.append("file", file)
     form.append("client_blueprint", clientBlueprint)
-    return postForm<{ document_hash: string job_id: string message: string }>(
+    return postForm<{ document_hash: string; job_id: string; message: string }>(
       "/ocr/upload",
       form,
     )
@@ -209,14 +209,14 @@ export interface SummarizerJobResult {
   filename: string
   summary_md: string
   page_texts: Record<string, string>
-  patient_meta: { name?: string ip_no?: string doctor?: string nurse?: string }
+  patient_meta: { name?: string; ip_no?: string; doctor?: string; nurse?: string }
 }
 
 export const summarizerApi = {
   upload: (file: File) => {
     const form = new FormData()
     form.append("file", file)
-    return postForm<{ document_hash: string job_id: string message: string }>(
+    return postForm<{ document_hash: string; job_id: string; message: string }>(
       "/summarizer/upload",
       form,
     )
@@ -245,7 +245,7 @@ export interface VaultDoc {
 export const vaultApi = {
   list: () => get<VaultDoc[]>("/vault"),
   get: (docId: number) =>
-    get<{ id: number markdown: string }>(`/vault/${docId}`),
+    get<{ id: number; markdown: string }>(`/vault/${docId}`),
   downloadExport: async (id: number, format: string): Promise<Blob> => {
     const token = getToken()
     const headers: Record<string, string> = { "Bypass-Tunnel-Reminder": "true" }
@@ -290,7 +290,7 @@ export const assistantApi = {
     targetLanguage = "English",
     docIds?: number[],
   ) =>
-    post<{ role: string content: string citations: Citation[] }>(
+    post<{ role: string; content: string; citations: Citation[] }>(
       "/assistant/chat",
       {
         message,
@@ -308,7 +308,7 @@ export const assistantApi = {
   // restore attachment chips instead of silently losing the conversation's
   // scoping.
   getSessionAttachments: (sessionId: string) =>
-    get<{ doc_id: number filename: string }[]>(
+    get<{ doc_id: number; filename: string }[]>(
       `/assistant/session/${encodeURIComponent(sessionId)}/attachments`,
     ),
   addSessionAttachment: (sessionId: string, docId: number, filename: string) =>
@@ -324,11 +324,11 @@ export const assistantApi = {
   // inline would block the request) — use ingestJobStatus/waitForIngest to
   // know when the document is actually queryable.
   ingestText: (documents: string[]) =>
-    post<{ job_id: string message: string }>("/assistant/ingest/text", {
+    post<{ job_id: string; message: string }>("/assistant/ingest/text", {
       documents,
     }),
   ingestVaultDocs: (docIds: number[]) =>
-    post<{ job_id: string message: string }>("/assistant/ingest/vault", {
+    post<{ job_id: string; message: string }>("/assistant/ingest/vault", {
       doc_ids: docIds,
     }),
   ingestJobStatus: (jobId: string) =>

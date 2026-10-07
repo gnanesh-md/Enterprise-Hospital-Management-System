@@ -10,6 +10,9 @@
  */
 
 import { findTestDefinition } from "../components/laboratory/labCatalogueSchema"
+import { isRadiologyTest } from "../utils/testClassifier"
+import { BillingDatabase } from "./billingDb"
+import { DiagnosticTariffDatabase } from "./diagnosticTariffDb"
 
 const ORDERS_KEY = "hospai_lab_orders_v2"
 const CHANNEL_NAME = "hospai_lab_orders"
@@ -109,39 +112,39 @@ export interface LabOrder {
  * Falls back to lab catalogue schema price, then DEFAULT_TEST_PRICE.
  */
 const PRICE_BOOK: { match: string; price: number }[] = [
-  { match: "complete blood count", price: 350 },
-  { match: "cbc", price: 350 },
-  { match: "esr", price: 200 },
-  { match: "crp", price: 650 },
-  { match: "lipid", price: 850 },
-  { match: "liver function", price: 900 },
-  { match: "lft", price: 900 },
-  { match: "renal function", price: 850 },
-  { match: "kft", price: 850 },
-  { match: "rft", price: 850 },
-  { match: "creatinine", price: 250 },
-  { match: "urea", price: 250 },
-  { match: "electrolyte", price: 600 },
-  { match: "troponin", price: 1800 },
-  { match: "d-dimer", price: 1600 },
-  { match: "bnp", price: 2400 },
-  { match: "hba1c", price: 700 },
-  { match: "blood sugar", price: 150 },
-  { match: "glucose", price: 150 },
-  { match: "thyroid", price: 750 },
-  { match: "tsh", price: 450 },
-  { match: "vitamin", price: 1500 },
-  { match: "ferritin", price: 900 },
-  { match: "urine", price: 250 },
-  { match: "stool", price: 300 },
-  { match: "culture", price: 1200 },
-  { match: "biopsy", price: 3500 },
-  { match: "blood group", price: 200 },
+  { match: "complete blood count", price: 740 },
+  { match: "cbc", price: 740 },
+  { match: "esr", price: 140 },
+  { match: "crp", price: 570 },
+  { match: "lipid", price: 1250 },
+  { match: "liver function", price: 1320 },
+  { match: "lft", price: 1320 },
+  { match: "renal function", price: 660 },
+  { match: "kft", price: 660 },
+  { match: "rft", price: 660 },
+  { match: "creatinine", price: 260 },
+  { match: "urea", price: 260 },
+  { match: "electrolyte", price: 1050 },
+  { match: "troponin", price: 1000 },
+  { match: "d-dimer", price: 2800 },
+  { match: "bnp", price: 3450 },
+  { match: "hba1c", price: 1120 },
+  { match: "blood sugar", price: 80 },
+  { match: "glucose", price: 80 },
+  { match: "thyroid", price: 1320 },
+  { match: "tsh", price: 500 },
+  { match: "vitamin", price: 2640 },
+  { match: "ferritin", price: 1300 },
+  { match: "urine", price: 300 },
+  { match: "stool", price: 250 },
+  { match: "culture", price: 660 },
+  { match: "biopsy", price: 1650 },
+  { match: "blood group", price: 170 },
   { match: "serology", price: 800 },
-  { match: "dengue", price: 1100 },
-  { match: "malaria", price: 450 },
-  { match: "hiv", price: 900 },
-  { match: "hbsag", price: 700 },
+  { match: "dengue", price: 1490 },
+  { match: "malaria", price: 300 },
+  { match: "hiv", price: 830 },
+  { match: "hbsag", price: 660 },
   { match: "x-ray", price: 450 },
   { match: "xray", price: 450 },
   { match: "ultrasound", price: 1400 },
@@ -164,9 +167,19 @@ const PRICE_BOOK: { match: string; price: number }[] = [
 export const DEFAULT_TEST_PRICE = 500
 
 export function priceForTest(testName: string): number {
+  if (!testName) return DEFAULT_TEST_PRICE
+
+  // 1. Check Diagnostic Tariff & Price Master (authoritative hospital rate card)
+  const tariffPrice = DiagnosticTariffDatabase.getTariffPriceByName(testName)
+  if (tariffPrice !== null && tariffPrice !== undefined) {
+    return tariffPrice
+  }
+
+  // 2. Check lab catalogue schema
   const def = findTestDefinition(testName)
   if (def && def.price) return def.price
 
+  // 3. Fallback to PRICE_BOOK
   const normalized = (testName || "").toLowerCase()
   const hit = PRICE_BOOK.filter((entry) =>
     normalized.includes(entry.match),
@@ -194,19 +207,87 @@ function notify() {
   ensureChannel()?.postMessage("changed")
 }
 
+function getBaseTestName(name: string): string {
+  if (!name) return ""
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s*\([^\)]*\)/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
 function normalizeOrder(order: LabOrder): LabOrder {
+  let rawTests = [...(order.tests || [])]
+
+  // Auto-attach matching radiology studies for this patient/encounter if missing from billing order
+  try {
+    const radStudies = BillingDatabase.getRadiologyStudies()
+    const matchingRad = radStudies.filter(
+      (s) =>
+        (order.encounterId && s.encounterId === order.encounterId) ||
+        (order.umr && (s.umr === order.umr || s.mrn === order.umr)),
+    )
+
+    matchingRad.forEach((s) => {
+      const sBase = getBaseTestName(s.study)
+      const alreadyInOrder = rawTests.some(
+        (t) => getBaseTestName(t.name) === sBase,
+      )
+      if (!alreadyInOrder) {
+        rawTests.push({
+          id: `RAD-TEST-${s.id}`,
+          name: s.study,
+          category: "RADIOLOGY",
+          urgency: s.priority === "STAT" ? "STAT" : "Routine",
+          price: s.price || priceForTest(s.study),
+          status: s.paymentStatus === "Paid" ? "Completed" : "Pending",
+        })
+      }
+    })
+  } catch {}
+
+  // Strict deduplication by normalized base test name
+  const seenBaseNames = new Set<string>()
+  const deduplicatedTests: typeof rawTests = []
+  for (const t of rawTests) {
+    const base = getBaseTestName(t.name)
+    if (!seenBaseNames.has(base)) {
+      seenBaseNames.add(base)
+      deduplicatedTests.push(t)
+    }
+  }
+
+  const isUnbilled = !order.billing || order.billing.status === "Pending"
+  const normalizedTests = deduplicatedTests.map((t) => {
+    const currentPrice = isUnbilled ? priceForTest(t.name) : t.price
+    return {
+      ...t,
+      price: currentPrice,
+      status: (t.status === "Ordered" ? "Pending" : t.status) as LabTestStatus,
+    }
+  })
+
+  const subtotal = isUnbilled
+    ? normalizedTests.reduce((sum, t) => sum + t.price, 0)
+    : order.billing?.subtotal || 0
+  const discount = order.billing?.discount || 0
+  const total = isUnbilled ? Math.max(0, subtotal - discount) : order.billing?.total || 0
+
   return {
     ...order,
-    tests: (order.tests || []).map((t) => ({
-      ...t,
-      status: (t.status === "Ordered" ? "Pending" : t.status) as LabTestStatus,
-    })),
+    tests: normalizedTests,
     history: order.history || [],
-    billing: order.billing || {
-      status: "Pending",
-      subtotal: 0,
-      discount: 0,
-      total: 0,
+    billing: {
+      status: order.billing?.status || "Pending",
+      invoiceNo: order.billing?.invoiceNo,
+      mode: order.billing?.mode,
+      receiptNo: order.billing?.receiptNo,
+      paidAt: order.billing?.paidAt,
+      collectedBy: order.billing?.collectedBy,
+      subtotal,
+      discount,
+      total,
     },
   }
 }
@@ -232,7 +313,7 @@ function getInitialDemoOrders(): LabOrder[] {
       department: "Internal Medicine",
       diagnosis: "Acute Febrile Illness & Fatigue",
       clinicalNotes: "Patient presents with low-grade fever, malaise, fatigue for 4 days.",
-      status: "In Progress",
+      status: "Sample Collected",
       createdAt: d2,
       updatedAt: d1,
       billing: {
@@ -253,26 +334,7 @@ function getInitialDemoOrders(): LabOrder[] {
           category: "HEMATOLOGY",
           urgency: "Routine",
           price: 350,
-          status: "Completed",
-          result: "14.2",
-          resultUnit: "g/dL",
-          referenceRange: "13.0–17.5 g/dL",
-          flag: "",
-          resultedAt: d1,
-          technician: "Ananya Sen, MLT",
-          verifier: "Dr. Rajesh Gupta, MD (Path)",
-          verifiedAt: d1,
-          clinicalComments: "RBC morphology is normocytic normochromic. Platelet count adequate.",
-          results: {
-            "Hemoglobin (Hb)": { value: "14.2", unit: "g/dL", referenceRange: "13.0–17.5 g/dL", flag: "" },
-            "Total WBC / Total Count (TC)": { value: "7800", unit: "cells/µL", referenceRange: "4,000–11,000 cells/µL", flag: "" },
-            "RBC Count": { value: "4.8", unit: "million/µL", referenceRange: "4.5–5.9 million/µL", flag: "" },
-            "Packed Cell Volume (PCV/HCT)": { value: "42.5", unit: "%", referenceRange: "40.0–52.0 %", flag: "" },
-            "MCV": { value: "88.0", unit: "fL", referenceRange: "80.0–100.0 fL", flag: "" },
-            "MCH": { value: "29.5", unit: "pg", referenceRange: "27.0–33.0 pg", flag: "" },
-            "MCHC": { value: "33.5", unit: "g/dL", referenceRange: "32.0–36.0 g/dL", flag: "" },
-            "Platelet Count (PLT)": { value: "240000", unit: "cells/µL", referenceRange: "150,000–450,000 cells/µL", flag: "" },
-          },
+          status: "Pending",
         },
         {
           id: "LT-2",
@@ -280,10 +342,7 @@ function getInitialDemoOrders(): LabOrder[] {
           category: "BIOCHEMISTRY",
           urgency: "Routine",
           price: 750,
-          status: "Processing",
-          technician: "K. Mohan, Biochemist",
-          sampleCollectedAt: d2,
-          sampleCollector: "Sister Mary",
+          status: "Pending",
         },
         {
           id: "LT-3",
@@ -297,7 +356,6 @@ function getInitialDemoOrders(): LabOrder[] {
       history: [
         { at: d2, actor: "Dr. Arvind Sharma", action: "Ordered", detail: "3 investigation(s) sent to reception" },
         { at: d2, actor: "Reception", action: "Payment collected", detail: "₹1,850 via UPI -- released to laboratory" },
-        { at: d1, actor: "Ananya Sen, MLT", action: "Result entered", detail: "CBC / Complete Hemogram completed" },
       ],
     },
     {
@@ -426,15 +484,15 @@ function getInitialDemoOrders(): LabOrder[] {
       department: "Cardiology",
       diagnosis: "Atypical Chest Pain & Palpitations",
       clinicalNotes: "Rule out acute coronary syndrome. STAT troponin ordered.",
-      status: "In Progress",
+      status: "Sample Collected",
       createdAt: d1,
       updatedAt: d1,
       billing: {
         status: "Paid",
         invoiceNo: "INV-2026-0004",
-        subtotal: 1950,
+        subtotal: 1500,
         discount: 0,
-        total: 1950,
+        total: 1500,
         mode: "Cash",
         receiptNo: "RCPT-2026-9819",
         paidAt: d1,
@@ -447,45 +505,13 @@ function getInitialDemoOrders(): LabOrder[] {
           category: "BIOCHEMISTRY",
           urgency: "STAT",
           price: 1500,
-          status: "Result Entered",
-          result: "0.01",
-          resultUnit: "ng/mL",
-          referenceRange: "< 0.04 ng/mL",
-          flag: "",
-          resultedAt: d1,
-          technician: "R. Verma, STAT Bench",
-          clinicalComments: "Within normal limits. Below cut-off for myocardial injury.",
-          results: {
-            "Troponin I": { value: "0.01", unit: "ng/mL", referenceRange: "< 0.04 ng/mL", flag: "" },
-            "Interpretation": { value: "Negative for myocardial injury.", unit: "", referenceRange: "Normal", flag: "" },
-          },
-        },
-        {
-          id: "LT-2",
-          name: "Electrolytes",
-          category: "BIOCHEMISTRY",
-          urgency: "STAT",
-          price: 450,
-          status: "Completed",
-          result: "140",
-          resultUnit: "mmol/L",
-          referenceRange: "135–145 mmol/L",
-          flag: "",
-          resultedAt: d1,
-          technician: "R. Verma, STAT Bench",
-          verifier: "Dr. Rajesh Gupta, MD (Path)",
-          verifiedAt: d1,
-          results: {
-            "Sodium (Na+)": { value: "140", unit: "mmol/L", referenceRange: "135–145 mmol/L", flag: "" },
-            "Potassium (K+)": { value: "4.2", unit: "mmol/L", referenceRange: "3.5–5.1 mmol/L", flag: "" },
-            "Chloride (Cl-)": { value: "102", unit: "mmol/L", referenceRange: "98–107 mmol/L", flag: "" },
-          },
+          status: "Pending",
         },
       ],
       history: [
-        { at: d1, actor: "Dr. K. Srinivas", action: "Ordered", detail: "STAT Troponin + Electrolytes" },
-        { at: d1, actor: "Emergency Billing", action: "Payment collected", detail: "₹1,950 via Cash" },
-        { at: d1, actor: "R. Verma, STAT Bench", action: "Result entered", detail: "Troponin I & Electrolytes entered" },
+        { at: d1, actor: "Dr. K. Srinivas", action: "Ordered", detail: "STAT Troponin I" },
+        { at: d1, actor: "Emergency Billing", action: "Payment collected", detail: "₹1,500 via Cash" },
+        { at: d1, actor: "STAT Phlebotomy", action: "Sample Collected", detail: "STAT specimen tubes received" },
       ],
     },
   ]
@@ -506,7 +532,82 @@ function readOrders(): LabOrder[] {
       window.localStorage.setItem(ORDERS_KEY, JSON.stringify(initial))
       return initial.map(normalizeOrder)
     }
-    return parsed.map(normalizeOrder)
+
+    // Auto-sanitize legacy cached demo results (e.g. Troponin 0.01, CBC 14.2, etc.)
+    let mutated = false
+    const sanitized = parsed.map((order) => {
+      let orderMutated = false
+      let tests = order.tests.map((t) => {
+        const isDemoTroponin =
+          t.name.toLowerCase().includes("troponin") &&
+          (t.result === "0.01" || t.results?.["Troponin I"]?.value === "0.01")
+        const isDemoCBC =
+          t.name.toLowerCase().includes("hemogram") &&
+          (t.result === "14.2" || t.results?.["Hemoglobin (Hb)"]?.value === "14.2")
+        const isDemoElectrolytes =
+          t.name.toLowerCase().includes("electrolyte") &&
+          (t.result === "140" || t.results?.["Sodium (Na+)"]?.value === "140")
+
+        if (isDemoTroponin || isDemoCBC || isDemoElectrolytes) {
+          orderMutated = true
+          return {
+            ...t,
+            status: "Pending" as const,
+            result: "",
+            resultUnit: "",
+            referenceRange: "",
+            flag: "" as const,
+            results: {},
+            clinicalComments: "",
+            technician: undefined,
+            verifier: undefined,
+            verifiedAt: undefined,
+            resultedAt: undefined,
+          }
+        }
+        return t
+      })
+
+      // If Sunita Reddy has 2 tests in cached localStorage, prune to single Troponin I test
+      if (order.id === "LAB-2026-0004" && tests.length > 1) {
+        orderMutated = true
+        tests = tests.filter((t) => t.name.toLowerCase().includes("troponin"))
+      }
+
+      const allCompleted =
+        tests.length > 0 &&
+        tests.every((t) => t.status === "Completed" || t.status === "Verified")
+
+      if (allCompleted && order.status !== "Completed") {
+        orderMutated = true
+        return {
+          ...order,
+          tests,
+          status: "Completed" as const,
+        }
+      }
+
+      if (orderMutated) {
+        mutated = true
+        return {
+          ...order,
+          tests,
+          status:
+            order.billing.status === "Paid"
+              ? ("Sample Collected" as const)
+              : order.status,
+        }
+      }
+      return order
+    })
+
+    if (mutated) {
+      try {
+        window.localStorage.setItem(ORDERS_KEY, JSON.stringify(sanitized))
+      } catch {}
+    }
+
+    return sanitized.map(normalizeOrder)
   } catch {
     return []
   }
@@ -535,10 +636,12 @@ export class LabOrderDatabase {
   }
 
   static getOrders(): LabOrder[] {
-    return readOrders().sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )
+    return readOrders()
+      .filter((o) => o.tests && o.tests.length > 0)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
   }
 
   static resetToCleanDemoData(): void {
@@ -609,7 +712,7 @@ export class LabOrderDatabase {
         name: def ? def.name : test.name,
         category: def ? def.category : (test.category || "PATHOLOGY"),
         urgency: (test.urgency as LabOrderTest["urgency"]) || "Routine",
-        price: def ? def.price : priceForTest(test.name),
+        price: priceForTest(test.name),
         status: "Pending",
       }
     })
@@ -654,6 +757,85 @@ export class LabOrderDatabase {
     writeOrders([order, ...orders])
     notify()
     return order
+  }
+
+  /**
+   * Add a new test manually to an existing lab order.
+   */
+  static addTestToOrder(
+    orderId: string,
+    testData: {
+      name: string
+      category?: string
+      urgency?: "Routine" | "Urgent" | "STAT"
+      price?: number
+      clinicalNotes?: string
+    },
+    actor: string
+  ): LabOrder | undefined {
+    return this.mutate(orderId, (order) => {
+      const def = findTestDefinition(testData.name)
+      const testPrice =
+        testData.price !== undefined
+          ? testData.price
+          : priceForTest(testData.name)
+      const newTestId = `LT-${order.tests.length + 1}-${Date.now().toString().slice(-4)}`
+      const now = new Date().toISOString()
+
+      const newTest: LabOrderTest = {
+        id: newTestId,
+        name: def ? def.name : testData.name,
+        category: def ? def.category : testData.category || "PATHOLOGY",
+        urgency: testData.urgency || "Routine",
+        price: testPrice,
+        status:
+          order.status === "Sample Collected" || order.status === "In Progress"
+            ? "Sample Collected"
+            : "Pending",
+        sampleCollectedAt:
+          order.status === "Sample Collected" || order.status === "In Progress"
+            ? now
+            : undefined,
+        sampleCollector:
+          order.status === "Sample Collected" || order.status === "In Progress"
+            ? actor
+            : undefined,
+      }
+
+      const updatedTests = [...order.tests, newTest]
+
+      // Re-calculate billing subtotal and total
+      const newSubtotal = order.billing.subtotal + testPrice
+      const newTotal = order.billing.total + testPrice
+
+      // If the order was Completed, adding a test reopens it to active worklist
+      const nextStatus =
+        order.status === "Completed"
+          ? order.billing.status === "Paid"
+            ? "In Progress"
+            : "Awaiting Billing"
+          : order.status
+
+      return {
+        ...order,
+        tests: updatedTests,
+        status: nextStatus,
+        billing: {
+          ...order.billing,
+          subtotal: newSubtotal,
+          total: newTotal,
+        },
+        history: [
+          ...order.history,
+          {
+            at: now,
+            actor,
+            action: "Test Added Manually",
+            detail: `${newTest.name} added manually to order by ${actor} (₹${testPrice})`,
+          },
+        ],
+      }
+    })
   }
 
   private static mutate(
@@ -713,6 +895,32 @@ export class LabOrderDatabase {
       }
     })
 
+    // Sync matching Radiology studies for this order/patient to 'Paid'
+    try {
+      if (result) {
+        const radStudies = BillingDatabase.getRadiologyStudies()
+        const pUmr = result.umr
+        const pName = result.patientName
+        const encId = result.encounterId
+        radStudies.forEach((study) => {
+          if (
+            (encId && study.encounterId === encId) ||
+            (pUmr && (study.umr === pUmr || study.mrn === pUmr)) ||
+            (pName && study.patient && study.patient.toLowerCase() === pName.toLowerCase())
+          ) {
+            if (study.paymentStatus !== "Paid") {
+              BillingDatabase.updateRadiologyStudy(study.id, {
+                paymentStatus: "Paid",
+                invoiceNo: result.billing.invoiceNo || study.invoiceNo,
+              })
+            }
+          }
+        })
+      }
+    } catch (err) {
+      console.warn("Radiology payment sync error:", err)
+    }
+
     // Also sync matching claim in Central Billing if present
     try {
       if (typeof window !== "undefined") {
@@ -736,12 +944,19 @@ export class LabOrderDatabase {
             }
             return c
           })
-          if (claimChanged) {
-            window.localStorage.setItem("hosp_billing_claims_inr_v11", JSON.stringify(updatedClaims))
-          }
         }
       }
     } catch {}
+
+    if (result && result.patientName) {
+      try {
+        BillingDatabase.dispatchClearanceToDepartment(
+          result.patientName,
+          "Radiology",
+          result.billing.receiptNo,
+        )
+      } catch {}
+    }
 
     return result
   }
@@ -931,7 +1146,7 @@ export class LabOrderDatabase {
         if (def) {
           def.parameters.forEach((param) => {
             results[param.name] = {
-              value: param.defaultValue || "Normal",
+              value: "",
               unit: param.unit || "",
               referenceRange: param.referenceRange?.text || "",
               flag: "",
@@ -939,14 +1154,14 @@ export class LabOrderDatabase {
           })
         } else {
           results[t.name] = {
-            value: "Normal",
+            value: "",
             unit: "",
-            referenceRange: "Normal",
+            referenceRange: "",
             flag: "",
           }
         }
 
-        const primaryResult = Object.values(results)[0]?.value || "Normal"
+        const primaryResult = Object.values(results)[0]?.value || ""
         const primaryUnit = Object.values(results)[0]?.unit || ""
 
         return {
@@ -956,7 +1171,7 @@ export class LabOrderDatabase {
           resultUnit: primaryUnit,
           flag: "" as LabOrderTest["flag"],
           results,
-          clinicalComments: "Automated analysis completed. Biological reference intervals verified.",
+          clinicalComments: "",
           technician: actor,
           resultedAt: now,
           verifier: verifierName,
@@ -975,6 +1190,42 @@ export class LabOrderDatabase {
             actor,
             action: "Import All Test Results",
             detail: `All ${tests.length} tests imported and verified by ${verifierName}`,
+          },
+        ],
+      }
+    })
+  }
+
+  /**
+   * Mark an entire lab order as Completed and Verified.
+   */
+  static completeOrder(
+    orderId: string,
+    actor: string,
+    verifierName: string = "Dr. Rajesh Gupta, MD (Path)"
+  ): LabOrder | undefined {
+    return this.mutate(orderId, (order) => {
+      const now = new Date().toISOString()
+      const tests = order.tests.map((t) => ({
+        ...t,
+        status: "Completed" as LabTestStatus,
+        technician: t.technician || actor,
+        resultedAt: t.resultedAt || now,
+        verifier: t.verifier || verifierName,
+        verifiedAt: t.verifiedAt || now,
+      }))
+
+      return {
+        ...order,
+        tests,
+        status: "Completed",
+        history: [
+          ...order.history,
+          {
+            at: now,
+            actor,
+            action: "Order Completed",
+            detail: `Lab order marked as Completed & Verified by ${verifierName}`,
           },
         ],
       }

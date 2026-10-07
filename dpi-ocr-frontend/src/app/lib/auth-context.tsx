@@ -4,6 +4,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useRef,
   ReactNode,
 } from "react"
 import {
@@ -75,9 +76,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // registration itself failing (e.g. "already exists", from another tab/
   // iframe reload winning the same race) isn't fatal, so the final login is
   // always attempted rather than only on a successful register.
+  // Guarded: one attempt at a time, and after a failure a growing cooldown.
+  // Without it, the auth call's own 401 re-fired onUnauthorized -> sign in
+  // -> 401 ... in a tight loop, which the API then rate-limited (429) while
+  // the hidden iframe kept hammering it from every HMS page.
+  const signIn = useRef({ inFlight: false, failures: 0, retryAt: 0 })
   const signInEmbed = useCallback(async () => {
+    const g = signIn.current
+    if (g.inFlight || Date.now() < g.retryAt) {
+      setLoading(false)
+      return
+    }
+    g.inFlight = true
+    let ok = false
     try {
       await login(EMBED_USERNAME, EMBED_PASSWORD)
+      ok = true
     } catch {
       try {
         await register(EMBED_USERNAME, EMBED_PASSWORD)
@@ -86,10 +100,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       try {
         await login(EMBED_USERNAME, EMBED_PASSWORD)
+        ok = true
       } catch (err) {
         console.error("Keppler embed auto-login failed:", err)
       }
     } finally {
+      g.inFlight = false
+      if (ok) {
+        g.failures = 0
+        g.retryAt = 0
+      } else {
+        g.failures += 1
+        // 10s, 20s, 40s ... capped at 5 minutes
+        g.retryAt = Date.now() + Math.min(300_000, 10_000 * 2 ** (g.failures - 1))
+      }
       setLoading(false)
     }
   }, [login, register])

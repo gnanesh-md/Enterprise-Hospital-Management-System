@@ -119,6 +119,28 @@ function flagFor(
   }
 }
 
+/** Strictly sanitize vitals input: only allow numbers, slash for BP, decimal for temp/weight */
+function sanitizeVitalInput(key: keyof DBOPEncounter["vitals"], val: string): string {
+  if (key === "bp") {
+    // Blood Pressure: strictly numbers 0-9 and /
+    return val.replace(/[^0-9/]/g, "")
+  }
+  if (key === "temp" || key === "weight") {
+    // Temperature / Weight: strictly numbers 0-9 and decimal point
+    const sanitized = val.replace(/[^0-9.]/g, "")
+    const parts = sanitized.split(".")
+    if (parts.length > 2) {
+      return parts[0] + "." + parts.slice(1).join("")
+    }
+    return sanitized
+  }
+  if (key === "pulse" || key === "spo2") {
+    // Pulse / SpO2: strictly numbers 0-9
+    return val.replace(/[^0-9]/g, "")
+  }
+  return val
+}
+
 /** Calculate NEWS2 warnings */
 function calcNEWS2(
   v: DBOPEncounter["vitals"],
@@ -178,6 +200,32 @@ function calcNEWS2(
   }
 }
 
+function parseTimeString(timeStr?: string): Date | null {
+  if (!timeStr) return null
+  const parsedIso = Date.parse(timeStr)
+  if (!Number.isNaN(parsedIso)) return new Date(parsedIso)
+
+  const m = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i)
+  if (m) {
+    let hours = parseInt(m[1], 10)
+    const minutes = parseInt(m[2], 10)
+    const ampm = m[3] ? m[3].toUpperCase() : null
+    if (ampm === "PM" && hours < 12) hours += 12
+    if (ampm === "AM" && hours === 12) hours = 0
+
+    const now = new Date()
+    return new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      hours,
+      minutes,
+      0,
+    )
+  }
+  return null
+}
+
 export default function NurseStation({
   nurseName = "OP Nurse",
   onOpenQueue,
@@ -218,7 +266,6 @@ export default function NurseStation({
     () =>
       encounters
         .filter((e) => {
-          // Closed/Completed consultations are not waiting for nurse vitals
           if (
             e.status === "Under Consultation" ||
             e.status === "Consultation Completed" ||
@@ -227,11 +274,9 @@ export default function NurseStation({
           ) {
             return false
           }
-          // Patient called to nurse station is always in queue until vitals are saved
           if (e.timestamps?.calledToNurse) {
             return !e.timestamps?.vitalsRecorded
           }
-          // Otherwise check status list and unrecorded vitals
           return AWAITING_VITALS.includes(e.status) && !e.timestamps?.vitalsRecorded
         })
         .sort((a, b) => {
@@ -278,8 +323,11 @@ export default function NurseStation({
   }, [])
 
   const waitMinutes = (e: DBOPEncounter) => {
-    const t = Date.parse(e.timestamps?.arrival || "")
-    return Number.isNaN(t) ? 0 : Math.max(0, Math.floor((now - t) / 60000))
+    const timeStr = e.timestamps?.arrival || e.registrationTime
+    const dateObj = parseTimeString(timeStr)
+    if (!dateObj) return 12
+    const diffMins = Math.floor((now - dateObj.getTime()) / 60000)
+    return Math.max(1, diffMins)
   }
   const longestWait = waiting.reduce((m, e) => Math.max(m, waitMinutes(e)), 0)
 
@@ -309,6 +357,12 @@ export default function NurseStation({
     }
   }
 
+  const hasMandatoryVitals = Boolean(
+    vitals.bp?.trim() &&
+      vitals.pulse?.trim() &&
+      vitals.temp?.trim() &&
+      vitals.spo2?.trim(),
+  )
   const anyRecorded = FIELDS.some((f) => vitals[f.key]?.trim())
   const news2Analysis = calcNEWS2(vitals)
   const [abnormalAck, setAbnormalAck] = useState(false)
@@ -329,12 +383,14 @@ export default function NurseStation({
     setAbnormalAck(false)
   }
 
-  // A Medium/High NEWS2 score needs an explicit nurse acknowledgement before
-  // dispatch -- previously this was only ever shown as a colored badge, never
-  // something that had to be actively confirmed before the patient left the
-  // vitals queue.
   const sendToDoctor = () => {
     if (!selected) return
+    if (!hasMandatoryVitals) {
+      alert(
+        "Mandatory vitals missing! Please record Blood Pressure, Pulse, Temperature, and SpO2 before sending to doctor.",
+      )
+      return
+    }
     if (news2Analysis.risk !== "Low" && !abnormalAck) return
     dispatch()
   }
@@ -876,12 +932,20 @@ export default function NurseStation({
                           <input
                             value={vitals[f.key] || ""}
                             placeholder={f.placeholder}
-                            onChange={(e) =>
+                            inputMode={f.key === "bp" ? "text" : f.key === "temp" || f.key === "weight" ? "decimal" : "numeric"}
+                            onKeyDown={(e) => {
+                              // Directly block alphabet keys (A-Z, a-z)
+                              if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+                                e.preventDefault()
+                              }
+                            }}
+                            onChange={(e) => {
+                              const cleanVal = sanitizeVitalInput(f.key, e.target.value)
                               setVitals((v) => ({
                                 ...v,
-                                [f.key]: e.target.value,
+                                [f.key]: cleanVal,
                               }))
-                            }
+                            }}
                             className={`w-full border rounded-none px-3 py-2 text-sm font-mono font-bold focus:outline-none ${
                               flag
                                 ? flag.level === "danger"
@@ -968,16 +1032,15 @@ export default function NurseStation({
                 )}
 
                 {/* Action Bar */}
-                <div className="px-5 py-3 border-t border-[#CBD5E1] bg-slate-50 flex items-center justify-between">
+                <div className="px-5 py-3 border-t border-[#CBD5E1] bg-slate-50 flex flex-wrap items-center justify-between gap-3">
                   <div className="text-xs font-semibold text-slate-600">
-                    {anyRecorded ? (
+                    {hasMandatoryVitals ? (
                       <span className="text-emerald-700 font-bold flex items-center gap-1">
-                        ✓ Recorded by {nurseName}
+                        ✓ Core vitals complete — ready to dispatch by {nurseName}
                       </span>
                     ) : (
-                      <span>
-                        No readings entered — patient will be sent with
-                        unrecorded vitals.
+                      <span className="text-amber-800 font-bold bg-amber-100 border border-amber-300 px-2 py-1 inline-block">
+                        ⚠️ Mandatory Vitals Required: BP, Pulse, Temp &amp; SpO₂ must be recorded before dispatching to doctor.
                       </span>
                     )}
                   </div>
@@ -985,7 +1048,7 @@ export default function NurseStation({
                   <button
                     type="button"
                     onClick={sendToDoctor}
-                    disabled={anyRecorded && news2Analysis.risk !== "Low" && !abnormalAck}
+                    disabled={!hasMandatoryVitals || (news2Analysis.risk !== "Low" && !abnormalAck)}
                     className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-none cursor-pointer shadow-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>

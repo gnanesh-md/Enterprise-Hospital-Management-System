@@ -7,6 +7,7 @@ import { formatDateTimeIST } from "../lib/format";
 import type { Notice, Patient } from "../types";
 import AddEvaluationModal from "./AddEvaluationModal";
 import PatientJourneyModal from "./PatientJourneyModal";
+import { PatientInsuranceTab } from "./insurance/integrations";
 import { db, DBOPEncounter } from "../services/db";
 
 // ==================== Directory (search across OP / IP / ER / ICU) ====================
@@ -123,7 +124,7 @@ function PatientDirectory({
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F0F2F5] p-5">
-      <div className="max-w-5xl mx-auto">
+      <div className="w-full">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
             <h1 className="text-base font-semibold text-gray-900">Clinical — Patient Directory</h1>
@@ -507,7 +508,7 @@ const ENTRY_TYPE_COLOR: Record<string, { bg: string; text: string }> = {
   Treatment: { bg: "#ECFEFF", text: "#0E7490" },
 };
 
-const CHART_TABS = ["Summary", "Day-wise", "Timeline", "Problems", "Medications", "Allergies", "Vitals", "Labs", "Documents", "Billing"];
+const CHART_TABS = ["Summary", "Day-wise", "Timeline", "Problems", "Medications", "Allergies", "Vitals", "Labs", "Documents", "Billing", "Insurance"];
 
 export default function PatientChart({
   onBack,
@@ -1006,7 +1007,7 @@ export default function PatientChart({
             )}
 
             {tab === "Day-wise" && (
-              <div className="max-w-4xl mx-auto space-y-4">
+              <div className="w-full space-y-4">
                 {sortedDates.length === 0 ? (
                   <div className="bg-white border border-[#DDE2EC] rounded p-8 text-center">
                     <p className="text-[13px] font-semibold text-gray-800">No evaluations recorded yet</p>
@@ -1256,6 +1257,10 @@ export default function PatientChart({
                   )}
                 </Card>
               </div>
+            )}
+
+            {tab === "Insurance" && selectedRow && (
+              <PatientInsuranceTab patientId={selectedRow.patient_id} patientName={selectedRow.name} />
             )}
 
             {tab === "Billing" && (

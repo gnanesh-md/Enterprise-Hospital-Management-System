@@ -1428,19 +1428,19 @@ const OCRWorkspace = ({
 // ─── OCR Result ───────────────────────────────────────────────────────────────
 type ParsedBlock = {
   type: "key-value"
-  pairs: { key: string value: string }[]
-} | { type: "table" headers: string[] rows: string[][] } | {
+  pairs: { key: string; value: string }[]
+} | { type: "table"; headers: string[]; rows: string[][] } | {
   type: "section"
   title: string
   lines: string[]
-} | { type: "text" content: string }
+} | { type: "text"; content: string }
 
 function parseDocumentContent(md: string): ParsedBlock[] {
   const blocks: ParsedBlock[] = []
   let currentText: string[] = []
-  let currentKv: { key: string value: string }[] = []
+  let currentKv: { key: string; value: string }[] = []
   let currentTable: string[][] = []
-  let currentSection: { title: string lines: string[] } | null = null
+  let currentSection: { title: string; lines: string[] } | null = null
 
   const flushText = () => {
     if (currentText.length > 0) {
@@ -2004,9 +2004,9 @@ const OCRResult = ({
 }
 
 // ─── PDF Summarizer ───────────────────────────────────────────────────────────
-function splitMarkdownSections(md: string): { title: string body: string }[] {
+function splitMarkdownSections(md: string): { title: string; body: string }[] {
   const blocks = md.split(/\n(?=##\s)/g)
-  const sections: { title: string body: string }[] = []
+  const sections: { title: string; body: string }[] = []
   for (const block of blocks) {
     const trimmed = block.trim()
     if (!trimmed) continue

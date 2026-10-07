@@ -4,6 +4,7 @@
  */
 
 import { db } from "./db"
+import { LLM_API_KEY, LLM_CHAT_URL, llmModel } from "../lib/llm"
 
 export interface ErPatientMedicalProfile {
   chronic_conditions: string[]
@@ -6791,11 +6792,11 @@ export class ErDatabase {
     // Attempt to use Qwen LLM
 
     try {
-      const apiUrl =
-        (import.meta as any).env?.VITE_QWEN_API_URL ||
-        "http://localhost:11434/v1/chat/completions"
+      // Same-origin vLLM proxy (see src/lib/llm.ts); the old default was a
+      // local Ollama port that only exists on the developer's machine.
+      const apiUrl = LLM_CHAT_URL
 
-      const apiKey = (import.meta as any).env?.VITE_QWEN_API_KEY || "ollama"
+      const apiKey = LLM_API_KEY
 
       const prompt = `You are an AI Triage Assistant in an Emergency Room.
 Based on the patient's symptoms and vitals, evaluate the clinical triage.
@@ -6828,7 +6829,7 @@ Respond ONLY with a valid JSON object matching this schema:
         },
 
         body: JSON.stringify({
-          model: "qwen",
+          model: await llmModel(),
 
           messages: [{ role: "user", content: prompt }],
 

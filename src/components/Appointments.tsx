@@ -28,16 +28,32 @@ const DEPARTMENTS = [
   "Emergency / Casualty",
 ]
 
-const DAYS = [
-  "Mon\nAug 19",
-  "Tue\nAug 20",
-  "Wed\nAug 21",
-  "Thu\nAug 22",
-  "Fri\nAug 23",
-  "Sat\nAug 24",
-  "Sun\nAug 25",
-]
-const SELECTED_DAY = 4
+function getDynamicWeekDays(): { label: string; dateStr: string; isToday: boolean }[] {
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  const distanceToMon = (dayOfWeek + 6) % 7
+  const monday = new Date(now)
+  monday.setDate(now.getDate() - distanceToMon)
+
+  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+  const result = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    const dayName = dayNames[i]
+    const monthName = monthNames[d.getMonth()]
+    const dateNum = d.getDate()
+    const isToday = d.toDateString() === now.toDateString()
+    result.push({
+      label: `${dayName}\n${monthName} ${dateNum}`,
+      dateStr: d.toISOString().split("T")[0],
+      isToday,
+    })
+  }
+  return result
+}
 
 const SYMPTOM_RULES: { pattern: RegExp ;specialty: string ;urgency: string }[] = [
   {
@@ -605,6 +621,14 @@ export function AppointmentBookingModal({
   )
 }
 
+function getEncounterDateStr(enc: DBOPEncounter): string {
+  const ts = enc.timestamps?.arrival || enc.timestamps?.registration || enc.registrationTime
+  if (!ts) return new Date().toISOString().split("T")[0]
+  if (ts.includes("T")) return ts.split("T")[0]
+  if (/^\d{4}-\d{2}-\d{2}/.test(ts)) return ts.substring(0, 10)
+  return new Date().toISOString().split("T")[0]
+}
+
 export default function Appointments({
   initialEncounterId,
   onSelect,
@@ -621,7 +645,7 @@ export default function Appointments({
   const [encounters, setEncounters] = useState<DBOPEncounter[]>([])
   const [selectedDept, setSelectedDept] = useState<string>("All Departments")
   const [searchQuery, setSearchQuery] = useState("")
-  const [view, setView] = useState<"day" | "week" | "list">("day")
+  const [view, setView] = useState<"day" | "week" | "month" | "list">("day")
 
   const [justBooked, setJustBooked] = useState<{
     name: string
@@ -630,7 +654,13 @@ export default function Appointments({
     dept: string
     room: string
   } | null>(null)
-  const [activeDay, setActiveDay] = useState(SELECTED_DAY)
+  const weekDays = useMemo(() => getDynamicWeekDays(), [])
+  const todayIdx = useMemo(() => {
+    const idx = weekDays.findIndex((d) => d.isToday)
+    return idx >= 0 ? idx : 0
+  }, [weekDays])
+
+  const [activeDay, setActiveDay] = useState(todayIdx)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [targetEncounter, setTargetEncounter] = useState<DBOPEncounter | null>(
     null,
@@ -665,7 +695,20 @@ export default function Appointments({
     }
   }, [])
 
-  // Filtered encounters based on department and search query
+  const selectedDateStr = useMemo(
+    () => weekDays[activeDay]?.dateStr || new Date().toISOString().split("T")[0],
+    [weekDays, activeDay],
+  )
+  const selectedMonthStr = useMemo(
+    () => selectedDateStr.substring(0, 7),
+    [selectedDateStr],
+  )
+  const weekDateStrs = useMemo(
+    () => new Set(weekDays.map((w) => w.dateStr)),
+    [weekDays],
+  )
+
+  // Filtered encounters based on department, search query, and day/week/month view
   const filteredEncounters = useMemo(() => {
     return encounters.filter((enc) => {
       // Dept filter
@@ -690,9 +733,26 @@ export default function Appointments({
           complaint.includes(q)
         )
       }
+      // Date view filter
+      const encDateStr = getEncounterDateStr(enc)
+      if (view === "day") {
+        if (encDateStr !== selectedDateStr) return false
+      } else if (view === "week") {
+        if (!weekDateStrs.has(encDateStr)) return false
+      } else if (view === "month") {
+        if (!encDateStr.startsWith(selectedMonthStr)) return false
+      }
       return true
     })
-  }, [encounters, selectedDept, searchQuery])
+  }, [
+    encounters,
+    selectedDept,
+    searchQuery,
+    view,
+    selectedDateStr,
+    weekDateStrs,
+    selectedMonthStr,
+  ])
 
   // Metric counts
   const totalCount = encounters.length
@@ -782,7 +842,7 @@ export default function Appointments({
 
           {/* View Mode Switcher */}
           <div className="flex border border-[#DDE2EC] rounded-none overflow-hidden">
-            {(["day", "week", "list"] as const).map((v) => (
+            {(["day", "week", "month", "list"] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -936,33 +996,60 @@ export default function Appointments({
               className="grid border-b border-[#DDE2EC]"
               style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
             >
-              <div className="bg-[#F8FAFC] border-r border-[#DDE2EC]" />
-              {DAYS.map((d, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setActiveDay(i)
-                    setView("day")
-                  }}
-                  className={`px-2 py-2.5 text-center border-r border-[#DDE2EC] last:border-r-0 transition-colors cursor-pointer
-                    ${
-                      i === activeDay
-                        ? "bg-[#EFF6FF] text-[#1B4FD8]"
-                        : "hover:bg-[#F8FAFC] text-[#64748B]"
-                    }`}
-                >
-                  <div className="text-[11px] font-bold whitespace-pre-line">
-                    {d}
-                  </div>
-                  {i === SELECTED_DAY && (
-                    <div className="w-1.5 h-1.5 bg-[#1B4FD8] rounded-full mx-auto mt-1" />
-                  )}
-                </button>
-              ))}
+              <div className="bg-[#F8FAFC] border-r border-[#DDE2EC] flex items-center justify-center font-bold text-[11px] text-[#64748B]">
+                SCHEDULE
+              </div>
+              {weekDays.map((d, i) => {
+                const countOnDay = encounters.filter((e) => getEncounterDateStr(e) === d.dateStr).length
+                return (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setActiveDay(i)
+                      setView("day")
+                    }}
+                    className={`px-2 py-2.5 text-center border-r border-[#DDE2EC] last:border-r-0 transition-colors cursor-pointer
+                      ${
+                        i === activeDay
+                          ? "bg-[#EFF6FF] text-[#1B4FD8]"
+                          : "hover:bg-[#F8FAFC] text-[#64748B]"
+                      }`}
+                  >
+                    <div className="text-[11px] font-bold whitespace-pre-line">
+                      {d.label}
+                    </div>
+                    <div className="mt-1 flex items-center justify-center gap-1">
+                      <span className="text-[10px] font-mono font-bold bg-[#F1F5F9] text-[#1B4FD8] px-1.5 py-0.2 rounded border border-blue-200">
+                        {countOnDay}
+                      </span>
+                      {d.isToday && (
+                        <div className="w-1.5 h-1.5 bg-[#1B4FD8] rounded-full" />
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
             </div>
-            <div className="h-32 flex items-center justify-center text-[#94A3B8] text-[12px] font-medium">
-              Weekly appointment calendar schedule view
+          </div>
+        )}
+
+        {view === "month" && (
+          <div className="bg-white border border-[#DDE2EC] rounded-none p-4 mb-4 shadow-2xs flex items-center justify-between">
+            <div>
+              <h3 className="text-[14px] font-bold text-gray-900">
+                Month Schedule View — {selectedMonthStr}
+              </h3>
+              <p className="text-[11.5px] text-[#64748B]">
+                Showing all appointments scheduled for this month ({filteredEncounters.length} patients booked)
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setView("day")}
+              className="px-3 py-1.5 bg-[#EFF6FF] text-[#1B4FD8] border border-[#BFDBFE] text-[12px] font-bold cursor-pointer"
+            >
+              Switch to Day View
+            </button>
           </div>
         )}
 
@@ -974,7 +1061,7 @@ export default function Appointments({
               <div className="px-5 py-3.5 bg-[#F8FAFC] border-b border-[#DDE2EC] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h2 className="text-[13.5px] font-bold text-gray-900">
-                    Booked Patient Appointments
+                    Booked Patient Appointments ({view.toUpperCase()})
                   </h2>
                   <span className="font-mono text-[11px] font-bold bg-blue-100 text-[#1B4FD8] px-2 py-0.5 rounded-none border border-blue-200">
                     {filteredEncounters.length} Patients
@@ -991,7 +1078,7 @@ export default function Appointments({
 
               {filteredEncounters.length === 0 ? (
                 <div className="p-8 text-center text-[#64748B] text-[13px]">
-                  No appointments found for the selected department or query.
+                  No appointments found for the selected {view} view, department, or query.
                 </div>
               ) : (
                 <div className="divide-y divide-[#E2E8F0]">
@@ -1064,16 +1151,6 @@ export default function Appointments({
                           >
                             <span>✨</span> View OP Chart & Journey →
                           </button>
-
-                          {onGoToBilling && (
-                            <button
-                              type="button"
-                              onClick={onGoToBilling}
-                              className="px-2.5 py-1.5 bg-white hover:bg-gray-100 border border-[#CBD5E1] text-gray-800 text-[11.5px] font-bold rounded-none cursor-pointer"
-                            >
-                              💳 Fee
-                            </button>
-                          )}
                         </div>
                       </div>
                     )

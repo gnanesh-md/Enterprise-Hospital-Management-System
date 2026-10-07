@@ -211,9 +211,9 @@ export function BedTransferNotificationPanel({
         }}
         aria-label="Transfer & Bed Request Notifications"
         title="Patient Transfer & Bed Notifications"
-        className={`relative p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer shadow-xs ${
+        className={`relative p-2.5 rounded-none border transition-all flex items-center justify-center cursor-pointer shadow-xs ${
           unreadCount > 0
-            ? "bg-gradient-to-br from-[#EFF6FF] via-[#DBEAFE] to-[#EFF6FF] border-[#93C5FD] text-[#1B4FD8] hover:border-[#1B4FD8] hover:shadow-md ring-2 ring-[#1B4FD8]/25 shadow-sm"
+            ? "bg-gradient-to-br from-[#EFF6FF] via-[#DBEAFE] to-[#EFF6FF] border-[#93C5FD] text-[#1B4FD8] hover:border-[#1B4FD8] shadow-sm"
             : "bg-white border-[#CBD5E1] text-[#1B4FD8] hover:text-[#0C1524] hover:bg-[#EFF6FF] hover:border-[#93C5FD]"
         }`}
       >
@@ -223,9 +223,9 @@ export function BedTransferNotificationPanel({
           }`}
         />
 
-        {/* Unread Numerical Badge with Golden-Amber Glow & Pulse */}
+        {/* Unread Numerical Badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center px-1.5 rounded-full bg-gradient-to-r from-[#F59E0B] via-[#EAB308] to-[#D97706] text-white font-extrabold text-[11px] ring-2 ring-white shadow-md shadow-amber-500/40 animate-pulse">
+          <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center px-1.5 rounded-none bg-gradient-to-r from-[#F59E0B] via-[#EAB308] to-[#D97706] text-white font-extrabold text-[11px] ring-2 ring-white shadow-md shadow-amber-500/40 animate-pulse">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -233,14 +233,14 @@ export function BedTransferNotificationPanel({
 
       {/* ── Live Toast Notification Banner ── */}
       {toastNotif && !isOpen && (
-        <div className="fixed top-20 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-2xl border border-blue-200 ring-4 ring-[#1B4FD8]/15 animate-in slide-in-from-top-4 duration-300">
+        <div className="fixed top-20 right-6 z-50 w-96 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-md rounded-none p-4 shadow-2xl border-2 border-blue-200 animate-in slide-in-from-top-4 duration-300">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-[#1B4FD8] flex-shrink-0 shadow-xs">
+            <div className="w-10 h-10 rounded-none bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 flex items-center justify-center text-[#1B4FD8] flex-shrink-0 shadow-xs">
               <FiBell className="w-5 h-5 animate-bounce text-[#1B4FD8]" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800 bg-amber-50 px-2 py-0.5 rounded-none border border-amber-200 font-mono">
                   {toastNotif.priority}
                 </span>
                 <span className="text-[11px] text-[#94A3B8]">

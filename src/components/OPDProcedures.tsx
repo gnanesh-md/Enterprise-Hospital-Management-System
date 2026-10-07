@@ -130,7 +130,7 @@ export default function OPDProcedures({
       </div>
 
       {/* ── MAIN CONTENT ── */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5 max-w-7xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 w-full">
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[

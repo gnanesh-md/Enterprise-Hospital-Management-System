@@ -18,12 +18,25 @@ export default function PatientJourneyModal({
 }: PatientJourneyModalProps) {
   const [activeTab, setActiveTab] =
     useState<"current_journey" | "previous_consultations">("current_journey")
+  const [, setTick] = useState(0)
+
+  React.useEffect(() => {
+    const unsubDb = db.subscribe(() => setTick((t) => t + 1))
+    const unsubDoc = DoctorPortalDatabase.subscribe(() => setTick((t) => t + 1))
+    return () => {
+      unsubDb()
+      unsubDoc()
+    }
+  }, [])
 
   if (!encounter) return null
 
+  // Retrieve current live encounter instance from DB if available
+  const liveEncounter = db.getEncounterById(encounter.id) || encounter
+
   // Retrieve lifetime OP history & previous consultation records for this patient's UMR
   const allPatientEncounters = db
-    .getEncountersForPatient(encounter.umr)
+    .getEncountersForPatient(liveEncounter.umr)
     .sort(
       (a, b) =>
         new Date(b.timestamps?.arrival || b.registrationTime).getTime() -
@@ -31,10 +44,10 @@ export default function PatientJourneyModal({
     )
 
   const previousEncounters = allPatientEncounters.filter(
-    (e) => e.id !== encounter.id,
+    (e) => e.id !== liveEncounter.id,
   )
   const consultationRecords = DoctorPortalDatabase.getConsultationsForPatient(
-    encounter.umr,
+    liveEncounter.umr,
   )
 
   return (
@@ -55,14 +68,14 @@ export default function PatientJourneyModal({
                   Outpatient Clinical Journey & Consultation History
                 </h3>
                 <span className="font-mono text-[11px] font-bold bg-blue-500/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-none">
-                  {encounter.opNumber}
+                  {liveEncounter.opNumber}
                 </span>
               </div>
               <p className="text-[12px] text-slate-300">
                 Outpatient care trajectory & past consultation data for
                 permanent UMR:{" "}
                 <strong className="text-white font-mono">
-                  {encounter.umr}
+                  {liveEncounter.umr}
                 </strong>
               </p>
             </div>
@@ -84,10 +97,10 @@ export default function PatientJourneyModal({
               Patient Name
             </span>
             <span className="font-bold text-gray-900 text-[13.5px]">
-              {encounter.patientName}
+              {liveEncounter.patientName}
             </span>
             <span className="text-[11px] text-[#64748B] block">
-              {encounter.age} yrs · {encounter.sex}
+              {liveEncounter.age} yrs · {liveEncounter.sex}
             </span>
           </div>
 
@@ -96,10 +109,10 @@ export default function PatientJourneyModal({
               Permanent UMR (Lifetime)
             </span>
             <span className="font-mono font-bold text-[#1B4FD8] text-[13px] bg-blue-50 px-2 py-0.5 rounded-none border border-blue-200 inline-block mt-0.5">
-              {encounter.umr}
+              {liveEncounter.umr}
             </span>
             <span className="text-[11px] text-gray-500 block mt-0.5">
-              {encounter.phone}
+              {liveEncounter.phone}
             </span>
           </div>
 
@@ -108,11 +121,11 @@ export default function PatientJourneyModal({
               Department & Doctor
             </span>
             <span className="font-semibold text-gray-900 block">
-              {encounter.dept}
+              {liveEncounter.dept}
             </span>
             <span className="text-[11px] text-gray-600 block">
-              {encounter.assignedDoctor || "Attending Physician"} ·{" "}
-              {encounter.room || "Room 101"}
+              {liveEncounter.assignedDoctor || "Attending Physician"} ·{" "}
+              {liveEncounter.room || "Room 101"}
             </span>
           </div>
 
@@ -121,7 +134,7 @@ export default function PatientJourneyModal({
               Care Status & History
             </span>
             <span className="font-bold text-[#15803D] bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-200 inline-block text-[11px]">
-              {encounter.status}
+              {liveEncounter.status}
             </span>
             <span className="text-[11px] font-mono font-bold text-gray-700 block mt-0.5">
               {previousEncounters.length} Past OP Consultations
@@ -171,9 +184,9 @@ export default function PatientJourneyModal({
                       <span>🏥</span> Arrival & OPD Check-In
                     </div>
                     <span className="font-mono text-[11.5px] font-bold text-[#1B4FD8] bg-blue-50 px-2 py-0.5 rounded-none border border-blue-200">
-                      {encounter.timestamps?.arrival ||
-                        encounter.registrationTime ||
-                        "10:00 AM"}
+                      {liveEncounter.timestamps?.arrival ||
+                        liveEncounter.registrationTime ||
+                        "Arrival Recorded"}
                     </span>
                   </div>
                   <p className="text-[12px] text-gray-700">
@@ -183,11 +196,11 @@ export default function PatientJourneyModal({
                   <div className="text-[11px] text-[#64748B] bg-[#F8FAFC] p-2 rounded-none border border-[#E2E8F0]">
                     Token ID:{" "}
                     <strong>
-                      {encounter.queueToken || encounter.opNumber}
+                      {liveEncounter.queueToken || liveEncounter.opNumber}
                     </strong>{" "}
                     · Type:{" "}
                     <strong>
-                      {encounter.isNew
+                      {liveEncounter.isNew
                         ? "New Outpatient"
                         : "Returning Patient Revisit"}
                     </strong>
@@ -207,23 +220,23 @@ export default function PatientJourneyModal({
                       Verification
                     </div>
                     <span className="font-mono text-[11.5px] font-bold text-[#1B4FD8] bg-blue-50 px-2 py-0.5 rounded-none border border-blue-200">
-                      {encounter.timestamps?.registration ||
-                        encounter.registrationTime ||
-                        "10:05 AM"}
+                      {liveEncounter.timestamps?.registration ||
+                        liveEncounter.registrationTime ||
+                        "Registration Recorded"}
                     </span>
                   </div>
                   <p className="text-[12px] text-gray-700">
                     Demographic credentials verified against permanent master
-                    database. Lifetime <strong>{encounter.umr}</strong> linked
+                    database. Lifetime <strong>{liveEncounter.umr}</strong> linked
                     with today's OP visit number{" "}
-                    <strong>{encounter.opNumber}</strong>.
+                    <strong>{liveEncounter.opNumber}</strong>.
                   </p>
                   <div className="flex items-center gap-3 text-[11px] text-gray-600">
                     <span>✓ Official OP Pass Issued</span>
                     <span>•</span>
-                    <span>Contact: {encounter.phone}</span>
+                    <span>Contact: {liveEncounter.phone}</span>
                     <span>•</span>
-                    <span>Address: {encounter.address || "Main City"}</span>
+                    <span>Address: {liveEncounter.address || "Main City"}</span>
                   </div>
                 </div>
               </div>
@@ -240,7 +253,7 @@ export default function PatientJourneyModal({
                       Recommendation
                     </div>
                     <span className="font-mono text-[11.5px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-none border border-purple-200">
-                      {encounter.timestamps?.symptoms || "10:10 AM"}
+                      {liveEncounter.timestamps?.symptoms || liveEncounter.timestamps?.arrival || "Captured"}
                     </span>
                   </div>
                   <div className="bg-[#F8FAFC] p-2.5 rounded-none border border-[#E2E8F0] text-[12px]">
@@ -248,20 +261,19 @@ export default function PatientJourneyModal({
                       Presenting Chief Complaints:
                     </span>
                     <span className="text-gray-900 font-medium">
-                      "
-                      {encounter.chiefComplaint ||
-                        encounter.symptoms?.join(", ") ||
-                        "General outpatient evaluation requested."}
-                      "
+                      {liveEncounter.chiefComplaint ||
+                        (liveEncounter.symptoms && liveEncounter.symptoms.length > 0
+                          ? liveEncounter.symptoms.join(", ")
+                          : "General outpatient evaluation requested.")}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-[11.5px]">
+                  <div className="flex items-center gap-2 text-[11.5px] flex-wrap">
                     <span className="bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-none border border-purple-200">
-                      AI Specialty: {encounter.dept} (96% Confidence)
+                      AI Specialty: {liveEncounter.aiSpecialty || liveEncounter.dept} {liveEncounter.aiConfidence ? `(${liveEncounter.aiConfidence}%)` : ""}
                     </span>
                     <span className="text-[#64748B]">
                       Assigned to:{" "}
-                      <strong>{encounter.assignedDoctor || "Physician"}</strong>
+                      <strong>{liveEncounter.assignedDoctor || "Physician Triage"}</strong>
                     </span>
                   </div>
                 </div>
@@ -278,7 +290,7 @@ export default function PatientJourneyModal({
                       <span>🩺</span> Nurse Station Triage & Baseline Vitals
                     </div>
                     <span className="font-mono text-[11.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-200">
-                      {encounter.timestamps?.vitalsRecorded || "10:18 AM"}
+                      {liveEncounter.timestamps?.vitalsRecorded || (liveEncounter.vitals?.bp ? "Vitals Recorded" : "Pending Vitals")}
                     </span>
                   </div>
 
@@ -288,7 +300,7 @@ export default function PatientJourneyModal({
                         Blood Pressure
                       </span>
                       <span className="font-mono font-bold text-gray-900 text-[13px]">
-                        {encounter.vitals?.bp || "120/80 mmHg"}
+                        {liveEncounter.vitals?.bp || "--"}
                       </span>
                     </div>
                     <div className="bg-[#F8FAFC] p-2 rounded-none border border-[#E2E8F0] text-center">
@@ -296,7 +308,7 @@ export default function PatientJourneyModal({
                         Heart Rate
                       </span>
                       <span className="font-mono font-bold text-gray-900 text-[13px]">
-                        {encounter.vitals?.pulse || "76 bpm"}
+                        {liveEncounter.vitals?.pulse ? `${liveEncounter.vitals.pulse} bpm` : "--"}
                       </span>
                     </div>
                     <div className="bg-[#F8FAFC] p-2 rounded-none border border-[#E2E8F0] text-center">
@@ -304,7 +316,7 @@ export default function PatientJourneyModal({
                         Temperature
                       </span>
                       <span className="font-mono font-bold text-gray-900 text-[13px]">
-                        {encounter.vitals?.temp || "98.6 °F"}
+                        {liveEncounter.vitals?.temp ? `${liveEncounter.vitals.temp} °F` : "--"}
                       </span>
                     </div>
                     <div className="bg-[#F8FAFC] p-2 rounded-none border border-[#E2E8F0] text-center">
@@ -312,7 +324,7 @@ export default function PatientJourneyModal({
                         SpO2 Oxygen
                       </span>
                       <span className="font-mono font-bold text-gray-900 text-[13px]">
-                        {encounter.vitals?.spo2 || "99%"}
+                        {liveEncounter.vitals?.spo2 ? `${liveEncounter.vitals.spo2}%` : "--"}
                       </span>
                     </div>
                     <div className="bg-[#F8FAFC] p-2 rounded-none border border-[#E2E8F0] text-center">
@@ -320,15 +332,15 @@ export default function PatientJourneyModal({
                         Body Weight
                       </span>
                       <span className="font-mono font-bold text-gray-900 text-[13px]">
-                        {encounter.vitals?.weight || "74 kg"}
+                        {liveEncounter.vitals?.weight ? `${liveEncounter.vitals.weight} kg` : "--"}
                       </span>
                     </div>
                   </div>
 
                   <div className="text-[11.5px] text-[#166534] bg-[#F0FDF4] p-2 rounded-none border border-emerald-200">
                     👩‍⚕️ <strong>Nurse Assessment:</strong>{" "}
-                    {encounter.vitals?.notes ||
-                      "Alert, oriented, stable physiological baseline recorded."}
+                    {liveEncounter.vitals?.notes ||
+                      (liveEncounter.vitals?.bp ? "Baseline physiological vitals recorded." : "Vitals assessment pending at nurse station.")}
                   </div>
                 </div>
               </div>
@@ -344,20 +356,19 @@ export default function PatientJourneyModal({
                       <span>⏳</span> Doctor Queue Allocation & Chamber Calling
                     </div>
                     <span className="font-mono text-[11.5px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-none border border-amber-200">
-                      {encounter.timestamps?.doctorAssigned || "10:25 AM"}
+                      {liveEncounter.timestamps?.doctorAssigned || (liveEncounter.assignedDoctor ? "Assigned" : "Pending Queue")}
                     </span>
                   </div>
                   <p className="text-[12px] text-gray-700">
                     Allocated to{" "}
                     <strong>
-                      {encounter.assignedDoctor || "Attending Physician"}
+                      {liveEncounter.assignedDoctor || "Attending Physician Triage"}
                     </strong>{" "}
-                    in <strong>{encounter.room || "Room 101"}</strong> with live
-                    token{" "}
+                    in <strong>{liveEncounter.room || "Consultation Room"}</strong> with token{" "}
                     <strong>
-                      #{encounter.queueToken || encounter.opNumber}
+                      #{liveEncounter.queueToken || liveEncounter.opNumber}
                     </strong>
-                    . Broadcasted on waiting room kiosk.
+                    .
                   </p>
                 </div>
               </div>
@@ -370,12 +381,12 @@ export default function PatientJourneyModal({
                 <div className="bg-white border-2 border-blue-200 rounded-none p-4 shadow-xs space-y-3">
                   <div className="flex justify-between items-center border-b border-[#E2E8F0] pb-2">
                     <div className="font-bold text-[13.5px] text-gray-900 flex items-center gap-1.5">
-                      <span>🩺</span> Physician Examination & Live Prescription
-                      (Rx)
+                      <span>🩺</span> Physician Examination & Live Prescription (Rx)
                     </div>
                     <span className="font-mono text-[11.5px] font-bold text-[#1B4FD8] bg-blue-50 px-2 py-0.5 rounded-none border border-blue-200">
-                      {encounter.timestamps?.consultationStart || "10:32 AM"} —{" "}
-                      {encounter.timestamps?.consultationEnd || "10:45 AM"}
+                      {liveEncounter.timestamps?.consultationStart
+                        ? `${liveEncounter.timestamps.consultationStart} ${liveEncounter.timestamps?.consultationEnd ? `— ${liveEncounter.timestamps.consultationEnd}` : ""}`
+                        : (liveEncounter.diagnosis ? "Consultation Recorded" : "Under Evaluation / Pending")}
                     </span>
                   </div>
 
@@ -385,12 +396,13 @@ export default function PatientJourneyModal({
                         Clinical Diagnosis
                       </span>
                       <span className="font-bold text-gray-900 block mt-0.5">
-                        {encounter.diagnosis ||
-                          "Acute Coronary Syndrome Rule-Out / Stable Angina"}
+                        {liveEncounter.diagnosis || "Pending Physician Diagnosis"}
                       </span>
-                      <span className="text-[11px] font-mono text-[#1B4FD8]">
-                        ICD-10: {encounter.icd10 || "I20.9"}
-                      </span>
+                      {liveEncounter.icd10 && (
+                        <span className="text-[11px] font-mono text-[#1B4FD8]">
+                          ICD-10: {liveEncounter.icd10}
+                        </span>
+                      )}
                     </div>
 
                     <div className="bg-[#F8FAFC] p-2.5 rounded-none border border-[#E2E8F0]">
@@ -398,10 +410,9 @@ export default function PatientJourneyModal({
                         Diagnostic Investigations
                       </span>
                       <span className="font-medium text-gray-800 block mt-0.5">
-                        {encounter.investigations &&
-                        encounter.investigations.length > 0
-                          ? encounter.investigations.join(", ")
-                          : "ECG 12-Lead, Serum Troponin I, Lipid Profile"}
+                        {liveEncounter.investigations && liveEncounter.investigations.length > 0
+                          ? liveEncounter.investigations.join(", ")
+                          : "No diagnostic tests ordered."}
                       </span>
                     </div>
                   </div>
@@ -411,20 +422,19 @@ export default function PatientJourneyModal({
                     <span className="text-[11px] uppercase font-bold text-[#64748B] block">
                       Prescribed Medications (Rx):
                     </span>
-                    <div className="bg-white border border-[#CBD5E1] rounded-none overflow-hidden">
-                      <table className="w-full text-left text-[11.5px]">
-                        <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] font-bold text-[#64748B]">
-                          <tr>
-                            <th className="px-3 py-1.5">Medicine</th>
-                            <th className="px-3 py-1.5">Dosage</th>
-                            <th className="px-3 py-1.5">Frequency</th>
-                            <th className="px-3 py-1.5">Duration</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#F1F5F9]">
-                          {encounter.prescription &&
-                          encounter.prescription.length > 0 ? (
-                            encounter.prescription.map((rx, i) => (
+                    {liveEncounter.prescription && liveEncounter.prescription.length > 0 ? (
+                      <div className="bg-white border border-[#CBD5E1] rounded-none overflow-hidden">
+                        <table className="w-full text-left text-[11.5px]">
+                          <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] font-bold text-[#64748B]">
+                            <tr>
+                              <th className="px-3 py-1.5">Medicine</th>
+                              <th className="px-3 py-1.5">Dosage</th>
+                              <th className="px-3 py-1.5">Frequency</th>
+                              <th className="px-3 py-1.5">Duration</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#F1F5F9]">
+                            {liveEncounter.prescription.map((rx, i) => (
                               <tr key={i}>
                                 <td className="px-3 py-1.5 font-semibold text-gray-900">
                                   {rx.medicine}
@@ -439,32 +449,20 @@ export default function PatientJourneyModal({
                                   {rx.duration}
                                 </td>
                               </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td className="px-3 py-1.5 font-semibold text-gray-900">
-                                Aspirin 81mg
-                              </td>
-                              <td className="px-3 py-1.5 text-gray-700">
-                                1 tab
-                              </td>
-                              <td className="px-3 py-1.5 text-gray-700">
-                                OD (Once Daily)
-                              </td>
-                              <td className="px-3 py-1.5 text-gray-700">
-                                30 days
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-[12px] text-gray-500 italic bg-[#F8FAFC] p-2 border border-[#E2E8F0]">
+                        No medications prescribed for this encounter.
+                      </div>
+                    )}
                   </div>
 
                   <div className="text-[11.5px] text-gray-700 bg-[#F8FAFC] p-2 rounded-none border border-[#E2E8F0]">
                     <strong>Doctor Advice:</strong>{" "}
-                    {encounter.advice ||
-                      "Avoid strenuous exertion, follow heart-healthy diet, and follow up in 2 weeks."}
+                    {liveEncounter.advice || "No specific advice recorded yet."}
                   </div>
                 </div>
               </div>
@@ -480,24 +478,24 @@ export default function PatientJourneyModal({
                       <span>💳</span> Billing Settlement & Official Receipt
                     </div>
                     <span className="font-mono text-[11.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-200">
-                      {encounter.timestamps?.billingCompleted || "10:55 AM"}
+                      {liveEncounter.timestamps?.billingCompleted || (liveEncounter.billing?.status === 'Paid' ? 'Settled' : 'Pending')}
                     </span>
                   </div>
 
                   <div className="bg-[#F8FAFC] p-3 rounded-none border border-[#E2E8F0] space-y-1.5 text-[12px]">
                     {(() => {
-                      const regFee = encounter.billing?.registrationFee ?? (encounter.isNew === false ? 0 : 20)
-                      const consultFee = encounter.billing?.consultationFee ?? 500
-                      const labFee = encounter.billing?.labFee || 0
-                      const grandTotal = encounter.billing?.total || (regFee + consultFee + labFee)
+                      const regFee = liveEncounter.billing?.registrationFee ?? (liveEncounter.isNew === false ? 0 : 20)
+                      const consultFee = liveEncounter.billing?.consultationFee ?? 500
+                      const labFee = liveEncounter.billing?.labFee || 0
+                      const grandTotal = liveEncounter.billing?.total || (regFee + consultFee + labFee)
                       return (
                         <>
                           <div className="flex justify-between text-gray-700">
-                            <span>1. Patient Registration Fee {encounter.isNew === false || regFee === 0 ? "(Existing Patient)" : ""}</span>
+                            <span>1. Patient Registration Fee {liveEncounter.isNew === false || regFee === 0 ? "(Existing Patient)" : ""}</span>
                             <span className="font-mono font-bold text-gray-900">₹{regFee}.00</span>
                           </div>
                           <div className="flex justify-between text-gray-700">
-                            <span>2. Physician Outpatient Consultation Fee {encounter.assignedDoctor ? `(${encounter.assignedDoctor})` : ""}</span>
+                            <span>2. Physician Outpatient Consultation Fee {liveEncounter.assignedDoctor ? `(${liveEncounter.assignedDoctor})` : ""}</span>
                             <span className="font-mono font-bold text-gray-900">₹{consultFee}.00</span>
                           </div>
                           {labFee > 0 && (
@@ -508,7 +506,7 @@ export default function PatientJourneyModal({
                           )}
                           <div className="pt-1.5 border-t border-[#E2E8F0] flex justify-between font-bold text-[13px] text-gray-900">
                             <span>Total Official Settlement:</span>
-                            <span className="font-mono text-emerald-700">₹{grandTotal}.00 (Status: {encounter.billing?.status || 'Paid'})</span>
+                            <span className="font-mono text-emerald-700">₹{grandTotal}.00 (Status: {liveEncounter.billing?.status || 'Paid'})</span>
                           </div>
                         </>
                       )
@@ -525,15 +523,16 @@ export default function PatientJourneyModal({
                 <div className="bg-white border border-[#CBD5E1] rounded-none p-4 shadow-2xs space-y-1.5">
                   <div className="flex justify-between items-center">
                     <div className="font-bold text-[13.5px] text-gray-900 flex items-center gap-1.5">
-                      <span>💊</span> Pharmacy Dispensing & Visit Completed
+                      <span>💊</span> Pharmacy Dispensing & Visit Status
                     </div>
                     <span className="font-mono text-[11.5px] font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-none border border-cyan-200">
-                      {encounter.timestamps?.visitCompleted || "11:02 AM"}
+                      {liveEncounter.timestamps?.visitCompleted || liveEncounter.status}
                     </span>
                   </div>
                   <p className="text-[12px] text-gray-700">
-                    Prescriptions routed to outpatient pharmacy queue. Patient
-                    departure counselled with lifestyle instructions.
+                    {liveEncounter.prescription && liveEncounter.prescription.length > 0
+                      ? "Prescriptions routed to outpatient pharmacy queue."
+                      : "Outpatient visit recorded in hospital system."}
                   </p>
                 </div>
               </div>

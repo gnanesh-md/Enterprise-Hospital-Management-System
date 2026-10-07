@@ -5,6 +5,13 @@ import { apiFetch, reportError } from "../lib/api"
 import { formatDateTimeIST } from "../lib/format"
 import { generateAndSaveDischargeSummary } from "../lib/dischargeSummary"
 import type { Notice } from "../types"
+import {
+  getDischargedIcuPatients,
+  updateIcuDischargeStatus,
+  type IcuDischargeRecord,
+} from "./icu/IcuDischargeModal"
+import { BedDatabase } from "../services/bedDb"
+import { DischargeInsuranceCheck } from "./insurance/integrations"
 
 const STEPS = ["Select Patient", "Review Checklist", "Confirm & Discharge"]
 
@@ -111,20 +118,41 @@ export default function Discharge({
   const [dischargeReason, setDischargeReason] = useState("")
   const [discharging, setDischarging] = useState(false)
   const [summaryFailed, setSummaryFailed] = useState(false)
+  const [icuDischarges, setIcuDischarges] = useState<IcuDischargeRecord[]>(() =>
+    getDischargedIcuPatients(),
+  )
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setIcuDischarges(getDischargedIcuPatients())
+    }
+    window.addEventListener("icu:patient_discharged_to_reception", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("icu:patient_discharged_to_reception", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [])
 
   useEffect(() => {
     ;(async () => {
       setLoadingBeds(true)
       try {
         const data = await apiFetch<{ beds: Bed[] }>("/api/beds")
-        setBeds((data.beds || []).filter((b) => b.status === "Occupied"))
+        let list = (data.beds || []).filter((b) => b.status === "Occupied")
+        if (list.length === 0) {
+          list = (BedDatabase.getBeds() as any[]).filter((b) => b.status === "Occupied")
+        }
+        setBeds(list)
       } catch (error: any) {
-        reportError(setNotice, error, "Failed to load occupied beds.")
+        const local = (BedDatabase.getBeds() as any[]).filter((b) => b.status === "Occupied")
+        setBeds(local)
       } finally {
         setLoadingBeds(false)
       }
     })()
   }, [])
+
 
   const filteredBeds = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -208,16 +236,102 @@ export default function Discharge({
         </Btn>
       </div>
 
-      <div className="max-w-3xl mx-auto p-5">
+      <div className="w-full p-5">
         <div className="bg-white border border-[#DDE2EC] rounded p-4 mb-5">
           <StepIndicator current={step} />
         </div>
 
         {step === 0 && (
-          <div className="bg-white border border-[#DDE2EC] rounded p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3">
-              Select the patient to discharge
-            </h2>
+          <div className="space-y-5">
+            {icuDischarges.length > 0 && (
+              <div className="bg-gradient-to-r from-red-50 via-rose-50 to-amber-50 border border-red-200 rounded-lg p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
+                    <h2 className="text-sm font-semibold text-red-900">
+                      ICU Discharge Handoffs Pending Reception ({icuDischarges.length})
+                    </h2>
+                  </div>
+                  <span className="text-[11px] text-red-700 bg-red-100 px-2.5 py-0.5 rounded-full font-medium">
+                    Sent from ICU Portal
+                  </span>
+                </div>
+                <p className="text-[12px] text-red-800 mb-4">
+                  The following patients were discharged from ICU by intensive care staff and sent to Reception for ward stepdown allocation or final discharge settlement.
+                </p>
+
+                <div className="space-y-3">
+                  {icuDischarges.map((rec) => (
+                    <div
+                      key={rec.id}
+                      className="bg-white border border-red-100 rounded-lg p-3.5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900 text-sm">{rec.patientName}</span>
+                          <span className="text-xs font-mono bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">{rec.mrn}</span>
+                          <span className="text-xs px-2 py-0.5 rounded font-medium bg-red-100 text-red-800">
+                            {rec.dischargeType}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
+                          <span><strong>Origin Bed:</strong> {rec.bed} ({rec.unit})</span>
+                          <span><strong>Condition:</strong> {rec.dischargeCondition}</span>
+                          {rec.destinationWard && (
+                            <span><strong>Target Ward:</strong> {rec.destinationWard}</span>
+                          )}
+                          <span><strong>Doctor:</strong> {rec.attendingDoctor}</span>
+                        </div>
+                        {rec.clinicalSummaryNotes && (
+                          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100 italic">
+                            "{rec.clinicalSummaryNotes}"
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                        {rec.receptionStatus === "Awaiting Reception Settlement" ? (
+                          <>
+                            <Btn
+                              variant="outline"
+                              size="sm"
+                              className="text-xs text-[#1B4FD8] border-[#1B4FD8] hover:bg-blue-50"
+                              onClick={() => {
+                                updateIcuDischargeStatus(rec.id, "Acknowledged at Reception")
+                                setIcuDischarges(getDischargedIcuPatients())
+                              }}
+                            >
+                              Acknowledge
+                            </Btn>
+                            <Btn
+                              variant="primary"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => {
+                                updateIcuDischargeStatus(rec.id, "Bed Allocated at Reception")
+                                setIcuDischarges(getDischargedIcuPatients())
+                              }}
+                            >
+                              Allocate Ward Bed
+                            </Btn>
+                          </>
+                        ) : (
+                          <span className="text-xs font-medium px-2.5 py-1 rounded bg-green-100 text-green-800 flex items-center gap-1">
+                            ✓ {rec.receptionStatus}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white border border-[#DDE2EC] rounded p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-3">
+                Select the patient to discharge
+              </h2>
+
             <div className="ai-search-bar mb-3">
               <Icon.Search />
               <input
@@ -263,6 +377,7 @@ export default function Discharge({
               </div>
             )}
           </div>
+        </div>
         )}
 
         {step === 1 && selectedBed && (
@@ -274,6 +389,11 @@ export default function Discharge({
               {selectedBed.ward} · Room {selectedBed.room_no} · Bed{" "}
               {selectedBed.bed_no}
             </p>
+
+            {/* Insured patients: is the insurance side ready for the claim? */}
+            <div className="mb-4">
+              <DischargeInsuranceCheck patientId={selectedBed.patient_id || undefined} patientName={occupantName(selectedBed)} />
+            </div>
 
             {checklistLoading ? (
               <p className="text-[12.5px] text-[#64748B]">

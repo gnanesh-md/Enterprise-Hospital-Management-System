@@ -1,5 +1,6 @@
 import { CheckCircle, Printer, RotateCcw } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
+import RECEIPT_LOGO_BASE64 from "../../../assets/receiptLogoBase64"
 
 export function numberToWords(num: number): string {
   const a = [
@@ -150,8 +151,21 @@ export default function InvoicePrintModal({
         </div>
 
         {/* Detailed A4 Print Layout */}
-        <div className="p-8 print:p-0 font-sans text-sm print:text-[9px] text-black w-full max-w-5xl print:max-w-full mx-auto bg-white">
-          <div className="flex justify-between border-b-2 border-black pb-4 mb-4">
+        <div className="p-8 print:p-0 font-sans text-sm print:text-[9px] text-black w-full max-w-5xl print:max-w-full mx-auto bg-white relative">
+          {/* Background Watermark Logo */}
+          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center overflow-hidden z-0 opacity-[0.22] print:opacity-[0.25] select-none">
+            <img
+              src={RECEIPT_LOGO_BASE64}
+              alt="Hospital Logo Watermark"
+              className="w-[400px] max-w-full object-contain filter brightness-110 contrast-105"
+            />
+            <div className="text-[34px] font-extrabold tracking-wider text-gray-800 uppercase -mt-4 font-sans tracking-tight opacity-95">
+              Imperial Hospitals
+            </div>
+          </div>
+
+          <div className="relative z-10">
+            <div className="flex justify-between border-b-2 border-black pb-4 mb-4">
             <div className="flex-1">
               <h1 className="text-2xl print:text-lg font-bold tracking-wider mb-2">
                 VH PHARMACY
@@ -700,10 +714,9 @@ export default function InvoicePrintModal({
               )}
             </div>
             <div className="text-right pb-4">
-              <p className="font-bold">For VH PHARMACY</p>
-              <div className="h-12 border-b border-dashed border-gray-400 w-48 ml-auto mt-2"></div>
               <p className="mt-1">Authorized Pharmacist / Signatory</p>
             </div>
+          </div>
           </div>
 
           {/* Bottom action controls - hidden on print */}

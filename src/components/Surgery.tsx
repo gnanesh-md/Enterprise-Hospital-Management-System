@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Btn, TabBar, StatusBadge } from "./shared";
 import { SurgeryDatabase, SurgicalCase } from "../services/surgeryDb";
+import { OtPackageLink } from "./insurance/integrations";
 
 export default function Surgery() {
   const [cases, setCases] = useState<SurgicalCase[]>([]);
@@ -347,6 +348,10 @@ export default function Surgery() {
                             <span>Surgeon: <strong>Dr. {activeCase.surgeon}</strong></span>
                             <span>·</span>
                             <span>Anesthesia: <strong>Dr. {activeCase.anesthesiologist}</strong></span>
+                          </div>
+                          {/* Insured patient: the procedure's package goes to the insurance pre-auth. */}
+                          <div className="mt-2">
+                            <OtPackageLink patientId={activeCase.mrn || activeCase.patientId} patientName={activeCase.patientName} procedureName={activeCase.procedureName} surgeon={activeCase.surgeon ? `Dr. ${activeCase.surgeon}` : undefined} />
                           </div>
                         </div>
                       </div>

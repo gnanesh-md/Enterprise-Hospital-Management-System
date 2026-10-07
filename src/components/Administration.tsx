@@ -19,6 +19,10 @@ import {
 } from "../services/roleDb"
 import { AuditDatabase, AuditLog, detectDevice } from "../services/auditDb"
 import { apiFetch } from "../lib/api"
+import {
+  DiagnosticTariffDatabase,
+  DiagnosticTariffItem,
+} from "../services/diagnosticTariffDb"
 
 // System Module Categories for clean RBAC governance
 const MODULE_CATEGORIES = [
@@ -109,7 +113,7 @@ const ACTIONS_LIST: { key: PermissionAction ;label: string ;icon: string }[] = [
 
 export default function Administration() {
   const [activeTab, setActiveTab] =
-    useState<"roles" | "users" | "doctors" | "audit" | "settings">("doctors")
+    useState<"roles" | "users" | "doctors" | "audit" | "settings" | "tariffs">("doctors")
 
   // Database States
   const [roles, setRoles] = useState<AppRole[]>([])
@@ -176,16 +180,40 @@ export default function Administration() {
 
   // Settings State
   const [mfaEnforced, setMfaEnforced] = useState(true)
-  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState(30)
-  const [minPasswordLength, setMinPasswordLength] = useState(10)
+  const [sessionTimeoutMinutes, setSessionTimeoutMinutes] = useState<number | "">(30)
+  const [minPasswordLength, setMinPasswordLength] = useState<number | "">(10)
   const [maintenanceMode, setMaintenanceMode] = useState(false)
   const [settingsNotice, setSettingsNotice] = useState("")
+
+  // Diagnostic Tariffs Tab State
+  const [tariffs, setTariffs] = useState<DiagnosticTariffItem[]>([])
+  const [tariffSearch, setTariffSearch] = useState("")
+  const [tariffCategoryFilter, setTariffCategoryFilter] = useState<"all" | "Laboratory" | "Radiology">("all")
+  const [tariffSubCategoryFilter, setTariffSubCategoryFilter] = useState<string>("all")
+  const [editingTariffId, setEditingTariffId] = useState<string | null>(null)
+  const [editingTariffPrice, setEditingTariffPrice] = useState<number | "">("")
+  const [showAddTariffModal, setShowAddTariffModal] = useState(false)
+  const [newTariffForm, setNewTariffForm] = useState<{
+    code: string
+    name: string
+    category: "Laboratory" | "Radiology"
+    subCategory: string
+    price: number | ""
+  }>({
+    code: "",
+    name: "",
+    category: "Laboratory",
+    subCategory: "General",
+    price: "",
+  })
+  const [tariffNotice, setTariffNotice] = useState("")
 
   const refreshData = () => {
     setRoles(RoleDatabase.getRoles())
     setUsers(RoleDatabase.getUsers())
     setDoctors(getDoctorMaster())
     setAuditLogs(AuditDatabase.getLogs())
+    setTariffs(DiagnosticTariffDatabase.getTariffs())
   }
 
   useEffect(() => {
@@ -193,12 +221,15 @@ export default function Administration() {
 
     const handleDoctorUpdate = () => refreshData()
     const handleUserUpdate = () => refreshData()
+    const handleTariffUpdate = () => refreshData()
 
     window.addEventListener("doctor_master_updated", handleDoctorUpdate)
     window.addEventListener("rbac_users_updated", handleUserUpdate)
+    window.addEventListener("diagnostic_tariffs_updated", handleTariffUpdate)
     return () => {
       window.removeEventListener("doctor_master_updated", handleDoctorUpdate)
       window.removeEventListener("rbac_users_updated", handleUserUpdate)
+      window.removeEventListener("diagnostic_tariffs_updated", handleTariffUpdate)
     }
   }, [])
 
@@ -357,9 +388,13 @@ export default function Administration() {
   const toggleModuleForSelectedRole = (moduleKey: string) => {
     if (!selectedRole) return
     const currentModules = selectedRole.allowedModules
-    let newModules: string[]
+    const isCurrentlyActive =
+      currentModules.includes(moduleKey) ||
+      currentModules.includes("*") ||
+      getGrantedActionsForModule(currentModules, moduleKey).length > 0
 
-    if (currentModules.includes(moduleKey)) {
+    let newModules: string[]
+    if (isCurrentlyActive) {
       newModules = currentModules.filter(
         (m) => m !== moduleKey && !m.startsWith(`${moduleKey}:`),
       )
@@ -376,8 +411,20 @@ export default function Administration() {
     action: PermissionAction,
   ) => {
     if (!selectedRole) return
+    let currentModules = [...selectedRole.allowedModules]
+
+    // If top-level module permission exists, expand it into 4 granular actions first
+    if (currentModules.includes(moduleKey)) {
+      currentModules = currentModules.filter((m) => m !== moduleKey)
+      ACTIONS_LIST.forEach((act) => {
+        const key = `${moduleKey}:${act.key}`
+        if (!currentModules.includes(key)) {
+          currentModules.push(key)
+        }
+      })
+    }
+
     const targetKey = `${moduleKey}:${action}`
-    const currentModules = selectedRole.allowedModules
     let newModules: string[]
 
     if (currentModules.includes(targetKey)) {
@@ -716,6 +763,130 @@ export default function Administration() {
     new Set(auditLogs.map((l) => l.username)),
   ).sort()
 
+  // ── Diagnostic Tariffs Operations ────────────────────────────────────────
+
+  const handleSaveTariffPrice = (id: string) => {
+    if (editingTariffPrice === "" || isNaN(Number(editingTariffPrice))) return
+    const num = Math.max(0, Number(editingTariffPrice))
+    const updated = DiagnosticTariffDatabase.updateTariffPrice(id, num)
+    if (updated) {
+      AuditDatabase.logEvent(
+        "Diagnostic Tariff Updated",
+        "Tariff Management",
+        `Updated price for '${updated.name}' (${updated.code}) to ₹${num}`,
+        "Success",
+      )
+      setTariffNotice(`Price for "${updated.name}" updated to ₹${num}.`)
+      setTimeout(() => setTariffNotice(""), 3500)
+    }
+    setEditingTariffId(null)
+    setEditingTariffPrice("")
+    setTariffs(DiagnosticTariffDatabase.getTariffs())
+  }
+
+  const handleCreateTariff = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTariffForm.name.trim() || newTariffForm.price === "") return
+    const code =
+      newTariffForm.code.trim() ||
+      `${newTariffForm.category === "Laboratory" ? "LAB" : "RAD"}-${Math.floor(
+        100 + Math.random() * 900,
+      )}`
+    const item = DiagnosticTariffDatabase.addTariffItem({
+      code,
+      name: newTariffForm.name.trim(),
+      category: newTariffForm.category,
+      subCategory: newTariffForm.subCategory.trim() || "General",
+      price: Number(newTariffForm.price),
+    })
+
+    AuditDatabase.logEvent(
+      "Diagnostic Tariff Added",
+      "Tariff Management",
+      `Added new ${item.category} test '${item.name}' (${item.code}) priced at ₹${item.price}`,
+      "Success",
+    )
+
+    setShowAddTariffModal(false)
+    setNewTariffForm({
+      code: "",
+      name: "",
+      category: "Laboratory",
+      subCategory: "General",
+      price: "",
+    })
+    setTariffNotice(
+      `Added new ${item.category} test "${item.name}" (₹${item.price}).`,
+    )
+    setTimeout(() => setTariffNotice(""), 3500)
+    setTariffs(DiagnosticTariffDatabase.getTariffs())
+  }
+
+  const handleDeleteTariff = (item: DiagnosticTariffItem) => {
+    if (
+      !confirm(
+        `Are you sure you want to delete ${item.name} (${item.code}) from the diagnostic price master?`,
+      )
+    )
+      return
+    DiagnosticTariffDatabase.deleteTariffItem(item.id)
+    AuditDatabase.logEvent(
+      "Diagnostic Tariff Deleted",
+      "Tariff Management",
+      `Deleted diagnostic test '${item.name}' (${item.code})`,
+      "Success",
+    )
+    setTariffNotice(`Deleted test "${item.name}".`)
+    setTimeout(() => setTariffNotice(""), 3500)
+    setTariffs(DiagnosticTariffDatabase.getTariffs())
+  }
+
+  const handleResetTariffs = () => {
+    if (
+      !confirm(
+        "Are you sure you want to reset all Diagnostic Tariffs to the official Hospital Rate Card prices? Any custom edits will be restored to default.",
+      )
+    )
+      return
+    const reset = DiagnosticTariffDatabase.resetToHospitalRateCard()
+    setTariffs(reset)
+    AuditDatabase.logEvent(
+      "Diagnostic Tariffs Reset",
+      "Tariff Management",
+      "Reset all diagnostic prices to official Hospital Rate Card defaults",
+      "Success",
+    )
+    setTariffNotice(
+      "Diagnostic tariffs successfully reset to official Hospital Rate Card defaults.",
+    )
+    setTimeout(() => setTariffNotice(""), 3500)
+  }
+
+  const tariffSubCategories = Array.from(
+    new Set(
+      tariffs
+        .filter(
+          (t) =>
+            tariffCategoryFilter === "all" ||
+            t.category === tariffCategoryFilter,
+        )
+        .map((t) => t.subCategory),
+    ),
+  ).sort()
+
+  const filteredTariffs = tariffs.filter((t) => {
+    const matchesSearch =
+      t.name.toLowerCase().includes(tariffSearch.toLowerCase()) ||
+      t.code.toLowerCase().includes(tariffSearch.toLowerCase()) ||
+      t.subCategory.toLowerCase().includes(tariffSearch.toLowerCase())
+    const matchesCategory =
+      tariffCategoryFilter === "all" || t.category === tariffCategoryFilter
+    const matchesSubCat =
+      tariffSubCategoryFilter === "all" ||
+      t.subCategory === tariffSubCategoryFilter
+    return matchesSearch && matchesCategory && matchesSubCat
+  })
+
   return (
     <div className="flex flex-col h-full bg-[#F4F7FB] text-[#0F172A] font-sans overflow-y-auto">
       {/* Executive Module Header */}
@@ -777,6 +948,11 @@ export default function Administration() {
               count: doctors.length,
             },
             {
+              id: "tariffs",
+              label: "Diagnostic Tariffs & Price Master",
+              count: tariffs.length,
+            },
+            {
               id: "users",
               label: "User Accounts & Credentials",
               count: users.length,
@@ -820,6 +996,250 @@ export default function Administration() {
 
       {/* ── Main Tab Content Container ─────────────────────────────────── */}
       <div className="px-8 py-6 flex-1 flex flex-col min-h-0 bg-[#F4F7FB]">
+        {/* ── TAB: DIAGNOSTIC TARIFFS & PRICE MASTER ─────────────────────── */}
+        {activeTab === "tariffs" && (
+          <div className="space-y-4">
+            {tariffNotice && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[12.5px] p-3 rounded font-semibold flex items-center justify-between">
+                <span>✓ {tariffNotice}</span>
+                <button
+                  onClick={() => setTariffNotice("")}
+                  className="text-emerald-600 hover:text-emerald-900 cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
+            {/* Diagnostic Tariffs Data Table Container */}
+            <div className="bg-white border border-[#DDE2EC] shadow-2xs">
+              {/* Toolbar & Filters */}
+              <div className="p-4 border-b border-[#DDE2EC] bg-[#F8FAFC] flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-[14px] font-bold text-gray-900">
+                    Diagnostic Test Price Master
+                  </h3>
+                  <p className="text-[11.5px] text-[#64748B]">
+                    Search, update, or edit individual test & scan prices in real time. Changes take effect instantly across billing & orders.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+                  {/* Category Filter */}
+                  <div className="flex border border-[#CBD5E1] rounded overflow-hidden">
+                    <button
+                      onClick={() => {
+                        setTariffCategoryFilter("all")
+                        setTariffSubCategoryFilter("all")
+                      }}
+                      className={`px-3 py-1.5 text-[12px] font-semibold transition-colors cursor-pointer ${
+                        tariffCategoryFilter === "all"
+                          ? "bg-[#1B4FD8] text-white"
+                          : "bg-white text-[#334155] hover:bg-gray-50"
+                      }`}
+                    >
+                      All ({tariffs.length})
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTariffCategoryFilter("Laboratory")
+                        setTariffSubCategoryFilter("all")
+                      }}
+                      className={`px-3 py-1.5 text-[12px] font-semibold transition-colors cursor-pointer ${
+                        tariffCategoryFilter === "Laboratory"
+                          ? "bg-[#1B4FD8] text-white"
+                          : "bg-white text-[#334155] hover:bg-gray-50"
+                      }`}
+                    >
+                      Laboratory ({tariffs.filter((t) => t.category === "Laboratory").length})
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTariffCategoryFilter("Radiology")
+                        setTariffSubCategoryFilter("all")
+                      }}
+                      className={`px-3 py-1.5 text-[12px] font-semibold transition-colors cursor-pointer ${
+                        tariffCategoryFilter === "Radiology"
+                          ? "bg-purple-700 text-white"
+                          : "bg-white text-[#334155] hover:bg-gray-50"
+                      }`}
+                    >
+                      Radiology ({tariffs.filter((t) => t.category === "Radiology").length})
+                    </button>
+                  </div>
+
+                  {/* Sub-category Filter */}
+                  <select
+                    value={tariffSubCategoryFilter}
+                    onChange={(e) => setTariffSubCategoryFilter(e.target.value)}
+                    className="bg-white border border-[#DDE2EC] px-3 py-1.5 text-[12.5px] text-[#334155] font-semibold focus:outline-none focus:border-[#1B4FD8] cursor-pointer"
+                  >
+                    <option value="all">All Sub-Categories</option>
+                    {tariffSubCategories.map((subCat) => (
+                      <option key={subCat} value={subCat}>
+                        {subCat}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Search Bar */}
+                  <input
+                    value={tariffSearch}
+                    onChange={(e) => setTariffSearch(e.target.value)}
+                    placeholder="Search test name, code, sub-category..."
+                    className="w-full md:w-64 bg-white border border-[#DDE2EC] px-3 py-1.5 text-[12.5px] text-[#0F172A] placeholder-[#94A3B8] focus:outline-none focus:border-[#1B4FD8]"
+                  />
+
+                  {/* Action Buttons */}
+                  <button
+                    onClick={() => setShowAddTariffModal(true)}
+                    className="bg-[#1B4FD8] hover:bg-[#1740B4] text-white text-[12.5px] font-semibold px-3.5 py-1.5 border border-blue-600 transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>+</span> Add Diagnostic Test
+                  </button>
+
+                  <button
+                    onClick={handleResetTariffs}
+                    title="Reset all prices to official Hospital Rate Card defaults"
+                    className="bg-white hover:bg-gray-50 text-slate-700 text-[12.5px] font-semibold px-3 py-1.5 border border-slate-300 transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <span>🔄</span> Reset Rate Card
+                  </button>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[13px] border-collapse">
+                  <thead>
+                    <tr className="bg-[#F1F5F9] text-[#475569] font-bold text-[11px] uppercase tracking-wider border-b border-[#DDE2EC]">
+                      <th className="py-3 px-4 w-28 font-mono">Code</th>
+                      <th className="py-3 px-4">Test / Investigation Name</th>
+                      <th className="py-3 px-4 w-32">Department</th>
+                      <th className="py-3 px-4 w-40">Sub-Category</th>
+                      <th className="py-3 px-4 w-40 text-right">Price (₹)</th>
+                      <th className="py-3 px-4 w-36 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E2E8F0]">
+                    {filteredTariffs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-[#64748B]">
+                          No diagnostic tests or scans found matching "{tariffSearch}".
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTariffs.map((item) => {
+                        const isEditing = editingTariffId === item.id
+                        return (
+                          <tr
+                            key={item.id}
+                            className={`hover:bg-[#F8FAFC] transition-colors ${
+                              isEditing ? "bg-amber-50/60" : ""
+                            }`}
+                          >
+                            <td className="py-2.5 px-4 font-mono font-semibold text-[#1B4FD8]">
+                              {item.code}
+                            </td>
+                            <td className="py-2.5 px-4 font-bold text-[#0F172A]">
+                              {item.name}
+                            </td>
+                            <td className="py-2.5 px-4">
+                              <span
+                                className={`text-[11px] font-bold px-2 py-0.5 border ${
+                                  item.category === "Laboratory"
+                                    ? "bg-blue-50 text-[#1B4FD8] border-blue-200"
+                                    : "bg-purple-50 text-purple-700 border-purple-200"
+                                }`}
+                              >
+                                {item.category}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-4 text-[#475569]">
+                              {item.subCategory}
+                            </td>
+                            <td className="py-2.5 px-4 text-right font-mono">
+                              {isEditing ? (
+                                <div className="flex items-center justify-end gap-1">
+                                  <span className="text-gray-500 font-bold">₹</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    autoFocus
+                                    value={editingTariffPrice}
+                                    onChange={(e) =>
+                                      setEditingTariffPrice(
+                                        e.target.value === "" ? "" : Number(e.target.value)
+                                      )
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") handleSaveTariffPrice(item.id)
+                                      if (e.key === "Escape") setEditingTariffId(null)
+                                    }}
+                                    className="w-24 bg-white border border-[#1B4FD8] px-2 py-1 text-right text-[13px] font-mono font-bold focus:outline-none"
+                                  />
+                                </div>
+                              ) : (
+                                <span className="font-extrabold text-[#0F172A]">
+                                  ₹{item.price.toLocaleString("en-IN")}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-4 text-center">
+                              {isEditing ? (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => handleSaveTariffPrice(item.id)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold px-2.5 py-1 border border-emerald-700 cursor-pointer"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingTariffId(null)}
+                                    className="bg-white hover:bg-gray-100 text-gray-700 text-[11px] font-semibold px-2 py-1 border border-gray-300 cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      setEditingTariffId(item.id)
+                                      setEditingTariffPrice(item.price)
+                                    }}
+                                    className="text-[#1B4FD8] hover:text-[#1740B4] text-[12px] font-semibold cursor-pointer"
+                                  >
+                                    Edit Price
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTariff(item)}
+                                    className="text-red-600 hover:text-red-800 text-[12px] font-semibold cursor-pointer"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-3 bg-[#F8FAFC] border-t border-[#DDE2EC] text-[12px] text-[#64748B] flex items-center justify-between">
+                <span>
+                  Showing <strong>{filteredTariffs.length}</strong> of <strong>{tariffs.length}</strong> total diagnostic rate items
+                </span>
+                <span>
+                  Press <kbd className="bg-white border border-[#CBD5E1] px-1 py-0.5 text-[10px] font-mono">Enter</kbd> to save price edits
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── TAB 1: DOCTOR MASTER & ROSTER ─────────────────────────────── */}
         {activeTab === "doctors" && (
           <div className="space-y-4">
@@ -1005,15 +1425,7 @@ export default function Administration() {
                                   title="Edit Doctor Profile"
                                   className="bg-white hover:bg-gray-100 text-[#334155] border border-[#CBD5E1] px-2.5 py-1 text-[11.5px] font-semibold cursor-pointer"
                                 >
-                                  ✏️ Edit
-                                </button>
-
-                                <button
-                                  onClick={() => handleOpenCredentialsModal(d)}
-                                  title="Edit Login Credentials"
-                                  className="bg-[#1B4FD8] hover:bg-[#1740B4] text-white border border-blue-600 px-2.5 py-1 text-[11.5px] font-semibold cursor-pointer"
-                                >
-                                  🔑 Credentials
+                                  ✏️ Edit Profile
                                 </button>
 
                                 <button
@@ -1407,7 +1819,7 @@ export default function Administration() {
                                 </div>
 
                                 {isExpanded && (
-                                  <div className="mt-3 pt-2 border-t border-gray-100 grid grid-cols-2 gap-1.5 bg-gray-50 p-2 text-[11px]">
+                                  <div className="mt-3 pt-2.5 border-t border-slate-200 grid grid-cols-2 gap-2 bg-slate-50/80 p-2.5 rounded-xs">
                                     {ACTIONS_LIST.map((act) => {
                                       const hasAction = grantedActions.includes(
                                         act.key,
@@ -1415,20 +1827,27 @@ export default function Administration() {
                                       return (
                                         <button
                                           key={act.key}
-                                          onClick={() =>
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
                                             toggleActionForSelectedRole(
                                               modKey,
                                               act.key,
                                             )
-                                          }
-                                          className={`px-2 py-1 flex items-center gap-1 border font-semibold cursor-pointer ${
+                                          }}
+                                          className={`px-2.5 py-1.5 flex items-center justify-between text-[11.5px] font-bold border transition-all cursor-pointer rounded-xs shadow-2xs ${
                                             hasAction
-                                              ? "bg-blue-600 text-white border-blue-600"
-                                              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                                              ? "bg-[#1B4FD8] text-white border-blue-700 shadow-xs"
+                                              : "bg-white text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900"
                                           }`}
                                         >
-                                          <span>{act.icon}</span>
-                                          <span>{act.label}</span>
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-[12px]">{act.icon}</span>
+                                            <span>{act.label}</span>
+                                          </div>
+                                          <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${hasAction ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-400"}`}>
+                                            {hasAction ? "ON" : "OFF"}
+                                          </span>
                                         </button>
                                       )
                                     })}
@@ -1567,33 +1986,29 @@ export default function Administration() {
                           </td>
 
                           <td className="px-4 py-3 font-medium text-[#0F172A] whitespace-nowrap">
-                            {isLoginSession ? (log.device || detectDevice()) : "—"}
+                            {log.device || detectDevice()}
                           </td>
 
                           <td className="px-4 py-3 font-mono text-[12px] text-[#334155] whitespace-nowrap">
-                            {isLoginSession ? (log.loginTime || "—") : "—"}
+                            {log.loginTime || "—"}
                           </td>
 
                           <td className="px-4 py-3 font-mono text-[12px] whitespace-nowrap">
-                            {isLoginSession ? (
-                              log.logoutTime === "Active" ? (
-                                <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 font-bold rounded">
-                                  Active
-                                </span>
-                              ) : log.logoutTime === "Session Expired" ? (
-                                <span className="text-amber-800 bg-amber-50 px-2 py-0.5 border border-amber-200 font-semibold rounded">
-                                  Session Expired
-                                </span>
-                              ) : (
-                                log.logoutTime || "—"
-                              )
+                            {log.logoutTime === "Active" ? (
+                              <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200 font-bold rounded">
+                                Active
+                              </span>
+                            ) : log.logoutTime === "Session Expired" ? (
+                              <span className="text-amber-800 bg-amber-50 px-2 py-0.5 border border-amber-200 font-semibold rounded">
+                                Session Expired
+                              </span>
                             ) : (
-                              "—"
+                              log.logoutTime || "—"
                             )}
                           </td>
 
                           <td className="px-4 py-3 font-mono font-bold text-[#1B4FD8] whitespace-nowrap">
-                            {isLoginSession ? (log.duration || "—") : "—"}
+                            {log.duration || "—"}
                           </td>
 
                           <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -1632,7 +2047,7 @@ export default function Administration() {
 
         {/* ── TAB 5: SYSTEM & GOVERNANCE SETTINGS ────────────────────────── */}
         {activeTab === "settings" && (
-          <div className="space-y-6 max-w-4xl">
+          <div className="space-y-6 w-full">
             <div className="bg-white border border-[#DDE2EC] p-6 space-y-6 shadow-sm">
               <div className="border-b border-[#E2E8F0] pb-4">
                 <h3 className="text-base font-bold text-[#0F172A]">
@@ -1695,10 +2110,27 @@ export default function Administration() {
                   </label>
                   <input
                     type="number"
+                    min="0"
+                    placeholder="e.g. 30"
                     value={sessionTimeoutMinutes}
-                    onChange={(e) =>
-                      setSessionTimeoutMinutes(Number(e.target.value))
-                    }
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      if (raw === "") {
+                        setSessionTimeoutMinutes("")
+                      } else {
+                        const val = parseInt(raw, 10)
+                        if (isNaN(val)) {
+                          setSessionTimeoutMinutes("")
+                        } else {
+                          setSessionTimeoutMinutes(Math.max(0, Math.abs(val)))
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      if (sessionTimeoutMinutes === "") {
+                        setSessionTimeoutMinutes(0)
+                      }
+                    }}
                     className="w-full bg-white border border-[#DDE2EC] px-3.5 py-2 text-[13px] text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
                   />
                 </div>
@@ -1709,10 +2141,27 @@ export default function Administration() {
                   </label>
                   <input
                     type="number"
+                    min="0"
+                    placeholder="e.g. 10"
                     value={minPasswordLength}
-                    onChange={(e) =>
-                      setMinPasswordLength(Number(e.target.value))
-                    }
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      if (raw === "") {
+                        setMinPasswordLength("")
+                      } else {
+                        const val = parseInt(raw, 10)
+                        if (isNaN(val)) {
+                          setMinPasswordLength("")
+                        } else {
+                          setMinPasswordLength(Math.max(0, Math.abs(val)))
+                        }
+                      }
+                    }}
+                    onBlur={() => {
+                      if (minPasswordLength === "") {
+                        setMinPasswordLength(0)
+                      }
+                    }}
                     className="w-full bg-white border border-[#DDE2EC] px-3.5 py-2 text-[13px] text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
                   />
                 </div>
@@ -2544,6 +2993,154 @@ export default function Administration() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. Add New Diagnostic Tariff Modal */}
+      {showAddTariffModal && (
+        <div className="fixed inset-0 bg-gray-900/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-[#DDE2EC] shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 bg-[#F8FAFC] border-b border-[#DDE2EC] flex items-center justify-between">
+              <h3 className="text-base font-bold text-[#0F172A]">
+                Add New Diagnostic Test / Scan
+              </h3>
+              <button
+                onClick={() => setShowAddTariffModal(false)}
+                className="text-[#64748B] hover:text-black cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTariff} className="p-6 space-y-4">
+              <div>
+                <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                  Department / Category
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-[13px] font-semibold cursor-pointer">
+                    <input
+                      type="radio"
+                      name="category"
+                      value="Laboratory"
+                      checked={newTariffForm.category === "Laboratory"}
+                      onChange={() =>
+                        setNewTariffForm({
+                          ...newTariffForm,
+                          category: "Laboratory",
+                          subCategory: "Haematology",
+                        })
+                      }
+                    />
+                    Laboratory
+                  </label>
+                  <label className="flex items-center gap-2 text-[13px] font-semibold cursor-pointer">
+                    <input
+                      type="radio"
+                      name="category"
+                      value="Radiology"
+                      checked={newTariffForm.category === "Radiology"}
+                      onChange={() =>
+                        setNewTariffForm({
+                          ...newTariffForm,
+                          category: "Radiology",
+                          subCategory: "X-Ray",
+                        })
+                      }
+                    />
+                    Radiology
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                  Test / Scan Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. HIGH RESOLUTION CT CHEST"
+                  value={newTariffForm.name}
+                  onChange={(e) =>
+                    setNewTariffForm({ ...newTariffForm, name: e.target.value })
+                  }
+                  className="w-full bg-white border border-[#DDE2EC] px-3.5 py-2 text-[13px] text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                    Test Code (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. LAB-185 or RAD-016"
+                    value={newTariffForm.code}
+                    onChange={(e) =>
+                      setNewTariffForm({ ...newTariffForm, code: e.target.value })
+                    }
+                    className="w-full bg-white border border-[#DDE2EC] px-3.5 py-2 text-[13px] text-[#0F172A] font-mono focus:outline-none focus:border-[#1B4FD8]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                    Sub-Category
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Biochemistry, CT Scan"
+                    value={newTariffForm.subCategory}
+                    onChange={(e) =>
+                      setNewTariffForm({
+                        ...newTariffForm,
+                        subCategory: e.target.value,
+                      })
+                    }
+                    className="w-full bg-white border border-[#DDE2EC] px-3.5 py-2 text-[13px] text-[#0F172A] focus:outline-none focus:border-[#1B4FD8]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-bold text-[#334155] mb-1">
+                  Price / Amount (₹) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 1500"
+                  value={newTariffForm.price}
+                  onChange={(e) =>
+                    setNewTariffForm({
+                      ...newTariffForm,
+                      price: e.target.value === "" ? "" : Number(e.target.value),
+                    })
+                  }
+                  className="w-full bg-white border border-[#DDE2EC] px-3.5 py-2 text-[13px] text-[#0F172A] font-mono font-bold focus:outline-none focus:border-[#1B4FD8]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-[#E2E8F0]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTariffModal(false)}
+                  className="bg-white hover:bg-gray-50 text-[#334155] text-[13px] font-semibold px-4 py-2 border border-[#CBD5E1] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-[#1B4FD8] hover:bg-[#1740B4] text-white text-[13px] font-semibold px-5 py-2 border border-blue-600 shadow-2xs cursor-pointer"
+                >
+                  Save Diagnostic Test
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

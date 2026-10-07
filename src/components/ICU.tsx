@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Btn } from "./shared"
+import { formatDateTimeIST } from "../lib/format"
+
 import IcuFlowsheet, {
   flowsheetSummary,
   fetchDays,
@@ -19,6 +21,12 @@ import {
   type SampleHandwrittenRx,
   type SuggestedMed,
 } from "./icu/icuSeedData"
+import IcuDischargeModal, {
+  IcuDischargeSummarySlipModal,
+  getDischargedIcuPatients,
+  type IcuDischargeRecord,
+} from "./icu/IcuDischargeModal"
+import { LabOrderDatabase, type LabOrder } from "../services/labOrdersDb"
 import {
   Area,
   AreaChart,
@@ -32,7 +40,9 @@ import {
 export type IcuPatient = {
   bed: string
   unit: string
-  unitType: "MICU" | "SICU" | "CCU" | "NICU" | "PICU" | "Floor 1" | "Floor 2" | "Floor 3" | "ER"
+  // ICU units only. General wards live in the Inpatient module and ER beds on
+  // the Emergency page; this portal is critical care alone.
+  unitType: "MICU" | "SICU" | "CCU" | "NICU" | "PICU"
   name: string | null
   mrn: string
   age: number | null
@@ -674,189 +684,6 @@ const ALL_BEDS_DATASET: IcuPatient[] = [
       { t: "11", v: 90 },
     ],
   },
-
-  // ── Floor 1 Ward (General Ward) ──────────────────────────────────────────
-  {
-    bed: "F1-101",
-    unit: "Floor 1 Ward",
-    unitType: "Floor 1",
-    name: "John Miller",
-    mrn: "600101",
-    age: 58,
-    sex: "M",
-    dx: "Cellulitis Right Lower Leg",
-    provider: "Dr. Evans",
-    nurse: "RN Clark",
-    los: "3d 4h",
-    totalDays: 3,
-    code: "Full Code",
-    vitals: {
-      bp: "124/78",
-      hr: "72",
-      rr: "16",
-      temp: "36.8°C",
-      spo2: "98%",
-      cvp: "—",
-    },
-    vent: null,
-    infusions: [
-      { drug: "Cefazolin IV", rate: "1g Q8H", concentration: "1g/100mL" },
-    ],
-    alerts: ["✓ Redness receding"],
-    score: { sofa: 1, apache: 5, rass: 0 },
-    hrTrend: [
-      { t: "07", v: 74 },
-      { t: "08", v: 72 },
-      { t: "09", v: 72 },
-      { t: "10", v: 72 },
-      { t: "11", v: 72 },
-    ],
-    bpTrend: [
-      { t: "07", v: 122 },
-      { t: "08", v: 124 },
-      { t: "09", v: 124 },
-      { t: "10", v: 124 },
-      { t: "11", v: 124 },
-    ],
-  },
-
-  // ── Floor 2 Ward (Special Ward) ──────────────────────────────────────────
-  {
-    bed: "F2-201",
-    unit: "Floor 2 Ward",
-    unitType: "Floor 2",
-    name: "William Brown",
-    mrn: "700101",
-    age: 66,
-    sex: "M",
-    dx: "Elective Total Knee Arthroplasty (TKA)",
-    provider: "Dr. Ortho",
-    nurse: "RN White",
-    los: "2d 10h",
-    totalDays: 2,
-    code: "Full Code",
-    vitals: {
-      bp: "128/80",
-      hr: "76",
-      rr: "16",
-      temp: "36.7°C",
-      spo2: "98%",
-      cvp: "—",
-    },
-    vent: null,
-    infusions: [{ drug: "Ancef", rate: "1g Q8H", concentration: "1g/100mL" }],
-    alerts: ["✓ PT ambulating 50 feet"],
-    score: { sofa: 1, apache: 4, rass: 0 },
-    hrTrend: [
-      { t: "07", v: 78 },
-      { t: "08", v: 76 },
-      { t: "09", v: 76 },
-      { t: "10", v: 76 },
-      { t: "11", v: 76 },
-    ],
-    bpTrend: [
-      { t: "07", v: 126 },
-      { t: "08", v: 128 },
-      { t: "09", v: 128 },
-      { t: "10", v: 128 },
-      { t: "11", v: 128 },
-    ],
-  },
-
-  // ── Floor 3 Ward (Deluxe Ward) ───────────────────────────────────────────
-  {
-    bed: "F3-301",
-    unit: "Floor 3 Ward",
-    unitType: "Floor 3",
-    name: "Patricia Davis",
-    mrn: "800101",
-    age: 50,
-    sex: "F",
-    dx: "Laparoscopic Cholecystectomy",
-    provider: "Dr. Vance",
-    nurse: "RN Lee",
-    los: "1d 8h",
-    totalDays: 1,
-    code: "Full Code",
-    vitals: {
-      bp: "118/74",
-      hr: "70",
-      rr: "14",
-      temp: "36.6°C",
-      spo2: "99%",
-      cvp: "—",
-    },
-    vent: null,
-    infusions: [],
-    alerts: ["✓ Tolerating regular diet"],
-    score: { sofa: 0, apache: 3, rass: 0 },
-    hrTrend: [
-      { t: "07", v: 72 },
-      { t: "08", v: 70 },
-      { t: "09", v: 70 },
-      { t: "10", v: 70 },
-      { t: "11", v: 70 },
-    ],
-    bpTrend: [
-      { t: "07", v: 116 },
-      { t: "08", v: 118 },
-      { t: "09", v: 118 },
-      { t: "10", v: 118 },
-      { t: "11", v: 118 },
-    ],
-  },
-
-  // ── Emergency Room (ER) ──────────────────────────────────────────────────
-  {
-    bed: "ER-1",
-    unit: "Emergency Room",
-    unitType: "ER",
-    name: "Michael Clark",
-    mrn: "900101",
-    age: 39,
-    sex: "M",
-    dx: "Polytrauma — MVC, Closed Femur Fracture",
-    provider: "Dr. ER Chief",
-    nurse: "RN Trauma",
-    los: "0d 6h",
-    totalDays: 1,
-    code: "Full Code",
-    vitals: {
-      bp: "108/66",
-      hr: "104",
-      rr: "22",
-      temp: "37.2°C",
-      spo2: "95%",
-      cvp: "—",
-    },
-    vent: {
-      mode: "Non-rebreather Mask",
-      fio2: "100%",
-      peep: "0",
-      tv: "—",
-      rr: "22",
-      pip: "—",
-    },
-    infusions: [
-      { drug: "Normal Saline Bolus", rate: "1000 mL", concentration: "1000mL" },
-    ],
-    alerts: ["⚠ Pending OR for ORIF Femur"],
-    score: { sofa: 5, apache: 12, rass: 0 },
-    hrTrend: [
-      { t: "07", v: 110 },
-      { t: "08", v: 106 },
-      { t: "09", v: 104 },
-      { t: "10", v: 104 },
-      { t: "11", v: 104 },
-    ],
-    bpTrend: [
-      { t: "07", v: 102 },
-      { t: "08", v: 106 },
-      { t: "09", v: 108 },
-      { t: "10", v: 108 },
-      { t: "11", v: 108 },
-    ],
-  },
 ]
 
 function PharmacyOrderModal({
@@ -1363,6 +1190,313 @@ function PharmacyOrderModal({
   )
 }
 
+const DRIP_PRESETS: { drug: string ;concentration: string ;rate: string }[] = [
+  { drug: "Norepinephrine", concentration: "8mg/250mL", rate: "0.05 mcg/kg/min" },
+  { drug: "Vasopressin", concentration: "20u/100mL", rate: "0.03 u/min" },
+  { drug: "Epinephrine", concentration: "4mg/250mL", rate: "0.05 mcg/kg/min" },
+  { drug: "Dobutamine", concentration: "250mg/250mL", rate: "5 mcg/kg/min" },
+  { drug: "Propofol", concentration: "10mg/mL", rate: "20 mcg/kg/min" },
+  { drug: "Midazolam", concentration: "50mg/50mL", rate: "2 mg/hr" },
+  { drug: "Fentanyl", concentration: "1000mcg/100mL", rate: "50 mcg/hr" },
+  { drug: "Heparin Drip", concentration: "25,000u/250mL", rate: "1,000 u/hr" },
+  { drug: "Insulin Infusion", concentration: "100u/100mL", rate: "2 u/hr" },
+  { drug: "Furosemide", concentration: "100mg/100mL", rate: "10 mg/hr" },
+]
+
+const modalInput =
+  "w-full border border-[#CBD5E1] rounded-none px-2.5 py-1.5 text-[12.5px] focus:outline-none focus:border-[#1B4FD8] focus:ring-1 focus:ring-blue-100"
+
+function ModalShell({
+  title,
+  accent,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string
+  accent: string
+  onClose: () => void
+  children: React.ReactNode
+  footer: React.ReactNode
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="bg-white w-full max-w-md shadow-xl border border-[#E2E8F0]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 py-3 border-b border-[#EDF1F7] flex items-center gap-2">
+          <span className="w-1 h-4" style={{ backgroundColor: accent }} />
+          <h3 className="text-[13px] font-bold text-[#0F172A] flex-1">
+            {title}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-[#94A3B8] hover:text-[#0F172A] text-[16px] leading-none cursor-pointer"
+          >
+            ×
+          </button>
+        </div>
+        <div className="p-4 space-y-3">{children}</div>
+        <div className="px-4 py-3 border-t border-[#EDF1F7] flex justify-end gap-2">
+          {footer}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** "+ Add Drip" on the Active Infusions panel. */
+function AddDripModal({
+  patientName,
+  onClose,
+  onAdd,
+}: {
+  patientName: string
+  onClose: () => void
+  onAdd: (inf: { drug: string ;rate: string ;concentration: string }) => void
+}) {
+  const [drug, setDrug] = useState("")
+  const [concentration, setConcentration] = useState("")
+  const [rate, setRate] = useState("")
+  const valid = drug.trim() && rate.trim()
+
+  const pickPreset = (name: string) => {
+    setDrug(name)
+    const p = DRIP_PRESETS.find((d) => d.drug === name)
+    if (p) {
+      setConcentration(p.concentration)
+      setRate(p.rate)
+    }
+  }
+
+  return (
+    <ModalShell
+      title={`Add Drip — ${patientName}`}
+      accent="#DB2777"
+      onClose={onClose}
+      footer={
+        <>
+          <Btn variant="outline" size="sm" onClick={onClose}>
+            Cancel
+          </Btn>
+          <Btn
+            variant="primary"
+            size="sm"
+            disabled={!valid}
+            onClick={() =>
+              onAdd({
+                drug: drug.trim(),
+                rate: rate.trim(),
+                concentration: concentration.trim() || "—",
+              })
+            }
+          >
+            Start Infusion
+          </Btn>
+        </>
+      }
+    >
+      <label className="block">
+        <span className="block text-[11px] font-semibold text-[#475569] mb-1">
+          Drug *
+        </span>
+        <input
+          autoFocus
+          list="icu-drip-presets"
+          className={modalInput}
+          value={drug}
+          placeholder="e.g. Norepinephrine"
+          onChange={(e) => pickPreset(e.target.value)}
+        />
+        <datalist id="icu-drip-presets">
+          {DRIP_PRESETS.map((d) => (
+            <option key={d.drug} value={d.drug} />
+          ))}
+        </datalist>
+      </label>
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="block text-[11px] font-semibold text-[#475569] mb-1">
+            Concentration
+          </span>
+          <input
+            className={modalInput}
+            value={concentration}
+            placeholder="e.g. 8mg/250mL"
+            onChange={(e) => setConcentration(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="block text-[11px] font-semibold text-[#475569] mb-1">
+            Rate *
+          </span>
+          <input
+            className={modalInput}
+            value={rate}
+            placeholder="e.g. 0.1 mcg/kg/min"
+            onChange={(e) => setRate(e.target.value)}
+          />
+        </label>
+      </div>
+    </ModalShell>
+  )
+}
+
+const CRITICAL_LAB_PANEL = [
+  "Troponin I",
+  "Lactic Acid",
+  "ABG (Arterial Blood Gas)",
+  "Complete Blood Count (CBC)",
+  "Renal Function Test (RFT)",
+  "Serum Electrolytes",
+  "Coagulation Profile (PT/INR, APTT)",
+  "Liver Function Test (LFT)",
+  "Procalcitonin",
+  "Blood Culture & Sensitivity",
+  "Blood Sugar (RBS)",
+  "D-Dimer",
+]
+
+/** "+ Order" on the Critical Labs panel -- a real lab order, billed at reception. */
+function LabOrderModal({
+  patient,
+  onClose,
+  onOrdered,
+}: {
+  patient: IcuPatient
+  onClose: () => void
+  onOrdered: (order: LabOrder) => void
+}) {
+  const [picked, setPicked] = useState<string[]>([])
+  const [other, setOther] = useState("")
+  const [urgency, setUrgency] = useState<"STAT" | "Routine">("STAT")
+  const [notes, setNotes] = useState("")
+  const tests = [
+    ...picked,
+    ...other
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean),
+  ]
+
+  const submit = () => {
+    const order = LabOrderDatabase.createOrder({
+      encounterId: `ICU-${patient.bed}`,
+      umr: patient.mrn,
+      patientName: patient.name || "Patient",
+      age: patient.age ?? 0,
+      sex: patient.sex === "F" ? "Female" : "Male",
+      phone: "",
+      opNumber: `ICU/${patient.bed}`,
+      doctorId: patient.provider,
+      doctorName: patient.provider || "ICU Physician",
+      department: "ICU",
+      diagnosis: patient.dx || "",
+      clinicalNotes: notes.trim() || undefined,
+      tests: tests.map((name) => ({ name, urgency })),
+    })
+    onOrdered(order)
+  }
+
+  return (
+    <ModalShell
+      title={`Order Labs — ${patient.name}`}
+      accent="#D97706"
+      onClose={onClose}
+      footer={
+        <>
+          <Btn variant="outline" size="sm" onClick={onClose}>
+            Cancel
+          </Btn>
+          <Btn
+            variant="primary"
+            size="sm"
+            disabled={tests.length === 0}
+            onClick={submit}
+          >
+            Place Order{tests.length ? ` (${tests.length})` : ""}
+          </Btn>
+        </>
+      }
+    >
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 max-h-56 overflow-y-auto">
+        {CRITICAL_LAB_PANEL.map((t) => (
+          <label
+            key={t}
+            className="flex items-start gap-2 text-[12px] text-[#1E293B] cursor-pointer"
+          >
+            <input
+              type="checkbox"
+              className="mt-0.5 accent-[#D97706]"
+              checked={picked.includes(t)}
+              onChange={(e) =>
+                setPicked((p) =>
+                  e.target.checked ? [...p, t] : p.filter((x) => x !== t),
+                )
+              }
+            />
+            {t}
+          </label>
+        ))}
+      </div>
+      <label className="block">
+        <span className="block text-[11px] font-semibold text-[#475569] mb-1">
+          Other tests (comma separated)
+        </span>
+        <input
+          className={modalInput}
+          value={other}
+          placeholder="e.g. Serum Magnesium, CRP"
+          onChange={(e) => setOther(e.target.value)}
+        />
+      </label>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] font-semibold text-[#475569]">
+          Priority
+        </span>
+        {(["STAT", "Routine"] as const).map((u) => (
+          <button
+            key={u}
+            type="button"
+            onClick={() => setUrgency(u)}
+            className={`px-2.5 py-1 text-[11px] font-bold border cursor-pointer ${
+              urgency === u
+                ? "bg-[#D97706] border-[#D97706] text-white"
+                : "bg-white border-[#CBD5E1] text-[#475569] hover:border-[#D97706]"
+            }`}
+          >
+            {u}
+          </button>
+        ))}
+      </div>
+      <label className="block">
+        <span className="block text-[11px] font-semibold text-[#475569] mb-1">
+          Clinical notes
+        </span>
+        <textarea
+          rows={2}
+          className={modalInput}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </label>
+      <p className="text-[10.5px] text-[#64748B]">
+        Sent to reception for billing (Billing → Lab Test Billing), then to the
+        laboratory worklist.
+      </p>
+    </ModalShell>
+  )
+}
+
 function MiniTrend({
   data,
   color,
@@ -1761,17 +1895,38 @@ function MultiDayFlowchartMatrix({
   )
 }
 
-export default function ICU() {
+const UNIT_LABEL: Record<string, string> = {
+  All: "All ICUs",
+  MICU: "Medical ICU",
+  SICU: "Surgical ICU",
+  CCU: "Cardiac ICU",
+  NICU: "Neuro ICU",
+  PICU: "Pediatric ICU",
+}
+
+/** `unit` comes from the Critical Care sub-nav: "All" or an ICU unit type. */
+export default function ICU({ unit = "All" }: { unit?: string }) {
+  const [bedsDataset, setBedsDataset] = useState<IcuPatient[]>(ALL_BEDS_DATASET)
+  const [dischargedPatients, setDischargedPatients] = useState<IcuDischargeRecord[]>(() =>
+    getDischargedIcuPatients(),
+  )
+  const [showDischargeModal, setShowDischargeModal] = useState(false)
+  const [summarySlipRecord, setSummarySlipRecord] = useState<IcuDischargeRecord | null>(null)
+
   const [selectedBedIndex, setSelectedBedIndex] = useState(0)
-  const [selectedUnit, setSelectedUnit] = useState<string>("All")
+  const selectedUnit = unit in UNIT_LABEL ? unit : "All"
   const [selectedStatus, setSelectedStatus] = useState<string>("All")
   const [selectedFlowsheetDate, setSelectedFlowsheetDate] = useState<string>("")
-  const [view, setView] = useState<"overview" | "flowsheet">("overview")
+  const [view, setView] = useState<"overview" | "flowsheet" | "discharges">("overview")
   const [showPharmacyModal, setShowPharmacyModal] = useState(false)
   const [notification, setNotification] = useState<string | null>(null)
+  const [showDripModal, setShowDripModal] = useState(false)
+  const [showLabModal, setShowLabModal] = useState(false)
+  const [labTick, setLabTick] = useState(0)
+  useEffect(() => LabOrderDatabase.subscribe(() => setLabTick((n) => n + 1)), [])
 
   const filteredBeds = useMemo(() => {
-    return ALL_BEDS_DATASET.filter((b) => {
+    return bedsDataset.filter((b) => {
       if (selectedUnit !== "All" && b.unitType !== selectedUnit) return false
       const a = acuityOf(b)
       if (selectedStatus === "Occupied" && !b.name) return false
@@ -1781,9 +1936,21 @@ export default function ICU() {
       if (selectedStatus === "Stable" && a.label !== "Stable") return false
       return true
     })
-  }, [selectedUnit, selectedStatus])
+  }, [bedsDataset, selectedUnit, selectedStatus])
 
-  const pt = ALL_BEDS_DATASET[selectedBedIndex] || ALL_BEDS_DATASET[0]
+  const pt = bedsDataset[selectedBedIndex] || bedsDataset[0]
+
+  // Switching unit in the sub-nav moves the selection into that unit, so the
+  // workspace never shows a patient the bed list is not listing.
+  useEffect(() => {
+    if (selectedUnit === "All" || pt.unitType === selectedUnit) return
+    const inUnit = bedsDataset.filter((b) => b.unitType === selectedUnit)
+    const next = inUnit.find((b) => b.name) ?? inUnit[0]
+    if (!next) return
+    setSelectedFlowsheetDate("")
+    setSelectedBedIndex(bedsDataset.findIndex((b) => b.bed === next.bed))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUnit])
   const today = new Date().toISOString().slice(0, 10)
 
   // Seed multi-day data for active patient
@@ -1817,6 +1984,41 @@ export default function ICU() {
       }),
     [refreshHistory],
   )
+
+  const pendingLabOrders = useMemo(
+    () =>
+      pt.mrn
+        ? LabOrderDatabase.getOrdersForPatient(pt.mrn).filter(
+            (o) =>
+              o.department === "ICU" &&
+              o.status !== "Completed" &&
+              o.status !== "Cancelled",
+          )
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pt.mrn, labTick],
+  )
+
+  const handleAddDrip = (inf: {
+    drug: string
+    rate: string
+    concentration: string
+  }) => {
+    setBedsDataset((prev) =>
+      prev.map((b) =>
+        b.bed === pt.bed ? { ...b, infusions: [inf, ...b.infusions] } : b,
+      ),
+    )
+    setShowDripModal(false)
+    setNotification(`✓ ${inf.drug} infusion started at ${inf.rate} for ${pt.name}.`)
+  }
+
+  const handleLabOrdered = (order: LabOrder) => {
+    setShowLabModal(false)
+    setNotification(
+      `✓ Lab order ${order.id} (${order.tests.length} test${order.tests.length === 1 ? "" : "s"}) sent to reception for billing.`,
+    )
+  }
 
   const spo2 = pt.vitals ? num(pt.vitals.spo2) : 98
   const hr = pt.vitals ? num(pt.vitals.hr) : 75
@@ -1871,6 +2073,48 @@ export default function ICU() {
     setChartTick((t) => t + 1)
   }
 
+  const handleConfirmDischarge = (record: IcuDischargeRecord) => {
+    // Clear patient from active ICU bed dataset
+    setBedsDataset((prev) =>
+      prev.map((b) =>
+        b.bed === pt.bed
+          ? {
+              ...b,
+              name: null,
+              mrn: "",
+              age: null,
+              sex: null,
+              dx: null,
+              provider: "",
+              nurse: "",
+              los: "",
+              totalDays: 0,
+              code: "",
+              vitals: null,
+              vent: null,
+              infusions: [],
+              alerts: [],
+              score: { sofa: 0, apache: 0, rass: 0 },
+              hrTrend: [],
+              bpTrend: [],
+            }
+          : b,
+      ),
+    )
+
+    setDischargedPatients(getDischargedIcuPatients())
+    setNotification(
+      `✓ Patient ${record.patientName} discharged from ICU Bed ${record.bed} and transferred to Reception!`,
+    )
+    setSummarySlipRecord(record)
+  }
+
+  const unitBeds =
+    selectedUnit === "All"
+      ? bedsDataset
+      : bedsDataset.filter((b) => b.unitType === selectedUnit)
+  const occupiedCount = unitBeds.filter((b) => b.name).length
+
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F5F7FB]">
       {/* Pharmacy Medication Order Modal */}
@@ -1880,6 +2124,21 @@ export default function ICU() {
         onClose={() => setShowPharmacyModal(false)}
         onOrderSubmitted={handlePharmacyOrderSubmitted}
       />
+
+      {showDripModal && pt.name && (
+        <AddDripModal
+          patientName={pt.name}
+          onClose={() => setShowDripModal(false)}
+          onAdd={handleAddDrip}
+        />
+      )}
+      {showLabModal && pt.name && (
+        <LabOrderModal
+          patient={pt}
+          onClose={() => setShowLabModal(false)}
+          onOrdered={handleLabOrdered}
+        />
+      )}
 
       {/* Notification Toast */}
       {notification && (
@@ -1895,28 +2154,55 @@ export default function ICU() {
         </div>
       )}
 
+      {/* ICU Discharge Modal */}
+      {pt && pt.name && (
+        <IcuDischargeModal
+          patient={pt}
+          isOpen={showDischargeModal}
+          onClose={() => setShowDischargeModal(false)}
+          onConfirmDischarge={handleConfirmDischarge}
+        />
+      )}
+
+      {/* Printable ICU Discharge Summary Slip Modal */}
+      <IcuDischargeSummarySlipModal
+        record={summarySlipRecord}
+        onClose={() => setSummarySlipRecord(null)}
+      />
+
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 bg-white border-b border-[#E2E8F0] px-6 py-3 flex flex-wrap items-center gap-4">
         <div>
           <h1 className="text-[16px] font-bold text-[#0F172A] tracking-tight">
-            ICU & Bed Management Portal
+            Critical Care
+            <span className="text-[#64748B] font-semibold">
+              {" "}
+              · {UNIT_LABEL[selectedUnit]}
+            </span>
           </h1>
           <div className="flex items-center gap-3 mt-1 text-[11.5px]">
             <span className="text-[#64748B]">General Hospital</span>
             <span className="flex items-center gap-1.5 text-[#334155]">
-              <span className="w-1.5 h-1.5 bg-[#DC2626]" />{" "}
-              {ALL_BEDS_DATASET.filter((b) => b.name).length} occupied
+              <span className="w-1.5 h-1.5 bg-[#DC2626]" /> {occupiedCount}{" "}
+              occupied
             </span>
             <span className="flex items-center gap-1.5 text-[#334155]">
               <span className="w-1.5 h-1.5 bg-[#16A34A]" />{" "}
-              {ALL_BEDS_DATASET.filter((b) => !b.name).length} available
+              {unitBeds.length - occupiedCount} available
             </span>
             <span className="text-[#94A3B8]">
-              {ALL_BEDS_DATASET.length} total beds
+              {unitBeds.length} total beds
             </span>
           </div>
         </div>
-        <div className="flex gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <Btn
+            variant={view === "overview" ? "primary" : "outline"}
+            size="sm"
+            onClick={() => setView("overview")}
+          >
+            Overview Board
+          </Btn>
           <Btn
             variant={view === "flowsheet" ? "primary" : "outline"}
             size="sm"
@@ -1928,6 +2214,24 @@ export default function ICU() {
             {view === "flowsheet" ? "Back to Overview" : "Daily Flowsheet"}
           </Btn>
           <Btn
+            variant={view === "discharges" ? "primary" : "outline"}
+            size="sm"
+            onClick={() => setView("discharges")}
+          >
+            Reception Handoffs ({dischargedPatients.length})
+          </Btn>
+
+          {pt && pt.name && (
+            <button
+              type="button"
+              onClick={() => setShowDischargeModal(true)}
+              className="px-3.5 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow-md flex items-center gap-1.5 cursor-pointer transition-all"
+            >
+              <span>📋 Discharge to Reception</span>
+            </button>
+          )}
+
+          <Btn
             variant="primary"
             size="sm"
             onClick={() => setShowPharmacyModal(true)}
@@ -1937,63 +2241,31 @@ export default function ICU() {
         </div>
       </div>
 
-      {/* ── Unit & Floor Filter Pills Bar ──────────────────────────────── */}
-      <div className="flex-shrink-0 bg-[#F8FAFC] border-b border-[#E2E8F0] px-6 py-2 flex items-center justify-between gap-4 overflow-x-auto">
-        <div className="flex items-center gap-1.5 flex-nowrap">
-          <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#64748B] mr-1">
-            ICUs & Wards:
-          </span>
-          {[
-            { id: "All", label: "All ICUs & Wards" },
-            { id: "MICU", label: "Medical ICU (MICU)" },
-            { id: "SICU", label: "Surgical ICU (SICU)" },
-            { id: "CCU", label: "Cardiac ICU (CCU)" },
-            { id: "NICU", label: "Neuro ICU (NICU)" },
-            { id: "PICU", label: "Pediatric ICU (PICU)" },
-            { id: "Floor 1", label: "Floor 1 Ward" },
-            { id: "Floor 2", label: "Floor 2 Ward" },
-            { id: "Floor 3", label: "Floor 3 Ward" },
-            { id: "ER", label: "ER Beds" },
-          ].map((u) => (
-            <button
-              key={u.id}
-              type="button"
-              onClick={() => setSelectedUnit(u.id)}
-              className={`px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap border transition-all cursor-pointer ${
-                selectedUnit === u.id
-                  ? "bg-[#1B4FD8] text-white border-[#1B4FD8] shadow-sm"
-                  : "bg-white text-[#475569] border-[#CBD5E1] hover:border-[#1B4FD8]"
-              }`}
-            >
-              {u.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5 flex-nowrap">
-          <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#64748B] mr-1">
-            Status:
-          </span>
-          {["All", "Critical", "Watch", "Stable", "Available"].map((st) => (
-            <button
-              key={st}
-              type="button"
-              onClick={() => setSelectedStatus(st)}
-              className={`px-2 py-0.5 text-[10.5px] font-semibold border transition-all cursor-pointer ${
-                selectedStatus === st
-                  ? "bg-[#334155] text-white border-[#334155]"
-                  : "bg-white text-[#64748B] border-[#CBD5E1] hover:border-[#334155]"
-              }`}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
+      {/* ── Status filter pills (the unit comes from the side nav) ─────── */}
+      <div className="flex-shrink-0 bg-[#F8FAFC] border-b border-[#E2E8F0] px-6 py-2.5 flex items-center gap-1.5 overflow-x-auto">
+        <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#64748B] mr-1">
+          Status:
+        </span>
+        {["All", "Critical", "Watch", "Stable", "Available"].map((st) => (
+          <button
+            key={st}
+            type="button"
+            onClick={() => setSelectedStatus(st)}
+            className={`px-2.5 py-1 text-[10.5px] font-semibold border rounded-full transition-all cursor-pointer ${
+              selectedStatus === st
+                ? "bg-slate-900 text-white border-slate-900 shadow-2xs"
+                : "bg-white text-[#64748B] border-[#CBD5E1] hover:border-slate-800 hover:bg-slate-50"
+            }`}
+          >
+            {st}
+          </button>
+        ))}
       </div>
 
-      {/* ── Multi-unit & Multi-floor Bed census strip ──────────────────── */}
+      {/* ── ICU bed census strip ─────────────────────────────────────────── */}
       <div className="flex-shrink-0 bg-white border-b border-[#E2E8F0] px-6 py-2.5 flex items-stretch gap-2 overflow-x-auto">
         {filteredBeds.map((p) => {
-          const globalIdx = ALL_BEDS_DATASET.findIndex((b) => b.bed === p.bed)
+          const globalIdx = bedsDataset.findIndex((b) => b.bed === p.bed)
           const selected = selectedBedIndex === globalIdx
           const a = acuityOf(p)
           const occupied = Boolean(p.name)
@@ -2004,31 +2276,33 @@ export default function ICU() {
               key={p.bed}
               type="button"
               disabled={!occupied}
-              onClick={() => occupied && setSelectedBedIndex(globalIdx)}
-              className={`relative flex-shrink-0 w-48 text-left border pl-3 pr-2.5 py-2 transition-all ${
+              onClick={() => {
+                if (!occupied) return
+                if (globalIdx !== selectedBedIndex) setSelectedFlowsheetDate("")
+                setSelectedBedIndex(globalIdx)
+              }}
+              className={`relative flex-shrink-0 w-48 text-left border rounded-xl pl-3.5 pr-2.5 py-2.5 transition-all overflow-hidden ${
                 occupied
-                  ? "hover:shadow-sm cursor-pointer"
+                  ? "hover:shadow-md cursor-pointer"
                   : "border-dashed cursor-default opacity-60"
-              } ${selected ? "ring-2 ring-offset-0" : ""}`}
+              } ${selected ? "ring-2 ring-offset-0 shadow-sm" : ""}`}
               style={{
                 backgroundColor: selected
                   ? a.tint
                   : occupied
                     ? "#FFFFFF"
                     : ACUITY.empty.tint,
-                borderColor: selected
-                  ? a.color
-                  : occupied
-                    ? a.border
-                    : ACUITY.empty.border,
+                // Full border in the acuity colour, matching the spine --
+                // the pale tint left three sides looking unfinished.
+                borderColor: occupied ? a.color : ACUITY.empty.border,
                 ...(selected
-                  ? { "--tw-ring-color": a.color } as React.CSSProperties
+                  ? ({ "--tw-ring-color": a.color } as React.CSSProperties)
                   : {}),
               }}
             >
               {/* acuity spine */}
               <span
-                className="absolute left-0 top-0 bottom-0 w-1"
+                className="absolute left-0 top-0 bottom-0 w-1.5"
                 style={{ backgroundColor: occupied ? a.color : "transparent" }}
               />
               <div className="flex items-center justify-between gap-1">
@@ -2037,7 +2311,7 @@ export default function ICU() {
                 </span>
                 {occupied && (
                   <span
-                    className="text-[9px] font-bold uppercase tracking-wider px-1 py-px"
+                    className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
                     style={{ backgroundColor: a.tint, color: a.color }}
                   >
                     {a.label}
@@ -2100,6 +2374,7 @@ export default function ICU() {
 
       {view === "flowsheet" ? (
         <IcuFlowsheet
+          key={`${pt.mrn}-${selectedFlowsheetDate}`}
           patientId={pt.mrn}
           patientName={pt.name || "Patient"}
           bed={pt.bed}
@@ -2110,6 +2385,113 @@ export default function ICU() {
             setView("overview")
           }}
         />
+      ) : view === "discharges" ? (
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                ICU Patient Discharges &amp; Reception Transfer Queue
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Archived ICU discharges transmitted to Reception for floor bed
+                allocation and billing settlement.
+              </p>
+            </div>
+            <span className="bg-red-50 text-red-700 border border-red-200 px-3 py-1 text-xs font-bold font-mono">
+              {dischargedPatients.length} Discharges Recorded
+            </span>
+          </div>
+
+          {dischargedPatients.length === 0 ? (
+            <div className="p-12 text-center border-2 border-dashed border-slate-200 rounded-none space-y-2">
+              <div className="text-2xl">📋</div>
+              <div className="text-sm font-bold text-slate-800">
+                No ICU Discharges Recorded Yet
+              </div>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Discharge any active ICU patient using the &quot;Discharge to
+                Reception&quot; button to send their handover summary to
+                Reception.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto border border-slate-200">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10.5px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="p-3">Ref ID</th>
+                    <th className="p-3">Patient Name</th>
+                    <th className="p-3">MRN</th>
+                    <th className="p-3">ICU Unit / Bed</th>
+                    <th className="p-3">Discharge Type</th>
+                    <th className="p-3">Destination / Ward</th>
+                    <th className="p-3">Physician</th>
+                    <th className="p-3">Discharged At</th>
+                    <th className="p-3 text-center">Reception Status</th>
+                    <th className="p-3 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 font-sans">
+                  {dischargedPatients.map((rec) => (
+                    <tr key={rec.id} className="hover:bg-slate-50">
+                      <td className="p-3 font-mono font-bold text-blue-900">
+                        {rec.id}
+                      </td>
+                      <td className="p-3 font-bold text-slate-900">
+                        {rec.patientName}
+                      </td>
+                      <td className="p-3 font-mono text-slate-600">
+                        {rec.mrn}
+                      </td>
+                      <td className="p-3 font-semibold text-slate-800">
+                        {rec.unit} ({rec.bed})
+                      </td>
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 bg-red-100 text-red-800 font-bold rounded-none text-[10.5px]">
+                          {rec.dischargeType}
+                        </span>
+                      </td>
+                      <td className="p-3 font-semibold text-slate-700">
+                        {rec.destinationWard || "Reception Billing Desk"}
+                      </td>
+                      <td className="p-3 text-slate-700">
+                        {rec.attendingDoctor}
+                      </td>
+                      <td className="p-3 font-mono text-slate-500">
+                        {formatDateTimeIST(rec.dischargedAt)}
+                      </td>
+                      <td className="p-3 text-center">
+                        <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-300 font-bold rounded-none text-[10.5px]">
+                          {rec.receptionStatus}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setSummarySlipRecord(rec)}
+                          className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-bold rounded-none cursor-pointer"
+                        >
+                          🖨 Print Summary
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : !pt.name ? (
+        <div className="flex-1 flex items-center justify-center p-10">
+          <div className="text-center">
+            <div className="text-[14px] font-bold text-[#0F172A]">
+              Bed {pt.bed} is available
+            </div>
+            <p className="text-[12px] text-[#64748B] mt-1">
+              Select an occupied bed from the census strip above.
+            </p>
+          </div>
+        </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
           {/* ── Patient banner ──────────────────────────────────────────── */}
@@ -2126,6 +2508,13 @@ export default function ICU() {
                   <span className="bg-[#F1F5F9] text-[#475569] text-[10px] font-bold px-1.5 py-0.5">
                     {pt.bed}
                   </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDischargeModal(true)}
+                    className="ml-2 px-2.5 py-1 bg-red-700 hover:bg-red-800 text-white text-[11px] font-bold rounded shadow-2xs flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>📋 Discharge Patient → Reception</span>
+                  </button>
                 </div>
                 <div className="text-[11.5px] text-[#64748B] mt-0.5">
                   {pt.age}y {pt.sex === "M" ? "Male" : "Female"} · MRN {pt.mrn}
@@ -2352,22 +2741,22 @@ export default function ICU() {
                 <span>
                   Min{" "}
                   {Math.min(
-                    ...(pt.hrTrend || [{ t: "12", v: 75 }]).map(
-                      (d: { t: string ;v: number }) => d.v,
+                    ...(pt.hrTrend.length ? pt.hrTrend : [{ t: "12", v: 75 }]).map(
+                      (d) => d.v,
                     ),
                   )}
                 </span>
                 <span>
                   Max{" "}
                   {Math.max(
-                    ...(pt.hrTrend || [{ t: "12", v: 75 }]).map(
-                      (d: { t: string ;v: number }) => d.v,
+                    ...(pt.hrTrend.length ? pt.hrTrend : [{ t: "12", v: 75 }]).map(
+                      (d) => d.v,
                     ),
                   )}
                 </span>
                 <span className="font-bold text-[#0F172A]">
                   Now{" "}
-                  {pt.hrTrend && pt.hrTrend.length > 0
+                  {pt.hrTrend.length > 0
                     ? pt.hrTrend[pt.hrTrend.length - 1].v
                     : 75}{" "}
                   bpm
@@ -2389,22 +2778,22 @@ export default function ICU() {
                 <span>
                   Min{" "}
                   {Math.min(
-                    ...(pt.bpTrend || [{ t: "12", v: 120 }]).map(
-                      (d: { t: string ;v: number }) => d.v,
+                    ...(pt.bpTrend.length ? pt.bpTrend : [{ t: "12", v: 120 }]).map(
+                      (d) => d.v,
                     ),
                   )}
                 </span>
                 <span>
                   Max{" "}
                   {Math.max(
-                    ...(pt.bpTrend || [{ t: "12", v: 120 }]).map(
-                      (d: { t: string ;v: number }) => d.v,
+                    ...(pt.bpTrend.length ? pt.bpTrend : [{ t: "12", v: 120 }]).map(
+                      (d) => d.v,
                     ),
                   )}
                 </span>
                 <span className="font-bold text-[#0F172A]">
                   Now{" "}
-                  {pt.bpTrend && pt.bpTrend.length > 0
+                  {pt.bpTrend.length > 0
                     ? pt.bpTrend[pt.bpTrend.length - 1].v
                     : 120}{" "}
                   mmHg
@@ -2529,7 +2918,11 @@ export default function ICU() {
               title="Active Infusions"
               accent="#DB2777"
               actions={
-                <Btn variant="outline" size="xs">
+                <Btn
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setShowDripModal(true)}
+                >
                   + Add Drip
                 </Btn>
               }
@@ -2561,11 +2954,45 @@ export default function ICU() {
               title="Critical Labs"
               accent="#D97706"
               actions={
-                <Btn variant="outline" size="xs">
+                <Btn
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setShowLabModal(true)}
+                >
                   + Order
                 </Btn>
               }
             >
+              {pendingLabOrders.length > 0 && (
+                <div className="mb-3 space-y-1.5">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
+                    Pending orders
+                  </div>
+                  {pendingLabOrders.map((o) => (
+                    <div
+                      key={o.id}
+                      className="border border-[#FDE68A] bg-[#FFFBEB] px-2.5 py-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-[11px] font-bold text-[#92400E]">
+                          {o.id}
+                        </span>
+                        <span className="text-[10px] font-bold text-[#B45309]">
+                          {o.status}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[#475569] truncate">
+                        {o.tests
+                          .map(
+                            (t) =>
+                              `${t.name}${t.urgency === "STAT" ? " (STAT)" : ""}`,
+                          )
+                          .join(", ")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="divide-y divide-[#EDF1F7]">
                 {[
                   ["Troponin I", "18.4 ng/mL", "10:02", true],

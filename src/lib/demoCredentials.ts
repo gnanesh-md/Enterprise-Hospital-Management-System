@@ -76,6 +76,18 @@ export const DEMO_CREDENTIALS: Record<string, DemoCredential> = {
     backendUsername: "staff",
     backendPassword: "staff123",
   },
+  insurance: {
+    username: "insurance",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "staff",
+    backendPassword: "staff123",
+  },
+  finance: {
+    username: "finance",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "staff",
+    backendPassword: "staff123",
+  },
   billing: {
     username: "billing",
     localPassword: LOCAL_PASSWORD,

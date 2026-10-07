@@ -2,6 +2,7 @@ import { FaBed } from "react-icons/fa"
 import { FiTool } from "react-icons/fi"
 import { formatDateTimeIST } from "../../lib/format"
 import { BillingDatabase } from "../../services/billingDb"
+import { InsuranceChip } from "../insurance/integrations"
 
 export type BedCardData = {
   id: number | string
@@ -167,6 +168,8 @@ export function BedCard<T extends BedCardData>({
                 Day {daysSinceAdmission(bed.admission_date)}
               </span>
             )}
+            {/* Status only -- no amounts on the board (see note above). */}
+            <InsuranceChip patientId={bed.patient_id || undefined} patientName={bedOccupantName(bed)} />
             {flags.length > 0 && (
               <div className="bed-info-card-flags">
                 {flags.map((flag) => (

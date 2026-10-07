@@ -568,9 +568,24 @@ export default function ErRegistrationForm({
                   <div className="relative">
                     <Input
                       value={vitals[(v.k as keyof typeof vitals)]}
-                      onChange={(e) =>
-                        setVitals((p) => ({ ...p, [v.k]: e.target.value }))
-                      }
+                      onKeyDown={(e) => {
+                        if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+                          e.preventDefault()
+                        }
+                      }}
+                      onChange={(e) => {
+                        const k = v.k
+                        let clean = e.target.value
+                        if (k === "bp") clean = clean.replace(/[^0-9/]/g, "")
+                        else if (k === "temp" || k === "weight") {
+                          const s = clean.replace(/[^0-9.]/g, "")
+                          const p = s.split(".")
+                          clean = p.length > 2 ? p[0] + "." + p.slice(1).join("") : s
+                        } else {
+                          clean = clean.replace(/[^0-9]/g, "")
+                        }
+                        setVitals((p) => ({ ...p, [k]: clean }))
+                      }}
                       placeholder={v.p}
                       className="h-8 font-mono text-sm pr-10 border-[#DDE2EC]"
                     />

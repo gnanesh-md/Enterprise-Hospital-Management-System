@@ -133,7 +133,7 @@ export default function PatientSearch({
         </Btn>
       </div>
 
-      <div className="p-6 max-w-5xl mx-auto space-y-4">
+      <div className="p-6 w-full space-y-4">
         {/* Search & Filter Bar */}
         <div className="bg-white border-2 border-[#CBD5E1] rounded-none p-5 shadow-sm space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">

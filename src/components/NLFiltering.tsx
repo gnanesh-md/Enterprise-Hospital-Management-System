@@ -352,7 +352,7 @@ export default function NLFiltering({ setNotice }: Props) {
         </p>
       </div>
 
-      <div className="flex-1 overflow-auto p-5 flex flex-col max-w-6xl mx-auto w-full gap-4">
+      <div className="flex-1 overflow-auto p-5 flex flex-col w-full gap-4">
         {/* Search + upload row */}
         <div className="flex items-start gap-3">
           <form onSubmit={handleSearch} className="flex-1 relative">

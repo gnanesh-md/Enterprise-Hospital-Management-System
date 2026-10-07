@@ -133,8 +133,11 @@ export default function OpReportsPage({
     )
   }, [activeRole])
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   // ── 2. Filters State ────────────────────────────────────────────────────────
   useEffect(() => {
+    if (containerRef.current) containerRef.current.scrollTop = 0;
     const mainEl = document.querySelector("main");
     if (mainEl) mainEl.scrollTop = 0;
     window.scrollTo(0, 0);
@@ -404,10 +407,10 @@ export default function OpReportsPage({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-[#F8FAFC] text-slate-900 font-sans pb-16">
+    <div ref={containerRef} className="flex-1 flex flex-col h-full min-h-0 w-full overflow-y-auto bg-[#F8FAFC] text-slate-900 font-sans pb-16">
       {/* ── PAGE HEADER ──────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-[#E2E8F0] px-6 py-5 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               OP Reports
@@ -515,7 +518,7 @@ export default function OpReportsPage({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-5 space-y-6">
+      <div className="w-full px-4 sm:px-6 pt-5 space-y-6">
         {/* ── 3. HORIZONTAL FILTER PANEL ───────────────────────────────────── */}
         <div className="bg-white border border-[#DDE2EC] rounded-xl p-4 shadow-2xs">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
@@ -966,7 +969,7 @@ export default function OpReportsPage({
               </div>
             </div>
 
-            <div className="h-40 w-full">
+            <div className="h-72 w-full">
               {reportData && reportData.trendData.length > 0 ? (
                 <ResponsiveContainer
                   key={`op_trend_${filters.dateRangePreset}_${trendSubPreset}`}
@@ -1079,7 +1082,7 @@ export default function OpReportsPage({
               </select>
             </div>
 
-            <div className="h-40 w-full">
+            <div className="h-72 w-full">
               {reportData && reportData.deptStats.length > 0 ? (
                 <ResponsiveContainer
                   key={`op_dept_${deptSubPreset}`}
@@ -1155,7 +1158,7 @@ export default function OpReportsPage({
               </p>
             </div>
 
-            <div className="h-40 w-full relative flex items-center justify-center">
+            <div className="h-72 w-full relative flex items-center justify-center">
               {reportData &&
               reportData.visitTypeStats.some((s) => s.count > 0) ? (
                 <>

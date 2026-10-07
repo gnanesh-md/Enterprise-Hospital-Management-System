@@ -4,6 +4,8 @@ import { AuditDatabase } from "../services/auditDb"
 import { RoleDatabase } from "../services/roleDb"
 import { credentialsForRole } from "../lib/demoCredentials"
 import { HrmsDatabase } from "../services/hrmsDb"
+import { HospAILogo } from "./HospAILogo"
+import { KalpraLogo } from "./KalpraLogo"
 
 interface StaffOption {
   id: string
@@ -27,14 +29,16 @@ interface LoginProps {
 }
 
 const ROLES_LIST = [
+  { value: "admin", label: "System Admin", sub: "IT Administration & Security" },
   { value: "doctor", label: "Doctor / Physician", sub: "Clinical Workspace, OPD & Inpatient" },
   { value: "nurse", label: "Registered Nurse", sub: "Nursing Station, Vitals & Bedside Care" },
   { value: "pharmacy", label: "Pharmacist", sub: "Inpatient & Retail Pharmacy" },
   { value: "lab", label: "Lab Technician", sub: "Pathology & Clinical Lab Diagnostics" },
   { value: "reception", label: "Receptionist / Front Desk", sub: "Patient Registration & OPD Queue" },
   { value: "billing", label: "Billing Specialist", sub: "Revenue Cycle & Invoices" },
+  { value: "insurance", label: "Insurance Officer", sub: "TPA & Claims Desk" },
+  { value: "finance", label: "Finance", sub: "Settlements & Accounts" },
   { value: "hr", label: "HR Administrator", sub: "People Operations, Staff & Payroll" },
-  { value: "admin", label: "System Admin", sub: "IT Administration & Security" },
   { value: "superadmin", label: "Super Admin", sub: "Executive Suite" },
 ]
 
@@ -252,13 +256,7 @@ export default function Login({ onLogin }: LoginProps) {
         <div className="relative z-10">
           {/* Logo */}
           <div className="mb-6">
-            <div className="w-40 h-40 flex items-center justify-start flex-shrink-0">
-              <img
-                src="/logo.png"
-                alt="HospAI Logo"
-                className="w-40 h-40 object-contain pointer-events-none"
-              />
-            </div>
+            <HospAILogo variant="horizontal" className="h-40" />
           </div>
 
           {/* Title & Subtitle directly below Logo */}
@@ -317,17 +315,11 @@ export default function Login({ onLogin }: LoginProps) {
         </div>
 
         {/* Footer with Kalpra Tech logo at the complete bottom right (inside white curve) */}
-        <div className="absolute bottom-1 right-8 z-10 flex items-end gap-2">
-          <span className="text-[11.5px] text-[#475569] font-medium whitespace-nowrap mb-3.5">
+        <div className="absolute bottom-2 right-8 z-10 flex items-center gap-2">
+          <span className="text-[11.5px] text-[#475569] font-medium whitespace-nowrap mb-0.5">
             Powered by
           </span>
-          <div className="w-[100px] h-[100px] flex items-center justify-center flex-shrink-0">
-            <img
-              src="/kalpra_logo.png"
-              alt="Kalpra Tech Logo"
-              className="w-full h-full object-contain pointer-events-none"
-            />
-          </div>
+          <KalpraLogo className="h-25" />
         </div>
       </div>
 
@@ -348,13 +340,7 @@ export default function Login({ onLogin }: LoginProps) {
 
         <div className="w-full max-w-sm mx-auto my-auto relative z-10">
           <div className="flex justify-center mb-6 lg:hidden">
-            <div className="w-24 h-24 flex items-center justify-center flex-shrink-0">
-              <img
-                src="/logo.png"
-                alt="HospAI Logo"
-                className="w-full h-full object-contain pointer-events-none"
-              />
-            </div>
+            <HospAILogo variant="horizontal" className="h-16 justify-center" />
           </div>
 
           <div className="mb-6">
@@ -437,9 +423,8 @@ export default function Login({ onLogin }: LoginProps) {
                   )}
                 </div>
                 <svg
-                  className={`w-4 h-4 text-[#64748B] transition-transform duration-150 flex-shrink-0 ${
-                    openRoleDropdown ? "rotate-180 text-[#1B4FD8]" : ""
-                  }`}
+                  className={`w-4 h-4 text-[#64748B] transition-transform duration-150 flex-shrink-0 ${openRoleDropdown ? "rotate-180 text-[#1B4FD8]" : ""
+                    }`}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -462,11 +447,10 @@ export default function Login({ onLogin }: LoginProps) {
                       setPass("")
                       setOpenRoleDropdown(false)
                     }}
-                    className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                      user === ""
-                        ? "bg-[#EFF6FF] text-[#1B4FD8]"
-                        : "hover:bg-[#F8FAFC] text-[#64748B]"
-                    }`}
+                    className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${user === ""
+                      ? "bg-[#EFF6FF] text-[#1B4FD8]"
+                      : "hover:bg-[#F8FAFC] text-[#64748B]"
+                      }`}
                   >
                     <span className="text-[12.5px] font-medium text-[#64748B]">
                       Select Role
@@ -487,23 +471,21 @@ export default function Login({ onLogin }: LoginProps) {
                           setUser(r.value)
                           setPass(
                             credentialsForRole(r.value)?.localPassword ||
-                              "password123",
+                            "password123",
                           )
                           setOpenRoleDropdown(false)
                         }}
-                        className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
-                          isSelected
-                            ? "bg-[#EFF6FF] text-[#1B4FD8]"
-                            : "hover:bg-[#F8FAFC] text-[#334155]"
-                        }`}
+                        className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${isSelected
+                          ? "bg-[#EFF6FF] text-[#1B4FD8]"
+                          : "hover:bg-[#F8FAFC] text-[#334155]"
+                          }`}
                       >
                         <div className="min-w-0 truncate">
                           <span
-                            className={`text-[12.5px] ${
-                              isSelected
-                                ? "font-bold text-[#1B4FD8]"
-                                : "font-medium text-[#0F172A]"
-                            }`}
+                            className={`text-[12.5px] ${isSelected
+                              ? "font-bold text-[#1B4FD8]"
+                              : "font-medium text-[#0F172A]"
+                              }`}
                           >
                             {r.label}
                           </span>
@@ -576,11 +558,10 @@ export default function Login({ onLogin }: LoginProps) {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-2.5 rounded-none text-white font-semibold text-[13px] transition-colors mt-3 ${
-                loading
-                  ? "bg-[#94A3B8] cursor-not-allowed"
-                  : "bg-[#1B4FD8] hover:bg-[#1740B4]"
-              }`}
+              className={`w-full py-2.5 rounded-none text-white font-semibold text-[13px] transition-colors mt-3 ${loading
+                ? "bg-[#94A3B8] cursor-not-allowed"
+                : "bg-[#1B4FD8] hover:bg-[#1740B4]"
+                }`}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">

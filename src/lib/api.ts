@@ -790,6 +790,59 @@ async function handleLocalErMock<T = any>(
     return { success: true } as T
   }
 
+  // GET /api/patients/readmissions
+  if (pathname === "/api/patients/readmissions" && method === "GET") {
+    const windowDays = parseInt(url.searchParams.get("window_days") || "30", 10)
+    const discharged = BedDatabase.getDischargedPatients()
+
+    const readmissionEvents = [
+      {
+        patient_id: "P-100245",
+        patient_name: "John Smith",
+        index_discharge_date: new Date(Date.now() - 18 * 86400000).toISOString(),
+        readmission_date: new Date(Date.now() - 2 * 86400000).toISOString(),
+        gap_days: 16,
+        readmission_admission_id: 1052,
+      },
+      {
+        patient_id: "P-100248",
+        patient_name: "Anita Sharma",
+        index_discharge_date: new Date(Date.now() - 25 * 86400000).toISOString(),
+        readmission_date: new Date(Date.now() - 4 * 86400000).toISOString(),
+        gap_days: 21,
+        readmission_admission_id: 1058,
+      },
+    ].filter((e) => e.gap_days <= windowDays)
+
+    const highFrequency = [
+      {
+        patient_id: "P-100245",
+        patient_name: "John Smith",
+        admissions_in_last_12_months: 4,
+      },
+      {
+        patient_id: "P-100248",
+        patient_name: "Anita Sharma",
+        admissions_in_last_12_months: 3,
+      },
+    ]
+
+    const totalDischarges = Math.max(14, discharged.length + 8)
+    const totalReadmissions = readmissionEvents.length
+    const ratePct = Number(
+      ((totalReadmissions / totalDischarges) * 100).toFixed(1),
+    )
+
+    return {
+      window_days: windowDays,
+      total_discharges: totalDischarges,
+      total_readmissions: totalReadmissions,
+      readmission_rate_pct: ratePct,
+      readmission_events: readmissionEvents,
+      high_frequency_patients: highFrequency,
+    } as T
+  }
+
   // POST /api/er/consents/:id/document (Document upload simulation)
 
   const consentDocMatch = pathname.match(
@@ -1517,7 +1570,7 @@ async function handleLocalErMock<T = any>(
 
 /** Default per-request budget. Overridable via options.timeoutMs. */
 
-export const DEFAULT_TIMEOUT_MS = 15000
+export const DEFAULT_TIMEOUT_MS = 3500
 
 let isBackendOnline = true
 

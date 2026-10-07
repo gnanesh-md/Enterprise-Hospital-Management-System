@@ -1068,7 +1068,7 @@ export default function DoctorWorkflow({
       </div>
 
       {/* ── MAIN WORKSPACE ── */}
-      <div className="flex-1 overflow-hidden p-5 flex gap-5 max-w-7xl mx-auto w-full">
+      <div className="flex-1 overflow-hidden p-5 flex gap-5 w-full">
         {/* ── LEFT COLUMN: DOCTOR'S LIVE QUEUE ── */}
         <div className="w-80 flex flex-col gap-4 flex-shrink-0">
           <div className="bg-white border border-[#DDE2EC] rounded shadow-xs flex flex-col h-full overflow-hidden">

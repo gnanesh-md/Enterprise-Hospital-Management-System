@@ -8,6 +8,11 @@ import {
   type FieldDef,
   type Section,
 } from "./flowsheetSchema"
+import {
+  downloadFlowsheetPdf,
+  printFlowsheet,
+  type ExportGroup,
+} from "./flowsheetExport"
 
 // Renders the ICU daily flowsheet described by flowsheetSchema.ts: one record
 // per patient per calendar day. The chart is wide, so each section keeps its
@@ -500,6 +505,20 @@ export default function IcuFlowsheet({
       rows[row] = { ...rows[row], [key]: v }
       d.tables[sid] = rows
     })
+  const deleteTableRow = (s: Section, row: number, visible: number) => {
+    const filled = Object.values(rec.tables[s.id]?.[row] ?? {}).some(Boolean)
+    if (
+      filled &&
+      !window.confirm(`Delete row ${row + 1} from "${s.title}"? Its entries will be removed.`)
+    )
+      return
+    mutate((d) => {
+      const rows = [...(d.tables[s.id] ?? [])]
+      while (rows.length < visible) rows.push({})
+      rows.splice(row, 1)
+      d.tables[s.id] = rows
+    })
+  }
 
   const entriesFor = (sectionIds: string[]) => {
     let n = 0
@@ -522,6 +541,34 @@ export default function IcuFlowsheet({
   }, [])
 
   const activeTab = TABS.find((t) => t.id === tab) ?? TABS[0]
+
+  const [exportMenu, setExportMenu] = useState<"print" | "pdf" | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const runExport = async (kind: "print" | "pdf", scope: "tab" | "all") => {
+    setExportMenu(null)
+    const groups: ExportGroup[] = (scope === "tab" ? [activeTab] : TABS).map(
+      (t) => ({
+        label: t.label,
+        sections: t.sections
+          .map((id) => sectionsById.get(id))
+          .filter((s): s is Section => Boolean(s)),
+      }),
+    )
+    const meta = { patientName, patientId, bed, date }
+    if (kind === "print") {
+      printFlowsheet(rec, groups, meta)
+      return
+    }
+    setExporting(true)
+    try {
+      await downloadFlowsheetPdf(rec, groups, meta)
+    } catch (err) {
+      console.error(err)
+      window.alert("Could not generate the PDF. Please try again.")
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const renderSection = (s: Section) => {
     switch (s.kind) {
@@ -603,6 +650,7 @@ export default function IcuFlowsheet({
                         )}
                       </th>
                     ))}
+                    <th className={`${thCls} w-8`} aria-label="Row actions" />
                   </tr>
                 </thead>
                 <tbody>
@@ -627,6 +675,17 @@ export default function IcuFlowsheet({
                           />
                         </td>
                       ))}
+                      <td className={`${tdCls} text-center`}>
+                        <button
+                          type="button"
+                          title={`Delete row ${r + 1}`}
+                          aria-label={`Delete row ${r + 1} of ${s.title}`}
+                          onClick={() => deleteTableRow(s, r, count)}
+                          className="w-6 h-6 inline-flex items-center justify-center text-[14px] leading-none text-[#94A3B8] hover:text-[#DC2626] hover:bg-[#FEF2F2] cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -643,11 +702,12 @@ export default function IcuFlowsheet({
                   if (s.columns.some((c) => c.key === "date")) {
                     newRow.date = date
                   }
-                  d.tables[s.id] = [
-                    ...(d.tables[s.id] ??
-                      Array.from({ length: count }, () => ({}))),
-                    newRow,
-                  ]
+                  // Pad to what is on screen first: stored rows can be fewer
+                  // than minRows, and appending to those alone left the
+                  // visible count unchanged -- the "takes 2-3 clicks" bug.
+                  const rows = [...(d.tables[s.id] ?? [])]
+                  while (rows.length < count) rows.push({})
+                  d.tables[s.id] = [...rows, newRow]
                 })
               }
               className="mt-2 text-[11.5px] font-semibold text-[#1B4FD8] hover:underline cursor-pointer"
@@ -935,9 +995,48 @@ export default function IcuFlowsheet({
               ? "Back to Chart"
               : `Day Reports${days.length ? ` (${days.length})` : ""}`}
           </Btn>
-          <Btn variant="outline" size="sm" onClick={() => window.print()}>
-            Print
-          </Btn>
+          {(["print", "pdf"] as const).map((kind) => (
+            <div key={kind} className="relative">
+              <Btn
+                variant="outline"
+                size="sm"
+                disabled={kind === "pdf" && exporting}
+                onClick={() =>
+                  setExportMenu((m) => (m === kind ? null : kind))
+                }
+              >
+                {kind === "print"
+                  ? "Print ▾"
+                  : exporting
+                    ? "Generating PDF…"
+                    : "PDF ▾"}
+              </Btn>
+              {exportMenu === kind && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setExportMenu(null)}
+                  />
+                  <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-white border border-[#CBD5E1] shadow-lg py-1">
+                    <button
+                      type="button"
+                      onClick={() => void runExport(kind, "tab")}
+                      className="w-full text-left px-3 py-2 text-[12px] text-[#0F172A] hover:bg-[#EFF6FF] cursor-pointer"
+                    >
+                      This tab — {activeTab.label}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void runExport(kind, "all")}
+                      className="w-full text-left px-3 py-2 text-[12px] text-[#0F172A] hover:bg-[#EFF6FF] cursor-pointer"
+                    >
+                      Full day chart (all tabs)
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
           {onClose && (
             <Btn variant="outline" size="sm" onClick={onClose}>
               Close

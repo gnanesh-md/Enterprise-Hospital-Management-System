@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { LLM_CHAT_URL, llmModel } from "../../../lib/llm"
 import {
   Upload,
   ZoomIn,
@@ -190,7 +191,8 @@ Output strictly valid JSON only without markdown formatting.`
       const timeoutId = setTimeout(() => controller.abort(), 35000)
 
       const payload = {
-        model: "qwen2.5-vl-7b",
+        // Ask the server which model it serves; a hardcoded name 400s on swap.
+        model: await llmModel().catch(() => "default"),
         messages: [
           {
             role: "user",
@@ -204,21 +206,14 @@ Output strictly valid JSON only without markdown formatting.`
         temperature: 0.0,
       }
 
-      let res = await fetch("/vllm-api/v1/chat/completions", {
+      // Same-origin proxy only: a direct localhost:8700 fallback fails from
+      // any machine but this one (and cross-origin besides).
+      const res = await fetch(LLM_CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
         signal: controller.signal,
       }).catch(() => null)
-
-      if (!res || !res.ok) {
-        res = await fetch("http://localhost:8700/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        }).catch(() => null)
-      }
 
       clearTimeout(timeoutId)
 

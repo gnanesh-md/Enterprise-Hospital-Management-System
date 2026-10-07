@@ -895,15 +895,30 @@
   transition: all 120ms ease;
 }
 
-.ward-room-tab:hover {
+/* Hover is scoped to inactive tabs: an unscoped `.ward-room-tab:hover` outranks
+   `.ward-room-tab-active` on specificity, which painted the selected room's
+   label blue-on-blue and made it vanish under the cursor. */
+.ward-room-tab:not(.ward-room-tab-active):hover {
   border-color: #1B4FD8;
+  background: #EEF3FF;
   color: #1B4FD8;
 }
 
-.ward-room-tab-active {
+.ward-room-tab.ward-room-tab-active,
+.ward-room-tab.ward-room-tab-active:hover {
   background: #1B4FD8;
   border-color: #1B4FD8;
   color: #fff;
+}
+
+.ward-room-tab.ward-room-tab-active:hover {
+  background: #1740B0;
+  border-color: #1740B0;
+}
+
+.ward-room-tab:focus-visible {
+  outline: 2px solid #1B4FD8;
+  outline-offset: 2px;
 }
 
 .ward-room-tab-count {

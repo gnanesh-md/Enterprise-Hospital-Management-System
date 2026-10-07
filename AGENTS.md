@@ -266,6 +266,61 @@ Both stores are localStorage-backed with `BroadcastChannel` fan-out, like the re
 `hospai_rbac_roles_v3` (bumped from v2) is what grants the new `doctor_portal` and `lab_billing`
 modules to existing browsers.
 
+## Insurance department
+
+One insurance engine shared by OP / IP / ER / OT / ICU —
+`InsuranceEngineService` in [src/services/insuranceDb.ts](src/services/insuranceDb.ts). The UI is deliberately
+small: **three pages**, no pictographs, one blue accent, light borders, sentence-case labels.
+
+- **Claims** (`insurance`, [ClaimsHome.tsx](src/components/insurance/ClaimsHome.tsx)): one worklist filtered by
+  stage ("Needs action" first). A row opens the claim screen
+  ([ClaimWorkspace.tsx](src/components/insurance/ClaimWorkspace.tsx)): the 8 stages down the left, and tabs
+  *Current step* (one sentence + the one form it needs, from `NextStep` in forms.tsx), *Documents*, *Emails*,
+  *Details*, *History*.
+- **Settlements** (`insurance_settlement`): advice → payment → reconcile → close, one list per step; a row opens
+  a side panel with its details and action.
+- **Setup** (`insurance_masters`): tabs for insurers, TPAs, packages, pricing rules, document rules.
+- Older keys (`insurance_desk`, `insurance_preauth`, `insurance_claims`, `insurance_queries`,
+  `insurance_reconciliation`, `insurance_tpas` …) still work and land on those pages (`insuranceModule()` in
+  App.tsx), so links from the rest of the HMS keep working.
+- Tailwind radius note: this app's theme redefines `rounded-md`/`rounded-lg` (14px/18px), so the insurance
+  UI uses explicit `rounded-[6px]` / `rounded-[8px]`.
+
+**The process is the hospital's 8-stage claim chart** — Admission, Eligibility, Pre-Authorization,
+Treatment / Surgery, Discharge & Final Bill, Claim Submission, Claim Adjudication, Settlement —
+defined once in `DESK_STEPS` ([deskGuide.ts](src/components/insurance/deskGuide.ts)); the Claims worklist
+filters by it and the claim screen shows it. The engine's 22 statuses map onto those stages.
+
+**Insurers are dealt with by email** ([mail.tsx](src/components/insurance/mail.tsx)). The desk verifies each
+document (`verifyDocument` / `verifyAllUploaded`; *uploaded is not enough* — `missingMandatory` requires
+`Verified`), then `sendInsurerEmail` sends it: for a pre-auth, claim or query response the email *is* the
+submission. The insurer's reply is pasted in (`InsurerReply` → `recordInsurerEmail`) and filed alongside the
+decision recorded from it. Every mail is kept on the case (`c.mails`, claim → Emails tab). There is no mail
+server: "Send" records the mail and moves the case; "Open in mail app" hands it to the desk's mail client.
+
+**Cases belong to the encounter.** A case is opened from an insured bill, or before any bill exists
+(`openEncounterCase` — admission payment type, ER quick capture); `sync()` links such a case to the first
+open cashless-eligible bill raised for the same patient and marks that bill insured. Every action on a case
+is mirrored onto its bill through `billing(c)`, which is a no-op until a bill is linked. OP encounters are
+refused. Every transition goes through `move()` (validated against `INSURANCE_TRANSITIONS`, written to the
+audit trail with user, role, device).
+
+**HMS integration** ([integrations.tsx](src/components/insurance/integrations.tsx)): the patient chart's
+Insurance tab (several policies per patient, eligibility per policy, cases per encounter), Admissions →
+Payment type, ER quick insurance, OT procedure → package → pre-auth (`linkProcedure`), the Discharge
+checklist's insurance clearance (`dischargeReadiness`), and a status chip on bed cards (no amounts). They open
+insurance pages with the `hms:open-insurance` window event that `App.tsx` listens for.
+
+**Documents are stage-aware.** `classifyDocument()` maps an insurer's wording to one canonical requirement so
+the same document is never asked for twice, and pre-auth only asks for what can exist on admission.
+
+**Permissions**: `insurance.*` strings in a role's `allowedModules` (`INSURANCE_PERMISSIONS` in
+[src/services/roleDb.ts](src/services/roleDb.ts)), enforced by the engine (`need()`), not the UI. A role with
+the insurance module but no `insurance.*` entries keeps full access. Roles: Insurance Officer, Finance, Billing;
+Reception gets view + capture; doctors get the clinical side.
+
+The backend has no insurance service yet; the engine is localStorage-backed like the rest of the frontend.
+
 ## Project Structure
 
 This is the canonical project structure. Start with task-relevant files below. Only follow imports or inspect other files when required, when a documented path is missing, or when the repository contradicts this guide.

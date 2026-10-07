@@ -104,9 +104,9 @@ export default function OPManagement({
 
   // View state
   const [activeTab, setActiveTab] =
-    useState<"patient_flow" | "doctor_chambers" | "department_capacity">(
-      "patient_flow",
-    )
+    useState<
+      "patient_flow" | "unassigned_pool" | "doctor_chambers" | "department_capacity"
+    >("patient_flow")
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>("All")
   const [selectedStatusFilter, setSelectedStatusFilter] =
     useState<string>("All")
@@ -219,6 +219,13 @@ export default function OPManagement({
   // Overall Floor Stats
   const stats = useMemo(() => {
     const totalVisits = encounters.length
+    const unassignedCount = encounters.filter(
+      (e) =>
+        !e.assignedDoctor ||
+        e.assignedDoctor.toLowerCase().includes("unassigned") ||
+        e.assignedDoctor === "Assigned by Reception" ||
+        e.assignedDoctor.toLowerCase().includes("duty doctor"),
+    ).length
     const awaitingVitals = encounters.filter((e) =>
       AWAITING_VITALS_STATUSES.includes(e.status),
     ).length
@@ -242,6 +249,7 @@ export default function OPManagement({
 
     return {
       totalVisits,
+      unassignedCount,
       awaitingVitals,
       readyInQueue,
       inConsult,
@@ -315,35 +323,68 @@ export default function OPManagement({
     )
   }, [doctorRosterData, chamberFilterActiveOnly])
 
+  // Unassigned Encounters Pool
+  const unassignedEncounters = useMemo(() => {
+    return encounters.filter(
+      (e) =>
+        !e.assignedDoctor ||
+        e.assignedDoctor.toLowerCase().includes("unassigned") ||
+        e.assignedDoctor === "Assigned by Reception" ||
+        e.assignedDoctor.toLowerCase().includes("duty doctor"),
+    )
+  }, [encounters])
+
   // Filtered Encounters
   const filteredEncounters = useMemo(() => {
     return encounters.filter((enc) => {
       if (selectedDeptFilter !== "All") {
         const encDept = (enc.dept || "").toLowerCase()
-        if (!encDept.includes(selectedDeptFilter.toLowerCase())) return false
+        const encAiDept = (enc.aiSpecialty || "").toLowerCase()
+        const filterDept = selectedDeptFilter.toLowerCase()
+        if (
+          !encDept.includes(filterDept) &&
+          !encAiDept.includes(filterDept) &&
+          !filterDept.includes(encDept)
+        ) {
+          return false
+        }
       }
       if (selectedStatusFilter !== "All") {
-        if (
+        if (selectedStatusFilter === "Unassigned") {
+          const doc = (enc.assignedDoctor || "").toLowerCase()
+          if (
+            enc.assignedDoctor &&
+            !doc.includes("unassigned") &&
+            !doc.includes("duty doctor") &&
+            enc.assignedDoctor !== "Assigned by Reception"
+          ) {
+            return false
+          }
+        } else if (
           selectedStatusFilter === "Triage" &&
           !AWAITING_VITALS_STATUSES.includes(enc.status)
-        )
+        ) {
           return false
-        if (selectedStatusFilter === "In Queue" && enc.status !== "In Queue")
+        } else if (
+          selectedStatusFilter === "In Queue" &&
+          enc.status !== "In Queue"
+        ) {
           return false
-        if (
+        } else if (
           selectedStatusFilter === "In Consult" &&
           enc.status !== "Under Consultation"
-        )
+        ) {
           return false
-        if (
+        } else if (
           selectedStatusFilter === "Completed" &&
           ![
             "Consultation Completed",
             "OP Completed",
             "Billing Completed",
           ].includes(enc.status)
-        )
+        ) {
           return false
+        }
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim()
@@ -358,6 +399,12 @@ export default function OPManagement({
       return true
     })
   }, [encounters, selectedDeptFilter, selectedStatusFilter, searchQuery])
+
+  const resetAllFilters = () => {
+    setSelectedDeptFilter("All")
+    setSelectedStatusFilter("All")
+    setSearchQuery("")
+  }
 
   // Helper for specialty color pill styles
   const getSpecialtyBadgeStyle = (dept: string) => {
@@ -474,9 +521,9 @@ export default function OPManagement({
       </div>
 
       {/* ── MAIN WORKSPACE ── */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-4 max-w-7xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4 w-full">
         {/* ── 1. VIBRANT SQUARED COLORFUL KPI CARDS ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="bg-blue-50/80 border border-blue-200 border-l-4 border-l-blue-600 rounded-none p-3 shadow-2xs">
             <div className="text-[10.5px] font-bold uppercase tracking-wider text-blue-900 flex justify-between items-center">
               <span>Total OP Bookings</span>
@@ -487,6 +534,28 @@ export default function OPManagement({
             </div>
             <div className="text-[11px] text-blue-700 mt-0.5 font-medium">
               Today's encounters
+            </div>
+          </div>
+
+          <div
+            onClick={() => {
+              setActiveTab("patient_flow")
+              setSelectedStatusFilter("Unassigned")
+            }}
+            className="bg-amber-50/90 border border-amber-300 border-l-4 border-l-amber-600 rounded-none p-3 shadow-2xs cursor-pointer hover:bg-amber-100/70 transition-colors"
+          >
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-amber-950 flex justify-between items-center">
+              <span>Unassigned OP Pool</span>
+              <span className="text-amber-600 font-bold">⚡</span>
+            </div>
+            <div className="text-2xl font-bold font-mono text-amber-950 mt-1 flex items-center gap-2">
+              {stats.unassignedCount}
+              {stats.unassignedCount > 0 && (
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </div>
+            <div className="text-[11px] text-amber-800 mt-0.5 font-medium">
+              Needs doctor assignment
             </div>
           </div>
 
@@ -570,6 +639,27 @@ export default function OPManagement({
 
             <button
               type="button"
+              onClick={() => setActiveTab("unassigned_pool")}
+              className={`px-3.5 py-1.5 text-[12.5px] font-bold transition-all cursor-pointer rounded-none flex items-center gap-2 whitespace-nowrap border ${
+                activeTab === "unassigned_pool"
+                  ? "bg-amber-600 text-white border-amber-700 shadow-xs"
+                  : "bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+              }`}
+            >
+              <span>⚡ Unassigned Patients</span>
+              <span
+                className={`px-1.5 py-0.2 text-[11px] font-mono font-bold ${
+                  activeTab === "unassigned_pool"
+                    ? "bg-white text-amber-950"
+                    : "bg-amber-200 text-amber-950 border border-amber-300"
+                }`}
+              >
+                {unassignedEncounters.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab("doctor_chambers")}
               className={`px-3.5 py-1.5 text-[12.5px] font-bold transition-all cursor-pointer rounded-none flex items-center gap-2 whitespace-nowrap border ${
                 activeTab === "doctor_chambers"
@@ -624,6 +714,7 @@ export default function OPManagement({
                 className="bg-transparent font-bold text-slate-900 focus:outline-none cursor-pointer text-xs rounded-none h-full"
               >
                 <option value="All">All Statuses</option>
+                <option value="Unassigned">⚡ Unassigned Pool ({stats.unassignedCount})</option>
                 <option value="Triage">Awaiting Triage</option>
                 <option value="In Queue">In Queue</option>
                 <option value="In Consult">In Consultation</option>
@@ -649,6 +740,18 @@ export default function OPManagement({
                 ))}
               </select>
             </div>
+
+            {(selectedDeptFilter !== "All" ||
+              selectedStatusFilter !== "All" ||
+              searchQuery.trim() !== "") && (
+              <button
+                type="button"
+                onClick={resetAllFilters}
+                className="px-2.5 h-8 bg-slate-200 hover:bg-slate-300 text-slate-800 text-[11px] font-bold rounded-none border border-slate-300 transition-colors cursor-pointer shrink-0"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         </div>
 
@@ -667,8 +770,15 @@ export default function OPManagement({
 
             <div className="overflow-x-auto">
               {filteredEncounters.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-xs font-medium">
-                  No patient records match the selected search/filter.
+                <div className="p-8 text-center text-slate-500 text-xs font-medium space-y-2">
+                  <p>No patient records match the selected search/filter criteria.</p>
+                  <button
+                    type="button"
+                    onClick={resetAllFilters}
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-none cursor-pointer shadow-xs transition-colors"
+                  >
+                    Reset Filters
+                  </button>
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse">
@@ -738,12 +848,48 @@ export default function OPManagement({
                                 </span>
                               </span>
                             </div>
-                            <div className="text-[11.5px] text-slate-900 font-bold flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shrink-0"></span>
-                              <span>
-                                {enc.assignedDoctor || "Assigned by Reception"}
-                              </span>
-                            </div>
+                            {!enc.assignedDoctor ||
+                            enc.assignedDoctor.toLowerCase().includes("unassigned") ||
+                            enc.assignedDoctor === "Assigned by Reception" ||
+                            enc.assignedDoctor.toLowerCase().includes("duty doctor") ? (
+                              <div className="flex items-center gap-1 mt-1">
+                                <select
+                                  id={`row-assign-${enc.id}`}
+                                  className="bg-amber-50 border border-amber-300 text-slate-900 text-[11px] font-bold px-1.5 py-0.5 focus:outline-none focus:border-blue-600 rounded-none max-w-[130px]"
+                                  defaultValue=""
+                                >
+                                  <option value="" disabled>Select Doctor...</option>
+                                  {ACTIVE_DOCTORS.map((d) => (
+                                    <option key={d.id} value={d.name}>
+                                      {d.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const selectEl = document.getElementById(
+                                      `row-assign-${enc.id}`,
+                                    ) as HTMLSelectElement
+                                    const docName = selectEl?.value
+                                    if (docName) {
+                                      db.updateEncounter(enc.id, {
+                                        assignedDoctor: docName,
+                                        status: "Awaiting Doctor",
+                                      })
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white text-[10.5px] font-bold border border-amber-700 cursor-pointer shadow-2xs transition-colors"
+                                >
+                                  Assign
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-[11.5px] text-slate-900 font-bold flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shrink-0"></span>
+                                <span>{enc.assignedDoctor}</span>
+                              </div>
+                            )}
                           </td>
 
                           {/* NEWS2 & Vitals */}
@@ -811,7 +957,7 @@ export default function OPManagement({
                                 Journey →
                               </button>
 
-                              {onNavigateToDoctorWorkflow && (
+                              {!isCompleted && onNavigateToDoctorWorkflow && (
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -822,6 +968,148 @@ export default function OPManagement({
                                   Doctor →
                                 </button>
                               )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── TAB: UNASSIGNED PATIENTS POOL ── */}
+        {activeTab === "unassigned_pool" && (
+          <div className="bg-white border border-[#CBD5E1] rounded-none shadow-2xs overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#CBD5E1] bg-amber-50 flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-[14px] font-bold text-amber-950 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 bg-amber-600 inline-block animate-pulse"></span>
+                  Unassigned Outpatient Queue
+                </h2>
+                <p className="text-[11.5px] text-amber-800 font-medium mt-0.5">
+                  Patients registered without a doctor assigned. Select a physician to assign them directly to that doctor's live queue.
+                </p>
+              </div>
+              <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-200 border border-amber-300 px-2.5 py-1">
+                {unassignedEncounters.length} Pending Assignment
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              {unassignedEncounters.length === 0 ? (
+                <div className="p-12 text-center text-slate-500 text-xs font-medium space-y-2">
+                  <div className="text-3xl">✅</div>
+                  <div className="text-slate-900 font-bold text-sm">All OP Patients Are Assigned!</div>
+                  <p className="text-slate-500 max-w-md mx-auto">
+                    There are currently no unassigned patients waiting in the OP pool.
+                  </p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-100 border-b border-slate-300 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-4 py-3">OP Token &amp; UMR</th>
+                      <th className="px-4 py-3">Patient Details</th>
+                      <th className="px-4 py-3">Department &amp; Complaint</th>
+                      <th className="px-4 py-3">NEWS2 / Vitals</th>
+                      <th className="px-4 py-3 text-right">Assign Doctor &amp; Dispatch</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E2E8F0] text-[12px]">
+                    {unassignedEncounters.map((enc) => {
+                      const news2 = calculateNEWS2(enc.vitals)
+                      return (
+                        <tr
+                          key={enc.id}
+                          className="hover:bg-amber-50/40 transition-colors"
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <span className="font-mono font-bold text-xs text-blue-900 bg-blue-100 px-2.5 py-1 border border-blue-300 inline-block shadow-2xs">
+                              {enc.opNumber}
+                            </span>
+                            <div className="text-[10.5px] font-mono text-slate-600 font-bold mt-1">
+                              UMR: {enc.umr}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-900 text-[13px]">
+                              {enc.patientName}
+                            </div>
+                            <div className="text-[11px] text-slate-600 font-medium">
+                              {enc.age} yrs · {enc.sex} · {enc.phone}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <span className="px-2 py-0.5 text-[10.5px] font-bold uppercase bg-slate-100 text-slate-800 border border-slate-300 inline-block mb-1">
+                              {enc.dept || "General Medicine"}
+                            </span>
+                            <div className="text-[11px] text-slate-700 font-medium truncate max-w-xs">
+                              💬 {enc.chiefComplaint || enc.symptoms.join(", ") || "General Evaluation"}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {enc.vitals?.bp ? (
+                              <div>
+                                <span
+                                  className={`px-2 py-0.5 rounded-none text-[10px] font-bold uppercase border inline-block ${
+                                    news2.risk === "High"
+                                      ? "bg-red-100 text-red-900 border-red-300"
+                                      : news2.risk === "Medium"
+                                        ? "bg-amber-100 text-amber-900 border-amber-300"
+                                        : "bg-emerald-100 text-emerald-900 border-emerald-300"
+                                  }`}
+                                >
+                                  NEWS2: {news2.score} ({news2.risk})
+                                </span>
+                                <div className="text-slate-700 font-mono text-[10.5px] mt-1 font-semibold">
+                                  BP: <strong>{enc.vitals.bp}</strong> · HR: <strong>{enc.vitals.pulse}</strong>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-amber-900 bg-amber-100 px-2 py-0.5 rounded-none text-[10.5px] font-bold border border-amber-300 inline-block">
+                                ⏳ Pending Triage
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-2">
+                              <select
+                                id={`tab-assign-${enc.id}`}
+                                className="bg-white border border-slate-300 text-slate-900 text-xs font-bold px-2 py-1 focus:outline-none focus:border-blue-600 rounded-none max-w-[160px]"
+                                defaultValue=""
+                              >
+                                <option value="" disabled>Select Doctor...</option>
+                                {ACTIVE_DOCTORS.map((d) => (
+                                  <option key={d.id} value={d.name}>
+                                    {d.name} ({d.specialty})
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const selectEl = document.getElementById(
+                                    `tab-assign-${enc.id}`,
+                                  ) as HTMLSelectElement
+                                  const docName = selectEl?.value
+                                  if (docName) {
+                                    db.updateEncounter(enc.id, {
+                                      assignedDoctor: docName,
+                                      status: "Awaiting Doctor",
+                                    })
+                                  }
+                                }}
+                                className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold border border-amber-700 cursor-pointer shadow-xs transition-colors"
+                              >
+                                ⚡ Assign Doctor
+                              </button>
                             </div>
                           </td>
                         </tr>

@@ -132,7 +132,7 @@ export default function Readmission({
           ].map((stat) => (
             <div
               key={stat.label}
-              className="bg-white border border-[#DDE2EC] px-4 py-3 rounded-md flex flex-col"
+              className="bg-white border border-[#DDE2EC] px-4 py-3 rounded-none flex flex-col"
             >
               <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
                 {stat.label}
@@ -152,7 +152,7 @@ export default function Readmission({
 
         <div className="flex gap-5 items-start">
           {/* Readmission events */}
-          <div className="flex-1 min-w-0 bg-white border border-[#DDE2EC] rounded-md flex flex-col overflow-hidden">
+          <div className="flex-1 min-w-0 bg-white border border-[#DDE2EC] rounded-none flex flex-col overflow-hidden">
             <div className="px-5 py-3 border-b border-[#DDE2EC] bg-[#F8FAFC] flex justify-between items-center">
               <h2 className="text-[14px] font-semibold text-gray-900">
                 Readmissions within {data.window_days} days

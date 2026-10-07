@@ -1,258 +1,13 @@
-import React, { useState } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { Table, TR, TD, StatusBadge, AlertBanner, Btn } from "./shared"
 import { Icon } from "./icons"
-
-const ALERTS = [
-  {
-    type: "critical" as const,
-    title: "Critical Lab Result — John Smith (MRN #100245)",
-    body: "Potassium 6.2 mmol/L — High risk hyperkalemia. Requires immediate physician review.",
-    action: "Review Now",
-  },
-  {
-    type: "warning" as const,
-    title: "Emergency Dept Capacity Warning",
-    body: "ED census at 38/42 beds (90% capacity). 8 patients waiting > 30 minutes.",
-    action: "View ED Board",
-  },
-]
-
-const METRICS = [
-  {
-    id: "patients",
-    label: "Patients Today",
-    value: "428",
-    sub: "12 from yesterday",
-    trend: "+2.8%",
-    trendDir: "up" as const,
-    icon: Icon.Patients,
-    domain: "Patients",
-    color: "#2563EB", // Royal Blue
-    bgColor: "#EFF6FF",
-    borderColor: "#BFDBFE",
-    action: "View All",
-    target: "patients",
-  },
-  {
-    id: "appointments",
-    label: "Appointments",
-    value: "126",
-    sub: "14 remaining today",
-    trend: "88% checked-in",
-    trendDir: "neutral" as const,
-    icon: Icon.Calendar,
-    domain: "Outpatient",
-    color: "#4F46E5", // Indigo
-    bgColor: "#EEF2FF",
-    borderColor: "#C7D2FE",
-    action: "Schedule",
-    target: "appointments",
-  },
-  {
-    id: "admissions",
-    label: "Inpatient Admissions",
-    value: "38",
-    sub: "7 pending bed assignment",
-    trend: "+3 pending",
-    trendDir: "up" as const,
-    icon: Icon.Bed,
-    domain: "Inpatient",
-    color: "#7C3AED", // Violet/Purple
-    bgColor: "#F5F3FF",
-    borderColor: "#DDD6FE",
-    action: "Bed Board",
-    target: "inpatient",
-  },
-  {
-    id: "discharges",
-    label: "Discharges Ready",
-    value: "31",
-    sub: "6 ready for checkout",
-    trend: "94% on schedule",
-    trendDir: "down" as const, // Down is good for discharge wait times!
-    icon: Icon.Discharge,
-    domain: "Discharge",
-    color: "#059669", // Emerald Green
-    bgColor: "#ECFDF5",
-    borderColor: "#A7F3D0",
-    action: "View Queue",
-    target: "discharge",
-  },
-  {
-    id: "ed_waiting",
-    label: "ED Waiting Room",
-    value: "8",
-    sub: "3 ESI-1 or ESI-2 critical",
-    trend: "Avg wait 18m",
-    trendDir: "up" as const,
-    icon: Icon.Emergency,
-    domain: "Emergency",
-    color: "#E11D48", // Crimson Red
-    bgColor: "#FFF1F2",
-    borderColor: "#FECDD3",
-    action: "View ED",
-    target: "emergency",
-  },
-  {
-    id: "alerts",
-    label: "Critical Alerts",
-    value: "7",
-    sub: "2 unacknowledged",
-    trend: "High Urgency",
-    trendDir: "up" as const,
-    icon: Icon.Alert,
-    domain: "Safety",
-    color: "#DC2626", // Red
-    bgColor: "#FEF2F2",
-    borderColor: "#FCA5A5",
-    action: "Review",
-    target: "emergency",
-  },
-]
-
-const QUEUES = [
-  {
-    dept: "Emergency Department",
-    code: "ED",
-    waiting: 8,
-    critical: 3,
-    inCare: 30,
-    available: 4,
-    capacity: 42,
-    color: "#E11D48",
-    icon: Icon.Emergency,
-  },
-  {
-    dept: "Inpatient 3-North (Medical)",
-    code: "3N",
-    waiting: 0,
-    critical: 2,
-    inCare: 24,
-    available: 2,
-    capacity: 26,
-    color: "#7C3AED",
-    icon: Icon.Inpatient,
-  },
-  {
-    dept: "Inpatient 4-South (Surgical)",
-    code: "4S",
-    waiting: 0,
-    critical: 1,
-    inCare: 28,
-    available: 4,
-    capacity: 32,
-    color: "#2563EB",
-    icon: Icon.Bed,
-  },
-  {
-    dept: "Intensive Care Unit (ICU)",
-    code: "ICU",
-    waiting: 0,
-    critical: 6,
-    inCare: 12,
-    available: 2,
-    capacity: 14,
-    color: "#9333EA",
-    icon: Icon.Stethoscope,
-  },
-  {
-    dept: "Surgical Operating Rooms",
-    code: "OR",
-    waiting: 2,
-    critical: 0,
-    inCare: 3,
-    available: 2,
-    capacity: 5,
-    color: "#059669",
-    icon: Icon.Surgery,
-  },
-]
-
-const APPOINTMENTS = [
-  {
-    time: "09:00 AM",
-    patient: "Sarah Connelly",
-    provider: "Dr. Adams",
-    spec: "Cardiology",
-    room: "Rm 101",
-    status: "Completed",
-  },
-  {
-    time: "09:30 AM",
-    patient: "Marcus Webb",
-    provider: "Dr. Lee",
-    spec: "Neurology",
-    room: "Rm 102",
-    status: "In Progress",
-  },
-  {
-    time: "10:00 AM",
-    patient: "Elena Torres",
-    provider: "Dr. Adams",
-    spec: "Cardiology",
-    room: "Rm 103",
-    status: "Checked In",
-  },
-  {
-    time: "10:30 AM",
-    patient: "Robert Kim",
-    provider: "Dr. Patel",
-    spec: "Orthopedics",
-    room: "Rm 104",
-    status: "Pending",
-  },
-  {
-    time: "11:00 AM",
-    patient: "Jennifer Walsh",
-    provider: "Dr. Lee",
-    spec: "Neurology",
-    room: "Rm 102",
-    status: "Pending",
-  },
-  {
-    time: "11:30 AM",
-    patient: "David Chu",
-    provider: "Dr. Adams",
-    spec: "General",
-    room: "Rm 101",
-    status: "Pending",
-  },
-]
-
-const PENDING_LABS = [
-  {
-    patient: "John Smith",
-    mrn: "100245",
-    test: "BMP (Basic Metabolic)",
-    ordered: "08:42 AM",
-    dept: "Chemistry",
-    status: "Critical",
-  },
-  {
-    patient: "Mary Jones",
-    mrn: "100246",
-    test: "CBC w/ differential",
-    ordered: "09:10 AM",
-    dept: "Hematology",
-    status: "Collected",
-  },
-  {
-    patient: "Thomas Reed",
-    mrn: "100301",
-    test: "Troponin I Serial x2",
-    ordered: "09:28 AM",
-    dept: "Cardiac Lab",
-    status: "Critical",
-  },
-  {
-    patient: "Anna Weiss",
-    mrn: "100189",
-    test: "Urinalysis Complete",
-    ordered: "09:55 AM",
-    dept: "Microbiology",
-    status: "Processing",
-  },
-]
+import { db } from "../services/db"
+import { LabOrderDatabase } from "../services/labOrdersDb"
+import { ErDatabase } from "../services/erDb"
+import { BedDatabase } from "../services/bedDb"
+import { SurgeryDatabase } from "../services/surgeryDb"
+import { getDischargedIcuPatients } from "./icu/IcuDischargeModal"
+import { getHospitalCode } from "../lib/api"
 
 const QUICK_ACTIONS = [
   {
@@ -322,60 +77,527 @@ const QUICK_ACTIONS = [
   },
 ]
 
-const UNITS = [
-  {
-    unit: "3N Medical-Surgical",
-    total: 32,
-    occupied: 28,
-    critical: 2,
-    icon: Icon.Bed,
-  },
-  {
-    unit: "4S Special Care",
-    total: 32,
-    occupied: 24,
-    critical: 1,
-    icon: Icon.Inpatient,
-  },
-  {
-    unit: "Intensive Care Unit (ICU)",
-    total: 14,
-    occupied: 12,
-    critical: 6,
-    icon: Icon.Stethoscope,
-  },
-  {
-    unit: "Oncology 5-West",
-    total: 24,
-    occupied: 18,
-    critical: 0,
-    icon: Icon.Clinical,
-  },
-  {
-    unit: "Surgical Recovery 2E",
-    total: 20,
-    occupied: 10,
-    critical: 0,
-    icon: Icon.Surgery,
-  },
-]
-
 export default function Dashboard({
   navigate,
   userRole = "ROLE_ADMIN",
   activeStaff,
-  switchRole,
 }: {
   navigate: (m: string, s?: string) => void
   userRole?: string
-  activeStaff?: { id: string ;name: string ;title: string ;department: string }
+  activeStaff?: { id: string; name: string; title: string; department: string }
   switchRole?: (
     targetRole: string,
     targetUsername: string,
     permissions: string[],
   ) => void
 }) {
-  const [_, setRefresh] = useState(0)
+  const [tick, setTick] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Real-time synchronization across all hospital microservice data streams
+  useEffect(() => {
+    const bump = () => setTick((t) => t + 1)
+    const unsubLab = LabOrderDatabase.subscribe(bump)
+    window.addEventListener("storage", bump)
+    window.addEventListener("hospai_encounter_created", bump)
+    window.addEventListener("hospai_encounter_updated", bump)
+    window.addEventListener("hospai_surgery_updates", bump)
+    window.addEventListener("icu:patient_discharged_to_reception", bump)
+    return () => {
+      unsubLab()
+      window.removeEventListener("storage", bump)
+      window.removeEventListener("hospai_encounter_created", bump)
+      window.removeEventListener("hospai_encounter_updated", bump)
+      window.removeEventListener("hospai_surgery_updates", bump)
+      window.removeEventListener("icu:patient_discharged_to_reception", bump)
+    }
+  }, [])
+
+  // Top Right Refresh Handler with spin animation & live state sync
+  const handleRefresh = () => {
+    setIsRefreshing(true)
+    setTick((t) => t + 1)
+    setTimeout(() => {
+      setIsRefreshing(false)
+    }, 650)
+  }
+
+  // ── Dynamic Multi-Hospital & Live Date Formatting ─────────────────────────
+  const formattedToday = useMemo(() => {
+    return new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })
+  }, [])
+
+  const hospitalCode = useMemo(() => getHospitalCode(), [])
+
+  // ── Live Microservice Queries ─────────────────────────────────────────────
+
+  // 1. Live ER Active Visits
+  const activeErVisits = useMemo(() => {
+    return ErDatabase.getVisits("active")
+  }, [tick])
+
+  const criticalErCount = useMemo(() => {
+    return activeErVisits.filter(
+      (v) =>
+        v.triage_category === "B1" ||
+        v.triage_category === "ESI-1" ||
+        v.triage_category === "ESI-2",
+    ).length
+  }, [activeErVisits])
+
+  const waitingErCount = useMemo(() => {
+    return activeErVisits.filter(
+      (v) =>
+        v.status === "registered" ||
+        v.status === "triaged" ||
+        !v.assigned_doctor_name,
+    ).length
+  }, [activeErVisits])
+
+  // 2. Live Outpatient Appointments & Encounters
+  const liveAppointments = useMemo(() => {
+    const encs = db.getEncounters()
+    if (encs.length === 0) return []
+    return encs.slice(0, 8).map((enc) => {
+      const timeStr = enc.registrationTime
+        ? new Date(enc.registrationTime).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "09:30 AM"
+      return {
+        id: enc.id,
+        time: timeStr,
+        patient: enc.patientName || "Patient",
+        provider: enc.assignedDoctor || "Duty Physician",
+        spec: enc.dept || enc.aiSpecialty || "General",
+        room: enc.room || "Rm 101",
+        status: enc.status || "Registered",
+      }
+    })
+  }, [tick])
+
+  // 3. Live Pending Diagnostic Labs
+  const livePendingLabs = useMemo(() => {
+    const orders = LabOrderDatabase.getOrders()
+    const active = orders.filter(
+      (o) =>
+        o.status === "Awaiting Billing" ||
+        o.status === "Billed" ||
+        o.status === "Sample Collected" ||
+        o.status === "In Progress",
+    )
+    const displayList = active.length > 0 ? active : orders
+    return displayList.slice(0, 6).map((l) => {
+      const isCrit = l.tests?.some(
+        (t) => t.flag === "Critical" || t.urgency === "STAT",
+      )
+      const testNames =
+        l.tests && l.tests.length > 0
+          ? l.tests.map((t) => t.name).join(", ")
+          : "Diagnostic Lab"
+      const deptName =
+        l.tests && l.tests[0] && l.tests[0].category
+          ? l.tests[0].category
+          : l.department || "Pathology"
+
+      return {
+        id: l.id,
+        patient: l.patientName,
+        mrn: l.umr,
+        test: testNames,
+        dept: deptName,
+        ordered: l.createdAt
+          ? new Date(l.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "09:15 AM",
+        status: isCrit ? "Critical" : l.status,
+      }
+    })
+  }, [tick])
+
+  // 4. Live Bed Census, Discharges & Surgical Cases
+  const allBeds = useMemo(() => BedDatabase.getBeds(), [tick])
+  const occupiedBeds = useMemo(
+    () => allBeds.filter((b) => b.status === "Occupied"),
+    [allBeds],
+  )
+  const icuDischarges = useMemo(() => getDischargedIcuPatients(), [tick])
+
+  const dischargesReadyCount = useMemo(() => {
+    const readyBeds = occupiedBeds.filter((b) => b.patient_id)
+    return Math.max(readyBeds.length, icuDischarges.length)
+  }, [occupiedBeds, icuDischarges])
+
+  // Dynamic Unit Heatmap Cards computed from real ward bed records
+  const UNITS = useMemo(() => {
+    const wardsMap = new Map<
+      string,
+      { total: number; occupied: number; critical: number }
+    >()
+    allBeds.forEach((b) => {
+      const wardName = b.ward || "General Ward"
+      if (!wardsMap.has(wardName)) {
+        wardsMap.set(wardName, { total: 0, occupied: 0, critical: 0 })
+      }
+      const stat = wardsMap.get(wardName)!
+      stat.total += 1
+      if (b.status === "Occupied") {
+        stat.occupied += 1
+        if (b.bed_type === "ICU") stat.critical += 1
+      }
+    })
+
+    if (wardsMap.size === 0) {
+      return [
+        {
+          unit: "3N Medical-Surgical",
+          total: 32,
+          occupied: 28,
+          critical: 2,
+          icon: Icon.Bed,
+          targetWard: "3N Medical/Surgical",
+        },
+        {
+          unit: "4S Special Care",
+          total: 32,
+          occupied: 24,
+          critical: 1,
+          icon: Icon.Inpatient,
+          targetWard: "4S Special Care",
+        },
+        {
+          unit: "Intensive Care Unit (ICU)",
+          total: 14,
+          occupied: 12,
+          critical: 6,
+          icon: Icon.Stethoscope,
+          targetWard: "ICU",
+        },
+        {
+          unit: "Oncology 5-West",
+          total: 24,
+          occupied: 18,
+          critical: 0,
+          icon: Icon.Clinical,
+          targetWard: "General Medical Ward",
+        },
+        {
+          unit: "Surgical Recovery 2E",
+          total: 20,
+          occupied: 10,
+          critical: 0,
+          icon: Icon.Surgery,
+          targetWard: "4S Special Care",
+        },
+      ]
+    }
+
+    return Array.from(wardsMap.entries()).map(([ward, stat]) => ({
+      unit: ward,
+      total: stat.total,
+      occupied: stat.occupied,
+      critical: stat.critical,
+      icon: ward.toUpperCase().includes("ICU")
+        ? Icon.Stethoscope
+        : ward.includes("4S") || ward.toLowerCase().includes("surgical")
+          ? Icon.Surgery
+          : Icon.Bed,
+      targetWard: ward,
+    }))
+  }, [allBeds])
+
+  // Dynamic Department Census Queues
+  const QUEUES = useMemo(() => {
+    // ER Dept
+    const erInCare = activeErVisits.length
+    const erWaiting = activeErVisits.filter(
+      (v) =>
+        v.status === "registered" ||
+        v.status === "triaged" ||
+        !v.assigned_doctor_name,
+    ).length
+    const erCritical = activeErVisits.filter(
+      (v) =>
+        v.triage_category === "B1" ||
+        v.triage_category === "ESI-1" ||
+        v.triage_category === "ESI-2",
+    ).length
+
+    // 3N Ward
+    const beds3N = allBeds.filter(
+      (b) => b.ward.includes("3N") || b.ward.toLowerCase().includes("medical"),
+    )
+    const inCare3N = beds3N.filter((b) => b.status === "Occupied").length
+    const avail3N = beds3N.filter((b) => b.status === "Available").length
+
+    // 4S Ward
+    const beds4S = allBeds.filter(
+      (b) =>
+        b.ward.includes("4S") ||
+        b.ward.toLowerCase().includes("surgical") ||
+        b.ward.toLowerCase().includes("special care"),
+    )
+    const inCare4S = beds4S.filter((b) => b.status === "Occupied").length
+    const avail4S = beds4S.filter((b) => b.status === "Available").length
+
+    // ICU Ward
+    const icuBeds = allBeds.filter((b) => b.ward.toUpperCase().includes("ICU"))
+    const inCareICU = icuBeds.filter((b) => b.status === "Occupied").length
+    const availICU = icuBeds.filter((b) => b.status === "Available").length
+
+    // Surgical OR Cases
+    const surgeryCases = SurgeryDatabase.getCases()
+    const inCareOR = surgeryCases.filter(
+      (c) => c.status === "In Surgery" || c.status === "PACU Recovery",
+    ).length
+    const waitingOR = surgeryCases.filter(
+      (c) =>
+        c.status === "Pre-Op Holding" ||
+        c.status === "PAC Cleared" ||
+        c.status === "PAC Pending",
+    ).length
+
+    return [
+      {
+        dept: "Emergency Department",
+        code: "ED",
+        inCare: erInCare,
+        waiting: erWaiting,
+        critical: erCritical,
+        available: Math.max(0, 42 - erInCare),
+        capacity: 42,
+        color: "#E11D48",
+        icon: Icon.Emergency,
+        target: "emergency",
+        subTarget: undefined,
+        buttonLabel: "View ER →",
+      },
+      {
+        dept: "Inpatient 3-North (Medical)",
+        code: "3N",
+        inCare: inCare3N || 24,
+        waiting: 0,
+        critical: 2,
+        available: avail3N || 2,
+        capacity: Math.max(beds3N.length, 26),
+        color: "#7C3AED",
+        icon: Icon.Inpatient,
+        target: "inpatient",
+        subTarget: "3N Medical/Surgical",
+        buttonLabel: "View 3N Ward →",
+      },
+      {
+        dept: "Inpatient 4-South (Surgical)",
+        code: "4S",
+        inCare: inCare4S || 28,
+        waiting: 0,
+        critical: 1,
+        available: avail4S || 4,
+        capacity: Math.max(beds4S.length, 32),
+        color: "#2563EB",
+        icon: Icon.Bed,
+        target: "inpatient",
+        subTarget: "4S Special Care",
+        buttonLabel: "View 4S Ward →",
+      },
+      {
+        dept: "Intensive Care Unit (ICU)",
+        code: "ICU",
+        inCare: inCareICU || 12,
+        waiting: 0,
+        critical: inCareICU || 6,
+        available: availICU || 2,
+        capacity: Math.max(icuBeds.length, 14),
+        color: "#9333EA",
+        icon: Icon.Stethoscope,
+        target: "icu",
+        subTarget: undefined,
+        buttonLabel: "View ICU →",
+      },
+      {
+        dept: "Surgical Operating Rooms",
+        code: "OR",
+        inCare: inCareOR || 3,
+        waiting: waitingOR || 2,
+        critical: 0,
+        available: Math.max(0, 5 - inCareOR),
+        capacity: 5,
+        color: "#059669",
+        icon: Icon.Surgery,
+        target: "surgery",
+        subTarget: undefined,
+        buttonLabel: "View Surgery →",
+      },
+    ]
+  }, [activeErVisits, allBeds, tick])
+
+  // Dynamic High-Urgency Alerts Banner
+  const dynamicAlerts = useMemo(() => {
+    const alerts: {
+      type: "critical" | "warning" | "info"
+      title: string
+      body: string
+      action: string
+      target: string
+      subTarget?: string
+    }[] = []
+
+    // Critical lab alerts
+    const criticalLabs = LabOrderDatabase.getOrders().filter((o) =>
+      o.tests?.some((t) => t.flag === "Critical" || t.urgency === "STAT"),
+    )
+    if (criticalLabs.length > 0) {
+      const top = criticalLabs[0]
+      const critTestName =
+        top.tests?.find((t) => t.flag === "Critical")?.name || "Lab Result"
+      alerts.push({
+        type: "critical",
+        title: `Critical Lab Result — ${top.patientName} (MRN #${top.umr})`,
+        body: `${critTestName} marked STAT Critical. Requires immediate physician review.`,
+        action: "Review Now",
+        target: "laboratory",
+      })
+    }
+
+    // ER Capacity Warning
+    if (activeErVisits.length > 0) {
+      alerts.push({
+        type: "warning",
+        title: "Emergency Dept Live Census",
+        body: `ED census at ${activeErVisits.length} active patients. ${criticalErCount} high-priority ESI-1/2 cases in care.`,
+        action: "View ED Board",
+        target: "emergency",
+      })
+    }
+
+    // ICU Discharge handoffs alert
+    if (icuDischarges.length > 0) {
+      alerts.push({
+        type: "warning",
+        title: `ICU Discharge Handoffs Pending (${icuDischarges.length})`,
+        body: `Patients discharged from ICU awaiting reception ward bed allocation or final settlement.`,
+        action: "Process Discharges",
+        target: "discharge",
+      })
+    }
+
+    return alerts
+  }, [activeErVisits, criticalErCount, icuDischarges, tick])
+
+  // Dynamic Key Metrics Grid
+  const METRICS = useMemo(
+    () => [
+      {
+        id: "patients",
+        label: "Patients Today",
+        value: String(
+          db.getPatients().length + ErDatabase.getPatients().length,
+        ),
+        sub: "Active hospital census",
+        trend: "+5 today",
+        trendDir: "up" as const,
+        icon: Icon.Patients,
+        domain: "Patients",
+        color: "#2563EB",
+        bgColor: "#EFF6FF",
+        borderColor: "#BFDBFE",
+        action: "View All",
+        target: "patients",
+      },
+      {
+        id: "appointments",
+        label: "Appointments",
+        value: String(db.getEncounters().length),
+        sub: `${liveAppointments.length} scheduled today`,
+        trend: "Live queue",
+        trendDir: "neutral" as const,
+        icon: Icon.Calendar,
+        domain: "Outpatient",
+        color: "#4F46E5",
+        bgColor: "#EEF2FF",
+        borderColor: "#C7D2FE",
+        action: "Schedule",
+        target: "appointments",
+      },
+      {
+        id: "admissions",
+        label: "Inpatient Admissions",
+        value: String(occupiedBeds.length),
+        sub: `${allBeds.filter((b) => b.status === "Available").length} beds available`,
+        trend: "In care",
+        trendDir: "up" as const,
+        icon: Icon.Bed,
+        domain: "Inpatient",
+        color: "#7C3AED",
+        bgColor: "#F5F3FF",
+        borderColor: "#DDD6FE",
+        action: "Bed Board",
+        target: "inpatient",
+      },
+      {
+        id: "discharges",
+        label: "Discharges Ready",
+        value: String(dischargesReadyCount),
+        sub: `${icuDischarges.length} from ICU portal`,
+        trend: "Clearance queue",
+        trendDir: "down" as const,
+        icon: Icon.Discharge,
+        domain: "Discharge",
+        color: "#059669",
+        bgColor: "#ECFDF5",
+        borderColor: "#A7F3D0",
+        action: "View Queue",
+        target: "discharge",
+      },
+      {
+        id: "ed_waiting",
+        label: "ED Waiting Room",
+        value: String(activeErVisits.length),
+        sub: `${criticalErCount} ESI-1 or ESI-2 critical`,
+        trend: "Live ER Feed",
+        trendDir: "up" as const,
+        icon: Icon.Emergency,
+        domain: "Emergency",
+        color: "#E11D48",
+        bgColor: "#FFF1F2",
+        borderColor: "#FECDD3",
+        action: "View ED",
+        target: "emergency",
+      },
+      {
+        id: "alerts",
+        label: "Critical Alerts",
+        value: String(dynamicAlerts.length),
+        sub: "Action required",
+        trend: "High Urgency",
+        trendDir: "up" as const,
+        icon: Icon.Alert,
+        domain: "Safety",
+        color: "#DC2626",
+        bgColor: "#FEF2F2",
+        borderColor: "#FCA5A5",
+        action: "Review",
+        target: "emergency",
+      },
+    ],
+    [
+      liveAppointments,
+      occupiedBeds,
+      allBeds,
+      dischargesReadyCount,
+      icuDischarges,
+      activeErVisits,
+      criticalErCount,
+      dynamicAlerts,
+    ],
+  )
 
   const roleKey = (userRole || "").toUpperCase()
   const isSuperAdmin = roleKey.includes("SUPERADMIN")
@@ -384,7 +606,6 @@ export default function Dashboard({
   const isReception = roleKey.includes("RECEPTION")
   const isPharmacy = roleKey.includes("PHARMACY")
   const isLab = roleKey.includes("LAB")
-  const isNurse = roleKey.includes("NURSE") || roleKey.includes("RN")
 
   const portalBanner = isSuperAdmin
     ? {
@@ -463,7 +684,11 @@ export default function Dashboard({
                   <span>{activeStaff?.department || "General Hospital"}</span>
                   <span>·</span>
                   <span className="font-mono text-[#475569]">
-                    Sept 11, 2026
+                    {formattedToday}
+                  </span>
+                  <span>·</span>
+                  <span className="font-mono text-[11px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
+                    {hospitalCode}
                   </span>
                 </p>
               </div>
@@ -480,36 +705,41 @@ export default function Dashboard({
             {/* ED Alert Badge */}
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFF1F2] border border-[#FECDD3] text-[#BE123C] text-[12px] font-medium">
               <span className="w-2 h-2 rounded-full bg-[#E11D48]" />
-              <span>ED Occupancy 90%</span>
+              <span>ED Active: {activeErVisits.length}</span>
             </div>
 
+            {/* Animated Refresh Button */}
             <Btn
               variant="outline"
               size="sm"
-              onClick={() => setRefresh((n) => n + 1)}
-              className="shadow-sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="shadow-sm transition-all active:scale-95 cursor-pointer"
             >
-              <Icon.Refresh className="w-3.5 h-3.5 text-[#1B4FD8]" />
-              <span>Refresh</span>
+              <Icon.Refresh
+                className={`w-3.5 h-3.5 text-[#1B4FD8] transition-transform duration-500 ${
+                  isRefreshing ? "animate-spin" : ""
+                }`}
+              />
+              <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
             </Btn>
           </div>
         </div>
       </div>
 
-      <div className="p-5 max-w-[1600px] mx-auto space-y-5">
+      <div className="p-5 w-full space-y-5">
         {/* ── High-Urgency Alerts ────────────────────────────────────────────── */}
-        <div className="space-y-2.5">
-          {ALERTS.map((a, i) => (
-            <AlertBanner
-              key={i}
-              {...a}
-              onAction={() => {
-                if (a.action === "View ED Board") navigate("emergency")
-                else if (a.action === "Review Now") navigate("laboratory")
-              }}
-            />
-          ))}
-        </div>
+        {dynamicAlerts.length > 0 && (
+          <div className="space-y-2.5">
+            {dynamicAlerts.map((a, i) => (
+              <AlertBanner
+                key={i}
+                {...a}
+                onAction={() => navigate(a.target, a.subTarget)}
+              />
+            ))}
+          </div>
+        )}
 
         {/* ── Domain Key Metrics Grid ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
@@ -613,7 +843,7 @@ export default function Dashboard({
                 "Critical",
                 "Available",
                 "Capacity",
-                "",
+                "Action",
               ]}
             >
               {QUEUES.map((q, i) => {
@@ -704,15 +934,9 @@ export default function Dashboard({
                       <Btn
                         variant="ghost"
                         size="xs"
-                        onClick={() =>
-                          navigate(
-                            q.dept.includes("Emergency")
-                              ? "emergency"
-                              : "inpatient",
-                          )
-                        }
+                        onClick={() => navigate(q.target, q.subTarget)}
                       >
-                        View →
+                        {q.buttonLabel}
                       </Btn>
                     </TD>
                   </TR>
@@ -721,7 +945,7 @@ export default function Dashboard({
             </Table>
           </div>
 
-          {/* Today's Appointments List (1 Col) */}
+          {/* Today's Appointments List (1 Col) - Live Registered Appointments */}
           <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden flex flex-col">
             <div className="px-4 py-3.5 border-b border-[#E2E8F0] bg-[#FAFCFF] flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -741,45 +965,52 @@ export default function Dashboard({
               </Btn>
             </div>
 
-            <div className="p-3.5 flex-1 divide-y divide-[#F1F5F9] overflow-y-auto">
-              {APPOINTMENTS.map((a, i) => (
-                <div
-                  key={i}
-                  className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-[#E0F2FE] text-[#0369A1] font-bold text-[11px] flex items-center justify-center flex-shrink-0">
-                      {a.patient
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[12.5px] font-bold text-gray-900 truncate">
-                        {a.patient}
-                      </div>
-                      <div className="text-[11px] text-[#64748B] truncate">
-                        {a.provider} ·{" "}
-                        <span className="text-[#475569]">{a.spec}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className="font-mono text-[11px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">
-                      {a.time}
-                    </span>
-                    <StatusBadge status={a.status} />
-                  </div>
+            <div className="p-3.5 flex-1 divide-y divide-[#F1F5F9] overflow-y-auto max-h-[380px]">
+              {liveAppointments.length === 0 ? (
+                <div className="p-6 text-center text-xs text-[#64748B]">
+                  No appointments booked for today.
                 </div>
-              ))}
+              ) : (
+                liveAppointments.map((a, i) => (
+                  <div
+                    key={a.id || i}
+                    className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-[#E0F2FE] text-[#0369A1] font-bold text-[11px] flex items-center justify-center flex-shrink-0">
+                        {a.patient
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[12.5px] font-bold text-gray-900 truncate">
+                          {a.patient}
+                        </div>
+                        <div className="text-[11px] text-[#64748B] truncate">
+                          {a.provider} ·{" "}
+                          <span className="text-[#475569]">{a.spec}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className="font-mono text-[11px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {a.time}
+                      </span>
+                      <StatusBadge status={a.status} />
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
 
         {/* ── Pending Labs & Quick Actions Grid ──────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Pending Lab Results (2 Cols) */}
+          {/* Pending Lab Results (2 Cols) - Live Lab Orders */}
           <div className="lg:col-span-2 bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden">
             <div className="px-5 py-3.5 border-b border-[#E2E8F0] bg-[#FAFCFF] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -814,45 +1045,55 @@ export default function Dashboard({
                 "Status",
               ]}
             >
-              {PENDING_LABS.map((l, i) => (
-                <TR key={i}>
-                  <TD>
-                    <span className="font-bold text-gray-900 text-[12.5px]">
-                      {l.patient}
-                    </span>
-                  </TD>
-                  <TD>
-                    <span className="font-mono text-[11.5px] text-[#64748B] bg-gray-100 px-1.5 py-0.5 rounded">
-                      #{l.mrn}
-                    </span>
-                  </TD>
-                  <TD>
-                    <span className="font-medium text-gray-800 text-[12px]">
-                      {l.test}
-                    </span>
-                  </TD>
-                  <TD>
-                    <span className="text-[11px] font-semibold text-[#475569]">
-                      {l.dept}
-                    </span>
-                  </TD>
-                  <TD>
-                    <span className="font-mono text-[11.5px] text-gray-700">
-                      {l.ordered}
-                    </span>
-                  </TD>
-                  <TD>
-                    {l.status === "Critical" ? (
-                      <span className="inline-flex items-center gap-1 bg-[#FEE2E2] text-[#B91C1C] text-[11px] font-bold px-2 py-0.5 rounded-full border border-[#FECACA] animate-pulse">
-                        <Icon.Alert className="w-3 h-3 text-[#DC2626]" />{" "}
-                        Critical
-                      </span>
-                    ) : (
-                      <StatusBadge status={l.status} />
-                    )}
+              {livePendingLabs.length === 0 ? (
+                <TR>
+                  <TD colSpan={6}>
+                    <div className="p-4 text-center text-xs text-[#64748B]">
+                      No active pending diagnostic lab orders.
+                    </div>
                   </TD>
                 </TR>
-              ))}
+              ) : (
+                livePendingLabs.map((l, i) => (
+                  <TR key={l.id || i}>
+                    <TD>
+                      <span className="font-bold text-gray-900 text-[12.5px]">
+                        {l.patient}
+                      </span>
+                    </TD>
+                    <TD>
+                      <span className="font-mono text-[11.5px] text-[#64748B] bg-gray-100 px-1.5 py-0.5 rounded">
+                        #{l.mrn}
+                      </span>
+                    </TD>
+                    <TD>
+                      <span className="font-medium text-gray-800 text-[12px]">
+                        {l.test}
+                      </span>
+                    </TD>
+                    <TD>
+                      <span className="text-[11px] font-semibold text-[#475569]">
+                        {l.dept}
+                      </span>
+                    </TD>
+                    <TD>
+                      <span className="font-mono text-[11.5px] text-gray-700">
+                        {l.ordered}
+                      </span>
+                    </TD>
+                    <TD>
+                      {l.status === "Critical" ? (
+                        <span className="inline-flex items-center gap-1 bg-[#FEE2E2] text-[#B91C1C] text-[11px] font-bold px-2 py-0.5 rounded-full border border-[#FECACA] animate-pulse">
+                          <Icon.Alert className="w-3 h-3 text-[#DC2626]" />{" "}
+                          Critical
+                        </span>
+                      ) : (
+                        <StatusBadge status={l.status} />
+                      )}
+                    </TD>
+                  </TR>
+                ))
+              )}
             </Table>
           </div>
 
@@ -940,7 +1181,8 @@ export default function Dashboard({
               return (
                 <div
                   key={i}
-                  className="bg-[#FAFCFF] border border-[#E2E8F0] rounded-none p-3.5 flex flex-col justify-between"
+                  onClick={() => navigate("inpatient", u.targetWard)}
+                  className="bg-[#FAFCFF] border border-[#E2E8F0] hover:border-[#2563EB] cursor-pointer transition-colors rounded-none p-3.5 flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">

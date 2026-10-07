@@ -294,7 +294,7 @@ export default function ClinicalSummaries() {
                 </div>
               </div>
               <div className="flex-1 p-6 overflow-auto text-[13px] leading-relaxed text-gray-900">
-                <div className="max-w-3xl mx-auto space-y-4">
+                <div className="w-full space-y-4">
                   <div className="bg-[#FFFBEB] border border-[#FDE68A] text-[#92400E] rounded px-3 py-2 text-[11.5px]">
                     <strong>AI Generated Draft:</strong> This summary was
                     generated from available source information. Do not treat as

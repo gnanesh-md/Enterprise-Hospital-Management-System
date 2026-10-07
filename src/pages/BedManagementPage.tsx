@@ -37,6 +37,7 @@ import type { Notice, Patient } from "../types"
 import DischargedDirectoryView from "../components/bed/DischargedDirectoryView"
 import { WardBedBoard } from "../components/bed/WardBedBoard"
 import { BedTransferNotificationPanel } from "../components/bed/BedTransferNotificationPanel"
+import { WardAlertsNotificationPanel } from "../components/bed/WardAlertsNotificationPanel"
 import { BedDatabase, type BedTransferNotification } from "../services/bedDb"
 
 type Props = {
@@ -735,31 +736,85 @@ export default function BedManagementPage({
   }, [beds, transferFilter, selectedBed])
 
   const handleAssign = async () => {
-    if (!selectedBed || !selectedPatient) return
+    if (!selectedBed) return
+    const patientToAssign =
+      selectedPatient ||
+      (patientQuery.trim()
+        ? {
+            patient_id: `P-${Math.floor(100000 + Math.random() * 900000)}`,
+            name: patientQuery.trim(),
+            first_name: patientQuery.trim(),
+            last_name: "",
+            gender: "Male",
+            phone: "(555) 000-0000",
+          }
+        : null)
+
+    if (!patientToAssign) {
+      alert("Please select or enter a patient name to allocate this bed.")
+      return
+    }
+
     setAssigning(true)
     try {
       await apiFetch(`/api/beds/${selectedBed.id}/assign`, {
         method: "POST",
         body: JSON.stringify({
-          patient_id: selectedPatient.patient_id,
+          patient_id: patientToAssign.patient_id,
+          patient_name: patientToAssign.name,
           notes: assignNotes.trim(),
           expected_los_days: expectedLosDays.trim() || undefined,
         }),
       })
       setNotice({
         type: "success",
-        message: `${selectedPatient.name || "Patient"} admitted to ${selectedBed.ward} / Room ${selectedBed.room_no} / Bed ${selectedBed.bed_no}.`,
+        message: `${patientToAssign.name || "Patient"} admitted to ${selectedBed.ward} / Room ${selectedBed.room_no} / Bed ${selectedBed.bed_no}.`,
       })
       resetSelection()
       await loadBeds()
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string ;status?: number },
+        error as { message?: string; status?: number },
         "Unable to assign this bed.",
       )
     } finally {
       setAssigning(false)
+    }
+  }
+
+  const handleCancelAllocation = async () => {
+    if (!selectedBed) return
+    if (
+      !confirm(
+        `Are you sure you want to cancel the allocation for ${bedOccupantName(selectedBed)} and return Bed ${selectedBed.bed_no} to Available state?`,
+      )
+    ) {
+      return
+    }
+    setReleasing(true)
+    try {
+      await apiFetch(`/api/beds/${selectedBed.id}/release`, {
+        method: "POST",
+        body: JSON.stringify({
+          discharge_override_reason:
+            "Bed allocation cancelled by administrator",
+        }),
+      })
+      setNotice({
+        type: "success",
+        message: `Allocation for Bed ${selectedBed.bed_no} cancelled. Bed is now Available.`,
+      })
+      resetSelection()
+      await loadBeds()
+    } catch (error) {
+      reportError(
+        setNotice,
+        error as { message?: string; status?: number },
+        "Unable to cancel bed allocation.",
+      )
+    } finally {
+      setReleasing(false)
     }
   }
 
@@ -1063,6 +1118,11 @@ export default function BedManagementPage({
 
         <div className="flex items-center gap-3 pb-2.5">
           {/* Notification Icon & Flyout Panel */}
+          <WardAlertsNotificationPanel
+            beds={beds}
+            onSelectWard={setSelectedWard}
+            onViewPatientChart={onOpenPatientClinical}
+          />
           <BedTransferNotificationPanel
             onAllocateTransfer={handleAllocateFromNotification}
             onViewPatientChart={onOpenPatientClinical}
@@ -1599,6 +1659,13 @@ export default function BedManagementPage({
                         <>
                           <Button variant="ghost" onClick={openTransfer}>
                             <FiRepeat aria-hidden /> Transfer
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={handleCancelAllocation}
+                            style={{ color: "#B45309", borderColor: "#FDE68A" }}
+                          >
+                            <FiX aria-hidden /> Cancel Allocation
                           </Button>
                           <Button
                             variant="destructive"

@@ -87,6 +87,7 @@ import {
 } from "../services/billingDb"
 
 import { db, type DBOPEncounter } from "../services/db"
+import { ErQuickInsurance } from "../components/insurance/integrations"
 
 // apiFetch always sends Content-Type: application/json, which breaks a
 
@@ -935,7 +936,7 @@ function getBedLabel(v: ErVisit): string | null {
 export function renderTriagePill(category: string | null | undefined) {
   if (!category)
     return (
-      <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1">
+      <span className="text-slate-400 font-medium text-[11px] flex items-center gap-1 whitespace-nowrap">
         <span>⚪</span> Not triaged
       </span>
     )
@@ -944,7 +945,7 @@ export function renderTriagePill(category: string | null | undefined) {
 
   if (cat === "B1" || cat === "RED") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-red-600 text-white shadow-2xs border border-red-700 tracking-wider">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-bold bg-red-600 text-white shadow-2xs tracking-wide whitespace-nowrap">
         <span>🚨</span> B1 - Resuscitation
       </span>
     )
@@ -952,7 +953,7 @@ export function renderTriagePill(category: string | null | undefined) {
 
   if (cat === "B2" || cat === "YELLOW" || cat === "ORANGE") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-amber-500 text-white shadow-2xs border border-amber-600 tracking-wider">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-bold bg-amber-500 text-white shadow-2xs tracking-wide whitespace-nowrap">
         <span>⚠️</span> B2 - Emergent
       </span>
     )
@@ -960,7 +961,7 @@ export function renderTriagePill(category: string | null | undefined) {
 
   if (cat === "B3" || cat === "GREEN") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-emerald-600 text-white shadow-2xs border border-emerald-700 tracking-wider">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-bold bg-emerald-600 text-white shadow-2xs tracking-wide whitespace-nowrap">
         <span>🟢</span> B3 - Urgent
       </span>
     )
@@ -968,7 +969,7 @@ export function renderTriagePill(category: string | null | undefined) {
 
   if (cat === "B4") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-teal-600 text-white shadow-2xs border border-teal-700 tracking-wider">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-bold bg-teal-600 text-white shadow-2xs tracking-wide whitespace-nowrap">
         <span>🟡</span> B4 - Semi-Urgent
       </span>
     )
@@ -976,14 +977,14 @@ export function renderTriagePill(category: string | null | undefined) {
 
   if (cat === "BLACK" || cat === "EXPECTANT") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-slate-950 text-white shadow-2xs border border-slate-800 tracking-wider">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-bold bg-slate-950 text-white shadow-2xs tracking-wide whitespace-nowrap">
         <span>🖤</span> Black - Expectant
       </span>
     )
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-black bg-blue-600 text-white shadow-2xs border border-blue-700 tracking-wider">
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10.5px] font-bold bg-blue-600 text-white shadow-2xs tracking-wide whitespace-nowrap">
       <span>🔵</span> {cat} - Non-Urgent
     </span>
   )
@@ -994,7 +995,7 @@ function renderStatusPill(status: string) {
 
   if (s === "under_treatment" || s === "treatment") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
         <span>🩺</span> Under Treatment
       </span>
     )
@@ -1002,7 +1003,7 @@ function renderStatusPill(status: string) {
 
   if (s === "doctor_assigned") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
         <span>👨‍⚕️</span> Doctor Assigned
       </span>
     )
@@ -1010,7 +1011,7 @@ function renderStatusPill(status: string) {
 
   if (s === "triaged") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 whitespace-nowrap">
         <span>📌</span> Triaged
       </span>
     )
@@ -1018,7 +1019,7 @@ function renderStatusPill(status: string) {
 
   if (s === "registered") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
         <span>📋</span> Registered
       </span>
     )
@@ -1026,7 +1027,7 @@ function renderStatusPill(status: string) {
 
   if (s === "discharged") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
         <span>✅</span> Discharged
       </span>
     )
@@ -1034,7 +1035,7 @@ function renderStatusPill(status: string) {
 
   if (s === "under_investigation") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">
         <span>🔬</span> Under Investigation
       </span>
     )
@@ -1042,14 +1043,14 @@ function renderStatusPill(status: string) {
 
   if (s === "stabilizing" || s === "stabilized") {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
         <span>💚</span> Stabilizing
       </span>
     )
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-300">
+    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
       <span>📍</span> {status}
     </span>
   )
@@ -1070,7 +1071,7 @@ function renderBillingPill(v: ErVisit) {
   if (clearance.status === "paid") {
     return (
       <span
-        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap shadow-2xs"
         title={`Receipt: ${clearance.receiptNo || "Paid & Cleared"}`}
       >
         <span>✅</span> Paid
@@ -1081,7 +1082,7 @@ function renderBillingPill(v: ErVisit) {
   if (clearance.status === "due") {
     return (
       <span
-        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap shadow-2xs"
         title={`Pending at Billing Dept: ₹${clearance.balanceDue.toLocaleString("en-IN")}`}
       >
         <span>⏳</span> Pending
@@ -1093,14 +1094,14 @@ function renderBillingPill(v: ErVisit) {
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-300 whitespace-nowrap"
+      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-semibold bg-slate-100/90 text-slate-700 border border-slate-200 whitespace-nowrap"
       title={
         unbilledTotal > 0
           ? `Unbilled ER charges: ₹${unbilledTotal.toLocaleString("en-IN")}. Bill not yet sent to Billing Department.`
           : "Active ER care. Bill not yet sent to Central Billing Department."
       }
     >
-      <span className="w-1.5 h-1.5 rounded-full bg-[#94A3B8]"></span>{" "}
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>{" "}
       {unbilledTotal > 0
         ? `Unbilled (₹${unbilledTotal.toLocaleString("en-IN")})`
         : "Unbilled"}
@@ -1117,7 +1118,7 @@ function renderDestinationPill(dest: string | null | undefined) {
 
   if (isIcu) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
         <span>🚨</span> {dest.replace(/^•\s*/, "")}
       </span>
     )
@@ -1125,7 +1126,7 @@ function renderDestinationPill(dest: string | null | undefined) {
 
   if (dest.includes("Ward")) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
         <span>🏥</span> {dest.replace(/^•\s*/, "")}
       </span>
     )
@@ -1133,7 +1134,7 @@ function renderDestinationPill(dest: string | null | undefined) {
 
   if (dest.includes("Observation")) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-teal-50 text-teal-700 border border-teal-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-teal-50 text-teal-700 border border-teal-200 whitespace-nowrap">
         <span>👁️</span> {dest.replace(/^•\s*/, "")}
       </span>
     )
@@ -1141,7 +1142,7 @@ function renderDestinationPill(dest: string | null | undefined) {
 
   if (isOt) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-800 border border-amber-200 whitespace-nowrap">
         <span>⚡</span> {dest.replace(/^•\s*/, "")}
       </span>
     )
@@ -1149,13 +1150,13 @@ function renderDestinationPill(dest: string | null | undefined) {
 
   if (isDischarge) {
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-none text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-300">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
         <span>✅</span> {dest.replace(/^•\s*/, "")}
       </span>
     )
   }
 
-  return <span className="text-slate-600 font-medium text-xs">{dest}</span>
+  return <span className="text-slate-700 font-semibold text-[11px] whitespace-nowrap">{dest}</span>
 }
 
 const getDestinationBadge = renderDestinationPill
@@ -1891,6 +1892,21 @@ export default function ErPage({
   if (selectedVisitId && detail) {
     return (
       <div className="flex-1 bg-[#F0F2F5] p-5 sm:p-6 min-h-full">
+        {/* Fast insurance registration for ER: minimum details now, the insurance
+            desk completes the case once treatment is under way. */}
+        {!detail.is_unknown_patient && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 bg-white border border-[#DDE2EC] px-3 py-2">
+            <span className="text-[12px] font-semibold text-gray-700">Payment / insurance</span>
+            <ErQuickInsurance
+              patientId={detail.patient_id || detail.visit_no}
+              patientName={`${detail.patient_name || ""} ${detail.patient_last_name || ""}`.trim() || detail.patient_id || detail.visit_no}
+              age={detail.patient_age ?? undefined}
+              gender={detail.patient_gender ?? undefined}
+              doctor={detail.assigned_doctor_name ?? undefined}
+            />
+            <span className="text-[11px] text-[#64748B]">Insurance applies once the patient is admitted from ER; OP-style ER visits are paid by the patient.</span>
+          </div>
+        )}
         <ErErrorBoundary onReset={refreshAfterAction}>
           <VisitDetailPanel
             key={detail.id}
@@ -1944,95 +1960,110 @@ export default function ErPage({
     )
   }
 
-  const activeCount = visits.filter((v) => v.status !== "closed").length
+  const {
+    activeCount,
+    awaitingDoctorCount,
+    highPriorityAwaitingCount,
+    bedRequestedCount,
+    icuReqCount,
+    wardReqCount,
+    bedAllocatedCount,
+    icuAllocatedCount,
+    wardAllocatedCount,
+  } = useMemo(() => {
+    const activeCount = visits.filter((v) => v.status !== "closed").length
 
-  const awaitingDoctorCount = visits.filter(
-    (v) =>
-      v.status !== "closed" &&
-      (v.status === "registered" ||
-        v.status === "triaged" ||
-        !v.assigned_doctor_name),
-  ).length
+    const awaitingDoctorCount = visits.filter(
+      (v) =>
+        v.status !== "closed" &&
+        (v.status === "registered" ||
+          v.status === "triaged" ||
+          !v.assigned_doctor_name),
+    ).length
 
-  const highPriorityAwaitingCount = visits.filter(
-    (v) =>
-      v.status !== "closed" &&
-      (v.status === "registered" ||
-        v.status === "triaged" ||
-        !v.assigned_doctor_name) &&
-      (v.triage_category === "B1" || v.triage_category === "B2"),
-  ).length
+    const highPriorityAwaitingCount = visits.filter(
+      (v) =>
+        v.status !== "closed" &&
+        (v.status === "registered" ||
+          v.status === "triaged" ||
+          !v.assigned_doctor_name) &&
+        (v.triage_category === "B1" || v.triage_category === "B2"),
+    ).length
 
-  const bedRequestedVisits = visits.filter((v) => {
-    if (v.status === "closed") return false
+    const bedRequestedVisits = visits.filter((v) => {
+      if (v.status === "closed") return false
+      const dest = getDestination(v)
+      const bed = getBedLabel(v)
+      return Boolean(
+        dest &&
+          !bed &&
+          (dest.includes("Requested") ||
+            dest.includes("ICU") ||
+            dest.includes("Ward")),
+      )
+    })
 
-    const dest = getDestination(v)
+    const bedRequestedCount = bedRequestedVisits.length
+    const icuReqCount = bedRequestedVisits.filter((v) =>
+      getDestination(v)?.includes("ICU"),
+    ).length
+    const wardReqCount = bedRequestedVisits.filter((v) =>
+      getDestination(v)?.includes("Ward"),
+    ).length
 
-    const bed = getBedLabel(v)
+    const bedAllocatedVisits = visits.filter((v) => {
+      if (v.status === "closed") return false
+      const bed = getBedLabel(v)
+      const bedReqAllocated = (v as any).bed_requests?.some(
+        (b: any) => b.status === "allocated",
+      )
+      return Boolean(bed || bedReqAllocated)
+    })
 
-    return Boolean(
-      dest &&
-        !bed &&
-        (dest.includes("Requested") ||
-          dest.includes("ICU") ||
-          dest.includes("Ward")),
-    )
-  })
+    const bedAllocatedCount = bedAllocatedVisits.length
+    const icuAllocatedCount = bedAllocatedVisits.filter(
+      (v) =>
+        (v.triage_bed_label || "").includes("ICU") ||
+        (v as any).bed_requests?.some((b: any) =>
+          (b.requested_level_of_care || "").includes("ICU"),
+        ),
+    ).length
 
-  const bedRequestedCount = bedRequestedVisits.length
+    const wardAllocatedCount = Math.max(0, bedAllocatedCount - icuAllocatedCount)
 
-  const icuReqCount = bedRequestedVisits.filter((v) =>
-    getDestination(v)?.includes("ICU"),
-  ).length
-
-  const wardReqCount = bedRequestedVisits.filter((v) =>
-    getDestination(v)?.includes("Ward"),
-  ).length
-
-  const bedAllocatedVisits = visits.filter((v) => {
-    if (v.status === "closed") return false
-
-    const bed = getBedLabel(v)
-
-    const bedReqAllocated = (v as any).bed_requests?.some(
-      (b: any) => b.status === "allocated",
-    )
-
-    return Boolean(bed || bedReqAllocated)
-  })
-
-  const bedAllocatedCount = bedAllocatedVisits.length
-
-  const icuAllocatedCount = bedAllocatedVisits.filter(
-    (v) =>
-      (v.triage_bed_label || "").includes("ICU") ||
-      (v as any).bed_requests?.some((b: any) =>
-        (b.requested_level_of_care || "").includes("ICU"),
-      ),
-  ).length
-
-  const wardAllocatedCount = Math.max(0, bedAllocatedCount - icuAllocatedCount)
+    return {
+      activeCount,
+      awaitingDoctorCount,
+      highPriorityAwaitingCount,
+      bedRequestedCount,
+      icuReqCount,
+      wardReqCount,
+      bedAllocatedCount,
+      icuAllocatedCount,
+      wardAllocatedCount,
+    }
+  }, [visits])
 
   return (
-    <div className="flex-1 bg-[#F0F2F5] p-3 sm:p-4 space-y-3 min-h-full font-sans text-xs">
+    <div className="flex-1 flex flex-col bg-[#F5F7FB] p-3.5 sm:p-4 space-y-3.5 min-h-0 font-sans text-xs">
       {/* Top Header: Search Bar & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shrink-0">
         {/* Search Option in place of the subtitle */}
         <div className="relative flex-1 max-w-xl">
           <div className="relative flex items-center">
-            <FiSearch className="absolute left-3 text-slate-400 text-[13px] pointer-events-none" />
+            <FiSearch className="absolute left-3.5 text-slate-400 text-[13px] pointer-events-none" />
             <input
               type="text"
               value={trackboardSearch}
               onChange={(e) => setTrackboardSearch(e.target.value)}
               placeholder="Search ED Track Board by patient name, ID, phone, triage, complaint, doctor, bed..."
-              className="w-full pl-8.5 pr-8 py-1.5 bg-white border border-slate-300 rounded-none text-xs text-slate-900 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:border-[#1B4FD8] focus:ring-1 focus:ring-[#1B4FD8]/20 transition-all font-medium"
+              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200/90 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 shadow-2xs focus:outline-none focus:border-[#1B4FD8] focus:ring-2 focus:ring-[#1B4FD8]/20 transition-all font-medium"
             />
             {trackboardSearch && (
               <button
                 type="button"
                 onClick={() => setTrackboardSearch("")}
-                className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-0.5 rounded-none hover:bg-slate-100 transition-colors cursor-pointer"
+                className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
                 title="Clear search"
               >
                 <FiX className="text-[13px]" />
@@ -2046,7 +2077,7 @@ export default function ErPage({
           <button
             type="button"
             onClick={loadVisits}
-            className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-none shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            className="px-3.5 py-2 bg-white border border-slate-200/90 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
             title="Refresh ED visits"
           >
             <FiRefreshCw className="text-[12px]" /> Refresh
@@ -2057,7 +2088,7 @@ export default function ErPage({
             <button
               type="button"
               onClick={() => setIsRegMenuOpen((prev) => !prev)}
-              className="px-3.5 py-1.5 bg-[#1B4FD8] hover:bg-[#1541B5] text-white text-xs font-bold rounded-none shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 bg-[#1B4FD8] hover:bg-[#1541B5] text-white text-xs font-bold rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
               aria-expanded={isRegMenuOpen}
               aria-haspopup="true"
             >
@@ -2071,8 +2102,8 @@ export default function ErPage({
             </button>
 
             {isRegMenuOpen && (
-              <div className="absolute right-0 mt-1.5 w-64 bg-white border border-slate-300 rounded-none shadow-lg z-50 py-1 overflow-hidden">
-                <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200/90 rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
+                <div className="px-3.5 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">
                   Select Registration Type
                 </div>
 
@@ -2083,9 +2114,9 @@ export default function ErPage({
                     setIntakeModalType("new")
                     setIsRegMenuOpen(false)
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-50/70 text-slate-800 hover:text-[#1B4FD8] transition-colors flex items-start gap-2.5 group cursor-pointer"
+                  className="w-full text-left px-3.5 py-2.5 hover:bg-blue-50/70 text-slate-800 hover:text-[#1B4FD8] transition-colors flex items-start gap-2.5 group cursor-pointer"
                 >
-                  <div className="w-7 h-7 rounded-none bg-blue-100 text-[#1B4FD8] flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#1B4FD8] group-hover:text-white transition-colors">
+                  <div className="w-7 h-7 rounded-lg bg-blue-100 text-[#1B4FD8] flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#1B4FD8] group-hover:text-white transition-colors">
                     <FiUserPlus />
                   </div>
                   <div>
@@ -2105,9 +2136,9 @@ export default function ErPage({
                     setIntakeModalType("existing")
                     setIsRegMenuOpen(false)
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 text-slate-800 hover:text-[#1B4FD8] transition-colors flex items-start gap-2.5 group cursor-pointer border-t border-slate-100"
+                  className="w-full text-left px-3.5 py-2.5 hover:bg-slate-50 text-slate-800 hover:text-[#1B4FD8] transition-colors flex items-start gap-2.5 group cursor-pointer border-t border-slate-100"
                 >
-                  <div className="w-7 h-7 rounded-none bg-slate-100 text-slate-700 flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#1B4FD8] group-hover:text-white transition-colors">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#1B4FD8] group-hover:text-white transition-colors">
                     <FiSearch />
                   </div>
                   <div>
@@ -2127,15 +2158,15 @@ export default function ErPage({
                     setIntakeModalType("unknown")
                     setIsRegMenuOpen(false)
                   }}
-                  className="w-full text-left px-3 py-2 hover:bg-red-50/70 text-slate-800 hover:text-[#DC2626] transition-colors flex items-start gap-2.5 group cursor-pointer border-t border-slate-100"
+                  className="w-full text-left px-3.5 py-2.5 hover:bg-red-50/70 text-slate-800 hover:text-[#DC2626] transition-colors flex items-start gap-2.5 group cursor-pointer border-t border-slate-100"
                 >
-                  <div className="w-7 h-7 rounded-none bg-red-100 text-[#DC2626] flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#DC2626] group-hover:text-white transition-colors">
+                  <div className="w-7 h-7 rounded-lg bg-red-100 text-[#DC2626] flex items-center justify-center text-[13px] shrink-0 mt-0.5 group-hover:bg-[#DC2626] group-hover:text-white transition-colors">
                     <FiAlertCircle />
                   </div>
                   <div>
                     <div className="text-xs font-bold text-slate-900 group-hover:text-[#DC2626] flex items-center gap-1">
                       Unidentified Patient
-                      <span className="px-1 py-0.1 bg-red-100 text-red-700 text-[9.5px] font-bold rounded-none border border-red-200">
+                      <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-[9.5px] font-bold rounded-full border border-red-200">
                         Emergency
                       </span>
                     </div>
@@ -2151,17 +2182,17 @@ export default function ErPage({
       </div>
 
       {/* 4 Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
         {/* Card 1: ACTIVE VISITS */}
-        <div className="bg-white border border-slate-200 border-l-4 border-l-blue-600 rounded-none p-2.5 shadow-2xs flex items-center gap-2.5 hover:border-slate-300 transition-all">
-          <div className="w-8 h-8 rounded-none bg-blue-50/80 border border-blue-100 text-[#1B4FD8] flex items-center justify-center text-sm shrink-0">
+        <div className="bg-white border border-slate-200/80 border-l-4 border-l-blue-600 rounded-xl p-3 shadow-2xs flex items-center gap-3 hover:shadow-md transition-all">
+          <div className="w-9 h-9 rounded-lg bg-blue-50/80 border border-blue-100 text-[#1B4FD8] flex items-center justify-center text-sm shrink-0">
             <FiUsers />
           </div>
           <div>
             <span className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
               👥 ACTIVE VISITS
             </span>
-            <div className="text-xl font-black text-slate-900 leading-none mb-0.5">
+            <div className="text-xl font-black text-slate-900 leading-none mb-1">
               {activeCount}
             </div>
             <span className="text-[10.5px] font-semibold text-emerald-600 flex items-center gap-1">
@@ -2171,15 +2202,15 @@ export default function ErPage({
         </div>
 
         {/* Card 2: AWAITING DOCTOR */}
-        <div className="bg-white border border-slate-200 border-l-4 border-l-amber-500 rounded-none p-2.5 shadow-2xs flex items-center gap-2.5 hover:border-slate-300 transition-all">
-          <div className="w-8 h-8 rounded-none bg-amber-50/80 border border-amber-100 text-amber-600 flex items-center justify-center text-sm shrink-0">
+        <div className="bg-white border border-slate-200/80 border-l-4 border-l-amber-500 rounded-xl p-3 shadow-2xs flex items-center gap-3 hover:shadow-md transition-all">
+          <div className="w-9 h-9 rounded-lg bg-amber-50/80 border border-amber-100 text-amber-600 flex items-center justify-center text-sm shrink-0">
             <FiWatch />
           </div>
           <div>
             <span className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
               ⏱️ AWAITING DOCTOR
             </span>
-            <div className="text-xl font-black text-slate-900 leading-none mb-0.5">
+            <div className="text-xl font-black text-slate-900 leading-none mb-1">
               {awaitingDoctorCount}
             </div>
             <span className="text-[10.5px] font-semibold text-amber-600 flex items-center gap-1">
@@ -2189,15 +2220,15 @@ export default function ErPage({
         </div>
 
         {/* Card 3: BED REQUESTED */}
-        <div className="bg-white border border-slate-200 border-l-4 border-l-rose-600 rounded-none p-2.5 shadow-2xs flex items-center gap-2.5 hover:border-slate-300 transition-all">
-          <div className="w-8 h-8 rounded-none bg-rose-50/80 border border-rose-100 text-rose-600 flex items-center justify-center text-sm shrink-0">
+        <div className="bg-white border border-slate-200/80 border-l-4 border-l-rose-600 rounded-xl p-3 shadow-2xs flex items-center gap-3 hover:shadow-md transition-all">
+          <div className="w-9 h-9 rounded-lg bg-rose-50/80 border border-rose-100 text-rose-600 flex items-center justify-center text-sm shrink-0">
             <FiBell />
           </div>
           <div>
             <span className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
               🛏️ BED REQUESTED
             </span>
-            <div className="text-xl font-black text-slate-900 leading-none mb-0.5">
+            <div className="text-xl font-black text-slate-900 leading-none mb-1">
               {bedRequestedCount}
             </div>
             <span className="text-[10.5px] font-medium text-slate-500">
@@ -2207,15 +2238,15 @@ export default function ErPage({
         </div>
 
         {/* Card 4: BED ALLOCATED */}
-        <div className="bg-white border border-slate-200 border-l-4 border-l-emerald-600 rounded-none p-2.5 shadow-2xs flex items-center gap-2.5 hover:border-slate-300 transition-all">
-          <div className="w-8 h-8 rounded-none bg-emerald-50/80 border border-emerald-100 text-emerald-600 flex items-center justify-center text-sm shrink-0">
+        <div className="bg-white border border-slate-200/80 border-l-4 border-l-emerald-600 rounded-xl p-3 shadow-2xs flex items-center gap-3 hover:shadow-md transition-all">
+          <div className="w-9 h-9 rounded-lg bg-emerald-50/80 border border-emerald-100 text-emerald-600 flex items-center justify-center text-sm shrink-0">
             <FiHome />
           </div>
           <div>
             <span className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
               🏨 BED ALLOCATED
             </span>
-            <div className="text-xl font-black text-slate-900 leading-none mb-0.5">
+            <div className="text-xl font-black text-slate-900 leading-none mb-1">
               {bedAllocatedCount}
             </div>
             <span className="text-[10.5px] font-medium text-slate-500">
@@ -2226,14 +2257,14 @@ export default function ErPage({
       </div>
 
       {/* Main Track Board Panel */}
-      <div className="bg-white border border-slate-200 rounded-none shadow-2xs overflow-hidden">
+      <div className="flex-1 flex flex-col bg-white border border-slate-200/80 rounded-xl shadow-xs overflow-hidden min-h-[460px]">
         {/* Track Board Header & Filter */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 px-3.5 py-2 bg-slate-50/50 gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200/80 px-4 py-2.5 bg-slate-50/60 gap-2 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1">
+            <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <span>🚨</span> Emergency Queue
             </span>
-            <span className="px-2 py-0.5 rounded-none text-[10.5px] font-bold bg-blue-50 text-[#1B4FD8] border border-blue-200 flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-blue-50 text-[#1B4FD8] border border-blue-200/80 flex items-center gap-1">
               <span>👥</span>
               {filteredVisits.length}{" "}
               {filteredVisits.length === 1 ? "Patient" : "Patients"}
@@ -2247,7 +2278,7 @@ export default function ErPage({
               onChange={(e) =>
                 setQueueFilter(e.target.value as "active" | "closed" | "all")
               }
-              className="bg-white border border-slate-300 rounded-none px-2.5 py-1 text-xs font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#1B4FD8] cursor-pointer"
+              className="bg-white border border-slate-200 rounded-lg px-3 py-1 text-xs font-semibold text-slate-800 shadow-2xs focus:outline-none focus:border-[#1B4FD8] cursor-pointer"
               aria-label="Filter ER visits"
             >
               <option value="active">🟢 Active visits</option>
@@ -2288,26 +2319,26 @@ export default function ErPage({
             <button
               type="button"
               onClick={() => setTrackboardSearch("")}
-              className="mt-3 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-none cursor-pointer transition-colors border border-slate-300"
+              className="mt-3 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg cursor-pointer transition-colors border border-slate-200"
             >
               Clear Search Filter
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto max-h-[540px] overflow-y-auto border-t border-slate-200">
+          <div className="flex-1 overflow-x-auto overflow-y-auto border-t border-slate-200/80">
             <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 z-10 bg-slate-100 shadow-2xs">
+              <thead className="sticky top-0 z-10 bg-slate-100/90 backdrop-blur-xs shadow-2xs">
                 <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="pl-3.5 py-2">📋 VISIT</th>
-                  <th className="px-3 py-2">🚦 TRIAGE</th>
-                  <th className="px-3 py-2">👤 PATIENT</th>
-                  <th className="px-3 py-2">⏱️ ARRIVED</th>
-                  <th className="px-3 py-2">📌 STATUS</th>
-                  <th className="px-3 py-2">💳 BILLING</th>
-                  <th className="px-3 py-2">👨‍⚕️ DOCTOR</th>
-                  <th className="px-3 py-2">📍 DESTINATION</th>
-                  <th className="px-3 py-2">🛏️ BED</th>
-                  <th className="pr-3.5 py-2 text-right">⚡ ACTION</th>
+                  <th className="pl-4 py-3">📋 VISIT</th>
+                  <th className="px-3.5 py-3">🚦 TRIAGE</th>
+                  <th className="px-3.5 py-3">👤 PATIENT</th>
+                  <th className="px-3.5 py-3">⏱️ ARRIVED</th>
+                  <th className="px-3.5 py-3">📌 STATUS</th>
+                  <th className="px-3.5 py-3">💳 BILLING</th>
+                  <th className="px-3.5 py-3">👨‍⚕️ DOCTOR</th>
+                  <th className="px-3.5 py-3">📍 DESTINATION</th>
+                  <th className="px-3.5 py-3">🛏️ BED</th>
+                  <th className="pr-4 py-3 text-right">⚡ ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -2331,38 +2362,38 @@ export default function ErPage({
                       }}
                     >
                       {/* 1. VISIT */}
-                      <td className="pl-3.5 py-2 font-bold text-slate-900 whitespace-nowrap">
+                      <td className="pl-4 py-3 font-bold text-slate-900 whitespace-nowrap">
                         {v.visit_no}
                       </td>
 
                       {/* 2. TRIAGE */}
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-3.5 py-3 whitespace-nowrap">
                         {renderTriagePill(v.triage_category)}
                       </td>
 
                       {/* 3. PATIENT */}
-                      <td className="px-3 py-2">
+                      <td className="px-3.5 py-3.5 min-w-[160px]">
                         {v.is_unknown_patient ? (
                           <div>
-                            <div className="font-bold text-slate-900 text-xs flex items-center gap-1">
+                            <div className="font-bold text-slate-900 text-xs flex items-center gap-1 whitespace-nowrap">
                               <span>🚨</span>
                               <span>
                                 {v.unknown_patient_label || "Unknown Male"}
                               </span>
                             </div>
-                            <div className="text-[11px] text-slate-500 font-medium">
+                            <div className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
                               Temp Tag{" "}
                               {v.patient_age ? `• ~${v.patient_age}y` : ""}
                             </div>
                           </div>
                         ) : (
                           <div>
-                            <div className="font-bold text-slate-900 text-xs">
+                            <div className="font-bold text-slate-900 text-xs whitespace-nowrap">
                               {[v.patient_name, v.patient_last_name]
                                 .filter(Boolean)
                                 .join(" ") || v.patient_id}
                             </div>
-                            <div className="text-[11px] text-slate-500 font-medium">
+                            <div className="text-[11px] text-slate-500 font-medium whitespace-nowrap">
                               {v.patient_id}
                               {v.patient_gender ? ` • ${v.patient_gender}` : ""}
                               {v.patient_age ? ` • ${v.patient_age}y` : ""}
@@ -2372,7 +2403,7 @@ export default function ErPage({
                       </td>
 
                       {/* 4. ARRIVED */}
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-3.5 py-3.5 whitespace-nowrap">
                         <div className="font-semibold text-slate-800 text-[11.5px]">
                           {arrivalInfo.elapsed}
                         </div>
@@ -2384,28 +2415,26 @@ export default function ErPage({
                       </td>
 
                       {/* 5. STATUS */}
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-3.5 py-3.5 whitespace-nowrap">
                         {renderStatusPill(v.status)}
                       </td>
 
                       {/* 6. BILLING */}
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-3.5 py-3.5 whitespace-nowrap">
                         {renderBillingPill(v)}
                       </td>
 
                       {/* 7. DOCTOR */}
-                      <td className="px-3 py-2">
+                      <td className="px-3.5 py-3.5 min-w-[170px]">
                         {v.assigned_doctor_name ? (
                           <div>
-                            <div className="font-semibold text-slate-900 text-[11.5px]">
+                            <div className="font-bold text-slate-900 text-[11.5px] whitespace-nowrap">
                               {v.assigned_doctor_name.replace(/\s*\(.*\)/, "")}
                             </div>
-                            <div className="text-[10.5px] text-slate-500">
-                              (
+                            <div className="text-[10.5px] text-slate-500 whitespace-nowrap">
                               {v.assigned_specialty ||
                                 v.assigned_doctor_name.match(/\((.*)\)/)?.[1] ||
                                 "Emergency Medicine"}
-                              )
                             </div>
                           </div>
                         ) : (
@@ -2414,12 +2443,12 @@ export default function ErPage({
                       </td>
 
                       {/* 8. DESTINATION */}
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-3.5 py-3 whitespace-nowrap">
                         {renderDestinationPill(dest)}
                       </td>
 
                       {/* 9. BED */}
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-3.5 py-3 whitespace-nowrap">
                         {bed ? (
                           <span className="font-mono text-[11.5px] font-semibold text-slate-800">
                             {bed}
@@ -2430,12 +2459,12 @@ export default function ErPage({
                       </td>
 
                       {/* 10. ACTION */}
-                      <td className="pr-3.5 py-2 text-right whitespace-nowrap">
+                      <td className="pr-4 py-3 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           {v.status !== "closed" && !v.assigned_doctor_name && (
                             <span
                               title="No doctor assigned yet -- open to run AI Triage"
-                              className="px-2 py-0.5 text-[10.5px] font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded-none whitespace-nowrap"
+                              className="px-2.5 py-1 text-[10.5px] font-bold text-purple-700 bg-purple-50 border border-purple-200/80 rounded-lg whitespace-nowrap shadow-2xs flex items-center gap-1"
                             >
                               🤖 AI Triage
                             </span>
@@ -2449,7 +2478,7 @@ export default function ErPage({
                                 setSelectedVisitId(v.id)
                               }
                             }}
-                            className="px-3 py-1 text-[12px] font-semibold text-[#1B4FD8] bg-white border border-slate-300 rounded-none hover:bg-[#1B4FD8] hover:text-white transition-all cursor-pointer shadow-2xs flex items-center gap-1"
+                            className="px-3.5 py-1 text-[12px] font-bold text-[#1B4FD8] bg-blue-50/70 border border-blue-200 rounded-lg hover:bg-[#1B4FD8] hover:text-white transition-all cursor-pointer shadow-2xs flex items-center gap-1"
                           >
                             <span>👁️</span> Open
                           </button>
@@ -11268,7 +11297,7 @@ export function VisitDetailPanel({
   }
 
   return (
-    <div className="space-y-4 max-w-[1550px] mx-auto pb-10 font-sans">
+    <div className="space-y-4 w-full pb-10 font-sans">
       {/* 1. Sleek Top Action & Navigation Bar (Rectangular Box Layout) */}
       <div className="bg-white border border-slate-300 rounded-none p-3 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         {/* Left Side: Back Button | Patient Badge / Switcher */}

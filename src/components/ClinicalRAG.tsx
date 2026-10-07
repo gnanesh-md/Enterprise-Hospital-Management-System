@@ -65,7 +65,7 @@ export default function ClinicalRAG() {
       </div>
 
       <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {/* Search Bar */}
           <form onSubmit={handleSearch} className="relative shadow-sm">
             <Icon.Search />

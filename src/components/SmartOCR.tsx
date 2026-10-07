@@ -523,7 +523,7 @@ export default function OcrPage({ setNotice }: Props) {
   const statusMeta = jobStatus ? jobStatusMeta(jobStatus.status) : null
 
   return (
-    <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
+    <div className="w-full p-4 md:p-8 space-y-8 animate-in fade-in duration-500">
       {/* Premium Segmented Control for Tabs */}
       <div className="flex justify-center">
         <div className="flex bg-[#F0F2F5] p-1.5 rounded-2xl shadow-inner border border-[#E2E8F0] gap-1 relative">

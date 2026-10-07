@@ -130,7 +130,7 @@ export class AuditDatabase {
         username: "admin",
         action: "Login Successful",
         module: "Authentication",
-        description: "User admin logged in successfully.",
+        description: "Administrator signed into HMS Portal with MFA authentication.",
         timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
         status: "Success",
         device: detectDevice(),
@@ -139,44 +139,74 @@ export class AuditDatabase {
         duration: "30m 00s",
       },
       {
-        id: "AUD_" + (Date.now() - 3600000) + "_102",
+        id: "AUD_" + (Date.now() - 1800000) + "_102",
         userId: "DOC-003",
-        username: "Dr. Anita Roy",
+        username: "dr.anita",
         action: "Prescription Created",
         module: "Doctor Workspace",
-        description: "Prescription dispatched for patient OP consultation.",
-        timestamp: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+        description: "Prescription dispatched for patient OP consultation #OP-8821.",
+        timestamp: new Date(Date.now() - 1000 * 60 * 75).toISOString(),
         status: "Success",
+        device: "Apple iPad Pro",
+        loginTime: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+        logoutTime: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
+        duration: "1h 15m 00s",
       },
       {
-        id: "AUD_" + (Date.now() - 7200000) + "_103",
+        id: "AUD_" + (Date.now() - 3600000) + "_103",
         userId: "NUR-012",
-        username: "Nurse Station",
+        username: "nurse_station1",
         action: "Vitals Recorded",
         module: "OP Department",
-        description: "Patient vitals captured (BP 120/80, SpO2 98%).",
-        timestamp: new Date(Date.now() - 1000 * 60 * 240).toISOString(),
+        description: "Patient vitals captured (BP 120/80 mmHg, SpO2 98%, Temp 98.6F).",
+        timestamp: new Date(Date.now() - 1000 * 60 * 150).toISOString(),
         status: "Success",
+        device: "Windows Workstation",
+        loginTime: new Date(Date.now() - 1000 * 60 * 240).toISOString(),
+        logoutTime: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+        duration: "2h 30m 00s",
       },
       {
-        id: "AUD_" + (Date.now() - 10800000) + "_104",
+        id: "AUD_" + (Date.now() - 7200000) + "_104",
         userId: "REC-001",
-        username: "Receptionist",
+        username: "reception_desk",
         action: "Patient Registered",
         module: "Reception",
-        description: "New OPD Registration completed.",
-        timestamp: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
+        description: "New OPD Patient Registration completed for #PAT-9082.",
+        timestamp: new Date(Date.now() - 1000 * 60 * 210).toISOString(),
         status: "Success",
+        device: "Dell Desktop PC",
+        loginTime: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
+        logoutTime: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+        duration: "3h 00m 00s",
       },
       {
-        id: "AUD_" + (Date.now() - 14400000) + "_105",
+        id: "AUD_" + (Date.now() - 10800000) + "_105",
+        userId: "DOC-005",
+        username: "dr.v Sharma",
+        action: "Login Successful",
+        module: "Authentication",
+        description: "Physician logged in to review ICU flowsheets.",
+        timestamp: new Date(Date.now() - 1000 * 60 * 320).toISOString(),
+        status: "Success",
+        device: "Apple MacBook Pro",
+        loginTime: new Date(Date.now() - 1000 * 60 * 320).toISOString(),
+        logoutTime: new Date(Date.now() - 1000 * 60 * 275).toISOString(),
+        duration: "45m 00s",
+      },
+      {
+        id: "AUD_" + (Date.now() - 14400000) + "_106",
         userId: "ADM-001",
-        username: "System Admin",
+        username: "admin",
         action: "Security Matrix Sync",
         module: "Administration",
-        description: "Updated system module permissions for staff accounts.",
+        description: "Updated system module permissions and RBAC matrix for staff accounts.",
         timestamp: new Date(Date.now() - 1000 * 60 * 480).toISOString(),
         status: "Success",
+        device: detectDevice(),
+        loginTime: new Date(Date.now() - 1000 * 60 * 480).toISOString(),
+        logoutTime: "Session Expired",
+        duration: "8h 00m 00s",
       },
     ]
 
@@ -205,18 +235,16 @@ export class AuditDatabase {
     let updatedStorageNeeded = false
 
     const processedLogs = rawLogs.map((log) => {
-      const isLoginSession =
-        log.action.toLowerCase().includes("login") ||
-        log.module === "Authentication"
-
-      if (!isLoginSession) return log
-
       let device = log.device
       if (!device || device === "Windows PC" || device === "Desktop Web Browser") {
         device = currentDetected
         log.device = currentDetected
         updatedStorageNeeded = true
       }
+
+      const isLoginSession =
+        log.action.toLowerCase().includes("login") ||
+        log.module === "Authentication"
 
       const loginTimeIso = log.loginTime || log.timestamp
       const loginDate = new Date(loginTimeIso)
@@ -232,8 +260,18 @@ export class AuditDatabase {
         }
       }
 
-      let logoutTimeState = log.logoutTime
+      let logoutTimeState = log.logoutTime || "Active"
       let calculatedDuration = log.duration
+
+      if (!isLoginSession) {
+        return {
+          ...log,
+          device: device || currentDetected,
+          loginTime: formatTimeOnly(loginTimeIso),
+          logoutTime: logoutTimeState === "Active" ? "—" : logoutTimeState,
+          duration: calculatedDuration || "15m 00s",
+        }
+      }
 
       if (!logoutTimeState || logoutTimeState === "Active") {
         const diffMins = (now.getTime() - loginDate.getTime()) / (1000 * 60)
@@ -364,14 +402,10 @@ export class AuditDatabase {
       description,
       timestamp: nowIso,
       status,
-      ...(isLoginRelated
-        ? {
-            device: device || detectDevice(),
-            loginTime: nowIso,
-            logoutTime: status === "Success" ? "Active" : "—",
-            duration: status === "Success" ? "0s" : "—",
-          }
-        : {}),
+      device: device || detectDevice(),
+      loginTime: nowIso,
+      logoutTime: isLoginRelated ? (status === "Success" ? "Active" : "—") : "—",
+      duration: isLoginRelated ? (status === "Success" ? "0s" : "—") : "5m 00s",
     }
 
     logs.unshift(entry)

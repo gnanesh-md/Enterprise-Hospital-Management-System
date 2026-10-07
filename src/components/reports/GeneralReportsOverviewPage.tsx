@@ -15,7 +15,7 @@
  * - Recent Hospital Activity Table with quick navigation into individual report modules
  */
 
-import React, { useState, useMemo, useEffect } from "react"
+import React, { useState, useMemo, useEffect, useRef } from "react"
 import {
   LineChart,
   Line,
@@ -396,8 +396,11 @@ function resolvePatientClinicalDetails(
 export default function GeneralReportsOverviewPage({
   onNavigate,
 }: GeneralReportsOverviewPageProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
   // Always scroll to top when opening Overview
   useEffect(() => {
+    if (containerRef.current) containerRef.current.scrollTop = 0
     const mainEl = document.querySelector("main")
     if (mainEl) mainEl.scrollTop = 0
     window.scrollTo(0, 0)
@@ -642,8 +645,8 @@ export default function GeneralReportsOverviewPage({
   }
 
   const handleExportPdf = () => {
-    if (filteredActivity.length > 0) {
-      const target = selectedItem || reportModalItem || filteredActivity[0]
+    const target = reportModalItem || selectedItem
+    if (target) {
       setPdfModalDetails(resolvePatientClinicalDetails(target))
     } else {
       exportGenericReportPdf(prepareExportData())
@@ -656,20 +659,16 @@ export default function GeneralReportsOverviewPage({
       printPatientClinicalReport(resolvePatientClinicalDetails(reportModalItem))
     } else if (selectedItem) {
       printPatientClinicalReport(resolvePatientClinicalDetails(selectedItem))
-    } else if (filteredActivity.length > 0) {
-      printPatientClinicalReport(
-        resolvePatientClinicalDetails(filteredActivity[0]),
-      )
     } else {
       printGenericReport(prepareExportData())
     }
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-[#F8FAFC] text-slate-900 font-sans pb-16">
+    <div ref={containerRef} className="flex-1 flex flex-col h-full min-h-0 w-full overflow-y-auto bg-[#F8FAFC] text-slate-900 font-sans pb-16">
       {/* ── 1. PAGE HEADER ────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-[#E2E8F0] px-6 py-3.5 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
               General Reports
@@ -765,7 +764,7 @@ export default function GeneralReportsOverviewPage({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-4 w-full space-y-3.5">
+      <div className="w-full px-6 py-4 space-y-3.5">
         {/* ── 2. FILTER PANEL ──────────────────────────────────────────────── */}
         <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b border-slate-100">
@@ -1274,7 +1273,7 @@ export default function GeneralReportsOverviewPage({
                 ))}
               </div>
             </div>
-            <div className="h-40 w-full">
+            <div className="h-72 w-full">
               <ResponsiveContainer
                 key={`trend_${dateRange}_${trendPeriod}_${data.visitTrend.length}`}
                 width="100%"
@@ -1288,11 +1287,11 @@ export default function GeneralReportsOverviewPage({
                   />
                   <XAxis
                     dataKey="period"
-                    tick={{ fontSize: 10, fill: "#64748B" }}
+                    tick={{ fontSize: 11, fill: "#64748B" }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: "#64748B" }}
+                    tick={{ fontSize: 11, fill: "#64748B" }}
                     tickLine={false}
                     axisLine={false}
                   />
@@ -1303,14 +1302,14 @@ export default function GeneralReportsOverviewPage({
                       border: "1px solid #E2E8F0",
                     }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
                   <Line
                     type="monotone"
                     dataKey="op"
                     name="OP Visits"
                     stroke="#1B4FD8"
                     strokeWidth={2.5}
-                    dot={{ r: 2.5 }}
+                    dot={{ r: 3 }}
                     isAnimationActive={true}
                     animationDuration={1500}
                     animationEasing="ease-out"
@@ -1322,7 +1321,7 @@ export default function GeneralReportsOverviewPage({
                     name="ER Visits"
                     stroke="#DC2626"
                     strokeWidth={2}
-                    dot={{ r: 2.5 }}
+                    dot={{ r: 3 }}
                     isAnimationActive={true}
                     animationDuration={1500}
                     animationEasing="ease-out"
@@ -1334,7 +1333,7 @@ export default function GeneralReportsOverviewPage({
                     name="IP Admissions"
                     stroke="#0EA5E9"
                     strokeWidth={2}
-                    dot={{ r: 2.5 }}
+                    dot={{ r: 3 }}
                     isAnimationActive={true}
                     animationDuration={1500}
                     animationEasing="ease-out"
@@ -1346,7 +1345,7 @@ export default function GeneralReportsOverviewPage({
           </div>
 
           {/* Chart 2: Department-wise Patient Visits */}
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs">
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
@@ -1357,7 +1356,7 @@ export default function GeneralReportsOverviewPage({
                 </p>
               </div>
             </div>
-            <div className="h-40 w-full">
+            <div className="h-72 w-full">
               <ResponsiveContainer
                 key={`dept_${dateRange}_${selectedDept}_${data.deptVisits.length}`}
                 width="100%"
@@ -1371,15 +1370,15 @@ export default function GeneralReportsOverviewPage({
                   />
                   <XAxis
                     dataKey="department"
-                    tick={{ fontSize: 9, fill: "#64748B" }}
+                    tick={{ fontSize: 10, fill: "#64748B" }}
                     tickLine={false}
                     interval={0}
                     angle={-15}
                     textAnchor="end"
-                    height={32}
+                    height={36}
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: "#64748B" }}
+                    tick={{ fontSize: 11, fill: "#64748B" }}
                     tickLine={false}
                     axisLine={false}
                   />
@@ -1407,7 +1406,7 @@ export default function GeneralReportsOverviewPage({
           </div>
 
           {/* Chart 3: Admission vs Discharge Trend */}
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs">
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
@@ -1418,7 +1417,7 @@ export default function GeneralReportsOverviewPage({
                 </p>
               </div>
             </div>
-            <div className="h-40 w-full">
+            <div className="h-72 w-full">
               <ResponsiveContainer
                 key={`adm_${dateRange}_${selectedDept}_${data.admVsDisTrend.length}`}
                 width="100%"
@@ -1432,11 +1431,11 @@ export default function GeneralReportsOverviewPage({
                   />
                   <XAxis
                     dataKey="period"
-                    tick={{ fontSize: 10, fill: "#64748B" }}
+                    tick={{ fontSize: 11, fill: "#64748B" }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fontSize: 10, fill: "#64748B" }}
+                    tick={{ fontSize: 11, fill: "#64748B" }}
                     tickLine={false}
                     axisLine={false}
                     allowDecimals={false}
@@ -1449,7 +1448,7 @@ export default function GeneralReportsOverviewPage({
                       border: "1px solid #E2E8F0",
                     }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
                   <Bar
                     dataKey="admissions"
                     name="Admissions"
@@ -1478,7 +1477,7 @@ export default function GeneralReportsOverviewPage({
           </div>
 
           {/* Chart 4: Bed Occupancy */}
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs">
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
@@ -1492,7 +1491,7 @@ export default function GeneralReportsOverviewPage({
                 {data.bedOccupancyRate}% Occupied
               </span>
             </div>
-            <div className="h-40 w-full flex items-center justify-center">
+            <div className="h-72 w-full flex items-center justify-center">
               <ResponsiveContainer
                 key={`bed_${dateRange}_${data.bedOccupancyRate}`}
                 width="100%"
@@ -1503,8 +1502,8 @@ export default function GeneralReportsOverviewPage({
                     data={data.bedOccupancyData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={36}
-                    outerRadius={56}
+                    innerRadius={48}
+                    outerRadius={78}
                     paddingAngle={4}
                     dataKey="count"
                     isAnimationActive={true}
@@ -1523,14 +1522,14 @@ export default function GeneralReportsOverviewPage({
                       border: "1px solid #E2E8F0",
                     }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Chart 5: Patient Visit Distribution */}
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs">
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
@@ -1541,7 +1540,7 @@ export default function GeneralReportsOverviewPage({
                 </p>
               </div>
             </div>
-            <div className="h-40 w-full flex items-center justify-center">
+            <div className="h-72 w-full flex items-center justify-center">
               <ResponsiveContainer
                 key={`visit_dist_${dateRange}_${data.visitDistribution.length}`}
                 width="100%"
@@ -1552,8 +1551,8 @@ export default function GeneralReportsOverviewPage({
                     data={data.visitDistribution}
                     cx="50%"
                     cy="50%"
-                    innerRadius={32}
-                    outerRadius={52}
+                    innerRadius={44}
+                    outerRadius={74}
                     paddingAngle={3}
                     dataKey="value"
                     isAnimationActive={true}
@@ -1572,14 +1571,14 @@ export default function GeneralReportsOverviewPage({
                       border: "1px solid #E2E8F0",
                     }}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Chart 6: Department Activity */}
-          <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs">
+          <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 shadow-2xs">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
@@ -1590,7 +1589,7 @@ export default function GeneralReportsOverviewPage({
                 </p>
               </div>
             </div>
-            <div className="h-40 w-full">
+            <div className="h-72 w-full">
               <ResponsiveContainer
                 key={`dept_act_${dateRange}_${data.deptActivity.length}`}
                 width="100%"
