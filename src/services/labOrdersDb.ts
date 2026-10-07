@@ -65,6 +65,8 @@ export interface LabOrderTest {
   technician?: string
   verifier?: string
   verifiedAt?: string
+  processingStartedAt?: string
+  processingCompletedAt?: string
 }
 
 export interface LabOrderEvent {
@@ -91,6 +93,8 @@ export interface LabOrder {
   clinicalNotes?: string
   tests: LabOrderTest[]
   status: LabOrderStatus
+  processingStartedAt?: string
+  processingCompletedAt?: string
   createdAt: string
   updatedAt: string
   billing: {
@@ -966,25 +970,40 @@ export class LabOrderDatabase {
     status: LabOrderStatus,
     actor: string,
   ): LabOrder | undefined {
-    return this.mutate(id, (order) => ({
-      ...order,
-      status,
-      tests:
-        status === "Sample Collected" || status === "In Progress"
-          ? order.tests.map((t) =>
-              t.status === "Completed" || t.status === "Verified"
-                ? t
-                : {
-                    ...t,
-                    status: (status === "In Progress" ? "Processing" : status) as LabTestStatus,
-                  },
-            )
-          : order.tests,
-      history: [
-        ...order.history,
-        { at: new Date().toISOString(), actor, action: status },
-      ],
-    }))
+    return this.mutate(id, (order) => {
+      const now = new Date().toISOString()
+      return {
+        ...order,
+        status,
+        processingStartedAt:
+          status === "In Progress"
+            ? order.processingStartedAt || now
+            : order.processingStartedAt,
+        processingCompletedAt:
+          status === "Completed"
+            ? order.processingCompletedAt || now
+            : order.processingCompletedAt,
+        tests:
+          status === "Sample Collected" || status === "In Progress"
+            ? order.tests.map((t) =>
+                t.status === "Completed" || t.status === "Verified"
+                  ? t
+                  : {
+                      ...t,
+                      status: (status === "In Progress" ? "Processing" : status) as LabTestStatus,
+                      processingStartedAt:
+                        status === "In Progress"
+                          ? t.processingStartedAt || now
+                          : t.processingStartedAt,
+                    },
+              )
+            : order.tests,
+        history: [
+          ...order.history,
+          { at: now, actor, action: status },
+        ],
+      }
+    })
   }
 
   /**
@@ -999,6 +1018,8 @@ export class LabOrderDatabase {
   ): LabOrder | undefined {
     return this.mutate(orderId, (order) => {
       const now = new Date().toISOString()
+      const isStartingProcessing = status === "Processing" || status === "In Progress"
+      const isCompleting = status === "Verified" || status === "Completed" || status === "Result Entered"
       const tests = order.tests.map((t) => {
         if (t.id !== testId && t.name !== testId) return t
         return {
@@ -1006,10 +1027,18 @@ export class LabOrderDatabase {
           status,
           sampleCollectedAt:
             status === "Sample Collected"
-              ? now
+              ? (t.sampleCollectedAt || now)
               : t.sampleCollectedAt,
           sampleCollector: extra?.sampleCollector || t.sampleCollector,
           technician: extra?.technician || t.technician,
+          processingStartedAt:
+            isStartingProcessing
+              ? t.processingStartedAt || now
+              : t.processingStartedAt,
+          processingCompletedAt:
+            isCompleting
+              ? t.processingCompletedAt || now
+              : t.processingCompletedAt,
           verifier: extra?.verifier || t.verifier,
           verifiedAt:
             status === "Verified" || status === "Completed"
@@ -1038,6 +1067,14 @@ export class LabOrderDatabase {
         ...order,
         tests,
         status: nextOrderStatus,
+        processingStartedAt:
+          isStartingProcessing
+            ? order.processingStartedAt || now
+            : order.processingStartedAt,
+        processingCompletedAt:
+          allCompleted
+            ? order.processingCompletedAt || now
+            : order.processingCompletedAt,
         history: [
           ...order.history,
           {
@@ -1079,6 +1116,7 @@ export class LabOrderDatabase {
         const hasLow = paramValues.some((r) => r.flag === "L")
         const flag: LabOrderTest["flag"] = hasCritical ? "Critical" : hasHigh ? "H" : hasLow ? "L" : ""
 
+        const isCompleting = data.status === "Completed" || data.status === "Verified" || data.status === "Result Entered"
         return {
           ...t,
           status: data.status,
@@ -1090,6 +1128,9 @@ export class LabOrderDatabase {
           clinicalComments: data.clinicalComments,
           technician: data.technician || data.actor,
           resultedAt: t.resultedAt || now,
+          processingStartedAt: t.processingStartedAt || t.sampleCollectedAt || now,
+          processingCompletedAt:
+            isCompleting ? (t.processingCompletedAt || now) : t.processingCompletedAt,
           verifier:
             data.verifier ||
             (data.status === "Verified" || data.status === "Completed"
@@ -1116,6 +1157,9 @@ export class LabOrderDatabase {
         ...order,
         tests,
         status: nextOrderStatus,
+        processingStartedAt: order.processingStartedAt || now,
+        processingCompletedAt:
+          allCompleted ? (order.processingCompletedAt || now) : order.processingCompletedAt,
         history: [
           ...order.history,
           {
@@ -1174,6 +1218,8 @@ export class LabOrderDatabase {
           clinicalComments: "",
           technician: actor,
           resultedAt: now,
+          processingStartedAt: t.processingStartedAt || t.sampleCollectedAt || now,
+          processingCompletedAt: t.processingCompletedAt || now,
           verifier: verifierName,
           verifiedAt: now,
         }
@@ -1183,6 +1229,8 @@ export class LabOrderDatabase {
         ...order,
         tests,
         status: "Completed",
+        processingStartedAt: order.processingStartedAt || now,
+        processingCompletedAt: order.processingCompletedAt || now,
         history: [
           ...order.history,
           {
@@ -1211,6 +1259,8 @@ export class LabOrderDatabase {
         status: "Completed" as LabTestStatus,
         technician: t.technician || actor,
         resultedAt: t.resultedAt || now,
+        processingStartedAt: t.processingStartedAt || t.sampleCollectedAt || now,
+        processingCompletedAt: t.processingCompletedAt || now,
         verifier: t.verifier || verifierName,
         verifiedAt: t.verifiedAt || now,
       }))
@@ -1219,6 +1269,8 @@ export class LabOrderDatabase {
         ...order,
         tests,
         status: "Completed",
+        processingStartedAt: order.processingStartedAt || now,
+        processingCompletedAt: order.processingCompletedAt || now,
         history: [
           ...order.history,
           {
