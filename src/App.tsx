@@ -103,8 +103,11 @@ import DoctorScheduling from "./components/DoctorScheduling"
 import PatientExperience from "./components/PatientExperience"
 
 import HRMS from "./components/HRMS"
+import { HrmsDatabase } from "./services/hrmsDb"
 
 import Employees from "./components/Employees"
+
+import ApplyLeaveModal from "./components/hrms/ApplyLeaveModal"
 
 import Admissions from "./components/Admissions"
 
@@ -313,19 +316,7 @@ const NAV: NavItem[] = [
 
   { key: "insurance", label: "Insurance", Icon: ShieldCheck },
 
-  {
-    key: "hrms",
-    label: "HR & Staff",
-    Icon: UsersRound,
-
-    children: [
-      { key: "hrms", label: "HRMS" },
-
-      { key: "employees", label: "Employees" },
-    ],
-  },
-
-  { key: "scheduling", label: "Doctor Scheduling", Icon: Calendar },
+  { key: "hrms", label: "HR & Staff", Icon: UsersRound },
 
   {
     key: "intelligence",
@@ -847,6 +838,26 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
     }
   }
 
+  if (r.includes("hr") || u === "hr") {
+    return {
+      id: "HR-001",
+      name: "Radhika Sharma",
+      role: "ROLE_HR",
+      title: "HR Administrator",
+      department: "Human Resources & Payroll",
+    }
+  }
+
+  if (r.includes("staff") || u === "staff") {
+    return {
+      id: "STF-101",
+      name: "Ramesh Verma",
+      role: "ROLE_STAFF",
+      title: "Healthcare Staff Member",
+      department: "General Ward Support",
+    }
+  }
+
   if (r.includes("doctor") || u === "doctor") {
     return {
       id: "DOC-402",
@@ -920,6 +931,8 @@ export default function App() {
   const [activeDoctor, setActiveDoctor] = useState<DoctorAccount | null>(null)
 
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
+
+  const [globalApplyLeaveOpen, setGlobalApplyLeaveOpen] = useState(false)
 
   const [notice, setNotice] = useState<Notice | null>(null)
 
@@ -1127,24 +1140,27 @@ export default function App() {
 
   const handleLogin = (userData: {
     user: string
-
     role: string
-
     staffId: string
-
+    staffName?: string
+    staffTitle?: string
+    staffDepartment?: string
     permissions: string[]
-
     doctorId?: string
   }) => {
     try {
       localStorage.setItem(
         "hospai_current_user",
-        JSON.stringify({ user: userData.user, staffId: userData.staffId, role: userData.role }),
+        JSON.stringify({
+          user: userData.user,
+          staffId: userData.staffId,
+          role: userData.role,
+          name: userData.staffName,
+        }),
       )
     } catch {}
 
     setUserRole(userData.role)
-
     setUserPermissions(userData.permissions)
 
     const isDoctor =
@@ -1155,35 +1171,52 @@ export default function App() {
       ? resolveDoctorAccount({
           doctorId: userData.doctorId,
           username: userData.user,
-          name: userData.user,
+          name: userData.staffName || userData.user,
         })
       : null
 
     setActiveDoctor(doctor)
 
-    setActiveStaff(
-      doctor
-        ? {
-            id: doctor.staffId,
+    if (doctor) {
+      setActiveStaff({
+        id: doctor.staffId,
+        name: doctor.name,
+        role: "ROLE_DOCTOR",
+        title: doctor.qualification,
+        department: `${doctor.specialty} · ${doctor.room}`,
+      })
+    } else if (userData.staffName) {
+      setActiveStaff({
+        id: userData.staffId,
+        name: userData.staffName,
+        role: userData.role,
+        title: userData.staffTitle || "Hospital Staff",
+        department: userData.staffDepartment || "Clinical Operations",
+      })
+    } else {
+      setActiveStaff(getRoleProfile(userData.role, userData.user))
+    }
 
-            name: doctor.name,
-
-            role: "ROLE_DOCTOR",
-
-            title: doctor.qualification,
-
-            department: `${doctor.specialty} · ${doctor.room}`,
-          }
-        : getRoleProfile(userData.role, userData.user),
-    )
+    let defaultModule: Module = "dashboard"
+    const userRoleKey = userData.user.trim().toLowerCase()
+    if (doctor) {
+      defaultModule = "doctor_portal"
+    } else if (userData.role === "ROLE_NURSE" || userRoleKey === "nurse") {
+      defaultModule = "nursing"
+    } else if (userData.role === "ROLE_PHARMACY" || userRoleKey === "pharmacy") {
+      defaultModule = "pharmacy"
+    } else if (userData.role === "ROLE_LAB" || userRoleKey === "lab") {
+      defaultModule = "laboratory"
+    } else if (userData.role === "ROLE_RECEPTION" || userRoleKey === "reception") {
+      defaultModule = "op_management"
+    } else if (userData.role === "ROLE_BILLING" || userRoleKey === "billing") {
+      defaultModule = "billing"
+    } else if (userData.role === "ROLE_HR" || userRoleKey === "hr") {
+      defaultModule = "hrms"
+    }
 
     setLoggedIn(true)
-
-    // A physician's home is their own portal -- the inbox of patients appointed
-
-    // to them -- not the hospital-wide dashboard.
-
-    setModule(doctor ? "doctor_portal" : "dashboard")
+    setModule(defaultModule)
   }
 
   const toggleFullscreen = () => {
@@ -1488,6 +1521,38 @@ export default function App() {
             </div>
 
             <div className="ml-auto flex items-center gap-1">
+              {/* Individual Staff Leave Application Button (Only for Clinical & Operational Staff) */}
+              {!["admin", "superadmin", "hr", "role_admin", "role_superadmin", "role_hr"].includes((userRole || "").toLowerCase()) && (
+                <button
+                  type="button"
+                  onClick={() => setGlobalApplyLeaveOpen(true)}
+                  className="flex items-center gap-1.5 h-7 px-2.5 bg-[#1B4FD8]/40 hover:bg-[#1B4FD8]/70 border border-blue-400/30 rounded text-white text-[12px] font-medium transition-colors cursor-pointer mr-1.5 shadow-2xs"
+                  title="Apply for Individual Leave or View Status"
+                >
+                  <span>🗓️</span>
+                  <span className="hidden sm:inline">Apply Leave</span>
+                  {(() => {
+                    const myLeaves = HrmsDatabase.getLeaves().filter(
+                      (l: any) => l.staffId === activeStaff.id || l.staffName.toLowerCase() === activeStaff.name.toLowerCase()
+                    )
+                    const latest = myLeaves[0]
+                    if (!latest) return null
+                    return (
+                      <span
+                        className={`text-[9.5px] px-1.5 py-0.5 rounded font-bold ml-0.5 ${
+                          latest.status === "Approved"
+                            ? "bg-emerald-500 text-white"
+                            : latest.status === "Pending"
+                            ? "bg-amber-400 text-slate-900"
+                            : "bg-rose-500 text-white"
+                        }`}
+                      >
+                        {latest.status === "Approved" ? "✓ Approved" : latest.status}
+                      </span>
+                    )
+                  })()}
+                </button>
+              )}
               {/* Font Controls */}
               <div className="flex items-center bg-white/5 rounded px-1 mr-1">
                 <button
@@ -1609,6 +1674,20 @@ export default function App() {
                       },
 
                       {
+                        roleId: "ROLE_HR",
+                        username: "hr",
+                        label: "HR Administrator",
+                        icon: "👥",
+                      },
+
+                      {
+                        roleId: "ROLE_STAFF",
+                        username: "staff",
+                        label: "General Hospital Staff",
+                        icon: "👤",
+                      },
+
+                      {
                         roleId: "ROLE_DOCTOR",
                         username: "doctor",
                         label: "Doctor / Physician",
@@ -1645,11 +1724,12 @@ export default function App() {
                     ].map((r) => {
                       const permissions =
                         r.roleId === "ROLE_SUPERADMIN" ||
-                        r.roleId === "ROLE_ADMIN"
+                        r.roleId === "ROLE_ADMIN" ||
+                        r.roleId === "ROLE_HR"
                           ? ALL_SYSTEM_MODULES
                           : RoleDatabase.getRoles().find(
                               (role) => role.id === r.roleId,
-                            )?.allowedModules || ["dashboard"]
+                            )?.allowedModules || ["dashboard", "employees"]
 
                       return (
                         <button
@@ -1730,30 +1810,33 @@ export default function App() {
               >
                 {NAV.map((item) => {
                   // Module-based Access Control Filtering
-
-                  const hasAccess = userPermissions.includes(item.key)
+                  const hasAccess =
+                    userPermissions.includes(item.key) ||
+                    item.children?.some((c) => userPermissions.includes(c.key))
 
                   if (!hasAccess) return null
 
                   // Sub-items inherit the parent's access unless the role actually enumerates
-
                   // sub-module keys -- otherwise a role granted only "pharmacy" would collapse
-
                   // the whole Pharmacy tree down to its Dashboard entry.
-
                   const subModulesGranted = item.children?.some(
                     (c) =>
                       c.key !== item.key && userPermissions.includes(c.key),
                   )
 
-                  const filteredChildren = item.children?.filter(
-                    (c) =>
+                  const filteredChildren = item.children?.filter((c) => {
+                    // Strictly isolate HRMS from regular staff
+                    if (item.key === "hrms") {
+                      return userPermissions.includes(c.key)
+                    }
+                    return (
                       c.key === item.key ||
                       (item.key === "reports" &&
                         userPermissions.includes("reports")) ||
                       !subModulesGranted ||
-                      userPermissions.includes(c.key),
-                  )
+                      userPermissions.includes(c.key)
+                    )
+                  })
 
                   const isActive =
                     module === item.key ||
@@ -2361,16 +2444,15 @@ export default function App() {
                   }}
                 />
               )}
-              {module === "scheduling" && <DoctorScheduling />}
               {module === "admissions" && (
                 <Admissions setNotice={setNotice} navigate={navigate} />
               )}
               {module === "readmission" && (
                 <Readmission setNotice={setNotice} />
               )}
-              {module === "payments" && <PaymentCollection />}
-              {module === "hrms" && <HRMS />}
-              {module === "employees" && <Employees />}
+              {(module === "hrms" || module === "employees" || module === "scheduling") && (
+                <HRMS onNavigate={(m) => setModule(m as any)} />
+              )}
               {module === "ocr" && <SmartOCR setNotice={setNotice} />}
               {ocrMounted && (
                 <div
@@ -2417,6 +2499,16 @@ export default function App() {
               setModule("chart")
             }}
           />
+
+          {globalApplyLeaveOpen && (
+            <ApplyLeaveModal
+              isOpen={globalApplyLeaveOpen}
+              onClose={() => setGlobalApplyLeaveOpen(false)}
+              loggedInStaffId={activeStaff.id}
+              loggedInStaffName={activeStaff.name}
+              isSelfService={userRole !== "ROLE_ADMIN" && userRole !== "ROLE_SUPERADMIN" && userRole !== "ROLE_HR"}
+            />
+          )}
         </>
       )}
     </div>

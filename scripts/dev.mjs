@@ -188,6 +188,26 @@ if (await portInUse(OCR_PORT)) {
   warmUp(OCR_PORT, "/keppler-ocr/")
 }
 
+// --- PostgreSQL Service (port 5434) ------------------------------------------
+const PG_PORT = 5434
+const PG_DIR = path.join(ROOT, "pgdata")
+const PG_BIN = "C:\\Program Files\\PostgreSQL\\16\\bin\\postgres.exe"
+if (await portInUse(PG_PORT)) {
+  log("postgres", `already running on port ${PG_PORT}`)
+} else if (existsSync(PG_BIN) && existsSync(PG_DIR)) {
+  run("postgres", PG_BIN, ["-D", PG_DIR, "-p", String(PG_PORT)], ROOT)
+  log("postgres", `started on port ${PG_PORT}`)
+}
+
+// --- Enterprise HRMS Backend (port 8010) -------------------------------------
+const HRMS_PORT = 8010
+if (await portInUse(HRMS_PORT)) {
+  log("hrms-backend", `already running on port ${HRMS_PORT}`)
+} else {
+  run("hrms-backend", "node", [path.join(ROOT, "server", "app.mjs")], ROOT)
+  log("hrms-backend", `started on port ${HRMS_PORT}`)
+}
+
 // --- HMS frontend ------------------------------------------------------------
 if (await portInUse(HMS_PORT)) {
   console.error(

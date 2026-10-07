@@ -41,6 +41,7 @@ const KIND_ICONS: Record<LiveAlert["kind"], string> = {
   "rx-ready": "💊",
   "rx-dispensed": "✅",
   "rx-rejected": "⛔",
+  "er-assignment": "🚨",
 };
 
 export default function LiveBoard({
@@ -49,12 +50,14 @@ export default function LiveBoard({
   revision,
   onOpenPatient,
   onGoToSheet,
+  onOpenErVisit,
 }: {
   doctor: DoctorAccount;
   now: number;
   revision: number;
   onOpenPatient: (encounterId: string) => void;
   onGoToSheet: (encounterId: string) => void;
+  onOpenErVisit?: (visitId: number) => void;
 }) {
   const [showAcknowledged, setShowAcknowledged] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);

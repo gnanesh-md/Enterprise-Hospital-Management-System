@@ -312,41 +312,6 @@ export default function InvoicePrintModal({
             </div>
           </div>
 
-          {/* Inpatient Insurance Header Banner */}
-          {effectiveBill.isInsurance && (
-            <div className="mb-3 p-2.5 border-2 border-black rounded bg-teal-50/40 text-[11px] print:text-[8px] print:bg-white space-y-1">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-bold uppercase tracking-wider text-[#0F766E] print:text-black">
-                    [ INPATIENT CASHLESS INSURANCE BILL ]
-                  </span>
-                  <span className="ml-2 font-semibold">
-                    Insurer: {effectiveBill.insuranceProvider || "Star Health Insurance"}
-                  </span>
-                  {effectiveBill.insurancePolicyNo && (
-                    <span className="ml-2 font-mono">Policy: {effectiveBill.insurancePolicyNo}</span>
-                  )}
-                </div>
-                <div className="font-mono">
-                  <span className="font-bold">PRE-AUTH / CLAIM REF: </span>
-                  <span className="font-bold text-[#0F766E] print:text-black">
-                    {effectiveBill.insuranceApprovalNo || "CCN-PREAUTH"}
-                  </span>
-                </div>
-              </div>
-              {effectiveBill.inpatientDetails && (
-                <div className="flex items-center justify-between text-[10px] print:text-[7.5px] text-gray-700 font-medium border-t border-teal-200/60 pt-1">
-                  <span>
-                    Ward: <strong>{effectiveBill.inpatientDetails.ward || "Inpatient Ward"}</strong> · Bed: <strong>{effectiveBill.inpatientDetails.bedNo || "IP Bed"}</strong>
-                  </span>
-                  {effectiveBill.inpatientDetails.admissionId && (
-                    <span className="font-mono">Admission ID: <strong>#{effectiveBill.inpatientDetails.admissionId}</strong></span>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Return Specific Items Table */}
           {isReturnBill && activeReturn?.items ? (
             <table
@@ -683,91 +648,13 @@ export default function InvoicePrintModal({
                     approved towards medicine return.
                   </p>
                 </div>
-              ) : effectiveBill.isInsurance ? (
-                <div>
-                  {/* INPATIENT INSURANCE SUMMARY */}
-                  <div className="space-y-1 w-72 text-[10px] print:text-[8px]">
-                    <div className="flex justify-between border-b border-gray-300 pb-0.5">
-                      <span>Total Medicine Charges:</span>
-                      <span className="font-mono">₹{(effectiveBill.totalAmount || 0).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-semibold text-[#0F766E] print:text-black">
-                      <span>Covered by {effectiveBill.insuranceProvider || "Insurance"}:</span>
-                      <span className="font-mono">-₹{(effectiveBill.insuranceCovered || 0).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-[12px] print:text-[9px] font-bold border-y-2 border-black py-1">
-                      <span>PATIENT PAYABLE (EXCESS):</span>
-                      <span className="font-mono">
-                        ₹{((effectiveBill.totalAmount || 0) > (effectiveBill.insuranceApprovedAmount || 0)
-                          ? (effectiveBill.patientExcessDue || 0)
-                          : 0
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-[10px] font-bold text-emerald-800 print:text-black pt-0.5">
-                      <span>Amount Paid by Patient:</span>
-                      <span className="font-mono">
-                        ₹{((effectiveBill.totalAmount || 0) > (effectiveBill.insuranceApprovedAmount || 0)
-                          ? (effectiveBill.patientExcessDue || 0)
-                          : 0
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between font-bold text-[10px] text-emerald-900 print:text-black border-t border-dashed border-gray-400 pt-0.5">
-                      <span>Patient Balance Due:</span>
-                      <span>
-                        {(effectiveBill.totalAmount || 0) <= (effectiveBill.insuranceApprovedAmount || 0)
-                          ? "100% CASHLESS (₹0.00)"
-                          : "PAID IN FULL (₹0.00)"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="mt-2 text-[10px] print:text-[8px] italic text-gray-700">
-                    {(effectiveBill.totalAmount || 0) > (effectiveBill.insuranceApprovedAmount || 0) ? (
-                      <>
-                        Received sum of{" "}
-                        <span className="font-bold uppercase">
-                          {numberToWords(effectiveBill.patientExcessDue || 0)} Rupees Only
-                        </span>{" "}
-                        towards Inpatient Excess Medicine charges. Balance ₹{(effectiveBill.insuranceCovered || 0).toFixed(2)} billed to {effectiveBill.insuranceProvider || "Insurance"}.
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-bold uppercase">Zero Rupees Patient Due</span>. Full bill of ₹{(effectiveBill.totalAmount || 0).toFixed(2)} covered under {effectiveBill.insuranceProvider || "Insurance"} cashless pre-authorization ({effectiveBill.insuranceApprovalNo || "PRE-AUTH"}).
-                      </>
-                    )}
-                  </p>
-
-                  <div className="mt-3 border-t border-dashed border-black pt-1.5">
-                    <p className="font-bold mb-0.5 text-[9px]">Billing & Claim Settlement Breakdown:</p>
-                    <div className="space-y-0.5 w-72 text-[9px] uppercase font-mono">
-                      <div className="flex justify-between">
-                        <span>Insurance Pre-Auth ({effectiveBill.insuranceApprovalNo || "CCN"}):</span>
-                        <span className="font-bold">₹{(effectiveBill.insuranceCovered || 0).toFixed(2)}</span>
-                      </div>
-                      {(effectiveBill.totalAmount || 0) > (effectiveBill.insuranceApprovedAmount || 0) && (
-                        Object.entries(effectiveBill.paymentsData?.amounts || {}).filter(([_, a]) => (Number(a) || 0) > 0).map(([method, amount]) => (
-                          <div key={method} className="flex justify-between text-indigo-900">
-                            <span>Excess Paid via {method === "upi" ? "UPI" : method}:</span>
-                            <span className="font-bold">₹{(Number(amount) || 0).toFixed(2)}</span>
-                          </div>
-                        ))
-                      )}
-                      <div className="flex justify-between font-bold text-emerald-800 border-t border-gray-400 pt-0.5">
-                        <span>Settlement Status:</span>
-                        <span>{((effectiveBill.totalAmount || 0) <= (effectiveBill.insuranceApprovedAmount || 0)) ? "100% CASHLESS (CLEARED)" : "EXCESS CLEARED (₹0.00 DUE)"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               ) : (
                 <div>
                   <p>
                     Received sum of{" "}
                     <span className="font-bold uppercase">
                       {numberToWords(effectiveBill.totalPaid || effectiveBill.totalAmount || 0)} Rupees
-                        Only
+                      Only
                     </span>{" "}
                     towards Above Bill
                   </p>

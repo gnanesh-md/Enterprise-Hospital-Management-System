@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import ConsultationCharges from "./ConsultationCharges"
 import { Icon } from "../icons"
 import { Btn, StatusBadge } from "../shared"
+import ApplyLeaveModal from "../hrms/ApplyLeaveModal"
 import { db, DBOPEncounter } from "../../services/db"
 import {
   ConsultationRecord,
@@ -1034,6 +1035,8 @@ function PortalHeader({
   view: "live" | "patient"
   onView: (view: "live" | "patient") => void
 }) {
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
+
   return (
     <div className="bg-white border-b border-[#DDE2EC] px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
       <div className="flex items-center gap-3">
@@ -1103,6 +1106,16 @@ function PortalHeader({
             my queue
           </span>
         </div>
+        <button
+          type="button"
+          onClick={() => setIsLeaveModalOpen(true)}
+          className="px-3 py-1.5 text-[12px] font-semibold rounded-lg border border-[#CBD5E1] bg-white text-[#1B4FD8] hover:bg-[#EFF6FF] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+          title="Apply for Clinical / Personal Leave"
+        >
+          <span>🗓️</span>
+          <span>Apply Leave</span>
+        </button>
+
         <div className="text-right hidden sm:block">
           <div className="text-[12px] font-semibold text-[#334155] font-mono">
             {new Date(now).toLocaleTimeString([], {
@@ -1120,6 +1133,16 @@ function PortalHeader({
           </div>
         </div>
       </div>
+
+      {isLeaveModalOpen && (
+        <ApplyLeaveModal
+          isOpen={isLeaveModalOpen}
+          onClose={() => setIsLeaveModalOpen(false)}
+          loggedInStaffId={doctor.staffId}
+          loggedInStaffName={doctor.name}
+          isSelfService={true}
+        />
+      )}
     </div>
   )
 }

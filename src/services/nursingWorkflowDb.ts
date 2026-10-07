@@ -685,10 +685,10 @@ export class NursingWorkflowDb {
             {
               bp: data.vitals.bloodPressure || data.vitals.bp,
               pulse: data.vitals.heartRate ? String(data.vitals.heartRate) : data.vitals.pulse,
-              temp: data.vitals.temp ? String(data.vitals.temp) : data.vitals.temperature ? String(data.vitals.temperature) : undefined,
-              spo2: data.vitals.oxygenSaturation ? String(data.vitals.oxygenSaturation) : data.vitals.spo2 ? String(data.vitals.spo2) : undefined,
-              rr: data.vitals.respiratoryRate ? String(data.vitals.respiratoryRate) : data.vitals.rr,
-              notes: data.remarks || data.assessment,
+              temp: data.vitals.temp ? String(data.vitals.temp) : data.vitals.temperature ? String(data.vitals.temperature) : "",
+              spo2: data.vitals.oxygenSaturation ? String(data.vitals.oxygenSaturation) : data.vitals.spo2 ? String(data.vitals.spo2) : "",
+              weight: data.vitals.weight ? String(data.vitals.weight) : "",
+              notes: data.remarks || data.assessment || (data.vitals.respiratoryRate ? `RR: ${data.vitals.respiratoryRate}` : ""),
             },
             user?.profile?.name || "Jessica Carter, RN"
           )

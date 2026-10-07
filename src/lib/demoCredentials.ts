@@ -82,6 +82,18 @@ export const DEMO_CREDENTIALS: Record<string, DemoCredential> = {
     backendUsername: "staff",
     backendPassword: "staff123",
   },
+  hr: {
+    username: "hr",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "admin",
+    backendPassword: "Admin@123",
+  },
+  staff: {
+    username: "staff",
+    localPassword: LOCAL_PASSWORD,
+    backendUsername: "staff",
+    backendPassword: "staff123",
+  },
 }
 
 export function credentialsForRole(role: string): DemoCredential | undefined {

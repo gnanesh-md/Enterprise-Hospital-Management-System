@@ -144,6 +144,27 @@ const INITIAL_ROLES: AppRole[] = [
   },
 
   {
+    id: "ROLE_HR",
+    name: "Human Resources Administrator",
+    allowedModules: [
+      "dashboard",
+      "hrms",
+      "employees",
+      "reports",
+      "reports_staff",
+    ],
+  },
+
+  {
+    id: "ROLE_STAFF",
+    name: "Hospital Staff Member",
+    allowedModules: [
+      "dashboard",
+      "employees",
+    ],
+  },
+
+  {
     id: "ROLE_DOCTOR",
 
     name: "Attending Physician / Doctor",
@@ -176,6 +197,7 @@ const INITIAL_ROLES: AppRole[] = [
       "dpi_ocr",
       "discharge",
       "surgery",
+      "employees",
     ],
   },
 
@@ -200,6 +222,7 @@ const INITIAL_ROLES: AppRole[] = [
       "payments",
       "lab_billing",
       "laboratory",
+      "employees",
     ],
   },
 
@@ -239,6 +262,7 @@ const INITIAL_ROLES: AppRole[] = [
       "revenue_reports",
       "reports_pharmacy_damaged",
       "reports_supplier_returns",
+      "employees",
     ],
   },
 
@@ -254,6 +278,7 @@ const INITIAL_ROLES: AppRole[] = [
       "patients",
       "chart",
       "reports",
+      "employees",
     ],
   },
 
@@ -276,6 +301,7 @@ const INITIAL_ROLES: AppRole[] = [
       "queue",
       "outpatient",
       "surgery",
+      "employees",
     ],
   },
 
@@ -390,6 +416,26 @@ export function getInitialUsers(): AppUser[] {
     },
 
     {
+      id: "U_HR",
+      username: "hr",
+      password: "password123",
+      roleId: "ROLE_HR",
+      name: "Radhika Sharma (HR Admin)",
+      staffId: "HR-001",
+      status: "Active",
+    },
+
+    {
+      id: "U_STAFF",
+      username: "staff",
+      password: "password123",
+      roleId: "ROLE_STAFF",
+      name: "Ramesh Verma (General Staff)",
+      staffId: "STF-101",
+      status: "Active",
+    },
+
+    {
       id: "U_DOCTOR",
       username: "doctor",
       password: "password123",
@@ -479,7 +525,19 @@ export class RoleDatabase {
         return INITIAL_ROLES
       }
 
-      return JSON.parse(stored)
+      const parsed: AppRole[] = JSON.parse(stored)
+      // Merge any newly introduced roles that are missing from stored cache
+      let changed = false
+      for (const ir of INITIAL_ROLES) {
+        if (!parsed.some(r => r.id === ir.id)) {
+          parsed.push(ir)
+          changed = true
+        }
+      }
+      if (changed) {
+        window.localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(parsed))
+      }
+      return parsed
     } catch {
       return INITIAL_ROLES
     }
@@ -509,7 +567,19 @@ export class RoleDatabase {
         return initial
       }
 
-      return JSON.parse(stored)
+      const parsed: AppUser[] = JSON.parse(stored)
+      // Merge any newly introduced users (like hr and staff) that are missing
+      let changed = false
+      for (const iu of initial) {
+        if (!parsed.some(u => u.username === iu.username)) {
+          parsed.push(iu)
+          changed = true
+        }
+      }
+      if (changed) {
+        window.localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(parsed))
+      }
+      return parsed
     } catch {
       return initial
     }

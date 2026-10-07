@@ -11691,7 +11691,7 @@ export function VisitDetailPanel({
                         )}
                       </span>
                     </span>
-                  ) : erClearance.status === "due" ? (
+                  ) : (erClearance.status as string) === "due" ? (
                     <span
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-none text-xs font-bold bg-[#FEF3C7] text-[#92400E] border border-[#FCD34D] whitespace-nowrap shadow-2xs"
                       title="Bill dispatched to Central Billing. Payment pending."

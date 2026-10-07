@@ -204,45 +204,6 @@ export interface DepartmentChargeRecord {
   notes?: string
 }
 
-// ── Inpatient Insurance Pre-Authorization & Coverage Models ──────────────────
-
-export interface InsurancePreAuthRecord {
-  id: string // e.g. "PA-2026-001"
-  patientId: string // e.g. "P-100245" or "UMR100245"
-  patientName: string
-  mrn: string
-  admissionId?: string | number
-  bedInfo?: string
-  ward?: string
-  roomNo?: string
-  bedNo?: string
-  insuranceProvider: string
-  policyNumber: string
-  preAuthCode: string
-  sanctionedAmount: number // Total Approved Limit from TPA/Insurer (INR)
-  utilizedAmount: number // Total Used Across All Hospital & Pharmacy Claims (INR)
-  availableAmount: number // Remaining Approved Balance (sanctioned - utilized)
-  status: "Active" | "Exhausted" | "Pending" | "Closed"
-  validUntil?: string
-  lastUpdated?: string
-}
-
-export interface InpatientSearchItem {
-  patientId: string
-  patientName: string
-  mrn: string
-  age?: number
-  gender?: string
-  phone?: string
-  admissionId?: number | string
-  admissionDate?: string
-  ward: string
-  roomNo: string
-  bedNo: string
-  bedType: string
-  preAuth?: InsurancePreAuthRecord
-}
-
 // ── UMR Financial Ledger Summary Models ─────────────────────────────────────
 
 export interface EncounterChargeSummary {
@@ -523,132 +484,7 @@ const STORAGE_KEY_LAB_ORDERS = "hosp_lab_orders_v1"
 
 const STORAGE_KEY_RAD_STUDIES = "hosp_rad_studies_v1"
 
-const STORAGE_KEY_PREAUTHS = "hosp_insurance_preauths_v3"
-
 const BILLING_UPDATE_EVENT = "hospital_billing_updated"
-
-export const INITIAL_INSURANCE_PREAUTHS: InsurancePreAuthRecord[] = [
-  {
-    id: "PA-2026-001",
-    patientId: "P-100245",
-    patientName: "John Smith",
-    mrn: "100245",
-    admissionId: 501,
-    bedInfo: "3N Med/Surg · Bed 204-A",
-    ward: "3N Medical/Surgical",
-    roomNo: "204",
-    bedNo: "204-A",
-    insuranceProvider: "Star Health Insurance",
-    policyNumber: "SH-28847291",
-    preAuthCode: "AUTH-2026-18845",
-    sanctionedAmount: 50000,
-    utilizedAmount: 20000,
-    availableAmount: 30000,
-    status: "Active",
-    validUntil: "2026-10-15",
-    lastUpdated: "2026-09-30T10:00:00Z",
-  },
-  {
-    id: "PA-2026-002",
-    patientId: "P-100246",
-    patientName: "Mary Jones",
-    mrn: "100246",
-    admissionId: 502,
-    bedInfo: "3N Med/Surg · Bed 208-A",
-    ward: "3N Medical/Surgical",
-    roomNo: "208",
-    bedNo: "208-A",
-    insuranceProvider: "ICICI Lombard",
-    policyNumber: "ICICI-9920118",
-    preAuthCode: "AUTH-ICICI-8812",
-    sanctionedAmount: 45000,
-    utilizedAmount: 9000,
-    availableAmount: 36000,
-    status: "Active",
-    validUntil: "2026-10-18",
-    lastUpdated: "2026-09-30T10:00:00Z",
-  },
-  {
-    id: "PA-2026-003",
-    patientId: "P-100221",
-    patientName: "Robert Lee",
-    mrn: "100221",
-    admissionId: 503,
-    bedInfo: "3N Med/Surg · Bed 221-A",
-    ward: "3N Medical/Surgical",
-    roomNo: "221",
-    bedNo: "221-A",
-    insuranceProvider: "HDFC ERGO Health",
-    policyNumber: "HDFC-TE5-MK72",
-    preAuthCode: "AUTH-HDFC-6621",
-    sanctionedAmount: 60000,
-    utilizedAmount: 32000,
-    availableAmount: 28000,
-    status: "Active",
-    validUntil: "2026-10-10",
-    lastUpdated: "2026-09-30T10:00:00Z",
-  },
-  {
-    id: "PA-2026-004",
-    patientId: "UMR100198",
-    patientName: "Elena Vasquez",
-    mrn: "100198",
-    admissionId: "IP-2026-00125",
-    bedInfo: "2E General · Bed 201-B",
-    ward: "2E General Ward",
-    roomNo: "201",
-    bedNo: "201-B",
-    insuranceProvider: "PM-JAY (Ayushman Bharat)",
-    policyNumber: "AB-0045512",
-    preAuthCode: "AUTH-CARE-5541",
-    sanctionedAmount: 100000,
-    utilizedAmount: 32000,
-    availableAmount: 68000,
-    status: "Active",
-    validUntil: "2026-10-30",
-    lastUpdated: "2026-09-30T10:00:00Z",
-  },
-  {
-    id: "PA-2026-005",
-    patientId: "UMR100377",
-    patientName: "Marcus Kim",
-    mrn: "100377",
-    admissionId: "IP-2026-00126",
-    bedInfo: "3N Med/Surg · Bed 105",
-    ward: "3N Medical/Surgical",
-    roomNo: "105",
-    bedNo: "105",
-    insuranceProvider: "Care Health Insurance",
-    policyNumber: "CARE-4422981",
-    preAuthCode: "AUTH-CARE-9921",
-    sanctionedAmount: 35000,
-    utilizedAmount: 8000,
-    availableAmount: 27000,
-    status: "Active",
-    validUntil: "2026-10-22",
-    lastUpdated: "2026-09-30T10:00:00Z",
-  },
-  {
-    id: "PA-2026-006",
-    patientId: "P-100247",
-    patientName: "Rahul Verma",
-    mrn: "100247",
-    admissionId: 504,
-    bedInfo: "3N Med/Surg · General Bed",
-    ward: "3N Medical/Surgical",
-    roomNo: "302",
-    bedNo: "302-A",
-    insuranceProvider: "Bajaj Allianz",
-    policyNumber: "BA-991204",
-    preAuthCode: "AUTH-BA-4421",
-    sanctionedAmount: 40000,
-    utilizedAmount: 15000,
-    availableAmount: 25000,
-    status: "Active",
-    validUntil: "2026-10-25",
-    lastUpdated: "2026-09-30T10:00:00Z",
-  },
-]
 
 export const INITIAL_LAB_ORDERS: LabOrderRecord[] = [
   {
@@ -2476,6 +2312,8 @@ const INITIAL_HOSPITAL_CLAIMS: ClaimRecord[] = [
     insuranceProvider: "Self-Pay",
     policyNumber: "—",
     status: "Draft",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     attendingDoctor: "Dr. Sarah Khan",
     diagnosisCodes: ["N39.0"],
     items: [
@@ -4466,7 +4304,7 @@ export class BillingDatabase {
                 age: 40,
                 gender: "Male",
                 phone: "+91 98765 43210",
-                department: "General",
+                department: "Outpatient",
                 dateOfService: c.created_at ? c.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
                 insuranceProvider: c.insurer_name || "Insurance",
                 policyNumber: c.pre_auth_code || "POL-101",
@@ -4475,12 +4313,14 @@ export class BillingDatabase {
                 patientPortion: 0,
                 amountPaid: parseFloat(c.approved_amount || 0),
                 balanceDue: Math.max(0, parseFloat(c.claim_amount || 0) - parseFloat(c.approved_amount || 0)),
-                status: c.status === "approved" ? "Approved" : c.status === "rejected" ? "Rejected" : "Submitted",
+                status: c.status === "approved" ? "Accepted" : c.status === "rejected" ? "Rejected" : "Submitted",
                 items: [],
                 subtotal: parseFloat(c.claim_amount || 0),
                 discount: 0,
                 tax: 0,
-                auditTrail: [],
+                payments: [],
+                diagnosisCodes: [],
+                attendingDoctor: "Dr. P. R. K. Varma",
                 createdAt: c.created_at || new Date().toISOString(),
                 updatedAt: c.updated_at || new Date().toISOString(),
               })
@@ -8942,8 +8782,6 @@ export class BillingDatabase {
     this.save(STORAGE_KEY_CLAIMS, INITIAL_HOSPITAL_CLAIMS)
 
     this.save(STORAGE_KEY_DEPT_CHARGES, INITIAL_DEPARTMENT_CHARGES)
-
-    this.save(STORAGE_KEY_PREAUTHS, INITIAL_INSURANCE_PREAUTHS)
   }
 
   // ── FINANCIAL METRICS & KPI ENGINE ──────────────────────────────────────────
@@ -9210,123 +9048,6 @@ export class BillingDatabase {
     ])
 
     return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n")
-  }
-
-  // ── INPATIENT INSURANCE PRE-AUTHORIZATION & UTILIZATION ENGINE ─────────────
-
-  static getInsurancePreAuths(): InsurancePreAuthRecord[] {
-    return this.load<InsurancePreAuthRecord[]>(
-      STORAGE_KEY_PREAUTHS,
-      INITIAL_INSURANCE_PREAUTHS,
-    )
-  }
-
-  static getInpatientPreAuth(query: string): InsurancePreAuthRecord | undefined {
-    if (!query || !query.trim()) return undefined
-    const clean = query.trim().toLowerCase()
-    const preAuths = this.getInsurancePreAuths()
-    return preAuths.find(
-      (pa) =>
-        pa.patientId.toLowerCase() === clean ||
-        pa.patientId.toLowerCase().includes(clean) ||
-        clean.includes(pa.patientId.toLowerCase()) ||
-        pa.mrn.toLowerCase() === clean ||
-        pa.preAuthCode.toLowerCase() === clean ||
-        pa.policyNumber.toLowerCase() === clean ||
-        pa.patientName.toLowerCase().includes(clean) ||
-        clean.includes(pa.patientName.toLowerCase()) ||
-        (pa.bedInfo && pa.bedInfo.toLowerCase().includes(clean))
-    )
-  }
-
-  static recordInsuranceUtilization(params: {
-    preAuthCode?: string
-    patientId: string
-    amountCovered: number
-    claimId?: string
-    invoiceNo?: string
-    notes?: string
-  }): InsurancePreAuthRecord | null {
-    const preAuths = this.getInsurancePreAuths()
-    const cleanPId = params.patientId.toLowerCase().trim()
-    const cleanCode = (params.preAuthCode || "").toLowerCase().trim()
-
-    const index = preAuths.findIndex(
-      (pa) =>
-        (cleanCode && pa.preAuthCode.toLowerCase() === cleanCode) ||
-        pa.patientId.toLowerCase() === cleanPId ||
-        pa.patientId.toLowerCase().includes(cleanPId) ||
-        cleanPId.includes(pa.patientId.toLowerCase())
-    )
-
-    if (index >= 0) {
-      const target = preAuths[index]
-      const newUtilized = Math.round((target.utilizedAmount + params.amountCovered) * 100) / 100
-      const newAvailable = Math.max(0, Math.round((target.sanctionedAmount - newUtilized) * 100) / 100)
-      const updated: InsurancePreAuthRecord = {
-        ...target,
-        utilizedAmount: newUtilized,
-        availableAmount: newAvailable,
-        status: newAvailable <= 0 ? "Exhausted" : "Active",
-        lastUpdated: new Date().toISOString(),
-      }
-      preAuths[index] = updated
-      this.save(STORAGE_KEY_PREAUTHS, preAuths)
-      this.dispatchUpdate()
-
-      try {
-        BillingRbacManager.logEvent({
-          action: "INVOICE_CREATED",
-          patientId: target.patientId,
-          patientName: target.patientName,
-          mrn: target.mrn,
-          invoiceNo: params.invoiceNo || "PHARM-CLAIM",
-          claimId: params.claimId || "CLM-PHARM",
-          financialAmount: params.amountCovered,
-          department: "Pharmacy (Inpatient)" as any,
-          reason: `Pre-Auth ${target.preAuthCode} (${target.insuranceProvider}) debited ₹${params.amountCovered.toLocaleString("en-IN")}. Available balance: ₹${newAvailable.toLocaleString("en-IN")}.`,
-        })
-      } catch {}
-
-      return updated
-    }
-    return null
-  }
-
-  static getActiveInpatients(): InpatientSearchItem[] {
-    const beds = BedDatabase.getBeds().filter(
-      (b) => b.status === "Occupied" && (b.patient_name || b.patient_id)
-    )
-    const preAuths = this.getInsurancePreAuths()
-
-    return beds.map((b) => {
-      const fullName = `${b.patient_name || ""} ${b.patient_last_name || ""}`.trim()
-      const pId = b.patient_id || `P-${b.id}`
-      const mrnClean = pId.replace(/\D/g, "") || String(b.admission_id || b.id)
-
-      const pa = preAuths.find(
-        (p) =>
-          p.patientId.toLowerCase() === pId.toLowerCase() ||
-          p.patientName.toLowerCase() === fullName.toLowerCase() ||
-          p.mrn === mrnClean
-      )
-
-      return {
-        patientId: pId,
-        patientName: fullName || "Admitted Inpatient",
-        mrn: mrnClean,
-        age: b.patient_age || undefined,
-        gender: b.patient_gender || undefined,
-        phone: b.patient_phone || undefined,
-        admissionId: b.admission_id || undefined,
-        admissionDate: b.admission_date || undefined,
-        ward: b.ward,
-        roomNo: b.room_no,
-        bedNo: b.bed_no,
-        bedType: b.bed_type,
-        preAuth: pa,
-      }
-    })
   }
 }
 
