@@ -6,10 +6,14 @@ import {
 } from "./labCatalogueSchema"
 
 interface TestCatalogModalProps {
-  onClose: () => void
+  onClose?: () => void
+  isInline?: boolean
 }
 
-export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
+export default function TestCatalogModal({
+  onClose,
+  isInline = false,
+}: TestCatalogModalProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedTest, setSelectedTest] = useState<LabTestDefinition | null>(null)
@@ -53,43 +57,10 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
     })
   }, [searchQuery, selectedCategory])
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-none shadow-2xl border border-gray-200 w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
-        
-        {/* Top Header */}
-        <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-none bg-blue-500/30 text-blue-300 uppercase tracking-wider">
-                Reference Catalogue
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded-none bg-emerald-500/20 text-emerald-300 font-bold font-mono">
-                {ALL_LAB_TESTS.length} Tests Available
-              </span>
-            </div>
-            <h2 className="text-lg font-bold text-white tracking-tight mt-1">
-              Laboratory Test Catalog
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400 hidden sm:inline">
-              Explore all tests available in the laboratory.
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-none transition-colors font-bold text-base cursor-pointer"
-              title="Close Test Catalog"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-
-        {/* Sub-header description */}
-        <div className="bg-slate-50 border-b border-gray-200 px-6 py-2.5 flex flex-wrap items-center justify-between text-xs text-gray-600 gap-2">
+  const renderCatalogContent = () => (
+    <>
+      {/* Sub-header description */}
+      <div className="bg-slate-50 border-b border-gray-200 px-6 py-2.5 flex flex-wrap items-center justify-between text-xs text-gray-600 gap-2 shrink-0">
           <p className="text-gray-600">
             Explore all tests available in the laboratory. Click on any investigation to view clinical parameters, specimen requirements, and reference standards.
           </p>
@@ -312,27 +283,28 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
           )}
         </div>
 
-        {/* Modal Footer */}
-        <div className="bg-gray-100 border-t border-gray-200 px-6 py-3 flex items-center justify-between text-xs">
-          <div className="text-gray-500">
-            Showing <strong>{filteredTests.length}</strong> of <strong>{ALL_LAB_TESTS.length}</strong> laboratory tests
+        {/* Catalog Footer */}
+        <div className="bg-gray-100 border-t border-gray-200 px-6 py-3 flex items-center justify-between text-xs shrink-0">
+          <div className="text-gray-600 font-medium">
+            Showing <strong className="text-gray-900 font-bold">{filteredTests.length}</strong> of <strong className="text-gray-900 font-bold">{ALL_LAB_TESTS.length}</strong> laboratory tests in standard catalog
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-50 cursor-pointer shadow-xs"
-          >
-            Close
-          </button>
+          {onClose && !isInline && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-bold text-gray-800 bg-white border border-gray-300 rounded-none hover:bg-gray-50 hover:text-blue-700 hover:border-blue-300 cursor-pointer shadow-xs transition-colors flex items-center gap-1.5"
+            >
+              <span>←</span> Back to Laboratory
+            </button>
+          )}
         </div>
+    </>
+  )
 
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TEST DETAILS MODAL (READ-ONLY REFERENCE)                                  */}
-      {/* ========================================================================= */}
-      {selectedTest && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto">
+  const renderDetailsModal = () => {
+    if (!selectedTest) return null
+    return (
+      <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="bg-white rounded-none shadow-2xl border border-gray-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
             
             {/* Modal Header */}
@@ -508,8 +480,53 @@ export default function TestCatalogModal({ onClose }: TestCatalogModalProps) {
 
           </div>
         </div>
-      )}
+    )
+  }
 
+  if (isInline) {
+    return (
+      <div className="flex-1 flex flex-col bg-white overflow-hidden w-full h-full font-sans">
+        {renderCatalogContent()}
+        {renderDetailsModal()}
+      </div>
+    )
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-2 sm:p-4 overflow-hidden">
+      <div className="bg-white rounded-none shadow-2xl border border-gray-300 w-full max-w-6xl h-[92vh] flex flex-col overflow-hidden">
+        {/* Fullscreen Header */}
+        <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📖</span>
+            <div>
+              <div className="text-[10px] font-mono tracking-wider uppercase text-blue-400 font-semibold">
+                Central Pathology & Clinical Diagnostics
+              </div>
+              <h2 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
+                Laboratory Test Catalog & Master Directory
+                <span className="text-xs font-normal text-slate-400">
+                  ({ALL_LAB_TESTS.length} Standard Tests)
+                </span>
+              </h2>
+            </div>
+          </div>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-none border border-slate-700 hover:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+              title="Close Catalog"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {renderCatalogContent()}
+      </div>
+
+      {renderDetailsModal()}
     </div>
   )
 }

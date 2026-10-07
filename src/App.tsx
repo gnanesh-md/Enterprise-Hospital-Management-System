@@ -157,6 +157,7 @@ import {
 } from "./services/doctorPortalDb"
 
 import { LabOrderDatabase } from "./services/labOrdersDb"
+import { LabInventoryDatabase } from "./services/labInventoryDb"
 import { PharmacyDatabase, isAwaitingVerification } from "./services/pharmacyDb"
 import { ErDatabase } from "./services/erDb"
 import { BedDatabase } from "./services/bedDb"
@@ -174,7 +175,7 @@ const insuranceModule = (m: string): string =>
         : m
 
 
-type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
+type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "lab_sample_collection" | "lab_processing" | "lab_critical" | "lab_reports" | "lab_catalog" | "lab_inventory" | "lab_analytics" | "lab_tat" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
 
 interface NavItem {
   key: Module
@@ -275,7 +276,16 @@ const NAV: NavItem[] = [
     ],
   },
 
-  { key: "laboratory", label: "Laboratory", Icon: FlaskConical },
+  {
+    key: "laboratory",
+    label: "Laboratory",
+    Icon: FlaskConical,
+    children: [
+      { key: "laboratory", label: "Laboratory Portal" },
+      { key: "lab_inventory", label: "Lab Inventory & Consumables" },
+      { key: "lab_tat", label: "TAT Monitor" },
+    ],
+  },
 
   { key: "radiology", label: "Radiology", Icon: Scan },
 
@@ -519,6 +529,7 @@ const NAV: NavItem[] = [
 // the raw module key ("Pharmacy_rx") for anything nobody had added yet.
 
 const BREADCRUMB_OVERRIDES: Record<string, string | string[]> = {
+  laboratory: "Laboratory",
   chart: "Patient Chart",
 
   register: "Registration",
@@ -1163,6 +1174,11 @@ export default function App() {
     [],
   )
 
+  useEffect(
+    () => LabInventoryDatabase.subscribe(() => setBadgeTick((t) => t + 1)),
+    [],
+  )
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   // Keppler OCR is a whole separate React app in an iframe: unmounting it on
@@ -1254,8 +1270,12 @@ export default function App() {
       module !== "dashboard" &&
       !userPermissions.includes(module)
     ) {
-      // Check if it matches a child module
+      // Check if it matches laboratory sub-modules
+      if (module.startsWith("lab_") && userPermissions.includes("laboratory")) {
+        return
+      }
 
+      // Check if it matches a child module
       const parentMatch = NAV.find((n) =>
         n.children?.some((c) => c.key === module),
       )
@@ -1509,9 +1529,27 @@ export default function App() {
           ? DoctorPortalDatabase.getUnreadCount(activeDoctor.id)
           : 0,
 
-        laboratory: LabOrderDatabase.getLabWorklist().filter(
-          (o) => o.status !== "Completed",
+        laboratory: 0,
+        lab_sample_collection: LabOrderDatabase.getLabWorklist().filter(
+          (o) => o.billing.status === "Paid" && o.status === "Billed",
         ).length,
+        lab_processing: LabOrderDatabase.getLabWorklist().filter(
+          (o) => (o.status === "Sample Collected" || o.status === "In Progress"),
+        ).length,
+        lab_critical: LabOrderDatabase.getLabWorklist().filter((o) =>
+          o.tests.some(
+            (t) =>
+              t.flag === "Critical" ||
+              Object.values(t.results || {}).some((r) => r.flag === "Critical"),
+          ),
+        ).length,
+        lab_reports: 0,
+        lab_catalog: 0,
+        lab_inventory: LabInventoryDatabase.getItems().filter(
+          (i) => i.status === "Low Stock" || i.status === "Expiring Soon" || i.status === "Expired"
+        ).length,
+        lab_analytics: 0,
+        lab_tat: 0,
 
         // Shared helper, not a list kept here: this badge omitted "Sent To Pharmacy"
 
@@ -1537,6 +1575,14 @@ export default function App() {
         ...prev,
         doctor_portal: 0,
         laboratory: 0,
+        lab_sample_collection: 0,
+        lab_processing: 0,
+        lab_critical: 0,
+        lab_reports: 0,
+        lab_catalog: 0,
+        lab_inventory: 0,
+        lab_analytics: 0,
+        lab_tat: 0,
         pharmacy_rx: 0,
         pharmacy_dispensing: 0,
         pharmacy_expiry: 0,
@@ -2043,6 +2089,8 @@ export default function App() {
                         userPermissions.includes("reports")) ||
                       (item.key === "insurance" &&
                         userPermissions.includes("insurance")) ||
+                      (item.key === "laboratory" &&
+                        userPermissions.includes("laboratory")) ||
                       !subModulesGranted ||
                       userPermissions.includes(c.key)
                     )
@@ -2050,6 +2098,7 @@ export default function App() {
 
                   const isActive =
                     module === item.key ||
+                    (item.key === "laboratory" && (module === "laboratory" || module.startsWith("lab_"))) ||
                     filteredChildren?.some((c) => c.key === module)
 
                   const isExpanded = expanded.includes(item.key)
@@ -2161,7 +2210,7 @@ export default function App() {
                               .map((child) => (
                                 <div
                                   key={`${child.key}_${child.label}`}
-                                  className={`nav-item sub ${module === child.key && isActive
+                                  className={`nav-item sub ${(module === child.key || (child.key === "laboratory" && module === "lab_catalog")) && isActive
                                     ? "active"
                                     : ""
                                     }`}
@@ -2484,8 +2533,20 @@ export default function App() {
                 />
               )}
               {module === "nursing" && <NursingPortal />}
-              {module === "laboratory" && (
-                <Laboratory technician={activeStaff.name} />
+              {(module === "laboratory" ||
+                module === "lab_sample_collection" ||
+                module === "lab_processing" ||
+                module === "lab_critical" ||
+                module === "lab_reports" ||
+                module === "lab_catalog" ||
+                module === "lab_inventory" ||
+                module === "lab_analytics" ||
+                module === "lab_tat") && (
+                <Laboratory
+                  technician={activeStaff.name}
+                  activeSubPage={module}
+                  onNavigate={(m) => setModule(m as Module)}
+                />
               )}
               {(module === "pharmacy" || module.startsWith("pharmacy_")) && (
                 <Pharmacy
