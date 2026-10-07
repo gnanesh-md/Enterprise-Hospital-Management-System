@@ -165,9 +165,9 @@ export default function Dashboard({
     return encs.slice(0, 8).map((enc) => {
       const timeStr = enc.registrationTime
         ? new Date(enc.registrationTime).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+          hour: "2-digit",
+          minute: "2-digit",
+        })
         : "09:30 AM"
       return {
         id: enc.id,
@@ -213,9 +213,9 @@ export default function Dashboard({
         dept: deptName,
         ordered: l.createdAt
           ? new Date(l.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            hour: "2-digit",
+            minute: "2-digit",
+          })
           : "09:15 AM",
         status: isCrit ? "Critical" : l.status,
       }
@@ -609,52 +609,52 @@ export default function Dashboard({
 
   const portalBanner = isSuperAdmin
     ? {
-        title: "Super Admin Platform Control Suite",
-        badge: "SUPER ADMIN",
-        color: "bg-[#1E3A8A] text-white",
-        icon: "👑",
-      }
+      title: "Super Admin Platform Control Suite",
+      badge: "SUPER ADMIN",
+      color: "bg-[#1E3A8A] text-white",
+      icon: "👑",
+    }
     : isAdmin
       ? {
-          title: "Hospital Operations & Census Command",
-          badge: "HOSPITAL ADMIN",
-          color: "bg-[#166534] text-white",
-          icon: "🏢",
-        }
+        title: "Hospital Operations & Census Command",
+        badge: "HOSPITAL ADMIN",
+        color: "bg-[#166534] text-white",
+        icon: "🏢",
+      }
       : isDoctor
         ? {
-            title: "Doctor Clinical EMR & Orders Portal",
-            badge: "PHYSICIAN PORTAL",
-            color: "bg-[#78350F] text-white",
-            icon: "👨‍⚕️",
-          }
+          title: "Doctor Clinical EMR & Orders Portal",
+          badge: "PHYSICIAN PORTAL",
+          color: "bg-[#78350F] text-white",
+          icon: "👨‍⚕️",
+        }
         : isReception
           ? {
-              title: "Receptionist & Patient Services Portal",
-              badge: "FRONT DESK",
-              color: "bg-[#581C87] text-white",
-              icon: "📋",
-            }
+            title: "Receptionist & Patient Services Portal",
+            badge: "FRONT DESK",
+            color: "bg-[#581C87] text-white",
+            icon: "📋",
+          }
           : isPharmacy
             ? {
-                title: "Pharmacy Dispensing & Paper Rx OCR Portal",
-                badge: "PHARMACY PORTAL",
-                color: "bg-[#064E3B] text-white",
-                icon: "💊",
-              }
+              title: "Pharmacy Dispensing & Paper Rx OCR Portal",
+              badge: "PHARMACY PORTAL",
+              color: "bg-[#064E3B] text-white",
+              icon: "💊",
+            }
             : isLab
               ? {
-                  title: "Laboratory & Diagnostic Testing Portal",
-                  badge: "PATHOLOGY & LAB",
-                  color: "bg-[#831843] text-white",
-                  icon: "🔬",
-                }
+                title: "Laboratory & Diagnostic Testing Portal",
+                badge: "PATHOLOGY & LAB",
+                color: "bg-[#831843] text-white",
+                icon: "🔬",
+              }
               : {
-                  title: "Registered Nurse & ICU Station Portal",
-                  badge: "NURSE WARD",
-                  color: "bg-[#7C2D12] text-white",
-                  icon: "👩‍⚕️",
-                }
+                title: "Registered Nurse & ICU Station Portal",
+                badge: "NURSE WARD",
+                color: "bg-[#7C2D12] text-white",
+                icon: "👩‍⚕️",
+              }
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F4F6F9]">
@@ -717,9 +717,8 @@ export default function Dashboard({
               className="shadow-sm transition-all active:scale-95 cursor-pointer"
             >
               <Icon.Refresh
-                className={`w-3.5 h-3.5 text-[#1B4FD8] transition-transform duration-500 ${
-                  isRefreshing ? "animate-spin" : ""
-                }`}
+                className={`w-3.5 h-3.5 text-[#1B4FD8] transition-transform duration-500 ${isRefreshing ? "animate-spin" : ""
+                  }`}
               />
               <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
             </Btn>
@@ -775,13 +774,12 @@ export default function Dashboard({
                   </span>
                   {m.trend && (
                     <span
-                      className={`text-[11px] font-semibold font-mono ${
-                        m.trendDir === "up" && m.id !== "discharges"
+                      className={`text-[11px] font-semibold font-mono ${m.trendDir === "up" && m.id !== "discharges"
                           ? "text-[#DC2626]"
                           : m.trendDir === "down" || m.id === "discharges"
                             ? "text-[#16A34A]"
                             : "text-[#64748B]"
-                      }`}
+                        }`}
                     >
                       {m.trend}
                     </span>

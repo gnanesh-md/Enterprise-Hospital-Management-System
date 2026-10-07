@@ -51,6 +51,7 @@ import LabBillingQueue from "./components/LabBillingQueue"
 import InsuranceClaims from "./components/insurance/ClaimsHome"
 import InsuranceSettlementPage from "./components/insurance/SettlementPage"
 import InsuranceMastersPage from "./components/insurance/MastersPage"
+import EnhancedAuditRulesPage from "./components/insurance/EnhancedAuditRulesPage"
 import InsuranceDashboardView from "./components/insurance/InsuranceDashboardView"
 import InsuranceCommandDashboard from "./components/insurance/InsuranceCommandDashboard"
 import CashlessCaseBoard from "./components/insurance/CashlessCaseBoard"
@@ -120,8 +121,11 @@ import DoctorScheduling from "./components/DoctorScheduling"
 import PatientExperience from "./components/PatientExperience"
 
 import HRMS from "./components/HRMS"
+import { HrmsDatabase } from "./services/hrmsDb"
 
 import Employees from "./components/Employees"
+
+import ApplyLeaveModal from "./components/hrms/ApplyLeaveModal"
 
 import Admissions from "./components/Admissions"
 
@@ -136,6 +140,7 @@ import Administration from "./components/Administration"
 import OpReportsPage from "./components/reports/OpReportsPage"
 
 import GeneralReportsOverviewPage from "./components/reports/GeneralReportsOverviewPage"
+import PatientPoliciesPage from "./components/insurance/PatientPoliciesPage"
 
 import GenericReportPage, {
   ReportType,
@@ -170,7 +175,7 @@ const insuranceModule = (m: string): string =>
         : m
 
 
-type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "lab_sample_collection" | "lab_processing" | "lab_critical" | "lab_reports" | "lab_catalog" | "lab_inventory" | "lab_analytics" | "lab_tat" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
+type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "lab_sample_collection" | "lab_processing" | "lab_critical" | "lab_reports" | "lab_catalog" | "lab_inventory" | "lab_analytics" | "lab_tat" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
 
 interface NavItem {
   key: Module
@@ -385,34 +390,20 @@ const NAV: NavItem[] = [
 
     children: [
       { key: "insurance_overview", label: "Command Dashboard" },
+      { key: "insurance_patient_policies", label: "Patient Policies" },
       { key: "insurance_eligibility", label: "New Patient / Intake" },
       { key: "insurance_preauth", label: "Pre-Authorization" },
-      { key: "insurance_board", label: "Cashless Case Board" },
       { key: "insurance_claims", label: "Claims & Queries" },
       { key: "insurance_emails", label: "Email & TPA Decision Hub" },
       { key: "insurance_settlement", label: "Settlements" },
-      { key: "insurance_packages", label: "Billing & Packages" },
-      { key: "insurance_masters", label: "Master Data" },
-      { key: "insurance_reports", label: "Reports" },
+      { key: "insurance_masters", label: "Master Setup" },
       { key: "insurance_docrules", label: "Audit Log & Rules" },
     ],
 
 
   },
 
-  {
-    key: "hrms",
-    label: "HR & Staff",
-    Icon: UsersRound,
-
-    children: [
-      { key: "hrms", label: "HRMS" },
-
-      { key: "employees", label: "Employees" },
-    ],
-  },
-
-  { key: "scheduling", label: "Doctor Scheduling", Icon: Calendar },
+  { key: "hrms", label: "HR & Staff", Icon: UsersRound },
 
   {
     key: "intelligence",
@@ -1034,6 +1025,26 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
     }
   }
 
+  if (r.includes("hr") || u === "hr") {
+    return {
+      id: "HR-001",
+      name: "Radhika Sharma",
+      role: "ROLE_HR",
+      title: "HR Administrator",
+      department: "Human Resources & Payroll",
+    }
+  }
+
+  if (r.includes("staff") || u === "staff") {
+    return {
+      id: "STF-101",
+      name: "Ramesh Verma",
+      role: "ROLE_STAFF",
+      title: "Healthcare Staff Member",
+      department: "General Ward Support",
+    }
+  }
+
   if (r.includes("doctor") || u === "doctor") {
     return {
       id: "DOC-402",
@@ -1108,6 +1119,8 @@ export default function App() {
 
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
 
+  const [globalApplyLeaveOpen, setGlobalApplyLeaveOpen] = useState(false)
+
   const [notice, setNotice] = useState<Notice | null>(null)
 
   const stableSetNotice = useCallback((n: Notice | null) => setNotice(n), [])
@@ -1115,6 +1128,8 @@ export default function App() {
   const [module, setModule] = useState<Module>("dashboard")
   // Insurance pages link to one another by case, e.g. a query row -> its claim.
   const [insuranceCaseId, setInsuranceCaseId] = useState<string | undefined>()
+  // Which Master Setup tab to open when navigating there (insurers by default).
+  const [mastersSection, setMastersSection] = useState<"insurers" | "tpas" | "packages" | "pricing" | "docrules">("insurers")
   const openInsurance = (m: string, caseId?: string) => {
     setInsuranceCaseId(caseId)
     setModule(insuranceModule(m) as Module)
@@ -1329,24 +1344,27 @@ export default function App() {
 
   const handleLogin = (userData: {
     user: string
-
     role: string
-
     staffId: string
-
+    staffName?: string
+    staffTitle?: string
+    staffDepartment?: string
     permissions: string[]
-
     doctorId?: string
   }) => {
     try {
       localStorage.setItem(
         "hospai_current_user",
-        JSON.stringify({ user: userData.user, staffId: userData.staffId, role: userData.role }),
+        JSON.stringify({
+          user: userData.user,
+          staffId: userData.staffId,
+          role: userData.role,
+          name: userData.staffName,
+        }),
       )
     } catch { }
 
     setUserRole(userData.role)
-
     setUserPermissions(userData.permissions)
 
     const isDoctor =
@@ -1355,37 +1373,58 @@ export default function App() {
 
     const doctor = isDoctor
       ? resolveDoctorAccount({
-        doctorId: userData.doctorId,
-        username: userData.user,
-        name: userData.user,
-      })
+          doctorId: userData.doctorId,
+          username: userData.user,
+          name: userData.staffName || userData.user,
+        })
       : null
 
     setActiveDoctor(doctor)
 
-    setActiveStaff(
-      doctor
-        ? {
-          id: doctor.staffId,
+    if (doctor) {
+      setActiveStaff({
+        id: doctor.staffId,
+        name: doctor.name,
+        role: "ROLE_DOCTOR",
+        title: doctor.qualification,
+        department: `${doctor.specialty} · ${doctor.room}`,
+      })
+    } else if (userData.staffName) {
+      setActiveStaff({
+        id: userData.staffId,
+        name: userData.staffName,
+        role: userData.role,
+        title: userData.staffTitle || "Hospital Staff",
+        department: userData.staffDepartment || "Clinical Operations",
+      })
+    } else {
+      setActiveStaff(getRoleProfile(userData.role, userData.user))
+    }
 
-          name: doctor.name,
-
-          role: "ROLE_DOCTOR",
-
-          title: doctor.qualification,
-
-          department: `${doctor.specialty} · ${doctor.room}`,
-        }
-        : getRoleProfile(userData.role, userData.user),
-    )
+    let defaultModule: Module = "dashboard"
+    const userRoleKey = userData.user.trim().toLowerCase()
+    if (doctor) {
+      defaultModule = "doctor_portal"
+    } else if (userData.role === "ROLE_NURSE" || userRoleKey === "nurse") {
+      defaultModule = "nursing"
+    } else if (userData.role === "ROLE_PHARMACY" || userRoleKey === "pharmacy") {
+      defaultModule = "pharmacy"
+    } else if (userData.role === "ROLE_LAB" || userRoleKey === "lab") {
+      defaultModule = "laboratory"
+    } else if (userData.role === "ROLE_RECEPTION" || userRoleKey === "reception") {
+      defaultModule = "op_management"
+    } else if (userData.role === "ROLE_BILLING" || userRoleKey === "billing") {
+      defaultModule = "billing"
+    } else if (userData.role === "ROLE_INSURANCE" || userRoleKey === "insurance") {
+      defaultModule = "insurance"
+    } else if (userData.role === "ROLE_FINANCE" || userRoleKey === "finance") {
+      defaultModule = "billing"
+    } else if (userData.role === "ROLE_HR" || userRoleKey === "hr") {
+      defaultModule = "hrms"
+    }
 
     setLoggedIn(true)
-
-    // A physician's home is their own portal -- the inbox of patients appointed
-
-    // to them -- not the hospital-wide dashboard.
-
-    setModule(doctor ? "doctor_portal" : "dashboard")
+    setModule(defaultModule)
   }
 
   const toggleFullscreen = () => {
@@ -1425,9 +1464,10 @@ export default function App() {
   // open an insurance page on a case without threading a prop down to it.
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const d = (e as CustomEvent<{ module: string; caseId?: string }>).detail
+      const d = (e as CustomEvent<{ module: string; caseId?: string; section?: typeof mastersSection }>).detail
       if (!d?.module) return
       setInsuranceCaseId(d.caseId)
+      if (d.section) setMastersSection(d.section)
       if (d.caseId && (d.module === "insurance" || d.module === "insurance_case" || d.module === "insurance_claims")) {
         setModule("insurance_case")
       } else if (d.module === "insurance_preauth") {
@@ -1738,6 +1778,38 @@ export default function App() {
             </div>
 
             <div className="ml-auto flex items-center gap-1">
+              {/* Individual Staff Leave Application Button (Only for Clinical & Operational Staff) */}
+              {!["admin", "superadmin", "hr", "role_admin", "role_superadmin", "role_hr"].includes((userRole || "").toLowerCase()) && (
+                <button
+                  type="button"
+                  onClick={() => setGlobalApplyLeaveOpen(true)}
+                  className="flex items-center gap-1.5 h-7 px-2.5 bg-[#1B4FD8]/40 hover:bg-[#1B4FD8]/70 border border-blue-400/30 rounded text-white text-[12px] font-medium transition-colors cursor-pointer mr-1.5 shadow-2xs"
+                  title="Apply for Individual Leave or View Status"
+                >
+                  <span>🗓️</span>
+                  <span className="hidden sm:inline">Apply Leave</span>
+                  {(() => {
+                    const myLeaves = HrmsDatabase.getLeaves().filter(
+                      (l: any) => l.staffId === activeStaff.id || l.staffName.toLowerCase() === activeStaff.name.toLowerCase()
+                    )
+                    const latest = myLeaves[0]
+                    if (!latest) return null
+                    return (
+                      <span
+                        className={`text-[9.5px] px-1.5 py-0.5 rounded font-bold ml-0.5 ${
+                          latest.status === "Approved"
+                            ? "bg-emerald-500 text-white"
+                            : latest.status === "Pending"
+                            ? "bg-amber-400 text-slate-900"
+                            : "bg-rose-500 text-white"
+                        }`}
+                      >
+                        {latest.status === "Approved" ? "✓ Approved" : latest.status}
+                      </span>
+                    )
+                  })()}
+                </button>
+              )}
               {/* Font Controls */}
               <div className="flex items-center bg-white/5 rounded px-1 mr-1">
                 <button
@@ -1861,6 +1933,20 @@ export default function App() {
                       },
 
                       {
+                        roleId: "ROLE_HR",
+                        username: "hr",
+                        label: "HR Administrator",
+                        icon: "👥",
+                      },
+
+                      {
+                        roleId: "ROLE_STAFF",
+                        username: "staff",
+                        label: "General Hospital Staff",
+                        icon: "👤",
+                      },
+
+                      {
                         roleId: "ROLE_DOCTOR",
                         username: "doctor",
                         label: "Doctor / Physician",
@@ -1897,11 +1983,12 @@ export default function App() {
                     ].map((r) => {
                       const permissions =
                         r.roleId === "ROLE_SUPERADMIN" ||
-                          r.roleId === "ROLE_ADMIN"
+                        r.roleId === "ROLE_ADMIN" ||
+                        r.roleId === "ROLE_HR"
                           ? ALL_SYSTEM_MODULES
                           : RoleDatabase.getRoles().find(
-                            (role) => role.id === r.roleId,
-                          )?.allowedModules || ["dashboard"]
+                              (role) => role.id === r.roleId,
+                            )?.allowedModules || ["dashboard", "employees"]
 
                       return (
                         <button
@@ -1930,7 +2017,7 @@ export default function App() {
                     <div className="border-t border-[#E2E8F0] pt-1 mt-1">
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-2.5 py-1 text-[11px] text-[#B91C1C] hover:bg-red-50 font-semibold"
+                        className="w-full text-left px-2.5 py-1 text-[11px] text-[#B91C1C] hover:bg-red-50 font-semibold rounded transition-colors"
                       >
                         Sign Out
                       </button>
@@ -1977,24 +2064,26 @@ export default function App() {
               >
                 {NAV.map((item) => {
                   // Module-based Access Control Filtering
-
-                  const hasAccess = userPermissions.includes(item.key)
+                  const hasAccess =
+                    userPermissions.includes(item.key) ||
+                    item.children?.some((c) => userPermissions.includes(c.key))
 
                   if (!hasAccess) return null
 
                   // Sub-items inherit the parent's access unless the role actually enumerates
-
                   // sub-module keys -- otherwise a role granted only "pharmacy" would collapse
-
                   // the whole Pharmacy tree down to its Dashboard entry.
-
                   const subModulesGranted = item.children?.some(
                     (c) =>
                       c.key !== item.key && userPermissions.includes(c.key),
                   )
 
-                  const filteredChildren = item.children?.filter(
-                    (c) =>
+                  const filteredChildren = item.children?.filter((c) => {
+                    // Strictly isolate HRMS from regular staff
+                    if (item.key === "hrms") {
+                      return userPermissions.includes(c.key)
+                    }
+                    return (
                       c.key === item.key ||
                       (item.key === "reports" &&
                         userPermissions.includes("reports")) ||
@@ -2003,8 +2092,9 @@ export default function App() {
                       (item.key === "laboratory" &&
                         userPermissions.includes("laboratory")) ||
                       !subModulesGranted ||
-                      userPermissions.includes(c.key),
-                  )
+                      userPermissions.includes(c.key)
+                    )
+                  })
 
                   const isActive =
                     module === item.key ||
@@ -2519,7 +2609,10 @@ export default function App() {
                     if (page === "board") setModule("insurance_board" as any)
                     else if (page === "preauth") setModule("insurance_preauth" as any)
                     else if (page === "intake") setModule("insurance_eligibility" as any)
-                    else if (page === "claims") setModule("insurance_claims" as any)
+                    else if (page === "claims") {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
                     else if (page === "emails") setModule("insurance_emails" as any)
                     else if (page === "settlements") setModule("insurance_settlement" as any)
                     else if (page === "masters") setModule("insurance_masters" as any)
@@ -2527,7 +2620,10 @@ export default function App() {
                       setInsuranceCaseId(caseId)
                       setModule("insurance_case" as any)
                     }
-                    else setModule("insurance_claims" as any)
+                    else {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
                   }}
                 />
               )}
@@ -2538,15 +2634,33 @@ export default function App() {
                   onOpenIntake={() => setModule("insurance_eligibility" as any)}
                 />
               )}
-              {/* Page 2: Cashless Case Board */}
+              {/* Page 2: Insurance Command Dashboard (reused for board key) */}
               {(module === "insurance_board" as any) && (
-                <CashlessCaseBoard
-                  onOpenCase={(id) => { setInsuranceCaseId(id); setModule("insurance_case" as any) }}
-                  onOpenIntake={() => setModule("insurance_eligibility" as any)}
+                <InsuranceCommandDashboard
+                  onNavigate={(page, caseId) => {
+                    if (page === "preauth") setModule("insurance_preauth" as any)
+                    else if (page === "intake") setModule("insurance_eligibility" as any)
+                    else if (page === "claims") {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
+                    else if (page === "emails") setModule("insurance_emails" as any)
+                    else if (page === "settlements") setModule("insurance_settlement" as any)
+                    else if (page === "masters") setModule("insurance_masters" as any)
+                    else if (page === "case" && caseId) {
+                      setInsuranceCaseId(caseId)
+                      setModule("insurance_case" as any)
+                    }
+                    else {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_overview" as any)
+                    }
+                  }}
                 />
               )}
               {/* Page 3: Intake */}
-              {module === "insurance_eligibility" && (
+              {module === "insurance_patient_policies" && <PatientPoliciesPage />}
+            {module === "insurance_eligibility" && (
                 <InsuranceIntakeView
                   onBack={() => setModule("insurance_overview" as any)}
                   onComplete={(id) => {
@@ -2603,15 +2717,12 @@ export default function App() {
               {(module === "insurance_settlement" || module === "insurance_reconciliation") && (
                 <InsuranceSettlementPage onNavigate={openInsurance} initialCaseId={insuranceCaseId} />
               )}
-              {module === "insurance_masters" && <InsuranceMastersPage section="insurers" />}
+              {module === "insurance_masters" && <InsuranceMastersPage section={mastersSection} />}
               {module === "insurance_tpas" && <InsuranceMastersPage section="tpas" />}
-              {module === "insurance_packages" && <InsuranceMastersPage section="packages" />}
-              {module === "insurance_pricing" && <InsuranceMastersPage section="pricing" />}
-              {module === "insurance_docrules" && <InsuranceMastersPage section="docrules" />}
-              {/* Page 15: Insurance Reports */}
-              {(module === "insurance_reports" as any) && (
-                <InsuranceReportsView onBack={() => setModule("insurance_overview" as any)} />
-              )}
+              {module === "insurance_packages" && <EnhancedAuditRulesPage initialTab="packages" />}
+              {module === "insurance_pricing" && <EnhancedAuditRulesPage initialTab="packages" />}
+              {module === "insurance_docrules" && <EnhancedAuditRulesPage initialTab="audit" />}
+              {(module === "insurance_reports" as any) && <EnhancedAuditRulesPage initialTab="reports" />}
 
               {(module === "reports" || module === "reports_overview") && (
                 <GeneralReportsOverviewPage
@@ -2752,16 +2863,15 @@ export default function App() {
                   }}
                 />
               )}
-              {module === "scheduling" && <DoctorScheduling />}
               {module === "admissions" && (
                 <Admissions setNotice={setNotice} navigate={navigate} />
               )}
               {module === "readmission" && (
                 <Readmission setNotice={setNotice} />
               )}
-              {module === "payments" && <PaymentCollection />}
-              {module === "hrms" && <HRMS />}
-              {module === "employees" && <Employees />}
+              {(module === "hrms" || module === "employees" || module === "scheduling") && (
+                <HRMS onNavigate={(m) => setModule(m as any)} />
+              )}
               {module === "ocr" && <SmartOCR setNotice={setNotice} />}
               {ocrMounted && (
                 <div
@@ -2808,6 +2918,16 @@ export default function App() {
               setModule("chart")
             }}
           />
+
+          {globalApplyLeaveOpen && (
+            <ApplyLeaveModal
+              isOpen={globalApplyLeaveOpen}
+              onClose={() => setGlobalApplyLeaveOpen(false)}
+              loggedInStaffId={activeStaff.id}
+              loggedInStaffName={activeStaff.name}
+              isSelfService={userRole !== "ROLE_ADMIN" && userRole !== "ROLE_SUPERADMIN" && userRole !== "ROLE_HR"}
+            />
+          )}
         </>
       )}
     </div>

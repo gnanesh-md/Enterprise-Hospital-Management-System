@@ -2386,6 +2386,8 @@ const INITIAL_HOSPITAL_CLAIMS: ClaimRecord[] = [
     insuranceProvider: "Self-Pay",
     policyNumber: "—",
     status: "Draft",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     attendingDoctor: "Dr. Sarah Khan",
     diagnosisCodes: ["N39.0"],
     items: [
@@ -2421,8 +2423,6 @@ const INITIAL_HOSPITAL_CLAIMS: ClaimRecord[] = [
     amountPaid: 0,
     balanceDue: 1000,
     payments: [],
-    createdAt: "2026-09-01T10:00:00Z",
-    updatedAt: "2026-09-01T10:00:00Z",
   },
 
   // ── INPATIENT: Bed 204-A (John Smith - 3N Medical/Surgical) ──
@@ -4378,7 +4378,7 @@ export class BillingDatabase {
                 age: 40,
                 gender: "Male",
                 phone: "+91 98765 43210",
-                department: "General" as any,
+                department: "Outpatient",
                 dateOfService: c.created_at ? c.created_at.split("T")[0] : new Date().toISOString().split("T")[0],
                 insuranceProvider: c.insurer_name || "Insurance",
                 policyNumber: c.pre_auth_code || "POL-101",
@@ -4387,7 +4387,7 @@ export class BillingDatabase {
                 patientPortion: 0,
                 amountPaid: parseFloat(c.approved_amount || 0),
                 balanceDue: Math.max(0, parseFloat(c.claim_amount || 0) - parseFloat(c.approved_amount || 0)),
-                status: (c.status === "approved" ? "Approved" : c.status === "rejected" ? "Rejected" : "Submitted") as any,
+                status: (c.status === "approved" ? "Accepted" : c.status === "rejected" ? "Rejected" : "Submitted") as any,
                 items: [],
                 subtotal: parseFloat(c.claim_amount || 0),
                 discount: 0,

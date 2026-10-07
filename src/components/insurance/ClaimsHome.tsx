@@ -19,12 +19,15 @@ import {
   Check,
   Sparkles,
   ArrowUpRight,
+  BookOpen,
 } from "lucide-react"
 import type { ComprehensiveClaimRecord } from "../../types/insurance"
 import ClaimWorkspace from "./ClaimWorkspace"
 import { NEEDS_ME, NEXT_SHORT, stepOf, type DeskStepId } from "./deskGuide"
 import NewCaseModal from "./NewCaseModal"
 import { StatusPill, daysUntil, fmtDateTime, inr, useCases, useNotify } from "./ui"
+import { InsuranceEngineService as E } from "../../services/insuranceDb"
+import InsuranceSopModal from "./InsuranceSopModal"
 
 type Nav = (module: string, caseId?: string) => void
 
@@ -103,6 +106,7 @@ export default function ClaimsHome({
   const [selectedInsurer, setSelectedInsurer] = useState("")
   const [selectedWard, setSelectedWard] = useState("")
   const [isNewClaimOpen, setIsNewClaimOpen] = useState(false)
+  const [sopModalOpen, setSopModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
@@ -198,130 +202,139 @@ export default function ClaimsHome({
       )}
 
       {/* ── Page Header ── */}
-      <div className="bg-white border-b border-slate-200/80 px-8 py-5 flex-shrink-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-[1700px] mx-auto">
+      <div className="bg-white border-b border-slate-200/80 px-6 py-3.5 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 max-w-[1700px] mx-auto">
           <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Insurance Claims &amp; Queries</h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-slate-900 tracking-tight">Insurance Claims &amp; Queries</h1>
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
                 {cases.length} Total Admissions
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-[11.5px] text-slate-500 mt-0.5">
               End-to-end cashless hospitalization tracking: from pre-auth sanction to final discharge claim submission and settlement.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => notify("Exporting claims register to Excel/CSV...", "success")}
-              className="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
             >
-              <Download size={14} className="text-slate-500" />
+              <Download size={13} className="text-slate-500" />
               <span>Export</span>
             </button>
 
             <button
               type="button"
-              onClick={() => setIsNewClaimOpen(true)}
-              className="inline-flex items-center gap-1.5 px-4.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full shadow-xs transition-colors cursor-pointer"
+              onClick={() => setSopModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 text-xs font-bold rounded-lg shadow-2xs transition-colors cursor-pointer"
             >
-              <Plus size={15} />
+              <BookOpen size={13} className="text-indigo-600" />
+              <span>Dept Rules &amp; SOPs</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsNewClaimOpen(true)}
+              className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-full shadow-xs transition-colors cursor-pointer"
+            >
+              <Plus size={14} />
               <span>New Claim</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="p-8 space-y-6 max-w-[1700px] mx-auto w-full">
-        {/* ── 4 Clean Executive KPI Cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4.5">
+      <div className="p-4 space-y-3.5 max-w-[1700px] mx-auto w-full">
+        {/* ── 4 Compact Executive KPI Cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Total Claims */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Total Claims Value</span>
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                <FileText size={16} />
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Claims Value</span>
+              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <FileText size={14} />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-extrabold text-slate-900 tracking-tight">{inr(stats.totalVal)}</div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
+            <div className="mt-2">
+              <div className="text-xl font-bold text-slate-900 tracking-tight">{inr(stats.totalVal)}</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
                   ↑ 12%
                 </span>
-                <span className="text-[11.5px] text-slate-400">{stats.totalCount} admissions active</span>
+                <span className="text-[10.5px] text-slate-400">{stats.totalCount} admissions active</span>
               </div>
             </div>
           </div>
 
           {/* Approved & Awaiting Remittance */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Approved &amp; Awaiting Remittance</span>
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <CheckCircle2 size={16} />
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Approved &amp; Remittance</span>
+              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <CheckCircle2 size={14} />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-extrabold text-slate-900 tracking-tight">{inr(stats.approvedVal)}</div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
+            <div className="mt-2">
+              <div className="text-xl font-bold text-slate-900 tracking-tight">{inr(stats.approvedVal)}</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
                   ↑ 8%
                 </span>
-                <span className="text-[11.5px] text-slate-400">{stats.approvedCount} claims pending UTR</span>
+                <span className="text-[10.5px] text-slate-400">{stats.approvedCount} claims pending UTR</span>
               </div>
             </div>
           </div>
 
           {/* Under Insurer Review */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">With Insurers for Review</span>
-              <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                <Clock size={16} />
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">With Insurers for Review</span>
+              <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <Clock size={14} />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-extrabold text-slate-900 tracking-tight">{inr(stats.reviewVal)}</div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+            <div className="mt-2">
+              <div className="text-xl font-bold text-slate-900 tracking-tight">{inr(stats.reviewVal)}</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10.5px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded">
                   {stats.reviewCount} Active
                 </span>
-                <span className="text-[11.5px] text-slate-400">Claims submitted &amp; in-flight</span>
+                <span className="text-[10.5px] text-slate-400">Claims submitted</span>
               </div>
             </div>
           </div>
 
           {/* Open Queries */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
+          <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 shadow-2xs flex flex-col justify-between hover:border-slate-300 transition-colors">
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Open Insurer Queries</span>
-              <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                <AlertTriangle size={16} />
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Open Insurer Queries</span>
+              <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <AlertTriangle size={14} />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="text-2xl font-extrabold text-slate-900 tracking-tight">{stats.queriesCount}</div>
-              <div className="flex items-center gap-2 mt-1">
+            <div className="mt-2">
+              <div className="text-xl font-bold text-slate-900 tracking-tight">{stats.queriesCount}</div>
+              <div className="flex items-center gap-1.5 mt-0.5">
                 {stats.overdueCount > 0 ? (
-                  <span className="text-xs font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-100">
+                  <span className="text-[10.5px] font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded border border-rose-100">
                     {stats.overdueCount} Overdue
                   </span>
                 ) : (
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
+                  <span className="text-[10.5px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
                     On Schedule
                   </span>
                 )}
-                <span className="text-[11.5px] text-slate-400">Requires medical document upload</span>
+                <span className="text-[10.5px] text-slate-400 truncate">Doc upload required</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Segmented Stage Pipeline Bar ── */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-2xs flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+        {/* ── Compact Segmented Stage Pipeline Bar ── */}
+        <div className="bg-white border border-slate-200/90 rounded-xl p-1 shadow-2xs flex items-center gap-1 overflow-x-auto scrollbar-none">
           {STAGES.map((s) => {
             const count = cases.filter(s.filterFn).length
             const isActive = activeTab === s.id
@@ -332,7 +345,7 @@ export default function ClaimsHome({
                 key={s.id}
                 type="button"
                 onClick={() => setActiveTab(s.id)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-[11.5px] font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                   isActive
                     ? "bg-slate-900 text-white shadow-xs"
                     : isAlert
@@ -340,10 +353,10 @@ export default function ClaimsHome({
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
                 }`}
               >
-                {isAlert && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+                {isAlert && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
                 <span>{s.label}</span>
                 <span
-                  className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold ${
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
                     isActive
                       ? "bg-white/20 text-white"
                       : isAlert
@@ -358,14 +371,14 @@ export default function ClaimsHome({
           })}
         </div>
 
-        {/* ── Unified Search & Filter Control Card ── */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
+        {/* ── Compact Unified Search & Filter Control Card ── */}
+        <div className="bg-white border border-slate-200/90 rounded-xl p-2.5 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
             {/* Search Input */}
-            <div className="relative flex-1 min-w-[260px]">
-              <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="relative flex-1 min-w-[240px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
-                className="w-full bg-slate-50/90 border border-slate-200 rounded-xl pl-10 pr-4 h-10 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+                className="w-full bg-slate-50/90 border border-slate-200 rounded-lg pl-9 pr-3 h-8.5 text-[11.5px] text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
                 placeholder="Search patient name, UHID, claim #, or policy..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -373,9 +386,9 @@ export default function ClaimsHome({
             </div>
 
             {/* Insurer Filter Dropdown */}
-            <div className="w-52">
+            <div className="w-48">
               <select
-                className="w-full bg-slate-50/90 border border-slate-200 rounded-xl px-3.5 h-10 text-xs text-slate-700 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                className="w-full bg-slate-50/90 border border-slate-200 rounded-lg px-3 h-8.5 text-[11.5px] text-slate-700 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
                 value={selectedInsurer}
                 onChange={(e) => setSelectedInsurer(e.target.value)}
               >
@@ -387,9 +400,9 @@ export default function ClaimsHome({
             </div>
 
             {/* Ward Selector Dropdown */}
-            <div className="w-36">
+            <div className="w-32">
               <select
-                className="w-full bg-slate-50/90 border border-slate-200 rounded-xl px-3.5 h-10 text-xs text-slate-700 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                className="w-full bg-slate-50/90 border border-slate-200 rounded-lg px-3 h-8.5 text-[11.5px] text-slate-700 font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
                 value={selectedWard}
                 onChange={(e) => setSelectedWard(e.target.value)}
               >
@@ -406,29 +419,29 @@ export default function ClaimsHome({
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center gap-1.5 px-3.5 h-10 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 px-3 h-8.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11.5px] font-semibold rounded-lg transition-colors cursor-pointer"
             >
-              <RotateCcw size={13} />
-              <span>Reset Filters</span>
+              <RotateCcw size={12} />
+              <span>Reset</span>
             </button>
           )}
         </div>
 
         {/* ── Main Data Table ── */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs overflow-hidden">
+        <div className="bg-white border border-slate-200/90 rounded-xl shadow-2xs overflow-hidden">
           {filteredRows.length === 0 ? (
-            <div className="py-16 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
-                <FileText size={24} />
+            <div className="py-12 text-center">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                <FileText size={20} />
               </div>
-              <h3 className="text-sm font-bold text-slate-800">No matching claims found</h3>
-              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              <h3 className="text-xs font-bold text-slate-800">No matching claims found</h3>
+              <p className="text-[11px] text-slate-400 mt-0.5 max-w-sm mx-auto">
                 No active records match the current filter selection. Try switching stages or reset filters.
               </p>
               <button
                 type="button"
                 onClick={handleReset}
-                className="mt-4 px-4 py-2 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
+                className="mt-3 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg hover:bg-blue-100 transition-colors cursor-pointer"
               >
                 Clear all filters
               </button>
@@ -446,14 +459,14 @@ export default function ClaimsHome({
                   <col style={{ width: "8%" }} />
                 </colgroup>
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <th className="px-6 py-4">Patient &amp; UHID</th>
-                    <th className="px-5 py-4">Insurer &amp; TPA</th>
-                    <th className="px-5 py-4">Process Stage</th>
-                    <th className="px-5 py-4">Claim Status</th>
-                    <th className="px-5 py-4 text-right">Claim Amount</th>
-                    <th className="px-6 py-4">Required Action</th>
-                    <th className="px-5 py-4 text-right">Last Updated</th>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="px-4 py-2.5">Patient &amp; UHID</th>
+                    <th className="px-3.5 py-2.5">Insurer &amp; TPA</th>
+                    <th className="px-3.5 py-2.5">Process Stage</th>
+                    <th className="px-3.5 py-2.5">Claim Status</th>
+                    <th className="px-3.5 py-2.5 text-right">Claim Amount</th>
+                    <th className="px-4 py-2.5">Required Action</th>
+                    <th className="px-3.5 py-2.5 text-right">Last Updated</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -469,16 +482,29 @@ export default function ClaimsHome({
                       label: c.policy.insurerName.slice(0, 4).toUpperCase(),
                     }
 
-                    // Compute contextual action label matching standard desk guide
-                    let actionLabel = "Upload discharge papers and send claim"
+                    // Compute contextual action label and icon matching standard desk guide
+                    let actionLabel = "Upload discharge papers & send claim"
+                    let ActionIcon = Upload
+                    let actionToneStyle = "bg-blue-50 text-blue-700 border-blue-200/80 hover:bg-blue-100/90"
+
                     if (openQs.length > 0) {
-                      actionLabel = `Answer Insurer Query${isOverdue ? " (Overdue)" : ""}`
+                      actionLabel = isOverdue ? "Overdue query — reply now" : "Answer insurer query"
+                      ActionIcon = AlertTriangle
+                      actionToneStyle = isOverdue
+                        ? "bg-rose-50 text-rose-800 border-rose-200/80 hover:bg-rose-100"
+                        : "bg-amber-50 text-amber-800 border-amber-200/80 hover:bg-amber-100"
                     } else if (c.status === "APPROVED" || c.status === "PARTIALLY_APPROVED") {
                       actionLabel = "Enter settlement letter number"
+                      ActionIcon = CheckCircle2
+                      actionToneStyle = "bg-emerald-50 text-emerald-800 border-emerald-200/80 hover:bg-emerald-100"
                     } else if (c.status === "PREAUTH_DRAFT" || c.status === "ELIGIBILITY_PENDING") {
                       actionLabel = "Submit pre-auth requisition"
+                      ActionIcon = FileText
+                      actionToneStyle = "bg-sky-50 text-sky-800 border-sky-200/80 hover:bg-sky-100"
                     } else if (c.status === "CLAIM_SUBMITTED") {
                       actionLabel = "Track adjudication response"
+                      ActionIcon = ArrowRight
+                      actionToneStyle = "bg-purple-50 text-purple-800 border-purple-200/80 hover:bg-purple-100"
                     }
 
                     return (
@@ -488,21 +514,21 @@ export default function ClaimsHome({
                         className="hover:bg-blue-50/40 transition-colors group cursor-pointer"
                       >
                         {/* Patient & UHID */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3.5">
-                            <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0">
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[11px] flex items-center justify-center shrink-0">
                               {initials}
                             </div>
                             <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors text-[13px]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-blue-600 hover:text-blue-800 transition-colors text-xs">
                                   {c.patientName}
                                 </span>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${wardStyle.bg} ${wardStyle.text} ${wardStyle.border}`}>
+                                <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-extrabold border ${wardStyle.bg} ${wardStyle.text} ${wardStyle.border}`}>
                                   {c.encounterType || "IP"}
                                 </span>
                               </div>
-                              <div className="text-[11.5px] text-slate-400 font-mono mt-0.5 flex items-center gap-1.5">
+                              <div className="text-[10.5px] text-slate-400 font-mono mt-0.5 flex items-center gap-1">
                                 <span>{c.id}</span>
                                 {c.patientId && (
                                   <>
@@ -516,14 +542,14 @@ export default function ClaimsHome({
                         </td>
 
                         {/* Insurer & TPA */}
-                        <td className="px-5 py-4">
-                          <div className="flex items-start gap-2.5">
-                            <div className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider shrink-0 ${insBadge.bg} ${insBadge.text}`}>
+                        <td className="px-3.5 py-2.5">
+                          <div className="flex items-start gap-2">
+                            <div className={`px-1.5 py-0.5 rounded text-[8.5px] uppercase tracking-wider shrink-0 font-black ${insBadge.bg} ${insBadge.text}`}>
                               {insBadge.label}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-bold text-slate-800 text-[12.5px] truncate">{c.policy.insurerName}</div>
-                              <div className="text-[11px] text-slate-400 font-normal truncate mt-0.5">
+                              <div className="font-bold text-slate-800 text-[11.5px] truncate">{c.policy.insurerName}</div>
+                              <div className="text-[10px] text-slate-400 font-normal truncate mt-0.5">
                                 {c.policy.tpaName || "Direct TPA"}
                               </div>
                             </div>
@@ -531,15 +557,15 @@ export default function ClaimsHome({
                         </td>
 
                         {/* Process Stage & Progress */}
-                        <td className="px-5 py-4">
-                          <div className="min-w-[140px]">
-                            <div className="flex items-center justify-between text-xs mb-1.5">
-                              <span className="font-semibold text-slate-800">{s.title}</span>
-                              <span className="text-[10.5px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                        <td className="px-3.5 py-2.5">
+                          <div className="min-w-[120px]">
+                            <div className="flex items-center justify-between text-[11px] mb-1">
+                              <span className="font-semibold text-slate-800 truncate">{s.title}</span>
+                              <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1 py-0.2 rounded">
                                 {s.n}/8
                               </span>
                             </div>
-                            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                            <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
                               <div
                                 className="bg-emerald-500 h-full rounded-full transition-all duration-300"
                                 style={{ width: `${(s.n / 8) * 100}%` }}
@@ -549,29 +575,30 @@ export default function ClaimsHome({
                         </td>
 
                         {/* Status */}
-                        <td className="px-5 py-4">
+                        <td className="px-3.5 py-2.5">
                           <StatusPill status={c.status} />
                         </td>
 
                         {/* Claim Amount */}
-                        <td className="px-5 py-4 text-right">
-                          <div className="font-mono font-extrabold text-slate-900 text-[13px]">
+                        <td className="px-3.5 py-2.5 text-right">
+                          <div className="font-mono font-bold text-slate-900 text-xs">
                             {inr(c.finalClaimAmount || c.preAuth?.requestedAmount || c.totalHospitalBill || 5300)}
                           </div>
-                          <div className="text-[10.5px] text-slate-400 font-mono">
+                          <div className="text-[10px] text-slate-400 font-mono">
                             Approved: {inr(c.approvedPreAuthAmount || c.approvedClaimAmount || 0)}
                           </div>
                         </td>
 
                         {/* Action Link / Button Pill */}
-                        <td className="px-5 py-4">
-                          <div className="bg-[#EFF6FF] group-hover:bg-blue-100/70 text-blue-600 font-bold text-[11.5px] px-3.5 py-2.5 rounded-2xl text-center leading-tight transition-colors shadow-2xs max-w-[165px]">
-                            {actionLabel}
+                        <td className="px-4 py-2.5">
+                          <div className={`inline-flex items-center gap-1.5 border font-semibold text-[10.5px] px-2.5 py-1.5 rounded-lg text-left leading-tight transition-all shadow-2xs max-w-[160px] ${actionToneStyle}`}>
+                            <ActionIcon size={12} className="shrink-0" />
+                            <span className="truncate">{actionLabel}</span>
                           </div>
                         </td>
 
                         {/* Updated Timestamp */}
-                        <td className="px-5 py-4 text-right text-[11.5px] font-mono text-slate-400 whitespace-nowrap">
+                        <td className="px-3.5 py-2.5 text-right text-[10.5px] font-mono text-slate-400 whitespace-nowrap">
                           {fmtDateTime(c.updatedAt)}
                         </td>
                       </tr>
@@ -583,7 +610,7 @@ export default function ClaimsHome({
           )}
 
           {/* ── Table Footer ── */}
-          <div className="px-6 py-4 border-t border-slate-200/80 bg-slate-50/50 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
+          <div className="px-4 py-2.5 border-t border-slate-200/80 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
             <div>
               Showing <span className="font-bold text-slate-800">{filteredRows.length}</span> of{" "}
               <span className="font-bold text-slate-800">{cases.length}</span> recorded admissions
@@ -595,6 +622,7 @@ export default function ClaimsHome({
           </div>
         </div>
       </div>
+      <InsuranceSopModal isOpen={sopModalOpen} onClose={() => setSopModalOpen(false)} />
     </div>
   )
 }

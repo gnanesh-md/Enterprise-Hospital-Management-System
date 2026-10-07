@@ -1,19 +1,21 @@
 import React from "react"
-import kalpraLogoImg from "../assets/Kalpra-logo.png"
+import { KALPRA_LOGO_BASE64 } from "../assets/kalpraLogoBase64"
 
 export function KalpraLogo({
-  className = "h-10",
+  className = "h-9",
+  dark = false,
 }: {
   className?: string
   dark?: boolean
 }) {
   return (
     <img
-      src={kalpraLogoImg}
-      alt="Kalpra Tech"
-      className={`object-contain ${className}`}
+      src={KALPRA_LOGO_BASE64}
+      alt="Kalpra Logo"
+      className={`object-contain shrink-0 ${className}`}
     />
   )
 }
 
 export default KalpraLogo
+
