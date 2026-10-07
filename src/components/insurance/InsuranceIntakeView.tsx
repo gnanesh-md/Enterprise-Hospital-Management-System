@@ -90,13 +90,18 @@ export default function InsuranceIntakeView({
   const [roomRentLimit, setRoomRentLimit] = useState("Single Private AC (No Capping)")
   const [corporate, setCorporate] = useState("TECHCORP SOLUTIONS PVT LTD")
 
-  // ── CARD UPLOAD & OCR STATE ──
   const [cardFileName, setCardFileName] = useState<string | null>("care_health_ecard_ramesh.jpg")
   const [cardFileSize, setCardFileSize] = useState<string | null>("245 KB")
   const [idProofFileName, setIdProofFileName] = useState<string | null>("aadhaar_ramesh_kumar.pdf")
   const [idProofFileSize, setIdProofFileSize] = useState<string | null>("420 KB")
   const [isScanningOcr, setIsScanningOcr] = useState(false)
   const [ocrConfidence, setOcrConfidence] = useState<number | null>(99.4)
+  
+  // Brochure upload
+  const [brochureFileName, setBrochureFileName] = useState<string | null>(null)
+  const [isSummarizingBrochure, setIsSummarizingBrochure] = useState(false)
+  const [brochureSummary, setBrochureSummary] = useState(false)
+
 
   // ── QUICK TEST CASES ──
   const samplePatients = [
@@ -1151,6 +1156,86 @@ export default function InsuranceIntakeView({
                     </label>
                   )}
                 </div>
+
+                {/* 3. Insurance Brochure Upload Box */}
+                <div className="space-y-1.5 pt-1">
+                  <label className="h-5 flex items-center justify-between text-[11.5px] font-bold text-slate-700">
+                    <span>3. Insurance Policy Brochure PDF <span className="text-slate-400 font-normal">(Optional)</span></span>
+                    {brochureFileName && <span className="text-emerald-700 font-bold text-xs">✓ Uploaded</span>}
+                  </label>
+
+                  {brochureFileName ? (
+                    <div className="p-3 bg-indigo-50/70 border border-indigo-300 rounded-none flex items-center justify-between text-xs shadow-xs">
+                      <div className="flex items-center gap-2.5">
+                        <FileText size={20} className="text-indigo-700 shrink-0" />
+                        <div>
+                          <div className="font-bold text-slate-900 font-mono text-xs">{brochureFileName}</div>
+                          <div className="text-[11px] text-slate-500">{isSummarizingBrochure ? "Hosp AI is summarizing..." : brochureSummary ? "AI Summary Ready" : "4.2 MB"}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setBrochureFileName(null)}
+                          className="p-1 hover:bg-rose-100 text-rose-600 rounded-none cursor-pointer"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="border-2 border-dashed border-indigo-300 hover:border-indigo-400 rounded-none p-5 flex flex-col items-center justify-center cursor-pointer bg-indigo-50/30 hover:bg-indigo-50/60 transition-colors text-center shadow-xs">
+                      <Upload size={22} className="text-indigo-500 mb-1.5" />
+                      <span className="text-xs font-bold text-indigo-900">Upload Brochure PDF</span>
+                      <span className="text-[11px] text-slate-500 mt-0.5">Extract room rent, co-pays &amp; rules automatically</span>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            setBrochureFileName(e.target.files[0].name)
+                            setIsSummarizingBrochure(true)
+                            notify("Brochure uploaded! AI is analyzing...", "success")
+                            setTimeout(() => {
+                              setIsSummarizingBrochure(false)
+                              setBrochureSummary(true)
+                              notify("Hosp AI has extracted policy limits!", "success")
+                            }, 2500)
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {/* AI Extracted Rules Display */}
+                {brochureSummary && (
+                  <div className="mt-4 bg-indigo-50/50 border border-indigo-200 rounded-none p-4 space-y-3 shadow-xs animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2 border-b border-indigo-100 pb-2">
+                      <Sparkles size={16} className="text-indigo-600" />
+                      <h4 className="text-xs font-bold text-indigo-900">Extracted Policy Rules</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-[11px]">
+                      <div>
+                        <div className="font-semibold text-slate-500 mb-0.5">Room Rent Limit</div>
+                        <div className="font-bold text-slate-900">1% of Sum Insured (Single AC)</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-500 mb-0.5">Co-Pay</div>
+                        <div className="font-bold text-slate-900">10% Mandatory</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-500 mb-0.5">Specific Waiting</div>
+                        <div className="font-bold text-slate-900">24 Months</div>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-500 mb-0.5">Maternity</div>
+                        <div className="font-bold text-rose-600">Not Covered</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Digital Card Preview Box */}
                 <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-white rounded-none p-4 shadow-lg shadow-slate-900/30 space-y-3 border border-slate-700">

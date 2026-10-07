@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
-import { Building2, Calculator, FileCheck2, Handshake, Package as PackageIcon, Percent, Plus, Trash2, Sparkles, Search } from "lucide-react"
+import { Building2, Calculator, FileCheck2, Handshake, Package as PackageIcon, Percent, Plus, Trash2, Sparkles, Search, BookOpen, CheckCircle2, UserCheck, Clock, ShieldCheck } from "lucide-react"
 import { InsuranceEngineService } from "../../services/insuranceDb"
 import type { ClaimEncounterType, DocumentCategory, DocumentRule, InsuranceCompanyConfig, PackageComponent, PackageMaster, PricingRuleSet, TpaConfig } from "../../types/insurance"
 import { Card, Empty, PageHeader, Field, Modal, Tag, attempt, btn, fieldBase, fieldCls, inr, useNotify, type Notify } from "./ui"
+import { DEPT_SOP_DATA } from "./InsuranceSopModal"
 
 // Masters the whole engine runs on: insurance companies, TPAs, procedure
 // packages, multiple-surgery pricing rules and document rules. One page per
@@ -490,7 +491,7 @@ function PackageCalculator({ packages }: { packages: PackageMaster[] }) {
   )
 }
 
-export type MasterSection = "insurers" | "tpas" | "packages" | "pricing" | "docrules"
+export type MasterSection = "insurers" | "tpas" | "packages" | "pricing" | "docrules" | "sop_rules"
 
 const SECTION_META: Record<MasterSection, { title: string; subtitle: string; icon: typeof Building2 }> = {
   insurers: { title: "Insurance Companies", subtitle: "Empaneled insurers, network status, gateway integrations, SLAs, and pre-auth form templates.", icon: Building2 },
@@ -498,15 +499,17 @@ const SECTION_META: Record<MasterSection, { title: string; subtitle: string; ico
   packages: { title: "Procedure Packages", subtitle: "Fixed-rate procedure packages: bundled components, base prices, GST rates, and multiple-surgery pricing.", icon: PackageIcon },
   pricing: { title: "Multiple-Surgery Pricing Rules", subtitle: "Standard percentage discount matrices shared across surgical packages (e.g. 1st 100%, 2nd 50%, 3rd 25%).", icon: Percent },
   docrules: { title: "Document Compliance Rules", subtitle: "Stage-wise mandatory document checklists per encounter type and insurer.", icon: FileCheck2 },
+  sop_rules: { title: "Department Rules & Eligibility SOPs", subtitle: "Official Insurance Dept guidelines, room rent capping, pre-auth SLAs, and leave coverage handover protocols for all staff.", icon: BookOpen },
 }
 
-const SECTIONS: MasterSection[] = ["insurers", "tpas", "packages", "pricing", "docrules"]
+const SECTIONS: MasterSection[] = ["insurers", "tpas", "packages", "pricing", "docrules", "sop_rules"]
 const SECTION_TAB: Record<MasterSection, { label: string; icon: typeof Building2 }> = {
   insurers: { label: "Insurers", icon: Building2 },
   tpas: { label: "TPAs", icon: Handshake },
   packages: { label: "Packages", icon: PackageIcon },
   pricing: { label: "Pricing Rules", icon: Percent },
   docrules: { label: "Document Rules", icon: FileCheck2 },
+  sop_rules: { label: "Dept Rules & SOPs", icon: BookOpen },
 }
 
 const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }> = {
@@ -534,6 +537,7 @@ export default function MastersPage({ section = "insurers" }: { section?: Master
     packages: m.packages.length,
     pricing: m.ruleSets.length,
     docrules: m.docRules.length,
+    sop_rules: DEPT_SOP_DATA.length,
   }
 
   return (
@@ -605,6 +609,7 @@ export default function MastersPage({ section = "insurers" }: { section?: Master
           {tab === "packages" && <PackagesSection m={m} notify={notify} />}
           {tab === "pricing" && <PricingSection m={m} notify={notify} />}
           {tab === "docrules" && <DocRulesSection m={m} notify={notify} />}
+          {tab === "sop_rules" && <SopRulesSection />}
         </div>
       </div>
     </div>
@@ -1244,6 +1249,103 @@ function DocRuleForm({ initial, insurers, notify, onDone }: { initial: DocumentR
         <button type="button" className={btn.primary} onClick={() => attempt(notify, () => InsuranceEngineService.saveDocumentRule(f), "Document rule saved.") && onDone()}>
           Save rule
         </button>
+      </div>
+    </div>
+  )
+}
+
+function SopRulesSection() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCat, setSelectedCat] = useState("all")
+
+  const filteredCategories = DEPT_SOP_DATA.map((cat) => {
+    const rules = cat.rules.filter(
+      (r) =>
+        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.details.some((d) => d.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    return { ...cat, rules }
+  }).filter((cat) => (selectedCat === "all" || cat.id === selectedCat) && cat.rules.length > 0)
+
+  return (
+    <div className="space-y-5">
+      {/* SOP Section Header Banner */}
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <BookOpen className="text-emerald-400" size={20} />
+            <h3 className="text-base font-extrabold tracking-tight">Insurance Department Operating Guidelines &amp; Duty Handover SOPs</h3>
+            <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+              Department Master Standard
+            </span>
+          </div>
+          <p className="text-xs text-blue-200">
+            Standard operating procedures for room rent capping, cashless intake mandates, pre-auth SLAs, and leave coverage duty protocols.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="relative w-full md:w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Filter rules &amp; SLAs…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 h-8.5 text-xs bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200/60 focus:bg-white focus:text-slate-900 focus:outline-none transition-all"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Rules Content */}
+      <div className="space-y-6">
+        {filteredCategories.map((cat) => {
+          const Icon = cat.icon
+          return (
+            <div key={cat.id} className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <Icon size={16} />
+                  </div>
+                  <h4 className="text-sm font-extrabold text-slate-900">{cat.title}</h4>
+                </div>
+                <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+                  {cat.badge}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {cat.rules.map((rule) => (
+                  <div key={rule.id} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                        {rule.title}
+                      </h5>
+                      {rule.tag && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-200/80 text-slate-700">
+                          {rule.tag}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium">{rule.summary}</p>
+                    <ul className="space-y-1 pt-1">
+                      {rule.details.map((d, idx) => (
+                        <li key={idx} className="text-[11.5px] text-slate-700 flex items-start gap-1.5">
+                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0 mt-0.5" />
+                          <span>{d}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -197,6 +197,54 @@ export interface PackageMaster {
   status: "Active" | "Inactive"
 }
 
+/** One priced surgery row on a fixed-package billing form (01 -> 100%, 02 -> 50%, …). */
+export interface FixedPackageSurgeryLine {
+  sequence: number
+  packageCode: string
+  procedureName: string
+  ratePercent: number
+  baseAmount: number
+  amount: number
+}
+
+/**
+ * A filled "Fixed Package Form" — the per-patient fixed-rate billing instance
+ * used for cashless insurance claims, modelled on the hospital's paper form.
+ * The package *definitions* live in PackageMaster; this is one case's bill.
+ */
+export interface FixedPackageBill {
+  id: string // e.g. "FP-00001"
+  /** The insurance case (ComprehensiveClaimRecord.id) this bill belongs to. */
+  caseId?: string
+  patientName: string
+  panNo?: string
+  idNo?: string // member / policy id
+  insuranceCompany: string
+  claimNo: string
+  admissionDate?: string
+  dischargeDate?: string
+  /** Primary package shown at the top of the form. */
+  packageCode: string
+  procedureName: string
+  packagePrice: number // base price of the primary package, before GST
+  gstRate: number
+  surgeries: FixedPackageSurgeryLine[]
+  packageSubtotal: number // sum of surgery amounts
+  gstAmount: number
+  totalAmount: number // packageSubtotal + gstAmount
+  creditBillingSignedBy?: string
+  creditBillingDate?: string
+  /** Uploaded/pasted signature image, as a data URL. */
+  creditBillingSignatureImg?: string
+  patientSignedBy?: string
+  patientSignedDate?: string
+  /** Uploaded/pasted signature image, as a data URL. */
+  patientSignatureImg?: string
+  status: "Draft" | "Verified" | "Submitted"
+  createdAt: string
+  updatedAt: string
+}
+
 export interface InsuranceCompanyConfig {
   id: string
   companyName: string

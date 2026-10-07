@@ -346,7 +346,7 @@ export default function EnhancedAuditRulesPage({
                 <p className="text-xs text-slate-500">Fixed rate package pricing, component inclusions, and multi-procedure discount rules.</p>
               </div>
               <button
-                onClick={() => notify("Opened package configuration editor modal.", "success")}
+                onClick={() => { window.dispatchEvent(new CustomEvent("hms:open-insurance", { detail: { module: "insurance_masters", section: "packages" } })); notify("Opening Master Setup → Packages to add a package.", "success") }}
                 className="px-3.5 py-2 text-xs font-bold bg-blue-700 hover:bg-blue-800 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus size={14} /> Add New Surgical Package
@@ -407,7 +407,7 @@ export default function EnhancedAuditRulesPage({
                 <p className="text-xs text-slate-500">Configure pre-auth and claim filing compliance requirements per insurer / TPA.</p>
               </div>
               <button
-                onClick={() => notify("Opened document rule configuration editor.", "success")}
+                onClick={() => { window.dispatchEvent(new CustomEvent("hms:open-insurance", { detail: { module: "insurance_masters", section: "docrules" } })); notify("Opening Master Setup → Document Rules to add a rule.", "success") }}
                 className="px-3.5 py-2 text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus size={14} /> Add Document Rule

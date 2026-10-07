@@ -14,6 +14,21 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Search,
+  Download,
+  ShieldCheck,
+  Star,
+  ArrowLeft,
+  Archive,
+  Trash2,
+  Clock,
+  Folder,
+  Tag,
+  ChevronLeft,
+  ChevronRight,
+  CornerUpLeft,
+  CornerUpRight,
+  AlertTriangle,
+  MoreVertical,
 } from "lucide-react"
 
 const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }> = {
@@ -26,6 +41,72 @@ const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }
   "HDFC ERGO General Insurance": { bg: "bg-red-600", text: "text-white font-black", label: "HDFC" },
   "FHPL (Family Health Plan TPA)": { bg: "bg-purple-600", text: "text-white font-black", label: "FHPL" },
   "Medi Assist TPA": { bg: "bg-teal-600", text: "text-white font-black", label: "MEDI" },
+}
+
+const AVATAR_COLORS = ["bg-blue-100 text-blue-700", "bg-teal-100 text-teal-700", "bg-violet-100 text-violet-700", "bg-amber-100 text-amber-700", "bg-rose-100 text-rose-700", "bg-emerald-100 text-emerald-700", "bg-sky-100 text-sky-700"]
+const avatarColor = (name: string): string => {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[h % AVATAR_COLORS.length]
+}
+const initialsOf = (name: string): string => name.split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "—"
+
+const timeAgo = (at: string): string => {
+  const diffMs = Date.now() - new Date(at).getTime()
+  const diffHours = Math.floor(diffMs / 3600000)
+  if (diffHours < 1) return "just now"
+  if (diffHours < 24) return `${diffHours}hrs ago`
+  const diffDays = Math.floor(diffHours / 24)
+  if (diffDays === 1) return "1 day ago"
+  return `${diffDays}days ago`
+}
+
+function EmailBody({ body }: { body: string }) {
+  const lines = body.replace(/={4,}/g, "").split("\n")
+  type Block = { type: "text"; text: string } | { type: "fields"; fields: [string, string][] }
+  const blocks: Block[] = []
+  let buf: string[] = []
+  let fields: [string, string][] = []
+  const flushText = () => { const t = buf.join("\n").trim(); if (t) blocks.push({ type: "text", text: t }); buf = [] }
+  const flushFields = () => { if (fields.length) blocks.push({ type: "fields", fields }); fields = [] }
+  for (const ln of lines) {
+    const m = ln.match(/^\s*([A-Za-z][A-Za-z /&]{1,28}):\s*(.+\S)\s*$/)
+    if (m) { flushText(); fields.push([m[1].trim(), m[2].trim()]) }
+    else { flushFields(); buf.push(ln) }
+  }
+  flushText(); flushFields()
+  return (
+    <div className="space-y-4 text-[13.5px] text-slate-800 leading-relaxed">
+      {blocks.map((b, i) =>
+        b.type === "text" ? (
+          <p key={i} className="whitespace-pre-wrap font-normal text-slate-800 leading-relaxed">{b.text}</p>
+        ) : (
+          <div key={i} className="my-4 bg-gradient-to-br from-blue-50/70 via-sky-50/40 to-slate-50/60 border border-blue-200/80 rounded-2xl p-4 sm:p-5 space-y-3 shadow-2xs">
+            {b.fields.map(([k, v], j) => {
+              let icon = "📋"
+              const kl = k.toLowerCase()
+              if (kl.includes("amount") || kl.includes("sanctioned") || kl.includes("limit")) icon = "📋"
+              if (kl.includes("diagnosis")) icon = "🩺"
+              if (kl.includes("doctor")) icon = "👨‍⚕️"
+              if (kl.includes("code") || kl.includes("auth")) icon = "🔑"
+              if (kl.includes("copay") || kl.includes("co-pay")) icon = "🛡️"
+              return (
+                <div key={j} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-xs sm:text-[13px] border-b border-blue-100/60 pb-2.5 last:border-b-0 last:pb-0">
+                  <div className="flex items-center gap-2.5 min-w-[210px] max-w-[250px] shrink-0 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                    <span className="text-base shrink-0">{icon}</span>
+                    <span className="whitespace-nowrap">{k}:</span>
+                  </div>
+                  <div className="font-mono font-extrabold text-slate-900 text-xs sm:text-sm min-w-0 break-words tracking-tight">
+                    {v}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ),
+      )}
+    </div>
+  )
 }
 
 export default function ClaimEmailTrackerView({
@@ -41,6 +122,13 @@ export default function ClaimEmailTrackerView({
   const [searchQuery, setSearchQuery] = useState("")
   const [isComposing, setIsComposing] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Adjudication form state
+  const [adjMode, setAdjMode] = useState<"idle" | "review">("idle")
+  const [adjOutcome, setAdjOutcome] = useState<"Approved" | "Rejected" | "Query">("Approved")
+  const [adjAmount, setAdjAmount] = useState<string>("")
+  const [adjCode, setAdjCode] = useState("")
+  const [adjNote, setAdjNote] = useState("")
 
   // Strictly filter and seed baseline realistic emails for THIS patient only
   const mails: MailRecord[] = useMemo(() => {
@@ -154,15 +242,15 @@ export default function ClaimEmailTrackerView({
     }, 800)
   }
 
-  const insLogo = INSURER_BADGES[c.policy.tpaName || c.policy.insurerName] || {
-    bg: "bg-blue-700",
-    text: "text-white font-black",
-    label: (c.policy.tpaName || c.policy.insurerName).slice(0, 4).toUpperCase(),
-  }
+  const activeIndex = useMemo(() => {
+    if (!activeMail) return 0
+    const idx = filteredMails.findIndex((m) => m.id === activeMail.id)
+    return idx >= 0 ? idx + 1 : 1
+  }, [filteredMails, activeMail])
 
   return (
     <div className="space-y-4">
-      {/* ── SIMPLE & ATTRACTIVE HEADER FOR THIS PATIENT ONLY ── */}
+      {/* ── HEADER ── */}
       <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -215,265 +303,290 @@ export default function ClaimEmailTrackerView({
         </div>
       )}
 
-      {/* ── CLEAN & ATTRACTIVE EMAIL THREAD & VIEWER ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)] border border-slate-200/90 rounded-2xl bg-white overflow-hidden shadow-2xs min-h-[500px]">
-        {/* Left Column: Email List */}
-        <div className="border-r border-slate-200/90 flex flex-col bg-slate-50/30 overflow-hidden">
-          {/* Search & Filter Bar */}
-          <div className="p-3 border-b border-slate-200/80 bg-white space-y-2">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search subject or body…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 h-8.5 text-xs bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
-              />
-            </div>
-
-            {/* Filter Chips */}
-            <div className="flex flex-wrap gap-1 text-[11.5px]">
-              {[
-                { id: "all", label: "All", count: counts.all },
-                { id: "in", label: "Inbound ↙", count: counts.in },
-                { id: "out", label: "Outbound ↗", count: counts.out },
-                { id: "approvals", label: "Sanctions 🟢", count: counts.approvals },
-                { id: "queries", label: "Queries 🟡", count: counts.queries },
-              ].map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setFilterType(f.id as typeof filterType)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                    filterType === f.id
-                      ? "bg-slate-900 text-white shadow-xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  <span>{f.label}</span>
-                  <span
-                    className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-mono ${
-                      filterType === f.id ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
-                    }`}
-                  >
-                    {f.count}
-                  </span>
-                </button>
-              ))}
-            </div>
+      {/* ── EXACT IMAGE 3 LAYOUT & DESIGN MATCH ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_minmax(0,1fr)] gap-5 bg-[#F0F2F5] p-3 rounded-2xl border border-slate-200/90 shadow-2xs min-h-[550px]">
+        {/* Left Column: Email Thread Cards (Image 3 style) */}
+        <div className="flex flex-col space-y-3">
+          {/* Pill Search Input (Image 3 style) */}
+          <div className="bg-[#E2E8F0]/90 rounded-2xl px-4 py-2.5 flex items-center justify-between shadow-2xs border border-slate-300/60 shrink-0">
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none font-medium"
+            />
+            <Search size={15} className="text-slate-400 shrink-0 ml-2" />
           </div>
 
-          {/* Email Item Rows */}
-          <div className="overflow-y-auto divide-y divide-slate-100 max-h-[500px]">
+          {/* Floating Message Cards List */}
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[580px]">
             {filteredMails.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400">
-                No emails match your filter selection.
+              <div className="p-8 text-center text-xs text-slate-400 bg-white rounded-2xl border border-slate-200/80">
+                No emails match your search.
               </div>
             ) : (
               filteredMails.map((m) => {
                 const isSelected = activeMail?.id === m.id
-                const isInbound = m.direction === "in"
+                const snippet = m.body.replace(/={4,}/g, "").replace(/\n+/g, " ").trim().slice(0, 95)
                 const isApproval = m.subject.toLowerCase().includes("approval") || m.subject.toLowerCase().includes("sanction")
                 const isQuery = m.subject.toLowerCase().includes("query")
+                const pillBg = isApproval ? "bg-emerald-500" : isQuery ? "bg-amber-500" : m.direction === "in" ? "bg-sky-500" : "bg-blue-600"
 
                 return (
-                  <button
+                  <div
                     key={m.id}
-                    type="button"
                     onClick={() => setSelectedMailId(m.id)}
-                    className={`w-full text-left p-3.5 transition-all cursor-pointer block ${
+                    className={`bg-white rounded-2xl p-4 border transition-all cursor-pointer relative shadow-2xs ${
                       isSelected
-                        ? "bg-blue-50/90 border-l-4 border-l-blue-600 text-slate-900 shadow-2xs"
-                        : "hover:bg-white text-slate-700 border-l-4 border-l-transparent"
+                        ? "border-blue-500 shadow-md ring-2 ring-blue-500/10"
+                        : "border-slate-200/80 hover:border-slate-300 hover:shadow-xs"
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`px-1.5 py-0.5 rounded text-[8.5px] uppercase tracking-wider shrink-0 ${insLogo.bg} ${insLogo.text}`}>
-                          {insLogo.label}
-                        </span>
-                        <span
-                          className={`inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                            isInbound
-                              ? isApproval
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                : isQuery
-                                ? "bg-amber-50 text-amber-800 border-amber-200"
-                                : "bg-teal-50 text-teal-800 border-teal-200"
-                              : "bg-blue-50 text-blue-800 border-blue-200"
-                          }`}
-                        >
-                          {isInbound ? <ArrowDownLeft size={10} /> : <ArrowUpRight size={10} />}
-                          {isInbound ? "Inbound TPA" : "Hospital Out"}
-                        </span>
+                    {/* Vertical Right Edge Color Pill (Image 3 style) */}
+                    <span className={`w-1.5 h-6 rounded-full absolute right-3.5 top-4 ${pillBg}`} />
+
+                    {/* Header Row: Avatar + Title & Sender Name + Timestamp */}
+                    <div className="flex items-start gap-3 pr-4">
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs ${avatarColor(c.patientName)}`}>
+                        {initialsOf(c.patientName)}
                       </div>
-                      <span className="text-xs font-mono text-slate-400">
-                        {fmtDateTime(m.at).split(",")[0]}
-                      </span>
-                    </div>
-
-                    <div className="text-xs font-bold text-slate-900 leading-snug truncate">
-                      {m.subject}
-                    </div>
-
-                    <div className="text-[11.5px] text-slate-400 font-mono truncate mt-0.5">
-                      {isInbound ? `From: ${m.from}` : `To: ${m.to}`}
-                    </div>
-
-                    {m.attachments && m.attachments.length > 0 && (
-                      <div className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 mt-1.5">
-                        <Paperclip size={10} /> {m.attachments.length} attachment{m.attachments.length > 1 ? "s" : ""}
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-xs font-bold text-slate-900 truncate leading-snug">
+                          {m.subject}
+                        </h3>
+                        <div className="flex items-center justify-between gap-1 mt-0.5">
+                          <span className="text-[11.5px] text-slate-400 font-medium truncate">
+                            {m.direction === "in" ? m.from.split("<")[0] : c.patientName}
+                          </span>
+                          <span className="text-[10.5px] text-slate-400 font-normal shrink-0">
+                            {timeAgo(m.at)}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                  </button>
+                    </div>
+
+                    {/* 2-line preview snippet */}
+                    <p className="text-[11.5px] text-slate-500 font-normal leading-relaxed line-clamp-2 mt-2">
+                      {snippet}
+                    </p>
+                  </div>
                 )
               })
             )}
           </div>
         </div>
 
-        {/* Right Column: Email Inspector */}
-        <div className="flex flex-col bg-white overflow-y-auto max-h-[500px]">
+        {/* Right Column: Full Email Workspace (Clean View Mode) */}
+        <div className="flex flex-col overflow-y-auto space-y-4 max-h-[640px]">
           {activeMail ? (
-            <div className="p-5 space-y-4">
-              {/* Message Header */}
-              <div className="border-b border-slate-200/80 pb-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                  <h4 className="text-base font-bold text-slate-900 leading-snug">
-                    {activeMail.subject}
-                  </h4>
-                  <span className="text-xs font-mono text-slate-400">
+            /* Main Email Card */
+            <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs border border-slate-200/80 space-y-4 relative flex-1">
+              {/* Header: Sender to Recipient + Timestamp + Avatar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100">
+                <div className="text-xs text-slate-600 font-medium truncate">
+                  <strong className="text-slate-900 font-bold">{activeMail.from}</strong>{" "}
+                  <span className="text-slate-400 font-normal">to</span>{" "}
+                  <strong className="text-slate-800 font-semibold">{activeMail.to}</strong>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <span className="text-[11.5px] font-mono text-slate-400 font-medium">
                     {fmtDateTime(activeMail.at)}
                   </span>
-                </div>
-
-                <div className="text-xs space-y-1.5 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200/80">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-slate-400 font-medium">From:</span>{" "}
-                      <span className="font-bold text-slate-900">{activeMail.from}</span>
-                    </div>
-                    <span className="text-[10.5px] font-bold px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-full flex items-center gap-1">
-                      ✓ TLS Verified
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 font-medium">To:</span>{" "}
-                    <span className="text-slate-700 font-semibold">{activeMail.to}</span>
-                  </div>
-                  {activeMail.cc && (
-                    <div>
-                      <span className="text-slate-400 font-medium">Cc:</span>{" "}
-                      <span className="text-slate-600">{activeMail.cc}</span>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-slate-400 font-medium">Purpose:</span>{" "}
-                    <span className="font-bold text-blue-700">{activeMail.purpose}</span>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-extrabold shrink-0 shadow-2xs ${avatarColor(c.patientName)}`}>
+                    {initialsOf(c.patientName)}
                   </div>
                 </div>
               </div>
 
-              {/* Inbound TPA Decision Sanction Callout */}
+              {/* Reduced & Crisp Subject Heading */}
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
+                {activeMail.subject}
+              </h2>
+
+              {/* Inbound TPA Decision Sanction Callout & Local Approval Bar */}
               {activeMail.direction === "in" &&
                 (activeMail.subject.toLowerCase().includes("approval") ||
                   activeMail.subject.toLowerCase().includes("sanction")) && (
-                  <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/90 rounded-xl p-4 shadow-2xs space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="bg-gradient-to-br from-indigo-50 via-white to-blue-50 border border-indigo-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div>
-                        <div className="flex items-center gap-1.5 text-emerald-900 font-extrabold text-sm">
-                          <CheckCircle2 size={16} className="text-emerald-600" /> Official TPA Pre-Auth Sanction Decision
+                        <div className="flex items-center gap-2 text-indigo-900 font-extrabold text-sm mb-1">
+                          <CheckCircle2 size={18} className="text-indigo-600" /> TPA Sanction Decision Detected
                         </div>
-                        <p className="text-xs text-slate-600 mt-0.5 font-medium">
-                          This email contains an official sanction code and approval limit for <span className="font-bold text-slate-900">{c.patientName}</span>.
+                        <p className="text-xs text-slate-600 font-medium leading-relaxed max-w-lg">
+                          This email contains an official sanction decision for <span className="font-bold text-slate-900">{c.patientName}</span>. Review the terms below and apply to claim.
                         </p>
                       </div>
 
-                      {c.approvedPreAuthAmount === 0 && (
+                      {c.approvedPreAuthAmount === 0 && adjMode === "idle" && (
                         <button
                           type="button"
                           onClick={() => {
-                            const amt = c.preAuth?.requestedAmount ? Math.round(c.preAuth.requestedAmount * 0.95) : 50000
-                            const code = `AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`
-                            try {
-                              E.recordPreAuthResponse(c.id, {
-                                outcome: "Approved",
-                                amount: amt,
-                                approvalCode: code,
-                                note: "Sanction verified from inbound TPA email.",
-                              })
-                              notify(`Approved for ₹${amt.toLocaleString("en-IN")} and synced across Pharmacy & Billing!`, "success")
-                            } catch (err: any) {
-                              notify(err.message, "error")
-                            }
+                            setAdjMode("review")
+                            setAdjAmount((c.preAuth?.requestedAmount ? Math.round(c.preAuth.requestedAmount * 0.95) : 50000).toString())
+                            setAdjCode(`AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`)
+                            setAdjOutcome("Approved")
+                            setAdjNote("Sanction verified from inbound TPA email.")
                           }}
-                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+                          className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-md shrink-0 active:scale-95"
                         >
-                          <Sparkles size={13} /> Apply Sanction to Claim
+                          <Sparkles size={14} /> Review &amp; Record Decision
                         </button>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/80 border border-emerald-200/70 rounded-lg p-3">
-                      <div>
-                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Authorization Code</div>
-                        <div className="text-xs font-mono font-bold text-slate-900 mt-0.5">
-                          {c.preAuth?.approvalCode || `AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-9921`}
+                    {adjMode === "review" && c.approvedPreAuthAmount === 0 && (
+                      <div className="mt-4 p-4 bg-white border border-indigo-100 rounded-xl shadow-inner space-y-4">
+                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Record Official Decision</div>
+                        
+                        <div className="flex gap-2">
+                          {(["Approved", "Rejected", "Query"] as const).map((out) => (
+                            <button
+                              key={out}
+                              type="button"
+                              onClick={() => setAdjOutcome(out)}
+                              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors border ${
+                                adjOutcome === out
+                                  ? out === "Approved"
+                                    ? "bg-emerald-50 border-emerald-600 text-emerald-700 shadow-xs"
+                                    : out === "Rejected"
+                                    ? "bg-rose-50 border-rose-600 text-rose-700 shadow-xs"
+                                    : "bg-amber-50 border-amber-600 text-amber-700 shadow-xs"
+                                  : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                              }`}
+                            >
+                              {out}
+                            </button>
+                          ))}
+                        </div>
+
+                        {adjOutcome === "Approved" && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Approved Amount (₹)</label>
+                              <input
+                                type="number"
+                                value={adjAmount}
+                                onChange={(e) => setAdjAmount(e.target.value)}
+                                className="w-full px-3 py-2 text-sm font-bold text-emerald-700 bg-emerald-50/30 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                                placeholder="e.g. 50000"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Authorization Code</label>
+                              <input
+                                type="text"
+                                value={adjCode}
+                                onChange={(e) => setAdjCode(e.target.value)}
+                                className="w-full px-3 py-2 text-sm font-mono font-bold text-slate-900 bg-slate-50/50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                placeholder="e.g. AUTH-12345"
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Internal Note / Remarks</label>
+                          <textarea
+                            value={adjNote}
+                            onChange={(e) => setAdjNote(e.target.value)}
+                            rows={2}
+                            className="w-full px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                            placeholder="Add any remarks for the record..."
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 pt-2">
+                          <button
+                            type="button"
+                            onClick={() => setAdjMode("idle")}
+                            className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                const amt = parseInt(adjAmount, 10) || 0
+                                if (adjOutcome === "Approved" && !amt) throw new Error("Please enter a valid approved amount.")
+                                if (adjOutcome === "Approved" && !adjCode.trim()) throw new Error("Authorization code is required.")
+                                
+                                E.recordPreAuthResponse(c.id, {
+                                  outcome: adjOutcome,
+                                  amount: amt,
+                                  approvalCode: adjCode,
+                                  note: adjNote,
+                                })
+                                setAdjMode("idle")
+                                notify(
+                                  adjOutcome === "Approved" 
+                                    ? `Approved for ₹${amt.toLocaleString("en-IN")} and synced!` 
+                                    : `Decision recorded as ${adjOutcome}.`,
+                                  "success"
+                                )
+                              } catch (err: any) {
+                                notify(err.message, "error")
+                              }
+                            }}
+                            className={`px-5 py-2 text-xs font-bold text-white rounded-lg transition-all shadow-sm active:scale-95 flex items-center gap-1.5 ${
+                              adjOutcome === "Approved" ? "bg-emerald-600 hover:bg-emerald-700" :
+                              adjOutcome === "Rejected" ? "bg-rose-600 hover:bg-rose-700" :
+                              "bg-amber-600 hover:bg-amber-700"
+                            }`}
+                          >
+                            <CheckCircle2 size={14} /> Confirm &amp; Save
+                          </button>
                         </div>
                       </div>
-                      <div>
-                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Sanctioned Amount</div>
-                        <div className="text-sm font-bold text-emerald-700 mt-0.5">
-                          {inr(c.approvedPreAuthAmount || (c.preAuth?.requestedAmount ? Math.round(c.preAuth.requestedAmount * 0.95) : 50000))}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Co-Pay Clause</div>
-                        <div className="text-xs font-bold text-slate-800 mt-0.5">{c.policy.copayPercentage || 0}%</div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 )}
 
-              {/* Message Body */}
-              <div className="bg-white border border-slate-200/90 rounded-xl p-4 shadow-2xs">
-                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-slate-800 leading-relaxed font-medium">
-                  {activeMail.body.replace(/={5,}/g, "----------------------------------------")}
-                </pre>
+              {/* Formatted Email Body */}
+              <div className="pt-2">
+                <EmailBody body={activeMail.body} />
               </div>
 
-              {/* Attachments Section */}
+              {/* Attachment Cards */}
               {activeMail.attachments && activeMail.attachments.length > 0 && (
-                <div className="pt-2 border-t border-slate-200/80">
-                  <div className="text-xs font-bold text-slate-800 mb-2 flex items-center gap-1.5">
-                    <Paperclip size={13} className="text-slate-500" /> Verified Attachments ({activeMail.attachments.length})
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {activeMail.attachments.map((att, i) => (
+                <div className="pt-4 space-y-3 border-t border-slate-100">
+                  {activeMail.attachments.map((att, i) => {
+                    const iconBg = i % 2 === 0 ? "bg-sky-400" : "bg-amber-500"
+                    return (
                       <div
                         key={i}
-                        className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-xl hover:bg-blue-50/50 hover:border-blue-200 transition-colors cursor-pointer group"
+                        className="flex items-center gap-3.5 p-2 transition-all cursor-pointer group"
                       >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <FileText className="text-blue-600 shrink-0" size={16} />
-                          <span className="text-xs font-bold text-slate-800 group-hover:text-blue-700 transition-colors truncate">
+                        <div className={`w-12 h-12 rounded-2xl ${iconBg} text-white flex items-center justify-center shrink-0 shadow-2xs`}>
+                          <Paperclip size={20} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                             {att}
+                          </h4>
+                          <span className="text-xs text-slate-400 font-medium">
+                            1.56Mb
                           </span>
                         </div>
-                        <span className="text-[10.5px] font-extrabold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200/80">
-                          PDF
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => notify(`Downloading ${att}…`, "success")}
+                          className="p-2 text-slate-400 hover:text-blue-600 cursor-pointer"
+                        >
+                          <Download size={16} />
+                        </button>
                       </div>
-                    ))}
-                  </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
           ) : (
-            <div className="p-12 text-center text-slate-400">
+            <div className="p-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200/80 shadow-xs">
               <Mail size={32} className="mx-auto mb-2 text-slate-300" />
-              <p className="text-xs font-medium">Select an email to view full details</p>
+              <p className="text-xs font-medium">Select an email to view full conversation</p>
             </div>
           )}
         </div>
@@ -481,3 +594,4 @@ export default function ClaimEmailTrackerView({
     </div>
   )
 }
+

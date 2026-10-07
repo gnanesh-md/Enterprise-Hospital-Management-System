@@ -17,7 +17,7 @@ const QUICK_ACTIONS = [
     actionKey: "patients",
     subKey: "register",
     color: "#2563EB",
-    bg: "bg-blue-50/50 hover:bg-blue-50",
+    bg: "#EFF6FF",
   },
   {
     label: "Schedule Appointment",
@@ -25,7 +25,7 @@ const QUICK_ACTIONS = [
     icon: Icon.Calendar,
     actionKey: "appointments",
     color: "#4F46E5",
-    bg: "bg-indigo-50/50 hover:bg-indigo-50",
+    bg: "#EEF2FF",
   },
   {
     label: "ED Track Board",
@@ -33,7 +33,7 @@ const QUICK_ACTIONS = [
     icon: Icon.Emergency,
     actionKey: "emergency",
     color: "#E11D48",
-    bg: "bg-rose-50/50 hover:bg-rose-50",
+    bg: "#FFF1F2",
   },
   {
     label: "Bed Allocation Board",
@@ -41,7 +41,7 @@ const QUICK_ACTIONS = [
     icon: Icon.Bed,
     actionKey: "inpatient",
     color: "#7C3AED",
-    bg: "bg-purple-50/50 hover:bg-purple-50",
+    bg: "#F5F3FF",
   },
   {
     label: "Lab Orders & Diagnostics",
@@ -49,7 +49,7 @@ const QUICK_ACTIONS = [
     icon: Icon.FlaskConical,
     actionKey: "laboratory",
     color: "#D97706",
-    bg: "bg-amber-50/50 hover:bg-amber-50",
+    bg: "#FEF3C7",
   },
   {
     label: "Pharmacy Dispensing",
@@ -57,7 +57,7 @@ const QUICK_ACTIONS = [
     icon: Icon.Pharmacy,
     actionKey: "pharmacy",
     color: "#0891B2",
-    bg: "bg-cyan-50/50 hover:bg-cyan-50",
+    bg: "#E0F2FE",
   },
   {
     label: "Surgery OR Board",
@@ -65,7 +65,7 @@ const QUICK_ACTIONS = [
     icon: Icon.Surgery,
     actionKey: "surgery",
     color: "#059669",
-    bg: "bg-emerald-50/50 hover:bg-emerald-50",
+    bg: "#ECFDF5",
   },
   {
     label: "Billing & Claims",
@@ -73,7 +73,7 @@ const QUICK_ACTIONS = [
     icon: Icon.Billing,
     actionKey: "billing",
     color: "#6366F1",
-    bg: "bg-indigo-50/50 hover:bg-indigo-50",
+    bg: "#F5F3FF",
   },
 ]
 
@@ -125,7 +125,6 @@ export default function Dashboard({
   // ── Dynamic Multi-Hospital & Live Date Formatting ─────────────────────────
   const formattedToday = useMemo(() => {
     return new Date().toLocaleDateString("en-US", {
-      weekday: "short",
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -166,9 +165,9 @@ export default function Dashboard({
     return encs.slice(0, 8).map((enc) => {
       const timeStr = enc.registrationTime
         ? new Date(enc.registrationTime).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
+          hour: "2-digit",
+          minute: "2-digit",
+        })
         : "09:30 AM"
       return {
         id: enc.id,
@@ -214,9 +213,9 @@ export default function Dashboard({
         dept: deptName,
         ordered: l.createdAt
           ? new Date(l.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
+            hour: "2-digit",
+            minute: "2-digit",
+          })
           : "09:15 AM",
         status: isCrit ? "Critical" : l.status,
       }
@@ -471,7 +470,7 @@ export default function Dashboard({
     if (activeErVisits.length > 0) {
       alerts.push({
         type: "warning",
-        title: "Emergency Dept Live Census Alert",
+        title: "Emergency Dept Live Census",
         body: `ED census at ${activeErVisits.length} active patients. ${criticalErCount} high-priority ESI-1/2 cases in care.`,
         action: "View ED Board",
         target: "emergency",
@@ -610,89 +609,85 @@ export default function Dashboard({
 
   const portalBanner = isSuperAdmin
     ? {
-        title: "Super Admin Platform Control Suite",
-        badge: "SUPER ADMIN",
-        color: "bg-[#1E3A8A] text-white",
-        icon: Icon.Cmd,
-      }
+      title: "Super Admin Platform Control Suite",
+      badge: "SUPER ADMIN",
+      color: "bg-[#1E3A8A] text-white",
+      icon: "👑",
+    }
     : isAdmin
       ? {
-          title: "Hospital Operations & Census Command",
-          badge: "HOSPITAL ADMIN",
-          color: "bg-[#166534] text-white",
-          icon: Icon.Cmd,
-        }
+        title: "Hospital Operations & Census Command",
+        badge: "HOSPITAL ADMIN",
+        color: "bg-[#166534] text-white",
+        icon: "🏢",
+      }
       : isDoctor
         ? {
-            title: "Doctor Clinical EMR & Orders Portal",
-            badge: "PHYSICIAN PORTAL",
-            color: "bg-[#78350F] text-white",
-            icon: Icon.Stethoscope,
-          }
+          title: "Doctor Clinical EMR & Orders Portal",
+          badge: "PHYSICIAN PORTAL",
+          color: "bg-[#78350F] text-white",
+          icon: "👨‍⚕️",
+        }
         : isReception
           ? {
-              title: "Receptionist & Patient Services Portal",
-              badge: "FRONT DESK",
-              color: "bg-[#581C87] text-white",
-              icon: Icon.Patients,
-            }
+            title: "Receptionist & Patient Services Portal",
+            badge: "FRONT DESK",
+            color: "bg-[#581C87] text-white",
+            icon: "📋",
+          }
           : isPharmacy
             ? {
-                title: "Pharmacy Dispensing & Paper Rx OCR Portal",
-                badge: "PHARMACY PORTAL",
-                color: "bg-[#064E3B] text-white",
-                icon: Icon.Pharmacy,
-              }
+              title: "Pharmacy Dispensing & Paper Rx OCR Portal",
+              badge: "PHARMACY PORTAL",
+              color: "bg-[#064E3B] text-white",
+              icon: "💊",
+            }
             : isLab
               ? {
-                  title: "Laboratory & Diagnostic Testing Portal",
-                  badge: "PATHOLOGY & LAB",
-                  color: "bg-[#831843] text-white",
-                  icon: Icon.FlaskConical,
-                }
+                title: "Laboratory & Diagnostic Testing Portal",
+                badge: "PATHOLOGY & LAB",
+                color: "bg-[#831843] text-white",
+                icon: "🔬",
+              }
               : {
-                  title: "Registered Nurse & ICU Station Portal",
-                  badge: "NURSE WARD",
-                  color: "bg-[#7C2D12] text-white",
-                  icon: Icon.Inpatient,
-                }
-
-  const BannerIcon = portalBanner.icon
+                title: "Registered Nurse & ICU Station Portal",
+                badge: "NURSE WARD",
+                color: "bg-[#7C2D12] text-white",
+                icon: "👩‍⚕️",
+              }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F4F6F9] space-y-5 pb-10">
-      {/* ── Domain Hero Header (Squared Borders, Sleek & Executive) ────────────── */}
-      <div className="bg-white border-b border-[#DDE2EC] px-6 py-4 rounded-none shadow-2xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="flex-1 overflow-y-auto bg-[#F4F6F9]">
+      {/* ── Domain Hero Header ────────────────────────────────────────────── */}
+      <div className="bg-white border-b border-[#DDE2EC] px-6 py-4 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-none bg-[#1B4FD8] text-white flex items-center justify-center shadow-xs shrink-0">
-                <BannerIcon className="w-5 h-5" />
-              </div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl">{portalBanner.icon}</span>
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-lg font-extrabold text-slate-900 tracking-tight leading-none">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg font-bold text-gray-900 tracking-tight leading-none">
                     {portalBanner.title}
                   </h1>
                   <span
-                    className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-none tracking-wider uppercase ${portalBanner.color}`}
+                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded ${portalBanner.color}`}
                   >
                     {portalBanner.badge}
                   </span>
                 </div>
-                <p className="text-[12px] text-slate-500 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                <p className="text-[12px] text-[#64748B] mt-1 flex items-center gap-2">
                   <span>
-                    Welcome, <strong className="text-slate-900">{activeStaff?.name || "User"}</strong> (
+                    Welcome, <strong>{activeStaff?.name || "User"}</strong> (
                     {activeStaff?.title || "Staff"})
                   </span>
-                  <span>•</span>
-                  <span className="text-blue-700 font-bold">{activeStaff?.department || "General Hospital"}</span>
-                  <span>•</span>
-                  <span className="font-mono text-slate-600">
+                  <span>·</span>
+                  <span>{activeStaff?.department || "General Hospital"}</span>
+                  <span>·</span>
+                  <span className="font-mono text-[#475569]">
                     {formattedToday}
                   </span>
-                  <span>•</span>
-                  <span className="font-mono text-[11px] bg-slate-100 text-slate-800 px-2 py-0.5 rounded-none border border-slate-200 font-bold">
+                  <span>·</span>
+                  <span className="font-mono text-[11px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded">
                     {hospitalCode}
                   </span>
                 </p>
@@ -702,37 +697,36 @@ export default function Dashboard({
 
           <div className="flex items-center gap-3">
             {/* Operational Status Pill */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-none bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11.5px] font-bold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
-              <span>Operational Status: Live</span>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] text-[#047857] text-[12px] font-medium">
+              <span className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse" />
+              <span>All Systems Operational</span>
             </div>
 
             {/* ED Alert Badge */}
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-rose-50 border border-rose-200 text-rose-800 text-[11.5px] font-bold shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-rose-600" />
-              <span>ED Census: {activeErVisits.length}</span>
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FFF1F2] border border-[#FECDD3] text-[#BE123C] text-[12px] font-medium">
+              <span className="w-2 h-2 rounded-full bg-[#E11D48]" />
+              <span>ED Active: {activeErVisits.length}</span>
             </div>
 
-            {/* Refresh Button */}
+            {/* Animated Refresh Button */}
             <Btn
               variant="outline"
               size="sm"
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="rounded-none shadow-2xs transition-all active:scale-95 cursor-pointer hover:bg-slate-50 border-slate-300 font-bold text-xs"
+              className="shadow-sm transition-all active:scale-95 cursor-pointer"
             >
               <Icon.Refresh
-                className={`w-3.5 h-3.5 text-blue-700 transition-transform duration-500 ${
-                  isRefreshing ? "animate-spin" : ""
-                }`}
+                className={`w-3.5 h-3.5 text-[#1B4FD8] transition-transform duration-500 ${isRefreshing ? "animate-spin" : ""
+                  }`}
               />
-              <span className="text-blue-700">{isRefreshing ? "Syncing..." : "Refresh"}</span>
+              <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
             </Btn>
           </div>
         </div>
       </div>
 
-      <div className="px-6 w-full space-y-5">
+      <div className="p-5 w-full space-y-5">
         {/* ── High-Urgency Alerts ────────────────────────────────────────────── */}
         {dynamicAlerts.length > 0 && (
           <div className="space-y-2.5">
@@ -746,7 +740,7 @@ export default function Dashboard({
           </div>
         )}
 
-        {/* ── Domain Key Metrics Grid (6 Squared Cards) ────────────────────────── */}
+        {/* ── Domain Key Metrics Grid ────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
           {METRICS.map((m) => {
             const IconComp = m.icon
@@ -754,20 +748,20 @@ export default function Dashboard({
               <div
                 key={m.id}
                 onClick={() => navigate(m.target)}
-                className="group relative bg-white border border-slate-200/90 rounded-none p-4 shadow-2xs hover:shadow-md hover:border-blue-600 transition-all cursor-pointer overflow-hidden"
+                className="group relative bg-white border border-[#E2E8F0] rounded-none p-4 shadow-sm hover:shadow-md hover:border-[#2563EB] transition-all cursor-pointer overflow-hidden"
               >
-                {/* Accent top line */}
+                {/* Domain accent strip */}
                 <div
                   className="absolute top-0 left-0 right-0 h-1"
                   style={{ backgroundColor: m.color }}
                 />
 
                 <div className="flex items-start justify-between mb-2">
-                  <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
                     {m.label}
                   </span>
                   <div
-                    className="w-7 h-7 rounded-none flex items-center justify-center transition-transform group-hover:scale-110"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-transform group-hover:scale-110"
                     style={{ backgroundColor: m.bgColor, color: m.color }}
                   >
                     <IconComp className="w-4 h-4" />
@@ -775,36 +769,35 @@ export default function Dashboard({
                 </div>
 
                 <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono group-hover:text-blue-700 transition-colors">
+                  <span className="text-2xl font-extrabold text-gray-900 tracking-tight font-mono">
                     {m.value}
                   </span>
                   {m.trend && (
                     <span
-                      className={`text-[10.5px] font-bold font-mono px-1.5 py-0.5 rounded-none ${
-                        m.trendDir === "up" && m.id !== "discharges"
-                          ? "bg-rose-50 text-rose-700 border border-rose-200"
+                      className={`text-[11px] font-semibold font-mono ${m.trendDir === "up" && m.id !== "discharges"
+                          ? "text-[#DC2626]"
                           : m.trendDir === "down" || m.id === "discharges"
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            : "bg-slate-100 text-slate-600 border border-slate-200"
-                      }`}
+                            ? "text-[#16A34A]"
+                            : "text-[#64748B]"
+                        }`}
                     >
                       {m.trend}
                     </span>
                   )}
                 </div>
 
-                <div className="text-[11px] font-medium text-slate-500 mt-1 truncate">
+                <div className="text-[11.5px] text-[#94A3B8] mt-1 truncate">
                   {m.sub}
                 </div>
 
-                <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                <div className="mt-3 pt-2 border-t border-[#F1F5F9] flex items-center justify-between text-[11px]">
                   <span
-                    className="font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform"
+                    className="font-medium group-hover:underline flex items-center gap-1"
                     style={{ color: m.color }}
                   >
                     {m.action} →
                   </span>
-                  <span className="px-1.5 py-0.5 rounded-none text-[10px] font-bold bg-slate-100 text-slate-700 uppercase tracking-wider border border-slate-200">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600">
                     {m.domain}
                   </span>
                 </div>
@@ -816,18 +809,18 @@ export default function Dashboard({
         {/* ── Department Census & Today's Appointments ──────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Department Census Table (2 Cols) */}
-          <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-none shadow-2xs overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+          <div className="lg:col-span-2 bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#E2E8F0] bg-[#FAFCFF] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-none bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-md bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center">
                   <Icon.Inpatient className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-                    Department Census &amp; Capacity
+                  <h2 className="text-sm font-bold text-gray-900 tracking-tight">
+                    Department Census & Capacity
                   </h2>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Real-time patient distribution &amp; bed occupancy meters
+                  <p className="text-[11px] text-[#64748B]">
+                    Real-time patient distribution across care units
                   </p>
                 </div>
               </div>
@@ -835,7 +828,6 @@ export default function Dashboard({
                 variant="ghost"
                 size="xs"
                 onClick={() => navigate("inpatient")}
-                className="font-bold text-blue-700 hover:bg-blue-50 rounded-none"
               >
                 Full Bed Board →
               </Btn>
@@ -856,11 +848,11 @@ export default function Dashboard({
                 const QueueIcon = q.icon
                 const occPct = Math.round((q.inCare / q.capacity) * 100)
                 return (
-                  <TR key={i} className="hover:bg-slate-50/80 transition-colors group cursor-pointer">
+                  <TR key={i}>
                     <TD>
                       <div className="flex items-center gap-2.5">
                         <div
-                          className="w-6 h-6 rounded-none flex items-center justify-center text-xs shadow-2xs"
+                          className="w-6 h-6 rounded flex items-center justify-center text-xs"
                           style={{
                             backgroundColor: `${q.color}15`,
                             color: q.color,
@@ -869,60 +861,60 @@ export default function Dashboard({
                           <QueueIcon className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          <div className="font-bold text-slate-900 text-[12.5px] group-hover:text-blue-700 transition-colors">
+                          <div className="font-semibold text-gray-900 text-[12.5px]">
                             {q.dept}
                           </div>
-                          <div className="text-[10.5px] font-mono text-slate-400">
+                          <div className="text-[10.5px] font-mono text-[#94A3B8]">
                             {q.code} Wing
                           </div>
                         </div>
                       </div>
                     </TD>
                     <TD>
-                      <span className="font-mono text-[13px] font-bold text-slate-900">
+                      <span className="font-mono text-[13px] font-bold text-gray-800">
                         {q.inCare}
                       </span>
                     </TD>
                     <TD>
                       {q.waiting > 0 ? (
-                        <span className="font-mono text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-none border border-amber-200">
+                        <span className="font-mono text-[12px] font-bold text-[#D97706] bg-[#FEF3C7] px-2 py-0.5 rounded-full border border-[#FDE68A]">
                           {q.waiting} waiting
                         </span>
                       ) : (
-                        <span className="text-slate-400 font-mono text-[12px]">
+                        <span className="text-[#94A3B8] font-mono text-[12px]">
                           —
                         </span>
                       )}
                     </TD>
                     <TD>
                       {q.critical > 0 ? (
-                        <span className="font-mono text-[11px] font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded-none border border-rose-200">
+                        <span className="font-mono text-[12px] font-bold text-[#DC2626] bg-[#FEE2E2] px-2 py-0.5 rounded-full border border-[#FECACA]">
                           {q.critical} ESI-1/2
                         </span>
                       ) : (
-                        <span className="text-slate-400 font-mono text-[12px]">
+                        <span className="text-[#94A3B8] font-mono text-[12px]">
                           —
                         </span>
                       )}
                     </TD>
                     <TD>
-                      <span className="font-mono text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-none border border-emerald-200">
+                      <span className="font-mono text-[12px] font-bold text-[#16A34A] bg-[#DCFCE7] px-2 py-0.5 rounded-full">
                         {q.available} beds
                       </span>
                     </TD>
                     <TD>
-                      <div className="w-28">
+                      <div className="w-24">
                         <div className="flex items-center justify-between text-[10.5px] font-mono mb-1">
-                          <span className="text-slate-700 font-bold">
+                          <span className="text-gray-600 font-medium">
                             {occPct}%
                           </span>
-                          <span className="text-slate-400">
+                          <span className="text-[#94A3B8]">
                             {q.inCare}/{q.capacity}
                           </span>
                         </div>
-                        <div className="w-full h-1.5 bg-slate-200 rounded-none overflow-hidden">
+                        <div className="w-full h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
                           <div
-                            className="h-full rounded-none transition-all duration-300"
+                            className="h-full rounded-full transition-all"
                             style={{
                               width: `${occPct}%`,
                               backgroundColor:
@@ -941,7 +933,6 @@ export default function Dashboard({
                         variant="ghost"
                         size="xs"
                         onClick={() => navigate(q.target, q.subTarget)}
-                        className="font-bold text-blue-700 hover:bg-blue-50 rounded-none"
                       >
                         {q.buttonLabel}
                       </Btn>
@@ -952,14 +943,14 @@ export default function Dashboard({
             </Table>
           </div>
 
-          {/* Today's Appointments List (1 Col) */}
-          <div className="bg-white border border-slate-200/90 rounded-none shadow-2xs overflow-hidden flex flex-col">
-            <div className="px-4 py-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+          {/* Today's Appointments List (1 Col) - Live Registered Appointments */}
+          <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-4 py-3.5 border-b border-[#E2E8F0] bg-[#FAFCFF] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-none bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-md bg-[#EEF2FF] text-[#4F46E5] flex items-center justify-center">
                   <Icon.Calendar className="w-4 h-4" />
                 </div>
-                <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                <h2 className="text-sm font-bold text-gray-900 tracking-tight">
                   Today's Appointments
                 </h2>
               </div>
@@ -967,25 +958,24 @@ export default function Dashboard({
                 variant="ghost"
                 size="xs"
                 onClick={() => navigate("appointments")}
-                className="font-bold text-indigo-700 hover:bg-indigo-50 rounded-none"
               >
                 View All →
               </Btn>
             </div>
 
-            <div className="p-3.5 flex-1 divide-y divide-slate-100 overflow-y-auto max-h-[380px]">
+            <div className="p-3.5 flex-1 divide-y divide-[#F1F5F9] overflow-y-auto max-h-[380px]">
               {liveAppointments.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-500 font-medium">
+                <div className="p-6 text-center text-xs text-[#64748B]">
                   No appointments booked for today.
                 </div>
               ) : (
                 liveAppointments.map((a, i) => (
                   <div
                     key={a.id || i}
-                    className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2 hover:bg-slate-50 px-2 rounded-none transition-colors cursor-pointer"
+                    className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-2"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-none bg-sky-50 text-sky-800 font-bold text-[11px] flex items-center justify-center border border-sky-200 flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#E0F2FE] text-[#0369A1] font-bold text-[11px] flex items-center justify-center flex-shrink-0">
                         {a.patient
                           .split(" ")
                           .map((n) => n[0])
@@ -993,17 +983,18 @@ export default function Dashboard({
                           .slice(0, 2)}
                       </div>
                       <div className="min-w-0">
-                        <div className="text-[12.5px] font-bold text-slate-900 truncate">
+                        <div className="text-[12.5px] font-bold text-gray-900 truncate">
                           {a.patient}
                         </div>
-                        <div className="text-[11px] text-slate-500 truncate font-medium">
-                          {a.provider} · <span className="text-slate-700 font-bold">{a.spec}</span>
+                        <div className="text-[11px] text-[#64748B] truncate">
+                          {a.provider} ·{" "}
+                          <span className="text-[#475569]">{a.spec}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <span className="font-mono text-[11px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded-none border border-slate-200">
+                      <span className="font-mono text-[11px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">
                         {a.time}
                       </span>
                       <StatusBadge status={a.status} />
@@ -1017,19 +1008,19 @@ export default function Dashboard({
 
         {/* ── Pending Labs & Quick Actions Grid ──────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Pending Lab Results (2 Cols) */}
-          <div className="lg:col-span-2 bg-white border border-slate-200/90 rounded-none shadow-2xs overflow-hidden">
-            <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+          {/* Pending Lab Results (2 Cols) - Live Lab Orders */}
+          <div className="lg:col-span-2 bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-[#E2E8F0] bg-[#FAFCFF] flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-none bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-md bg-[#FEF3C7] text-[#D97706] flex items-center justify-center">
                   <Icon.FlaskConical className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
-                    Pending Diagnostic Labs &amp; Pathology
+                  <h2 className="text-sm font-bold text-gray-900 tracking-tight">
+                    Pending Diagnostic Labs
                   </h2>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Active diagnostic orders in processing or STAT review
+                  <p className="text-[11px] text-[#64748B]">
+                    Active orders in processing or critical review
                   </p>
                 </div>
               </div>
@@ -1037,7 +1028,6 @@ export default function Dashboard({
                 variant="ghost"
                 size="xs"
                 onClick={() => navigate("laboratory")}
-                className="font-bold text-amber-800 hover:bg-amber-50 rounded-none"
               >
                 Laboratory Hub →
               </Btn>
@@ -1056,43 +1046,44 @@ export default function Dashboard({
               {livePendingLabs.length === 0 ? (
                 <TR>
                   <TD colSpan={6}>
-                    <div className="p-5 text-center text-xs text-slate-500 font-medium">
+                    <div className="p-4 text-center text-xs text-[#64748B]">
                       No active pending diagnostic lab orders.
                     </div>
                   </TD>
                 </TR>
               ) : (
                 livePendingLabs.map((l, i) => (
-                  <TR key={l.id || i} className="hover:bg-slate-50/80 transition-colors group cursor-pointer">
+                  <TR key={l.id || i}>
                     <TD>
-                      <span className="font-bold text-slate-900 text-[12.5px] group-hover:text-blue-700 transition-colors">
+                      <span className="font-bold text-gray-900 text-[12.5px]">
                         {l.patient}
                       </span>
                     </TD>
                     <TD>
-                      <span className="font-mono text-[11.5px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded-none border border-slate-200 font-bold">
+                      <span className="font-mono text-[11.5px] text-[#64748B] bg-gray-100 px-1.5 py-0.5 rounded">
                         #{l.mrn}
                       </span>
                     </TD>
                     <TD>
-                      <span className="font-semibold text-slate-800 text-[12px]">
+                      <span className="font-medium text-gray-800 text-[12px]">
                         {l.test}
                       </span>
                     </TD>
                     <TD>
-                      <span className="text-[11px] font-bold text-slate-600">
+                      <span className="text-[11px] font-semibold text-[#475569]">
                         {l.dept}
                       </span>
                     </TD>
                     <TD>
-                      <span className="font-mono text-[11.5px] text-slate-700 font-medium">
+                      <span className="font-mono text-[11.5px] text-gray-700">
                         {l.ordered}
                       </span>
                     </TD>
                     <TD>
                       {l.status === "Critical" ? (
-                        <span className="inline-flex items-center gap-1 bg-rose-50 text-rose-800 text-[11px] font-bold px-2 py-0.5 rounded-none border border-rose-200 animate-pulse">
-                          Critical STAT
+                        <span className="inline-flex items-center gap-1 bg-[#FEE2E2] text-[#B91C1C] text-[11px] font-bold px-2 py-0.5 rounded-full border border-[#FECACA] animate-pulse">
+                          <Icon.Alert className="w-3 h-3 text-[#DC2626]" />{" "}
+                          Critical
                         </span>
                       ) : (
                         <StatusBadge status={l.status} />
@@ -1104,44 +1095,45 @@ export default function Dashboard({
             </Table>
           </div>
 
-          {/* Domain Quick Actions (1 Col Squared) */}
-          <div className="bg-white border border-slate-200/90 rounded-none shadow-2xs overflow-hidden flex flex-col">
-            <div className="px-4 py-3.5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between">
+          {/* Domain Quick Actions (1 Col) */}
+          <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="px-4 py-3.5 border-b border-[#E2E8F0] bg-[#FAFCFF] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-none bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-md bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center shadow-xs">
                   <Icon.Cmd className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+                  <h2 className="text-sm font-bold text-gray-900 tracking-tight">
                     Hospital Quick Actions
                   </h2>
                 </div>
               </div>
-              <span className="text-[10.5px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded-none border border-blue-200 font-bold">
-                Shortcuts
+              <span className="text-[10.5px] font-mono text-[#2563EB] bg-[#EFF6FF] px-2 py-0.5 rounded-full font-semibold">
+                Domain Shortcuts
               </span>
             </div>
 
-            <div className="p-3 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2.5 flex-1 items-center justify-center">
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 flex-1 items-center justify-center">
               {QUICK_ACTIONS.map((q, i) => {
                 const ActionIcon = q.icon
                 return (
                   <button
                     key={i}
                     onClick={() => navigate(q.actionKey, q.subKey)}
-                    className={`group flex flex-col items-center justify-center p-3 rounded-none border border-slate-200 transition-all duration-200 hover:border-blue-600 hover:bg-blue-50/40 focus:outline-none cursor-pointer ${q.bg}`}
+                    className="group flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 hover:scale-105 hover:shadow-md focus:outline-none cursor-pointer"
+                    style={{
+                      backgroundColor: q.bg,
+                      borderColor: `${q.color}35`,
+                    }}
                   >
                     <div
-                      className="w-8 h-8 rounded-none flex items-center justify-center shadow-2xs transition-transform group-hover:scale-110 mb-1"
+                      className="w-10 h-10 rounded-lg flex items-center justify-center shadow-xs transition-transform group-hover:scale-110 mb-1.5"
                       style={{ color: q.color }}
                     >
-                      <ActionIcon className="w-4 h-4 stroke-[2.2]" />
+                      <ActionIcon className="w-5 h-5 stroke-[2.2]" />
                     </div>
-                    <span className="text-[11.5px] font-bold text-slate-900 group-hover:text-blue-700 text-center leading-tight transition-colors">
+                    <span className="text-[11.5px] font-bold text-gray-800 group-hover:text-[#2563EB] text-center leading-tight">
                       {q.label}
-                    </span>
-                    <span className="text-[10px] text-slate-500 text-center font-medium mt-0.5 truncate max-w-full">
-                      {q.desc}
                     </span>
                   </button>
                 )
@@ -1150,20 +1142,19 @@ export default function Dashboard({
           </div>
         </div>
 
-        {/* ── Hospital Unit Bed Utilization Heatmap (Squared) ─────────────────── */}
-        <div className="bg-white border border-slate-200/90 rounded-none shadow-2xs p-5">
+        {/* ── Hospital Unit Bed Utilization Heatmap ────────────────────────────── */}
+        <div className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-none bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-md bg-[#F5F3FF] text-[#7C3AED] flex items-center justify-center">
                 <Icon.Activity className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  <span>Hospital Unit Occupancy &amp; Capacity Overview</span>
-                  <span className="text-[10.5px] font-mono text-purple-800 bg-purple-50 px-2 py-0.5 rounded-none border border-purple-200 font-bold">Heatmap</span>
+                <h2 className="text-sm font-bold text-gray-900 tracking-tight">
+                  Hospital Unit Occupancy & Capacity Overview
                 </h2>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Live bed utilization meters &amp; capacity limits across inpatient care wards
+                <p className="text-[11.5px] text-[#64748B]">
+                  Live bed utilization meters across inpatient wards
                 </p>
               </div>
             </div>
@@ -1171,13 +1162,12 @@ export default function Dashboard({
               variant="outline"
               size="xs"
               onClick={() => navigate("inpatient")}
-              className="font-bold text-purple-800 hover:bg-purple-50 rounded-none border-purple-200"
             >
               View All Wards →
             </Btn>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {UNITS.map((u, i) => {
               const UnitIcon = u.icon
               const pct = Math.round((u.occupied / u.total) * 100)
@@ -1185,44 +1175,39 @@ export default function Dashboard({
                 pct >= 85 ? "#DC2626" : pct >= 70 ? "#D97706" : "#16A34A"
               const bgColor =
                 pct >= 85 ? "#FEF2F2" : pct >= 70 ? "#FFFBEB" : "#F0FDF4"
-              const borderColor =
-                pct >= 85 ? "#FECACA" : pct >= 70 ? "#FDE68A" : "#BBF7D0"
 
               return (
                 <div
                   key={i}
                   onClick={() => navigate("inpatient", u.targetWard)}
-                  className="group bg-slate-50/60 border border-slate-200 hover:border-blue-600 hover:bg-white cursor-pointer transition-all duration-200 rounded-none p-3.5 flex flex-col justify-between"
+                  className="bg-[#FAFCFF] border border-[#E2E8F0] hover:border-[#2563EB] cursor-pointer transition-colors rounded-none p-3.5 flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[12px] font-bold text-slate-900 truncate group-hover:text-blue-700 transition-colors">
+                      <span className="text-[12px] font-bold text-gray-900 truncate">
                         {u.unit}
                       </span>
                       <div
-                        className="w-5 h-5 rounded-none flex items-center justify-center text-xs"
+                        className="w-6 h-6 rounded flex items-center justify-center"
                         style={{ backgroundColor: bgColor, color }}
                       >
                         <UnitIcon className="w-3.5 h-3.5" />
                       </div>
                     </div>
 
-                    <div className="relative h-2 bg-slate-200 rounded-none overflow-hidden my-2">
+                    <div className="relative h-2 bg-[#E2E8F0] rounded-full overflow-hidden my-2">
                       <div
-                        className="h-full rounded-none transition-all duration-300"
+                        className="absolute left-0 top-0 h-full rounded-full transition-all"
                         style={{ width: `${pct}%`, backgroundColor: color }}
                       />
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10.5px] font-mono mt-1 pt-1.5 border-t border-slate-100">
+                  <div className="flex items-center justify-between text-[11px] font-mono mt-1">
                     <span className="font-bold" style={{ color }}>
                       {u.occupied} / {u.total} beds
                     </span>
-                    <span
-                      className="font-bold px-1.5 py-0.5 rounded-none text-[10px]"
-                      style={{ backgroundColor: bgColor, color, border: `1px solid ${borderColor}` }}
-                    >
+                    <span className="font-semibold text-gray-600">
                       {pct}% Occupied
                     </span>
                   </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import {
   ArrowLeft,
   Save,
@@ -234,7 +234,8 @@ export default function PreAuthRequestView({
     return tariffRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
   }, [tariffRows])
 
-  // ── ATTACHED DOSSIER (5) ──
+  // ── ATTACHED DOSSIER ──
+  const manualFileInputRef = useRef<HTMLInputElement>(null)
   const [attachedFiles, setAttachedFiles] = useState([
     { id: 1, name: "Auto-Incorporated Pre-Auth Form (4 Pages)", size: "480 KB", iconBg: "bg-rose-600" },
     { id: 2, name: "Good Health TPA / Insurer Card Copy", size: "190 KB", iconBg: "bg-amber-600" },
@@ -242,6 +243,33 @@ export default function PreAuthRequestView({
     { id: 4, name: "Doctor Clinical Note & Prescription", size: "280 KB", iconBg: "bg-indigo-600" },
     { id: 5, name: "USG Abdomen & Laboratory Reports", size: "640 KB", iconBg: "bg-emerald-600" },
   ])
+
+  const handleManualUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    const newFiles = files.map((file, idx) => ({
+      id: Date.now() + idx,
+      name: file.name,
+      size: `${Math.round(file.size / 1024)} KB`,
+      iconBg: "bg-blue-600",
+    }))
+    setAttachedFiles((prev) => [...prev, ...newFiles])
+    try {
+      const claims = InsuranceEngineService.getClaims()
+      if (claims[0]) {
+        files.forEach((file, idx) => {
+          InsuranceEngineService.uploadDocument(claims[0].id, `DOC-MANUAL-${Date.now()}-${idx}`, file.name)
+        })
+      }
+    } catch { /* ignore */ }
+    notify(`${files.length} manual document${files.length > 1 ? "s" : ""} attached successfully`, "success")
+    e.target.value = ""
+  }
+
+  const handleRemoveFile = (id: number) => {
+    setAttachedFiles((prev) => prev.filter((f) => f.id !== id))
+    notify("Attachment removed", "success")
+  }
 
   // ── EMAIL DISPATCH STATE ──
   const [emailTo, setEmailTo] = useState("preauth@ghpltpa.com")
@@ -270,19 +298,15 @@ export default function PreAuthRequestView({
       `• Proposed Procedure    : ${procedure} [ICD-10 PCS: ${icd10Pcs}]\n` +
       `• Planned Admission     : ${plannedAdmissionDate} (Expected Stay: ${expectedStay})\n` +
       `• Total Estimate (₹)    : Rs. ${totalEstimatedCost.toLocaleString()} (INR ${totalEstimatedCost})\n\n` +
-      `ATTACHED MANDATORY DOCUMENTS IN DOSSIER (5 Files):\n` +
-      `1. Filled 4-Page Pre-Authorization Form with Doctor & Nodal Stamps\n` +
-      `2. Insurer / TPA E-Card & Policy Schedule\n` +
-      `3. Government Photo ID Proof (Aadhaar)\n` +
-      `4. Doctor's Clinical OPD Prescription & Admission Advise\n` +
-      `5. USG Abdomen & Laboratory Diagnostic Reports\n\n` +
-      `Kindly issue the Initial Cashless Pre-Authorization Sanction Letter at your earliest convenience to facilitate planned admission.\n\n` +
+      `ATTACHED MANDATORY DOCUMENTS IN DOSSIER (${attachedFiles.length} Files):\n` +
+      attachedFiles.map((f, i) => `${i + 1}. ${f.name} (${f.size})`).join("\n") +
+      `\n\nKindly issue the Initial Cashless Pre-Authorization Sanction Letter at your earliest convenience to facilitate planned admission.\n\n` +
       `Warm regards,\n` +
       `Nodal Insurance Desk\n` +
       `${hospitalName} (${hospitalCity})\n` +
       `Emergency Contact: ${hospitalPhone} | Email: ${hospitalEmail}`
     )
-  }, [activeInsurer, patientName, uhid, admissionNo, policyNo, tpaCardId, corporate, age, gender, doctor, doctorRegNo, provisionalDiagnosis, icd10Code, procedure, icd10Pcs, plannedAdmissionDate, expectedStay, totalEstimatedCost, hospitalName, hospitalRohiniId, hospitalCity, hospitalPhone, hospitalEmail])
+  }, [activeInsurer, patientName, uhid, admissionNo, policyNo, tpaCardId, corporate, age, gender, doctor, doctorRegNo, provisionalDiagnosis, icd10Code, procedure, icd10Pcs, plannedAdmissionDate, expectedStay, totalEstimatedCost, hospitalName, hospitalRohiniId, hospitalCity, hospitalPhone, hospitalEmail, attachedFiles])
 
   // ── INBOUND TPA SANCTION / APPROVAL INGESTION STATE ──
   const [showApprovalModal, setShowApprovalModal] = useState(false)
@@ -379,6 +403,16 @@ TOTAL PRE-AUTH ESTIMATE : Rs. ${totalEstimatedCost.toLocaleString()}
       const existing = claims[0]
       if (existing) {
         InsuranceEngineService.submitPreAuth(existing.id, "Email", `MAIL-${Date.now().toString(36).toUpperCase()}`)
+        const extraAtts = attachedFiles.map((f) => `${f.name} (${f.size})`)
+        InsuranceEngineService.sendInsurerEmail(existing.id, {
+          purpose: "Pre-Auth",
+          to: emailTo,
+          cc: emailCc,
+          subject: emailSubject,
+          body: emailBody,
+          attachmentIds: [],
+          extraAttachments: extraAtts,
+        })
       }
       setStep(4)
       notify(`Pre-Authorization package successfully emailed to ${emailTo}!`, "success")
@@ -1081,7 +1115,7 @@ TOTAL PRE-AUTH ESTIMATE : Rs. ${totalEstimatedCost.toLocaleString()}
                     </span>
                     <button
                       type="button"
-                      onClick={() => notify("File upload dialog triggered", "success")}
+                      onClick={() => manualFileInputRef.current?.click()}
                       className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-0.5 cursor-pointer"
                     >
                       <Plus size={13} /> Upload
@@ -1107,7 +1141,12 @@ TOTAL PRE-AUTH ESTIMATE : Rs. ${totalEstimatedCost.toLocaleString()}
                         <button type="button" className="text-blue-600 hover:text-blue-800 p-0.5 cursor-pointer" title="View file">
                           <Eye size={13} />
                         </button>
-                        <button type="button" className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer" title="Remove file">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(file.id)}
+                          className="text-red-500 hover:text-red-700 p-0.5 cursor-pointer"
+                          title="Remove file"
+                        >
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -1627,15 +1666,41 @@ TOTAL PRE-AUTH ESTIMATE : Rs. ${totalEstimatedCost.toLocaleString()}
 
               {/* Attached Files List */}
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Attached Pre-Auth Dossier Files ({attachedFiles.length})
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-bold text-slate-700">
+                    Attached Pre-Auth Dossier Files ({attachedFiles.length})
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => manualFileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-none border border-blue-300 cursor-pointer transition-colors"
+                  >
+                    <Upload size={12} /> Upload Manual Document
+                  </button>
+                  <input
+                    ref={manualFileInputRef}
+                    type="file"
+                    multiple
+                    onChange={handleManualUpload}
+                    className="hidden"
+                  />
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3 rounded-none border border-slate-300">
                   {attachedFiles.map((f) => (
-                    <div key={f.id} className="flex items-center gap-2 text-xs text-slate-800 bg-white p-2 rounded-none border border-slate-300">
-                      <FileCheck size={14} className="text-emerald-700 shrink-0" />
-                      <span className="truncate font-semibold">{f.name}</span>
-                      <span className="text-slate-500 font-mono text-[10px] shrink-0">({f.size})</span>
+                    <div key={f.id} className="flex items-center justify-between gap-2 text-xs text-slate-800 bg-white p-2 rounded-none border border-slate-300">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileCheck size={14} className="text-emerald-700 shrink-0" />
+                        <span className="truncate font-semibold">{f.name}</span>
+                        <span className="text-slate-500 font-mono text-[10px] shrink-0">({f.size})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(f.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
+                        title="Remove attachment"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   ))}
                 </div>

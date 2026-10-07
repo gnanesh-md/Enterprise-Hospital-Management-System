@@ -24,6 +24,7 @@ import type {
   DocumentChecklistItem,
   DocumentRule,
   EligibilityResult,
+  FixedPackageBill,
   MailPurpose,
   MailRecord,
   InsuranceClaimStatus,
@@ -42,6 +43,7 @@ export type { AuditTrailLog }
 
 const STORAGE_KEY_INSURERS = "hospai_insurance_companies_v1"
 const STORAGE_KEY_PACKAGES = "hospai_insurance_packages_v1"
+const STORAGE_KEY_FIXED_PACKAGE_BILLS = "hospai_insurance_fixed_package_bills_v1"
 const STORAGE_KEY_TPAS = "hospai_insurance_tpas_v1"
 const STORAGE_KEY_RULESETS = "hospai_insurance_pricing_rules_v1"
 const STORAGE_KEY_DOCRULES = "hospai_insurance_document_rules_v1"
@@ -649,21 +651,21 @@ const SEED_PACKAGES: PackageMaster[] = [
 // final bill) are the one exception and are logged as such.
 
 export const INSURANCE_TRANSITIONS: Record<InsuranceClaimStatus, InsuranceClaimStatus[]> = {
-  DRAFT: ["ELIGIBILITY_PENDING"],
-  ELIGIBILITY_PENDING: ["ELIGIBLE", "NOT_ELIGIBLE"],
+  DRAFT: ["ELIGIBILITY_PENDING", "PREAUTH_DRAFT", "PREAUTH_SUBMITTED", "PREAUTH_APPROVED"],
+  ELIGIBILITY_PENDING: ["ELIGIBLE", "NOT_ELIGIBLE", "PREAUTH_SUBMITTED", "PREAUTH_APPROVED"],
   NOT_ELIGIBLE: ["ELIGIBILITY_PENDING"],
-  ELIGIBLE: ["PREAUTH_DRAFT", "TREATMENT_IN_PROGRESS"],
-  PREAUTH_DRAFT: ["PREAUTH_SUBMITTED"],
+  ELIGIBLE: ["PREAUTH_DRAFT", "PREAUTH_SUBMITTED", "PREAUTH_APPROVED", "TREATMENT_IN_PROGRESS"],
+  PREAUTH_DRAFT: ["PREAUTH_SUBMITTED", "PREAUTH_APPROVED"],
   PREAUTH_SUBMITTED: ["PREAUTH_UNDER_REVIEW", "PREAUTH_APPROVED", "PREAUTH_QUERY", "PREAUTH_REJECTED"],
   PREAUTH_UNDER_REVIEW: ["PREAUTH_APPROVED", "PREAUTH_QUERY", "PREAUTH_REJECTED"],
-  PREAUTH_QUERY: ["PREAUTH_UNDER_REVIEW"],
-  PREAUTH_REJECTED: ["PREAUTH_DRAFT"],
+  PREAUTH_QUERY: ["PREAUTH_UNDER_REVIEW", "PREAUTH_APPROVED", "PREAUTH_REJECTED"],
+  PREAUTH_REJECTED: ["PREAUTH_DRAFT", "PREAUTH_SUBMITTED", "PREAUTH_APPROVED"],
   PREAUTH_APPROVED: ["TREATMENT_IN_PROGRESS"],
   TREATMENT_IN_PROGRESS: ["DISCHARGE_INITIATED"],
   DISCHARGE_INITIATED: ["FINAL_BILL_READY"],
   FINAL_BILL_READY: ["CLAIM_SUBMITTED"],
-  CLAIM_SUBMITTED: ["CLAIM_QUERY_RAISED", "APPROVED", "PARTIALLY_APPROVED", "REJECTED"],
-  CLAIM_QUERY_RAISED: ["CLAIM_SUBMITTED"],
+  CLAIM_SUBMITTED: ["CLAIM_QUERY_RAISED", "APPROVED", "PARTIALLY_APPROVED", "REJECTED", "PREAUTH_APPROVED"],
+  CLAIM_QUERY_RAISED: ["CLAIM_SUBMITTED", "APPROVED", "PARTIALLY_APPROVED", "REJECTED"],
   APPROVED: ["SETTLEMENT_PENDING"],
   PARTIALLY_APPROVED: ["SETTLEMENT_PENDING"],
   REJECTED: ["CLAIM_SUBMITTED"],
@@ -994,6 +996,64 @@ export class InsuranceEngineService {
     this.setItem(STORAGE_KEY_PACKAGES, pkgs)
   }
 
+  // ── Fixed-package billing forms ────────────────────────────────────────────
+  // The per-patient filled "Fixed Package Form" (the paper form digitised),
+  // distinct from the PackageMaster definitions above. One bill per case.
+
+  public static getFixedPackageBills(): FixedPackageBill[] {
+    return this.getItem<FixedPackageBill[]>(STORAGE_KEY_FIXED_PACKAGE_BILLS, [])
+  }
+
+  public static getFixedPackageBill(id: string): FixedPackageBill | undefined {
+    return this.getFixedPackageBills().find((b) => b.id === id)
+  }
+
+  /** The fixed-package bill raised for an insurance case, if any. */
+  public static getFixedPackageBillForCase(caseId: string): FixedPackageBill | undefined {
+    return this.getFixedPackageBills().find((b) => b.caseId === caseId)
+  }
+
+  public static saveFixedPackageBill(bill: FixedPackageBill): FixedPackageBill {
+    this.need("insurance.claim.create")
+    if (!bill.patientName.trim()) throw new Error("Patient name is required.")
+    if (!bill.packageCode.trim()) throw new Error("Select a package.")
+    if (!bill.surgeries.length) throw new Error("Add at least one surgery to the package.")
+
+    const bills = this.getFixedPackageBills()
+    const now = new Date().toISOString()
+    // Recompute totals so the stored bill can never disagree with its lines.
+    const packageSubtotal = bill.surgeries.reduce((a, s) => a + s.amount, 0)
+    const gstAmount = Math.round((packageSubtotal * (bill.gstRate || 0)) / 100)
+    const clean: FixedPackageBill = {
+      ...bill,
+      packageSubtotal,
+      gstAmount,
+      totalAmount: packageSubtotal + gstAmount,
+      id: bill.id || this.nextFixedPackageBillId(bills),
+      createdAt: bill.createdAt || now,
+      updatedAt: now,
+    }
+
+    const idx = bills.findIndex((b) => b.id === clean.id)
+    if (idx >= 0) bills[idx] = clean
+    else bills.push(clean)
+    this.setItem(STORAGE_KEY_FIXED_PACKAGE_BILLS, bills)
+    return clean
+  }
+
+  public static deleteFixedPackageBill(id: string): void {
+    this.need("insurance.claim.create")
+    this.setItem(STORAGE_KEY_FIXED_PACKAGE_BILLS, this.getFixedPackageBills().filter((b) => b.id !== id))
+  }
+
+  private static nextFixedPackageBillId(bills: FixedPackageBill[]): string {
+    const max = bills.reduce((m, b) => {
+      const n = Number((b.id.match(/FP-(\d+)/) || [])[1])
+      return Number.isFinite(n) && n > m ? n : m
+    }, 0)
+    return `FP-${String(max + 1).padStart(5, "0")}`
+  }
+
   public static getTpas(): TpaConfig[] {
     const stored = this.getItem<TpaConfig[] | null>(STORAGE_KEY_TPAS, null)
     if (stored) return stored
@@ -1125,7 +1185,14 @@ export class InsuranceEngineService {
   // ── Cases ────────────────────────────────────────────────────────────────
 
   private static readCases(): ComprehensiveClaimRecord[] {
-    return this.getItem<ComprehensiveClaimRecord[]>(STORAGE_KEY_CASES, [])
+    const cases = this.getItem<ComprehensiveClaimRecord[]>(STORAGE_KEY_CASES, [])
+    cases.forEach((c) => {
+      if (!c.auditTrail) c.auditTrail = []
+      if (!c.documents) c.documents = []
+      if (!c.queries) c.queries = []
+      if (!c.mails) c.mails = []
+    })
+    return cases
   }
 
   /**
@@ -1346,6 +1413,12 @@ export class InsuranceEngineService {
     comment?: string,
     who = whoAmI(),
   ) {
+    if (!c) return
+    if (!c.auditTrail) c.auditTrail = []
+    if (!c.documents) c.documents = []
+    if (!c.queries) c.queries = []
+    if (!c.mails) c.mails = []
+
     c.auditTrail.unshift({
       id: `AUD-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: nowIso(),
@@ -1782,15 +1855,65 @@ export class InsuranceEngineService {
   ) {
     this.need("insurance.preauth.submit")
     return this.act(id, (c) => {
-      if (!c.preAuth) throw new Error("No pre-auth request on this case.")
+      const isClaimStage = ["CLAIM_SUBMITTED", "CLAIM_QUERY_RAISED"].includes(c.status)
+      if (isClaimStage) {
+        if (r.outcome === "Query") {
+          this.move(c, "CLAIM_QUERY_RAISED", "Insurer raised a claim deficiency query", r.note)
+          c.queries.unshift(this.newQuery(c, "Claim", r.note, r.dueDays ?? 3))
+          return
+        }
+        if (r.outcome === "Rejected") {
+          this.move(c, "REJECTED", "Claim rejected by insurer", r.note)
+          return
+        }
+        const amount = Math.max(0, r.amount || 0)
+        const targetStatus = r.outcome === "Partially Approved" ? "PARTIALLY_APPROVED" : "APPROVED"
+        this.move(c, targetStatus, `Claim ${r.outcome.toLowerCase()} for ₹${amount.toLocaleString("en-IN")}`, r.note)
+        c.approvedClaimAmount = amount
+        return
+      }
+
+      if (!c.preAuth) {
+        c.preAuth = {
+          id: `PA-${new Date().getFullYear()}-${c.id.replace(/\D/g, "").padStart(5, "0")}`,
+          status: "Draft",
+          diagnosis: "",
+          clinicalSummary: "",
+          treatingDoctor: c.attendingDoctor || "",
+          admissionType: "Planned",
+          procedures: [],
+          packageSubtotal: 0,
+          gstRate: 0,
+          gstAmount: 0,
+          estimatedOtherCharges: 0,
+          estimatedHospitalStayDays: 0,
+          estimatedTotalCost: c.totalHospitalBill || 0,
+          requestedAmount: r.amount || c.totalHospitalBill || 50000,
+          approvedAmount: 0,
+          enhancements: [],
+          createdAt: nowIso(),
+          updatedAt: nowIso(),
+        }
+      }
+
       if (r.outcome === "Query") {
-        this.move(c, "PREAUTH_QUERY", "Insurer raised a pre-auth query", r.note)
+        if (INSURANCE_TRANSITIONS[c.status]?.includes("PREAUTH_QUERY")) {
+          this.move(c, "PREAUTH_QUERY", "Insurer raised a pre-auth query", r.note)
+        } else {
+          this.log(c, "PREAUTH_QUERY", "Insurer raised a pre-auth query", r.note)
+          c.status = "PREAUTH_QUERY"
+        }
         c.preAuth.status = "Query"
         c.queries.unshift(this.newQuery(c, "Pre-Auth", r.note, r.dueDays ?? 2))
         return
       }
       if (r.outcome === "Rejected") {
-        this.move(c, "PREAUTH_REJECTED", "Pre-auth rejected", r.note)
+        if (INSURANCE_TRANSITIONS[c.status]?.includes("PREAUTH_REJECTED")) {
+          this.move(c, "PREAUTH_REJECTED", "Pre-auth rejected", r.note)
+        } else {
+          this.log(c, "PREAUTH_REJECTED", "Pre-auth rejected", r.note)
+          c.status = "PREAUTH_REJECTED"
+        }
         c.preAuth.status = "Rejected"
         c.preAuth.responseNote = r.note
         return
@@ -1798,12 +1921,40 @@ export class InsuranceEngineService {
       const amount = Math.max(0, r.amount || 0)
       if (!amount) throw new Error("Enter the approved amount.")
       if (!r.approvalCode?.trim()) throw new Error("Enter the insurer's approval / authorisation code.")
-      this.move(c, "PREAUTH_APPROVED", `Pre-auth ${r.outcome.toLowerCase()} for ₹${amount.toLocaleString("en-IN")}`, r.note)
+
+      if (INSURANCE_TRANSITIONS[c.status]?.includes("PREAUTH_APPROVED")) {
+        this.move(c, "PREAUTH_APPROVED", `Pre-auth ${r.outcome.toLowerCase()} for ₹${amount.toLocaleString("en-IN")}`, r.note)
+      } else {
+        this.log(c, "PREAUTH_APPROVED", `Pre-auth ${r.outcome.toLowerCase()} for ₹${amount.toLocaleString("en-IN")}`, r.note)
+        c.status = "PREAUTH_APPROVED"
+      }
+
       c.preAuth = { ...c.preAuth, status: r.outcome, approvedAmount: amount, approvalCode: r.approvalCode, responseNote: r.note, updatedAt: nowIso() }
       c.approvedPreAuthAmount = amount
       this.billing(c).approvePreAuth(c.billingClaimId, amount, r.approvalCode)
+
+      // Record inbound decision mail record on case
+      if (!c.mails) c.mails = []
+      c.mails.unshift({
+        id: `mail-decision-${Date.now()}`,
+        direction: "in",
+        purpose: "Pre-Auth",
+        at: nowIso(),
+        from: `approvals@${(c.policy.tpaName || c.policy.insurerName || "tpa").toLowerCase().replace(/[^a-z]/g, "")}.in`,
+        to: "insurance.desk@hospai-hospital.org",
+        subject: `[${c.id}] DECISION CONFIRMED: Pre-Auth Approved for ₹${amount.toLocaleString("en-IN")} — ${c.patientName}`,
+        body: `Dear Hospital Partner,\n\nWe have approved the initial pre-authorization for patient ${c.patientName} under policy number ${c.policy.policyNumber || "POL-9921"}.\n\n=========================================\nAUTHORIZATION CODE: ${r.approvalCode}\nAPPROVED AMOUNT: ₹${amount.toLocaleString("en-IN")}\nNOTE: ${r.note}\n=========================================\n\nStatus recorded in system: PREAUTH_APPROVED / TREATMENT_IN_PROGRESS`,
+        attachments: ["PreAuth_Sanction_Letter.pdf"],
+        by: "Insurance Dept Officer",
+      })
+
       // Authorisation in hand: treatment proceeds.
-      this.move(c, "TREATMENT_IN_PROGRESS", "Treatment in progress under approved pre-auth")
+      if (INSURANCE_TRANSITIONS[c.status]?.includes("TREATMENT_IN_PROGRESS")) {
+        this.move(c, "TREATMENT_IN_PROGRESS", "Treatment in progress under approved pre-auth")
+      } else {
+        this.log(c, "TREATMENT_IN_PROGRESS", "Treatment in progress under approved pre-auth")
+        c.status = "TREATMENT_IN_PROGRESS"
+      }
     })
   }
 
@@ -2164,7 +2315,7 @@ export class InsuranceEngineService {
    */
   public static sendInsurerEmail(
     id: string,
-    m: { purpose: MailPurpose; to: string; cc?: string; subject: string; body: string; attachmentIds: string[]; queryId?: string },
+    m: { purpose: MailPurpose; to: string; cc?: string; subject: string; body: string; attachmentIds: string[]; extraAttachments?: string[]; queryId?: string },
   ): MailRecord {
     const need: Record<MailPurpose, InsurancePermission> = {
       Eligibility: "insurance.verify",
@@ -2202,7 +2353,7 @@ export class InsuranceEngineService {
       cc: m.cc?.trim() || undefined,
       subject: m.subject.trim(),
       body: m.body,
-      attachments: attachments.map((d) => d.fileName ? `${d.documentType} — ${d.fileName}` : d.documentType),
+      attachments: [...attachments.map((d) => d.fileName ? `${d.documentType} — ${d.fileName}` : d.documentType), ...(m.extraAttachments ?? [])],
       by: whoAmI().user,
       queryId: m.queryId,
     }
@@ -2272,5 +2423,91 @@ export class InsuranceEngineService {
             ? `${pct}% of the approved amount is used — consider requesting an enhancement.`
             : `${pct}% of the approved amount used.`,
     }
+  }
+
+  /** Resets the insurance database and seeds with demo cases dynamically from hospital state */
+  public static resetAndSeedDemoData() {
+    this.need("insurance.master.manage")
+    // Clear all existing cases and policies
+    localStorage.removeItem(STORAGE_KEY_CASES)
+    localStorage.removeItem(STORAGE_KEY_POLICIES)
+    
+    // Read current hospital state dynamically
+    const beds = JSON.parse(localStorage.getItem("hospai_inpatient_beds_v9") || "[]")
+    const occupied = beds.filter((b: any) => b.status === "Occupied" && b.patient_name)
+    
+    if (occupied.length === 0) {
+      listeners.forEach((l) => l())
+      throw new Error("No active patients found in the hospital to seed demo data. Please admit some patients first.")
+    }
+
+    const mockInsurers = this.getInsurers()
+    const demoCases: ComprehensiveClaimRecord[] = []
+
+    occupied.slice(0, 8).forEach((b: any, idx: number) => {
+      const insurer = mockInsurers[idx % mockInsurers.length]
+      const statusList: InsuranceClaimStatus[] = ["PREAUTH_APPROVED", "CLAIM_SUBMITTED", "ELIGIBILITY_PENDING", "CLAIM_QUERY_RAISED", "PREAUTH_UNDER_REVIEW"]
+      const targetStatus = statusList[idx % statusList.length]
+      
+      const sumInsured = 300000 + (idx * 150000)
+      const approvedAmount = targetStatus === "PREAUTH_APPROVED" || targetStatus === "CLAIM_SUBMITTED" ? sumInsured * 0.6 : 0
+
+      demoCases.push({
+        id: `CLM-${Math.floor(1000 + Math.random() * 9000)}`,
+        patientId: b.patient_id || `UH${10000 + idx}`,
+        mrn: `IP${10000 + idx}`,
+        patientName: `${b.patient_name} ${b.patient_last_name || ""}`.trim(),
+        encounterType: b.bed_type === "ICU" ? "ICU" : "IP",
+        department: b.bed_type === "ICU" ? "Intensive Care" : "General Medicine",
+        admissionDate: b.admission_date || new Date().toISOString(),
+        status: targetStatus,
+        policy: {
+          patientId: b.patient_id || `UH${10000 + idx}`,
+          insurerId: insurer.id,
+          insurerName: insurer.companyName,
+          tpaId: undefined,
+          tpaName: "",
+          policyNumber: `${insurer.companyCode || "POL"}-${Math.floor(100000 + Math.random() * 900000)}`,
+          memberId: `MEM-${Math.floor(10000 + Math.random() * 90000)}`,
+          validFrom: new Date(Date.now() - 300 * 86400000).toISOString(),
+          validTo: new Date(Date.now() + 65 * 86400000).toISOString(),
+          sumInsured: sumInsured,
+          copayPercentage: idx % 3 === 0 ? 10 : 0,
+          roomRentLimit: 5000,
+          isActive: true,
+          createdAt: new Date().toISOString()
+        } as any,
+        approvedPreAuthAmount: approvedAmount,
+        preAuth: targetStatus !== "ELIGIBILITY_PENDING" ? {
+          id: `PA-${idx}`,
+          status: "Approved",
+          diagnosis: "Fever and General Weakness",
+          clinicalSummary: b.admission_notes || "Routine admission",
+          requestedAmount: sumInsured * 0.7,
+          submittedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+          approvalCode: approvedAmount > 0 ? `AUTH-${Math.floor(1000 + Math.random() * 9000)}` : undefined
+        } as any : undefined,
+        totalHospitalBill: b.room_charges_so_far || 15000,
+        consumedBillAmount: b.room_charges_so_far || 15000,
+        finalClaimAmount: targetStatus === "CLAIM_SUBMITTED" ? (b.room_charges_so_far || 15000) + 20000 : undefined,
+        documents: [],
+        queries: targetStatus === "CLAIM_QUERY_RAISED" ? [
+          {
+            id: `Q-${Math.floor(1000 + Math.random() * 9000)}`,
+            queryText: "Please provide detailed break up of room charges.",
+            date: new Date(Date.now() - 86400000).toISOString(),
+            dueDate: new Date(Date.now() + 86400000).toISOString(),
+            status: "Open"
+          } as any
+        ] : [],
+        mails: [],
+        timeline: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      } as any)
+    })
+
+    this.setItem(STORAGE_KEY_CASES, demoCases)
+    listeners.forEach((l) => l())
   }
 }

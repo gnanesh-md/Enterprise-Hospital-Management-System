@@ -19,12 +19,15 @@ import {
   Check,
   Sparkles,
   ArrowUpRight,
+  BookOpen,
 } from "lucide-react"
 import type { ComprehensiveClaimRecord } from "../../types/insurance"
 import ClaimWorkspace from "./ClaimWorkspace"
 import { NEEDS_ME, NEXT_SHORT, stepOf, type DeskStepId } from "./deskGuide"
 import NewCaseModal from "./NewCaseModal"
 import { StatusPill, daysUntil, fmtDateTime, inr, useCases, useNotify } from "./ui"
+import { InsuranceEngineService as E } from "../../services/insuranceDb"
+import InsuranceSopModal from "./InsuranceSopModal"
 
 type Nav = (module: string, caseId?: string) => void
 
@@ -103,6 +106,7 @@ export default function ClaimsHome({
   const [selectedInsurer, setSelectedInsurer] = useState("")
   const [selectedWard, setSelectedWard] = useState("")
   const [isNewClaimOpen, setIsNewClaimOpen] = useState(false)
+  const [sopModalOpen, setSopModalOpen] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
 
@@ -220,6 +224,15 @@ export default function ClaimsHome({
             >
               <Download size={13} className="text-slate-500" />
               <span>Export</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSopModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-800 text-xs font-bold rounded-lg shadow-2xs transition-colors cursor-pointer"
+            >
+              <BookOpen size={13} className="text-indigo-600" />
+              <span>Dept Rules &amp; SOPs</span>
             </button>
 
             <button
@@ -609,6 +622,7 @@ export default function ClaimsHome({
           </div>
         </div>
       </div>
+      <InsuranceSopModal isOpen={sopModalOpen} onClose={() => setSopModalOpen(false)} />
     </div>
   )
 }

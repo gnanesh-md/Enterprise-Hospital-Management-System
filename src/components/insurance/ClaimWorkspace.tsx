@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import {
   ArrowLeft,
   Printer,
@@ -14,7 +14,6 @@ import {
   AlertCircle,
   Clock,
   Upload,
-  Plus,
   ArrowRight,
   Sparkles,
   Home,
@@ -31,11 +30,14 @@ import { MailComposer, MailThread } from "./mail"
 import { Hint, KV, NEXT_HINT, StatusPill, fmtDate, fmtDateTime, inr, type Notify } from "./ui"
 import { AuditTable, BillLines, Consumption, Readiness } from "./widgets"
 import ClaimPharmacyBillsView from "./ClaimPharmacyBillsView"
+import FixedPackageBillSection from "./FixedPackageBillSection"
+import SendToInsurerFlow from "./SendToInsurerFlow"
+import { InsuranceEngineService as E } from "../../services/insuranceDb"
 import ClaimPatientJourneyView from "./ClaimPatientJourneyView"
 import ClaimEmailTrackerView from "./ClaimEmailTrackerView"
 import PatientProfileModal from "./PatientProfileModal"
 
-const TABS = ["Current Step", "Bills & Pharmacy", "Patient Journey", "Emails", "Documents", "Details", "History"] as const
+const TABS = ["Current Step", "Bills & Pharmacy", "Fixed Package Bill", "Patient Journey", "Emails", "Documents", "Details", "History"] as const
 type Tab = (typeof TABS)[number]
 
 export default function ClaimWorkspace({
@@ -53,21 +55,97 @@ export default function ClaimWorkspace({
 }) {
   const [tab, setTab] = useState<Tab>("Current Step")
   const [patientModalOpen, setPatientModalOpen] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
+
+  // Adjudication form state for Details tab
+  const [adjMode, setAdjMode] = useState<"idle" | "review">("idle")
+  const [adjOutcome, setAdjOutcome] = useState<"Approved" | "Rejected" | "Query">("Approved")
+  const [adjAmount, setAdjAmount] = useState<string>("")
+  const [adjCode, setAdjCode] = useState("")
+  const [adjNote, setAdjNote] = useState("")
+
   const stage = stepOf(c)
+  const stageIdx = DESK_STEPS.findIndex((s) => s.id === stage.id)
   const closed = c.status === "CLOSED"
   const stopped = ["NOT_ELIGIBLE", "PREAUTH_REJECTED", "REJECTED"].includes(c.status)
   const mand = c.documents.filter((d) => d.isMandatory)
   const verified = mand.filter((d) => d.isUploaded && d.status === "Verified").length
   const initials = c.patientName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
 
-  const approvalCode = c.preAuth?.approvalCode || "PA-2026-4482"
-  const invoiceNumber = c.invoiceNo || "INV-2026-0814"
-  const policyNum = c.policy.policyNumber || "CH1234567890"
+  const policyNum = c.policy.policyNumber || "—"
 
-  const hospitalBill = c.totalHospitalBill || c.finalClaimAmount || 5300
-  const claimAmount = c.finalClaimAmount || c.preAuth?.requestedAmount || hospitalBill
-  const nonPayable = 0
-  const patientShare = 0
+  const hospitalBill = c.totalHospitalBill || 0
+  const claimAmount = c.finalClaimAmount || c.preAuth?.requestedAmount || 0
+  const nonPayable = c.nonPayableAmount || 0
+  const patientShare = c.patientShareAmount || 0
+
+  // ── Dynamic pre-submission checklist & document counts ──────────────────────
+  const APPROVED_ONWARDS = ["PREAUTH_APPROVED", "TREATMENT_IN_PROGRESS", "DISCHARGE_INITIATED", "FINAL_BILL_READY", "CLAIM_SUBMITTED", "CLAIM_QUERY_RAISED", "APPROVED", "PARTIALLY_APPROVED", "SETTLEMENT_PENDING", "CLOSED"]
+  const docsTotal = c.documents.length
+  const uploadedCount = c.documents.filter((d) => d.isUploaded).length
+  const verifiedCount = c.documents.filter((d) => d.status === "Verified").length
+  const toUploadCount = c.documents.filter((d) => !d.isUploaded).length
+  const preAuthDone = !!c.preAuth?.approvalCode || APPROVED_ONWARDS.includes(c.status)
+  const finalBillDone = hospitalBill > 0 || !!c.invoiceNo
+  const docsDone = mand.length > 0 && verified === mand.length
+  const clearanceDone = APPROVED_ONWARDS.includes(c.status)
+  const checklist = [
+    { label: "Pre-auth approved", done: preAuthDone, meta: c.preAuth?.approvalCode ? `Approval No: ${c.preAuth.approvalCode}` : "Pending" },
+    { label: "Final bill ready", done: finalBillDone, meta: c.invoiceNo ? `Invoice: ${c.invoiceNo}` : hospitalBill > 0 ? inr(hospitalBill) : "Pending" },
+    { label: "Documents uploaded & verified", done: docsDone, meta: `${verified} of ${mand.length} verified` },
+    { label: "Insurance clearance", done: clearanceDone, meta: clearanceDone ? "Clear" : "Pending" },
+  ]
+  const checklistDone = checklist.filter((x) => x.done).length
+
+  // Documents grouped the way the sheet shows them.
+  const patientDocs = c.documents.filter((d) => d.category === "Patient" || d.category === "Insurance")
+  const hospitalDocs = c.documents.filter((d) => ["Clinical", "Billing", "Discharge", "Pre-Auth"].includes(d.category))
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null)
+  const triggerUpload = (docId: string) => { setUploadingDocId(docId); fileInputRef.current?.click() }
+  const onFileChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    const docId = uploadingDocId
+    e.target.value = ""
+    if (!f || !docId) return
+    try { E.uploadDocument(c.id, docId, f.name); notify(`Uploaded ${f.name}`, "success") }
+    catch (err) { notify(err instanceof Error ? err.message : "Upload failed", "error") }
+  }
+  const verifyDoc = (docId: string) => {
+    try { E.verifyDocument(c.id, docId, true); notify("Document verified", "success") }
+    catch (err) { notify(err instanceof Error ? err.message : "Could not verify", "error") }
+  }
+  const verifyAllUploaded = () => {
+    try { E.verifyAllUploaded(c.id); notify("All uploaded documents verified", "success") }
+    catch (err) { notify(err instanceof Error ? err.message : "Could not verify", "error") }
+  }
+  const renderDocCard = (d: typeof c.documents[number]) => {
+    const dot = d.status === "Verified" ? "bg-emerald-500 border-emerald-500" : d.isUploaded ? "bg-amber-400 border-amber-400" : "border-slate-300"
+    const statusText = d.status === "Verified" ? `Verified${d.fileName ? ` · ${d.fileName}` : ""}` : d.status === "Rejected" ? "Rejected — re-upload" : d.isUploaded ? `Uploaded${d.fileName ? ` · ${d.fileName}` : ""} — verify it` : "Not uploaded"
+    const statusTone = d.status === "Verified" ? "text-emerald-600" : d.isUploaded ? "text-amber-600" : "text-slate-400"
+    return (
+      <div key={d.id} className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${dot}`} />
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 truncate">{d.documentType}{d.isMandatory && <span className="text-rose-500"> *</span>}</div>
+            <div className={`text-[11px] truncate ${statusTone}`}>{statusText}</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {d.isUploaded && d.status !== "Verified" && (
+            <button type="button" onClick={() => verifyDoc(d.id)} className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer">
+              <Check size={13} /> Verify
+            </button>
+          )}
+          <button type="button" onClick={() => triggerUpload(d.id)} className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer">
+            <Upload size={13} /> {d.isUploaded ? "Replace" : "Upload"}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex-1 overflow-y-auto bg-[#F8FAFC]">
@@ -109,14 +187,15 @@ export default function ClaimWorkspace({
             </button>
             <button
               type="button"
-              onClick={() => notify("Additional claim options opened", "success")}
+              onClick={() => setPatientModalOpen(true)}
+              title="View patient profile"
               className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
             >
               <MoreHorizontal size={15} className="text-slate-500" />
             </button>
             <button
               type="button"
-              onClick={() => notify("Claim package sent to insurer gateway!", "success")}
+              onClick={() => setSendOpen(true)}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <span>Send to Insurer</span>
@@ -191,7 +270,7 @@ export default function ClaimWorkspace({
               </div>
               <div>
                 <div className="text-[10px] uppercase font-semibold text-slate-400">Discharge</div>
-                <div className="text-xs font-bold text-slate-800">Pending</div>
+                <div className="text-xs font-bold text-slate-800">{c.dischargeDate ? fmtDate(c.dischargeDate) : "Pending"}</div>
               </div>
             </div>
 
@@ -227,8 +306,8 @@ export default function ClaimWorkspace({
             </div>
             <div>
               <div className="text-[11px] font-medium text-slate-500">Pre-auth Approved</div>
-              <div className="text-lg font-extrabold text-slate-900 tracking-tight">Yes</div>
-              <div className="text-[10px] text-slate-400 font-mono">Approval No: {approvalCode}</div>
+              <div className="text-lg font-extrabold text-slate-900 tracking-tight">{preAuthDone ? "Yes" : "Pending"}</div>
+              <div className="text-[10px] text-slate-400 font-mono">Approval No: {c.preAuth?.approvalCode || "—"}</div>
             </div>
           </div>
 
@@ -261,8 +340,8 @@ export default function ClaimWorkspace({
             </div>
             <div>
               <div className="text-[11px] font-medium text-slate-500">Settled Amount</div>
-              <div className="text-lg font-extrabold text-slate-900 tracking-tight">—</div>
-              <div className="text-[10px] text-slate-400">Not yet settled</div>
+              <div className="text-lg font-extrabold text-slate-900 tracking-tight">{c.settlement?.receivedAmount ? inr(c.settlement.receivedAmount) : "—"}</div>
+              <div className="text-[10px] text-slate-400">{c.settlement?.receivedAmount ? "Settled" : "Not yet settled"}</div>
             </div>
           </div>
         </div>
@@ -273,106 +352,29 @@ export default function ClaimWorkspace({
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900">Claim Progress</h3>
-              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
-                In progress
+              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold border ${closed ? "bg-slate-100 text-slate-600 border-slate-200" : stopped ? "bg-rose-50 text-rose-700 border-rose-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>
+                {closed ? "Closed" : stopped ? "Stopped" : "In progress"}
               </span>
             </div>
 
             <ol className="relative pl-1 space-y-5">
-              {/* Step 1 */}
-              <li className="relative flex items-start gap-3">
-                <span className="absolute left-[11px] top-6 bottom-[-20px] w-0.5 bg-emerald-400" />
-                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0 z-10">
-                  <Check size={13} />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Patient Admission</div>
-                  <div className="text-[11px] text-slate-400">Completed • 23 Aug 2026</div>
-                </div>
-              </li>
-
-              {/* Step 2 */}
-              <li className="relative flex items-start gap-3">
-                <span className="absolute left-[11px] top-6 bottom-[-20px] w-0.5 bg-emerald-400" />
-                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0 z-10">
-                  <Check size={13} />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Eligibility Verification</div>
-                  <div className="text-[11px] text-slate-400">Completed • 24 Aug 2026</div>
-                </div>
-              </li>
-
-              {/* Step 3 */}
-              <li className="relative flex items-start gap-3">
-                <span className="absolute left-[11px] top-6 bottom-[-20px] w-0.5 bg-emerald-400" />
-                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0 z-10">
-                  <Check size={13} />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Pre-Authorization</div>
-                  <div className="text-[11px] text-slate-400">Approved • 25 Aug 2026</div>
-                </div>
-              </li>
-
-              {/* Step 4 */}
-              <li className="relative flex items-start gap-3">
-                <span className="absolute left-[11px] top-6 bottom-[-20px] w-0.5 bg-emerald-400" />
-                <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center text-xs font-bold shrink-0 z-10">
-                  <Check size={13} />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Treatment / Surgery</div>
-                  <div className="text-[11px] text-slate-400">Completed • 28 Aug 2026</div>
-                </div>
-              </li>
-
-              {/* Step 5: Active */}
-              <li className="relative flex items-start gap-3">
-                <span className="absolute left-[11px] top-6 bottom-[-20px] w-0.5 bg-slate-200" />
-                <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0 z-10 ring-4 ring-blue-100">
-                  5
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-blue-900">Discharge &amp; Final Bill</div>
-                  <div className="text-[11px] text-blue-600 font-semibold">In progress</div>
-                </div>
-              </li>
-
-              {/* Step 6 */}
-              <li className="relative flex items-start gap-3">
-                <span className="absolute left-[11px] top-6 bottom-[-20px] w-0.5 bg-slate-200" />
-                <div className="w-6 h-6 rounded-full border border-slate-300 text-slate-400 flex items-center justify-center text-xs font-bold shrink-0 z-10 bg-white">
-                  6
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-slate-500">Claim Submission</div>
-                  <div className="text-[11px] text-slate-400">Pending</div>
-                </div>
-              </li>
-
-              {/* Step 7 */}
-              <li className="relative flex items-start gap-3">
-                <span className="absolute left-[11px] top-6 bottom-[-20px] w-0.5 bg-slate-200" />
-                <div className="w-6 h-6 rounded-full border border-slate-300 text-slate-400 flex items-center justify-center text-xs font-bold shrink-0 z-10 bg-white">
-                  7
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-slate-500">Claim Adjudication</div>
-                  <div className="text-[11px] text-slate-400">Pending</div>
-                </div>
-              </li>
-
-              {/* Step 8 */}
-              <li className="relative flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full border border-slate-300 text-slate-400 flex items-center justify-center text-xs font-bold shrink-0 z-10 bg-white">
-                  8
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-slate-500">Settlement</div>
-                  <div className="text-[11px] text-slate-400">Pending</div>
-                </div>
-              </li>
+              {DESK_STEPS.map((s, i) => {
+                const done = i < stageIdx
+                const current = i === stageIdx
+                const last = i === DESK_STEPS.length - 1
+                return (
+                  <li key={s.id} className="relative flex items-start gap-3">
+                    {!last && <span className={`absolute left-[11px] top-6 bottom-[-20px] w-0.5 ${done ? "bg-emerald-400" : "bg-slate-200"}`} />}
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 z-10 ${done ? "bg-emerald-500 text-white" : current ? "bg-blue-600 text-white ring-4 ring-blue-100" : "border border-slate-300 text-slate-400 bg-white"}`}>
+                      {done ? <Check size={13} /> : i + 1}
+                    </div>
+                    <div>
+                      <div className={`text-xs ${current ? "font-bold text-blue-900" : done ? "font-bold text-slate-900" : "font-medium text-slate-500"}`}>{s.title}</div>
+                      <div className={`text-[11px] ${current ? "text-blue-600 font-semibold" : "text-slate-400"}`}>{done ? "Completed" : current ? "In progress" : "Pending"}</div>
+                    </div>
+                  </li>
+                )
+              })}
             </ol>
           </div>
 
@@ -392,14 +394,14 @@ export default function ClaimWorkspace({
                   }`}
                 >
                   <span>{t}</span>
-                  {t === "Emails" && (
+                  {t === "Emails" && (c.mails?.length ?? 0) > 0 && (
                     <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${tab === t ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}>
-                      3
+                      {c.mails?.length}
                     </span>
                   )}
-                  {t === "Documents" && (
+                  {t === "Documents" && docsTotal > 0 && (
                     <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${tab === t ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>
-                      0/2
+                      {verifiedCount}/{docsTotal}
                     </span>
                   )}
                 </button>
@@ -416,8 +418,8 @@ export default function ClaimWorkspace({
                       <Send size={18} className="-rotate-12" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-slate-900">Discharge &amp; Final Bill</h3>
-                      <p className="text-xs text-slate-500 mt-0.5">Final bill received. Verify every claim document, then email the claim to the insurer.</p>
+                      <h3 className="text-base font-bold text-slate-900">{stage.title}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">{stage.meaning}</p>
                     </div>
                   </div>
 
@@ -441,43 +443,23 @@ export default function ClaimWorkspace({
                         <FileCheck size={16} className="text-blue-600" />
                         <h4 className="text-xs font-bold text-slate-900">Pre-Submission Checklist</h4>
                       </div>
-                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                        3/4 Completed
+                      <span className={`text-[11px] font-bold border px-2 py-0.5 rounded-full ${checklistDone === checklist.length ? "text-emerald-700 bg-emerald-50 border-emerald-200" : "text-amber-700 bg-amber-50 border-amber-200"}`}>
+                        {checklistDone}/{checklist.length} Completed
                       </span>
                     </div>
 
                     <div className="space-y-2.5 text-xs">
-                      <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/80">
-                        <div className="flex items-center gap-2 font-medium text-slate-800">
-                          <CheckCircle2 size={15} className="text-emerald-500" />
-                          <span>Pre-auth approved</span>
+                      {checklist.map((item) => (
+                        <div key={item.label} className="flex items-center justify-between p-2 rounded-lg bg-slate-50/80">
+                          <div className="flex items-center gap-2 font-medium text-slate-800">
+                            {item.done
+                              ? <CheckCircle2 size={15} className="text-emerald-500" />
+                              : <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300" />}
+                            <span>{item.label}</span>
+                          </div>
+                          <span className={`font-mono text-[11px] ${item.done ? "text-emerald-600 font-semibold" : "text-slate-500"}`}>{item.meta}</span>
                         </div>
-                        <span className="text-slate-500 font-mono text-[11px]">Approval No: {approvalCode}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/80">
-                        <div className="flex items-center gap-2 font-medium text-slate-800">
-                          <CheckCircle2 size={15} className="text-emerald-500" />
-                          <span>Final bill ready</span>
-                        </div>
-                        <span className="text-slate-500 font-mono text-[11px]">Invoice: {invoiceNumber}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/80">
-                        <div className="flex items-center gap-2 font-medium text-slate-800">
-                          <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300" />
-                          <span>Documents uploaded &amp; verified</span>
-                        </div>
-                        <span className="text-slate-500 font-mono text-[11px]">1 of 2 uploaded</span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-2 rounded-lg bg-slate-50/80">
-                        <div className="flex items-center gap-2 font-medium text-slate-800">
-                          <CheckCircle2 size={15} className="text-emerald-500" />
-                          <span>Insurance clearance</span>
-                        </div>
-                        <span className="text-emerald-600 font-bold text-[11px]">Clear</span>
-                      </div>
+                      ))}
                     </div>
                   </div>
 
@@ -523,115 +505,62 @@ export default function ClaimWorkspace({
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-400 font-medium">0/2 uploaded • 0/2 verified • 2 to upload</span>
+                      <span className="text-xs text-slate-400 font-medium">{uploadedCount}/{docsTotal} uploaded • {verifiedCount}/{docsTotal} verified • {toUploadCount} to upload</span>
                       <button
                         type="button"
-                        onClick={() => notify("Requirement modal opened", "success")}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors cursor-pointer"
+                        onClick={() => verifyAllUploaded()}
+                        disabled={uploadedCount === verifiedCount}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors cursor-pointer"
                       >
-                        <Plus size={13} />
-                        <span>Add requirement</span>
+                        <Check size={13} />
+                        <span>Verify all uploaded</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Document Category 1: Patient Documents */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                      <FileText size={15} className="text-blue-600" />
-                      <span>Patient documents</span>
-                    </div>
+                  <input ref={fileInputRef} type="file" className="hidden" onChange={onFileChosen} />
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 shrink-0" />
-                          <div>
-                            <div className="text-xs font-bold text-slate-800">Patient ID Proof (Aadhaar / PAN)</div>
-                            <div className="text-[11px] text-slate-400">Not uploaded</div>
+                  {docsTotal === 0 ? (
+                    <div className="text-xs text-slate-500 py-6 text-center">No document requirements on this case yet.</div>
+                  ) : (
+                    <>
+                      {/* Patient Documents */}
+                      {patientDocs.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                            <FileText size={15} className="text-blue-600" />
+                            <span>Patient documents</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {patientDocs.map(renderDocCard)}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => notify("Uploading ID Proof...", "success")}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
-                        >
-                          <Upload size={13} />
-                          <span>Upload</span>
-                        </button>
-                      </div>
+                      )}
 
-                      <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 shrink-0" />
-                          <div>
-                            <div className="text-xs font-bold text-slate-800">Signed Claim Form</div>
-                            <div className="text-[11px] text-slate-400">Not uploaded</div>
+                      {/* Hospital Documents */}
+                      {hospitalDocs.length > 0 && (
+                        <div className="space-y-3 pt-2">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                            <Building size={15} className="text-emerald-600" />
+                            <span>Hospital documents</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {hospitalDocs.map(renderDocCard)}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => notify("Uploading Signed Claim Form...", "success")}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
-                        >
-                          <Upload size={13} />
-                          <span>Upload</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Document Category 2: Hospital Documents */}
-                  <div className="space-y-3 pt-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
-                      <Building size={15} className="text-emerald-600" />
-                      <span>Hospital documents</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 shrink-0" />
-                          <div>
-                            <div className="text-xs font-bold text-slate-800">Final Hospital Bill</div>
-                            <div className="text-[11px] text-slate-400">Not uploaded</div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => notify("Uploading Final Hospital Bill...", "success")}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
-                        >
-                          <Upload size={13} />
-                          <span>Upload</span>
-                        </button>
-                      </div>
-
-                      <div className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-300 shrink-0" />
-                          <div>
-                            <div className="text-xs font-bold text-slate-800">Discharge Summary</div>
-                            <div className="text-[11px] text-slate-400">Not uploaded</div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => notify("Uploading Discharge Summary...", "success")}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
-                        >
-                          <Upload size={13} />
-                          <span>Upload</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             )}
 
             {tab === "Bills & Pharmacy" && (
               <ClaimPharmacyBillsView c={c} notify={notify} />
+            )}
+
+            {tab === "Fixed Package Bill" && (
+              <FixedPackageBillSection c={c} notify={notify} />
             )}
 
             {tab === "Patient Journey" && (
@@ -647,33 +576,192 @@ export default function ClaimWorkspace({
             )}
 
             {tab === "Details" && (
-              <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
-                <h4 className="text-sm font-bold text-slate-900">Comprehensive Policy &amp; Clinical Details</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <div className="text-slate-400 text-[11px]">Primary Insurer</div>
-                    <div className="font-bold text-slate-800 mt-0.5">{c.policy.insurerName}</div>
+              <div className="space-y-6">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-4">
+                  <h4 className="text-sm font-bold text-slate-900">Comprehensive Policy &amp; Clinical Details</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <div className="text-slate-400 text-[11px]">Primary Insurer</div>
+                      <div className="font-bold text-slate-800 mt-0.5">{c.policy.insurerName}</div>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <div className="text-slate-400 text-[11px]">TPA Network</div>
+                      <div className="font-bold text-slate-800 mt-0.5">{c.policy.tpaName || "Direct"}</div>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <div className="text-slate-400 text-[11px]">Member ID</div>
+                      <div className="font-bold text-slate-800 mt-0.5 font-mono">{c.policy.memberId || "MEM-99210"}</div>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <div className="text-slate-400 text-[11px]">Policy Sum Insured</div>
+                      <div className="font-bold text-slate-800 mt-0.5 font-mono">{inr(c.policy.sumInsured || 500000)}</div>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <div className="text-slate-400 text-[11px]">Co-Pay Clause</div>
+                      <div className="font-bold text-slate-800 mt-0.5">{c.policy.copayPercentage || 0}%</div>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <div className="text-slate-400 text-[11px]">Pre-Auth Limit</div>
+                      <div className="font-bold text-slate-800 mt-0.5 font-mono">{inr(c.approvedPreAuthAmount || 50000)}</div>
+                    </div>
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <div className="text-slate-400 text-[11px]">TPA Network</div>
-                    <div className="font-bold text-slate-800 mt-0.5">{c.policy.tpaName || "Direct"}</div>
+                </div>
+
+                {/* ── Direct Adjudication Action Panel ── */}
+                <div className="bg-gradient-to-br from-indigo-50 via-white to-blue-50 border border-indigo-200/80 rounded-2xl p-6 shadow-sm space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 text-indigo-900 font-extrabold text-sm mb-1">
+                        <CheckCircle2 size={18} className="text-indigo-600" /> Manual Pre-Auth Adjudication
+                      </div>
+                      <p className="text-xs text-slate-600 font-medium leading-relaxed max-w-lg">
+                        Directly record an approval or rejection for <span className="font-bold text-slate-900">{c.patientName}</span>. This will immediately update the patient's status across Reception, Pharmacy, and the overall dashboard.
+                      </p>
+                    </div>
+
+                    {c.approvedPreAuthAmount === 0 && adjMode === "idle" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdjMode("review")
+                          setAdjAmount((c.preAuth?.requestedAmount || 50000).toString())
+                          setAdjCode(`AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-${Math.floor(100000 + Math.random() * 900000)}`)
+                          setAdjOutcome("Approved")
+                          setAdjNote("Sanction verified manually.")
+                        }}
+                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-md shrink-0 active:scale-95"
+                      >
+                        <Sparkles size={14} /> Update Decision
+                      </button>
+                    )}
                   </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <div className="text-slate-400 text-[11px]">Member ID</div>
-                    <div className="font-bold text-slate-800 mt-0.5 font-mono">{c.policy.memberId || "MEM-99210"}</div>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <div className="text-slate-400 text-[11px]">Policy Sum Insured</div>
-                    <div className="font-bold text-slate-800 mt-0.5 font-mono">{inr(c.policy.sumInsured || 500000)}</div>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <div className="text-slate-400 text-[11px]">Co-Pay Clause</div>
-                    <div className="font-bold text-slate-800 mt-0.5">{c.policy.copayPercentage || 0}%</div>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <div className="text-slate-400 text-[11px]">Pre-Auth Limit</div>
-                    <div className="font-bold text-slate-800 mt-0.5 font-mono">{inr(c.approvedPreAuthAmount || 50000)}</div>
-                  </div>
+
+                  {adjMode === "review" && c.approvedPreAuthAmount === 0 && (
+                    <div className="mt-4 p-4 bg-white border border-indigo-100 rounded-xl shadow-inner space-y-4">
+                      <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Record Official Decision</div>
+                      
+                      <div className="flex gap-2">
+                        {(["Approved", "Rejected", "Query"] as const).map((out) => (
+                          <button
+                            key={out}
+                            type="button"
+                            onClick={() => setAdjOutcome(out)}
+                            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors border ${
+                              adjOutcome === out
+                                ? out === "Approved"
+                                  ? "bg-emerald-50 border-emerald-600 text-emerald-700 shadow-xs"
+                                  : out === "Rejected"
+                                  ? "bg-rose-50 border-rose-600 text-rose-700 shadow-xs"
+                                  : "bg-amber-50 border-amber-600 text-amber-700 shadow-xs"
+                                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                            }`}
+                          >
+                            {out}
+                          </button>
+                        ))}
+                      </div>
+
+                      {adjOutcome === "Approved" && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Approved Amount (₹)</label>
+                            <input
+                              type="number"
+                              value={adjAmount}
+                              onChange={(e) => setAdjAmount(e.target.value)}
+                              className="w-full px-3 py-2 text-sm font-bold text-emerald-700 bg-emerald-50/30 border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                              placeholder="e.g. 50000"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Authorization Code</label>
+                            <input
+                              type="text"
+                              value={adjCode}
+                              onChange={(e) => setAdjCode(e.target.value)}
+                              className="w-full px-3 py-2 text-sm font-mono font-bold text-slate-900 bg-slate-50/50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                              placeholder="e.g. AUTH-12345"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Internal Note / Remarks</label>
+                        <textarea
+                          value={adjNote}
+                          onChange={(e) => setAdjNote(e.target.value)}
+                          rows={2}
+                          className="w-full px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                          placeholder="Add any remarks for the record..."
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-end gap-3 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setAdjMode("idle")}
+                          className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            try {
+                              const amt = parseInt(adjAmount, 10) || 0
+                              if (adjOutcome === "Approved" && !amt) throw new Error("Please enter a valid approved amount.")
+                              if (adjOutcome === "Approved" && !adjCode.trim()) throw new Error("Authorization code is required.")
+                              
+                              E.recordPreAuthResponse(c.id, {
+                                outcome: adjOutcome,
+                                amount: amt,
+                                approvalCode: adjCode,
+                                note: adjNote,
+                              })
+                              setAdjMode("idle")
+                              notify(
+                                adjOutcome === "Approved" 
+                                  ? `Approved for ₹${amt.toLocaleString("en-IN")} and synced!` 
+                                  : `Decision recorded as ${adjOutcome}.`,
+                                "success"
+                              )
+                            } catch (err: any) {
+                              notify(err.message, "error")
+                            }
+                          }}
+                          className={`px-5 py-2 text-xs font-bold text-white rounded-lg transition-all shadow-sm active:scale-95 flex items-center gap-1.5 ${
+                            adjOutcome === "Approved" ? "bg-emerald-600 hover:bg-emerald-700" :
+                            adjOutcome === "Rejected" ? "bg-rose-600 hover:bg-rose-700" :
+                            "bg-amber-600 hover:bg-amber-700"
+                          }`}
+                        >
+                          <CheckCircle2 size={14} /> Confirm &amp; Save
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {c.approvedPreAuthAmount > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/80 border border-indigo-100 rounded-lg p-3">
+                      <div>
+                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Authorization Code</div>
+                        <div className="text-xs font-mono font-bold text-slate-900 mt-0.5">
+                          {c.preAuth?.approvalCode || `AUTH-${(c.policy.tpaName || "TPA").slice(0, 3).toUpperCase()}-9921`}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Sanctioned Amount</div>
+                        <div className="text-sm font-bold text-emerald-700 mt-0.5">
+                          {inr(c.approvedPreAuthAmount)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider">Co-Pay Clause</div>
+                        <div className="text-xs font-bold text-slate-800 mt-0.5">{c.policy.copayPercentage || 0}%</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -710,6 +798,10 @@ export default function ClaimWorkspace({
           corporateName: (c.policy as any).corporateName || "TECHCORP SOLUTIONS PVT LTD",
         }}
       />
+
+      {sendOpen && (
+        <SendToInsurerFlow c={c} notify={notify} onClose={() => setSendOpen(false)} onSent={onOpenEmailHub} />
+      )}
     </div>
   )
 }

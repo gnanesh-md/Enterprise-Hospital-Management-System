@@ -140,6 +140,7 @@ import Administration from "./components/Administration"
 import OpReportsPage from "./components/reports/OpReportsPage"
 
 import GeneralReportsOverviewPage from "./components/reports/GeneralReportsOverviewPage"
+import PatientPoliciesPage from "./components/insurance/PatientPoliciesPage"
 
 import GenericReportPage, {
   ReportType,
@@ -173,7 +174,7 @@ const insuranceModule = (m: string): string =>
         : m
 
 
-type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
+type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
 
 interface NavItem {
   key: Module
@@ -379,6 +380,7 @@ const NAV: NavItem[] = [
 
     children: [
       { key: "insurance_overview", label: "Command Dashboard" },
+      { key: "insurance_patient_policies", label: "Patient Policies" },
       { key: "insurance_eligibility", label: "New Patient / Intake" },
       { key: "insurance_preauth", label: "Pre-Authorization" },
       { key: "insurance_claims", label: "Claims & Queries" },
@@ -1115,6 +1117,8 @@ export default function App() {
   const [module, setModule] = useState<Module>("dashboard")
   // Insurance pages link to one another by case, e.g. a query row -> its claim.
   const [insuranceCaseId, setInsuranceCaseId] = useState<string | undefined>()
+  // Which Master Setup tab to open when navigating there (insurers by default).
+  const [mastersSection, setMastersSection] = useState<"insurers" | "tpas" | "packages" | "pricing" | "docrules">("insurers")
   const openInsurance = (m: string, caseId?: string) => {
     setInsuranceCaseId(caseId)
     setModule(insuranceModule(m) as Module)
@@ -1440,9 +1444,10 @@ export default function App() {
   // open an insurance page on a case without threading a prop down to it.
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const d = (e as CustomEvent<{ module: string; caseId?: string }>).detail
+      const d = (e as CustomEvent<{ module: string; caseId?: string; section?: typeof mastersSection }>).detail
       if (!d?.module) return
       setInsuranceCaseId(d.caseId)
+      if (d.section) setMastersSection(d.section)
       if (d.caseId && (d.module === "insurance" || d.module === "insurance_case" || d.module === "insurance_claims")) {
         setModule("insurance_case")
       } else if (d.module === "insurance_preauth") {
@@ -2543,7 +2548,10 @@ export default function App() {
                     if (page === "board") setModule("insurance_board" as any)
                     else if (page === "preauth") setModule("insurance_preauth" as any)
                     else if (page === "intake") setModule("insurance_eligibility" as any)
-                    else if (page === "claims") setModule("insurance_claims" as any)
+                    else if (page === "claims") {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
                     else if (page === "emails") setModule("insurance_emails" as any)
                     else if (page === "settlements") setModule("insurance_settlement" as any)
                     else if (page === "masters") setModule("insurance_masters" as any)
@@ -2551,7 +2559,10 @@ export default function App() {
                       setInsuranceCaseId(caseId)
                       setModule("insurance_case" as any)
                     }
-                    else setModule("insurance_claims" as any)
+                    else {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
                   }}
                 />
               )}
@@ -2568,7 +2579,10 @@ export default function App() {
                   onNavigate={(page, caseId) => {
                     if (page === "preauth") setModule("insurance_preauth" as any)
                     else if (page === "intake") setModule("insurance_eligibility" as any)
-                    else if (page === "claims") setModule("insurance_claims" as any)
+                    else if (page === "claims") {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
                     else if (page === "emails") setModule("insurance_emails" as any)
                     else if (page === "settlements") setModule("insurance_settlement" as any)
                     else if (page === "masters") setModule("insurance_masters" as any)
@@ -2576,12 +2590,16 @@ export default function App() {
                       setInsuranceCaseId(caseId)
                       setModule("insurance_case" as any)
                     }
-                    else setModule("insurance_overview" as any)
+                    else {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_overview" as any)
+                    }
                   }}
                 />
               )}
               {/* Page 3: Intake */}
-              {module === "insurance_eligibility" && (
+              {module === "insurance_patient_policies" && <PatientPoliciesPage />}
+            {module === "insurance_eligibility" && (
                 <InsuranceIntakeView
                   onBack={() => setModule("insurance_overview" as any)}
                   onComplete={(id) => {
@@ -2638,7 +2656,7 @@ export default function App() {
               {(module === "insurance_settlement" || module === "insurance_reconciliation") && (
                 <InsuranceSettlementPage onNavigate={openInsurance} initialCaseId={insuranceCaseId} />
               )}
-              {module === "insurance_masters" && <InsuranceMastersPage section="insurers" />}
+              {module === "insurance_masters" && <InsuranceMastersPage section={mastersSection} />}
               {module === "insurance_tpas" && <InsuranceMastersPage section="tpas" />}
               {module === "insurance_packages" && <EnhancedAuditRulesPage initialTab="packages" />}
               {module === "insurance_pricing" && <EnhancedAuditRulesPage initialTab="packages" />}

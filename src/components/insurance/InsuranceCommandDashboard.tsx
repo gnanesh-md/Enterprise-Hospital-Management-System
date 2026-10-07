@@ -24,11 +24,13 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Sparkles,
+  BookOpen,
 } from "lucide-react"
-import { inr, fmtDate, useCases, useNotify, btn } from "./ui"
-import { InsuranceEngineService } from "../../services/insuranceDb"
+import { inr, fmtDate, useCases, useNotify, btn, StatusPill } from "./ui"
+import { InsuranceEngineService, STATUS_META } from "../../services/insuranceDb"
 import type { ComprehensiveClaimRecord } from "../../types/insurance"
 import NewCaseModal from "./NewCaseModal"
+import InsuranceSopModal from "./InsuranceSopModal"
 
 // Insurer Logo Badges
 const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }> = {
@@ -43,123 +45,7 @@ const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }
   "Medi Assist TPA": { bg: "bg-teal-600", text: "text-white font-black", label: "MEDI" },
 }
 
-// Demo cases matching the exact visual screenshot when store is empty
-const DEMO_DASHBOARD_CASES = [
-  {
-    id: "CLM-2026-8924",
-    patientName: "Thomas Reed",
-    patientId: "UHID-8924",
-    ward: "ICU",
-    wardColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
-    avatarBg: "bg-teal-600 text-white",
-    insurerName: "Care Health Insurance",
-    admissionDetails: "ICU - 23 Aug 2026",
-    doctor: "Dr. Ravi Kumar",
-    stage: "Discharge & Final Bill",
-    step: "5/8",
-    progressPct: 62.5,
-    status: "Claim ready",
-    statusStyle: "bg-blue-50 text-blue-700 border-blue-200",
-    amount: 5300,
-    nextAction: "Upload discharge papers and send claim",
-    updated: "01 Oct, 10:18 pm",
-  },
-  {
-    id: "CLM-2026-8927",
-    patientName: "John Smith",
-    patientId: "UHID-8927",
-    ward: "ER",
-    wardColor: "bg-rose-100 text-rose-800 border-rose-200",
-    avatarBg: "bg-sky-600 text-white",
-    insurerName: "Star Health & Allied Insurance",
-    admissionDetails: "ER - 21 Aug 2026",
-    doctor: "Dr. Kavya Reddy",
-    stage: "Claim Adjudication",
-    step: "7/8",
-    progressPct: 87.5,
-    status: "Approved",
-    statusStyle: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    amount: 800,
-    nextAction: "Enter settlement letter number",
-    updated: "30 Sept, 03:18 pm",
-  },
-  {
-    id: "CLM-2026-8922",
-    patientName: "Mary Jones",
-    patientId: "UHID-8922",
-    ward: "IP",
-    wardColor: "bg-blue-100 text-blue-800 border-blue-200",
-    avatarBg: "bg-pink-600 text-white",
-    insurerName: "ICICI Lombard General Insurance",
-    admissionDetails: "IP - 20 Aug 2026",
-    doctor: "Dr. Mahesh Babu",
-    stage: "Discharge & Final Bill",
-    step: "5/8",
-    progressPct: 62.5,
-    status: "Claim ready",
-    statusStyle: "bg-blue-50 text-blue-700 border-blue-200",
-    amount: 1490,
-    nextAction: "Upload discharge papers and send claim",
-    updated: "30 Sept, 03:18 pm",
-  },
-  {
-    id: "CLM-2026-8923",
-    patientName: "Robert Lee",
-    patientId: "UHID-8923",
-    ward: "IP",
-    wardColor: "bg-blue-100 text-blue-800 border-blue-200",
-    avatarBg: "bg-indigo-600 text-white",
-    insurerName: "Care Health Insurance",
-    admissionDetails: "IP - 18 Aug 2026",
-    doctor: "Dr. Suresh Naidu",
-    stage: "Discharge & Final Bill",
-    step: "5/8",
-    progressPct: 62.5,
-    status: "Claim ready",
-    statusStyle: "bg-blue-50 text-blue-700 border-blue-200",
-    amount: 3300,
-    nextAction: "Upload discharge papers and send claim",
-    updated: "30 Sept, 03:18 pm",
-  },
-  {
-    id: "CLM-2026-8929",
-    patientName: "Amit Patel",
-    patientId: "UHID-8929",
-    ward: "IP",
-    wardColor: "bg-blue-100 text-blue-800 border-blue-200",
-    avatarBg: "bg-blue-600 text-white",
-    insurerName: "ICICI Lombard General Insurance",
-    admissionDetails: "IP - 17 Aug 2026",
-    doctor: "Dr. Priya Mehta",
-    stage: "Discharge & Final Bill",
-    step: "5/8",
-    progressPct: 62.5,
-    status: "Pending",
-    statusStyle: "bg-amber-50 text-amber-700 border-amber-200",
-    amount: 1100,
-    nextAction: "Follow up with insurer",
-    updated: "29 Sept, 11:43 am",
-  },
-  {
-    id: "CLM-2026-8935",
-    patientName: "Ananya Desai",
-    patientId: "UHID-8935",
-    ward: "OT",
-    wardColor: "bg-purple-100 text-purple-800 border-purple-200",
-    avatarBg: "bg-violet-600 text-white",
-    insurerName: "HDFC ERGO General Insurance",
-    admissionDetails: "OT - 16 Aug 2026",
-    doctor: "Dr. Ramesh Kumar",
-    stage: "Discharge & Final Bill",
-    step: "5/8",
-    progressPct: 62.5,
-    status: "Claim ready",
-    statusStyle: "bg-blue-50 text-blue-700 border-blue-200",
-    amount: 1780,
-    nextAction: "Upload discharge papers and send claim",
-    updated: "29 Sept, 09:22 am",
-  },
-]
+// Removed hardcoded DEMO_DASHBOARD_CASES to ensure everything is fully dynamic
 
 // Sparkline Mini Bar Component
 function SparklineBars({ heights, color }: { heights: number[]; color: string }) {
@@ -185,6 +71,7 @@ export default function InsuranceCommandDashboard({
   const [selectedInsurer, setSelectedInsurer] = useState("")
   const [selectedWard, setSelectedWard] = useState("")
   const [selectedStage, setSelectedStage] = useState("")
+  const [sopModalOpen, setSopModalOpen] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleRefresh = () => {
@@ -197,25 +84,28 @@ export default function InsuranceCommandDashboard({
 
   // Filtered rows for the table
   const tableRows = useMemo(() => {
-    let list = storeCases.length > 0 ? storeCases.map((c) => ({
-      id: c.id,
-      patientName: c.patientName,
-      patientId: c.patientId || c.mrn || "UHID-9920",
-      ward: c.encounterType || "ICU",
-      wardColor: c.encounterType === "ICU" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-blue-100 text-blue-800 border-blue-200",
-      avatarBg: "bg-blue-600 text-white",
-      insurerName: c.policy.insurerName,
-      admissionDetails: `${c.encounterType || "ICU"} - ${fmtDate(c.admissionDate)}`,
-      doctor: c.preAuth?.treatingDoctor || "Consulting Specialist",
-      stage: c.status === "CLAIM_SUBMITTED" ? "Claim Adjudication" : "Discharge & Final Bill",
-      step: c.status === "CLAIM_SUBMITTED" ? "7/8" : "5/8",
-      progressPct: c.status === "CLAIM_SUBMITTED" ? 87.5 : 62.5,
-      status: c.status === "PREAUTH_APPROVED" ? "Approved" : c.status === "CLAIM_SUBMITTED" ? "Approved" : "Claim ready",
-      statusStyle: c.status === "PREAUTH_APPROVED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-blue-50 text-blue-700 border-blue-200",
-      amount: c.finalClaimAmount || c.preAuth?.requestedAmount || 5300,
-      nextAction: c.approvedPreAuthAmount === 0 ? "Follow up with insurer" : "Upload discharge papers and send claim",
-      updated: "Today, 10:18 pm",
-    })) : DEMO_DASHBOARD_CASES
+    let list = storeCases.map((c) => {
+      const meta = STATUS_META[c.status] || { label: c.status, tone: "blue", group: "Pre-Auth" }
+      return {
+        id: c.id,
+        patientName: c.patientName,
+        patientId: c.patientId || c.mrn || "UHID-9920",
+        ward: c.encounterType || "ICU",
+        wardColor: c.encounterType === "ICU" ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-blue-100 text-blue-800 border-blue-200",
+        avatarBg: "bg-blue-600 text-white",
+        insurerName: c.policy.insurerName,
+        admissionDetails: `${c.encounterType || "ICU"} - ${fmtDate(c.admissionDate)}`,
+        doctor: c.preAuth?.treatingDoctor || "Consulting Specialist",
+        stage: meta.group,
+        step: c.status === "CLAIM_SUBMITTED" ? "7/8" : c.status === "PREAUTH_APPROVED" ? "4/8" : "3/8",
+        progressPct: c.status === "CLAIM_SUBMITTED" ? 87.5 : c.status === "PREAUTH_APPROVED" ? 50 : 37.5,
+        status: meta.label,
+        rawStatus: c.status,
+        amount: c.finalClaimAmount || c.preAuth?.requestedAmount || c.totalHospitalBill || 0,
+        nextAction: c.approvedPreAuthAmount === 0 ? "Follow up with insurer" : "Upload discharge papers and send claim",
+        updated: fmtDate(c.updatedAt || c.createdAt),
+      }
+    })
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
@@ -291,6 +181,16 @@ export default function InsuranceCommandDashboard({
               <span>Refresh</span>
             </button>
 
+            {/* Dept Rules & Eligibility SOPs Button */}
+            <button
+              type="button"
+              onClick={() => setSopModalOpen(true)}
+              className="bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/90 rounded-xl px-3.5 py-2 text-xs font-bold text-indigo-800 flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            >
+              <BookOpen size={14} className="text-indigo-600" />
+              <span>Dept Rules &amp; SOPs</span>
+            </button>
+
             {/* Export */}
             <button
               type="button"
@@ -311,6 +211,8 @@ export default function InsuranceCommandDashboard({
               <span>New Pre-Auth</span>
             </button>
           </div>
+
+          <InsuranceSopModal isOpen={sopModalOpen} onClose={() => setSopModalOpen(false)} />
         </div>
 
         {/* ── 2. TOP 5 EXECUTIVE KPI STAT CARDS WITH SPARKLINES ── */}
@@ -519,9 +421,9 @@ export default function InsuranceCommandDashboard({
           </button>
         </div>
 
-        {/* ── 4. MAIN LAYOUT: LEFT TABLE PANE (72%) + RIGHT SIDEBAR WIDGETS (28%) ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-5 items-start">
-          {/* LEFT COLUMN: FILTERS + ACTIVE CASES TABLE */}
+        {/* ── 4. MAIN LAYOUT: FULL WIDTH TABLE + BOTTOM WIDGETS ── */}
+        <div className="space-y-6">
+          {/* TOP SECTION: FILTERS + ACTIVE CASES TABLE */}
           <div className="space-y-4 min-w-0">
 
             {/* Filter Control Bar */}
@@ -596,19 +498,28 @@ export default function InsuranceCommandDashboard({
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                      <th className="py-3 px-4">Patient &amp; UHID</th>
-                      <th className="py-3 px-4">Insurer / TPA</th>
-                      <th className="py-3 px-4">Admission Details</th>
-                      <th className="py-3 px-4">Claim Stage</th>
-                      <th className="py-3 px-4">Status</th>
-                      <th className="py-3 px-4">Claim Amount</th>
-                      <th className="py-3 px-4">Next Action</th>
-                      <th className="py-3 px-4">Updated</th>
+                      <th className="py-3 px-4 min-w-[200px]">Patient &amp; UHID</th>
+                      <th className="py-3 px-4 min-w-[200px]">Insurer / TPA</th>
+                      <th className="py-3 px-4 min-w-[150px]">Admission Details</th>
+                      <th className="py-3 px-4 min-w-[140px]">Claim Stage</th>
+                      <th className="py-3 px-4 min-w-[120px]">Status</th>
+                      <th className="py-3 px-4 min-w-[120px]">Claim Amount</th>
+                      <th className="py-3 px-4 min-w-[180px]">Next Action</th>
+                      <th className="py-3 px-4 min-w-[100px]">Updated</th>
                       <th className="py-3 px-3 w-8 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {tableRows.map((r, i) => {
+                    {tableRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-12 text-center text-slate-500">
+                          <p className="font-semibold text-[13px] mb-2">No active claims found</p>
+                          <p className="text-[11.5px] max-w-sm mx-auto">
+                            Create a new case using "New Pre-Auth" or register a new patient via Intake.
+                          </p>
+                        </td>
+                      </tr>
+                    ) : tableRows.map((r, i) => {
                       const insBadge = INSURER_BADGES[r.insurerName] || {
                         bg: "bg-blue-700",
                         text: "text-white font-black",
@@ -619,21 +530,21 @@ export default function InsuranceCommandDashboard({
                         <tr
                           key={r.id}
                           className="hover:bg-blue-50/40 transition-colors cursor-pointer"
-                          onClick={() => onNavigate("case", r.id)}
+                          onClick={() => onNavigate("claims", r.id)}
                         >
                           {/* Patient & UHID */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full ${r.avatarBg} font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs`}>
+                              <div className={`w-8 h-8 rounded-full ${r.avatarBg} font-bold text-[11px] flex items-center justify-center shrink-0 shadow-2xs`}>
                                 {r.patientName.split(" ").map((n) => n[0]).join("")}
                               </div>
-                              <div>
-                                <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                              <div className="min-w-0">
+                                <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors whitespace-nowrap">
                                   {r.patientName}
                                 </div>
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="font-mono text-[10.5px] text-slate-400">{r.id}</span>
-                                  <span className={`px-1.5 py-0.2 rounded text-[9.5px] font-extrabold border ${r.wardColor}`}>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                  <span className="font-mono text-[10px] text-slate-400">{r.id}</span>
+                                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold border ${r.wardColor}`}>
                                     {r.ward}
                                   </span>
                                 </div>
@@ -647,7 +558,7 @@ export default function InsuranceCommandDashboard({
                               <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider shrink-0 ${insBadge.bg} ${insBadge.text}`}>
                                 {insBadge.label}
                               </span>
-                              <span className="font-semibold text-slate-800 text-xs truncate max-w-[140px]">
+                              <span className="font-semibold text-slate-800 text-xs min-w-[120px] whitespace-normal">
                                 {r.insurerName}
                               </span>
                             </div>
@@ -672,10 +583,7 @@ export default function InsuranceCommandDashboard({
 
                           {/* Status Pill */}
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold border ${r.statusStyle}`}>
-                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                              {r.status}
-                            </span>
+                            <StatusPill status={r.rawStatus} />
                           </td>
 
                           {/* Claim Amount */}
@@ -749,10 +657,10 @@ export default function InsuranceCommandDashboard({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: SIDEBAR WIDGETS (360px) */}
-          <div className="space-y-4">
+          {/* BOTTOM WIDGETS: 3 COLUMNS */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             {/* Widget 1: My Tasks */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-3">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <Zap size={16} className="text-amber-500 fill-amber-500" />
@@ -833,7 +741,7 @@ export default function InsuranceCommandDashboard({
             </div>
 
             {/* Widget 2: Outstanding by Insurer */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-3">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <h3 className="text-sm font-bold text-slate-900">Outstanding by Insurer</h3>
                 <button
@@ -872,7 +780,7 @@ export default function InsuranceCommandDashboard({
             </div>
 
             {/* Widget 3: Claim Stage Distribution (Donut Chart) */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-3">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col">
               <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                 <h3 className="text-sm font-bold text-slate-900">Claim Stage Distribution</h3>
                 <button
