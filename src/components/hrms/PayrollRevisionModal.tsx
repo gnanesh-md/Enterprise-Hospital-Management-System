@@ -9,13 +9,12 @@ interface PayrollRevisionModalProps {
   onSuccess: (msg: string) => void
 }
 
-export default function PayrollRevisionModal({
+function PayrollRevisionModalBody({
   item,
   isOpen,
   onClose,
   onSuccess,
-}: PayrollRevisionModalProps) {
-  if (!isOpen || !item) return null
+}: PayrollRevisionModalProps & { item: NonNullable<PayrollRevisionModalProps["item"]> }) {
 
   const [gross, setGross] = useState(item.gross)
   const [deductions, setDeductions] = useState(item.totalDeductions)
@@ -151,4 +150,12 @@ export default function PayrollRevisionModal({
       </div>
     </div>
   )
+}
+
+// The hooks live in PayrollRevisionModalBody. Returning null before them (as this did) gives
+// closed and open renders a different hook count, and React throws "Rendered
+// more hooks than during the previous render" the moment the modal opens.
+export default function PayrollRevisionModal(props: PayrollRevisionModalProps) {
+  if (!props.isOpen || !props.item) return null
+  return <PayrollRevisionModalBody {...props} item={props.item} />
 }

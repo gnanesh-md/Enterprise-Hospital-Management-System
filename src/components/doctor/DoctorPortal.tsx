@@ -36,6 +36,8 @@ import {
   Speaker,
   summariseConsultation,
   TranscriptTurn,
+  transcribeAudioWithWhisper,
+  WHISPER_LANGUAGES,
 } from "../../lib/medicalVoiceAI"
 import { formatElapsed, useLiveClinic } from "../../hooks/useLiveClinic"
 import {
@@ -1891,6 +1893,9 @@ function ConsultationConversation({
   onBack: () => void
   onProceed: () => void
 }) {
+  const [sttEngine, setSttEngine] = useState<"whisper" | "webspeech">("whisper")
+  const [whisperLanguage, setWhisperLanguage] = useState("auto")
+  const [transcribingWhisper, setTranscribingWhisper] = useState(false)
   const [listening, setListening] = useState(false)
   const [speakerMode, setSpeakerMode] = useState<"auto" | Speaker>("auto")
   const [speakerViewFilter, setSpeakerViewFilter] = useState<"all" | "doctor" | "patient">("all")
@@ -1904,6 +1909,9 @@ function ConsultationConversation({
   const [noteView, setNoteView] = useState<"note" | "soap">("note")
 
   const recognitionRef = useRef<any>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const startedAtRef = useRef<number>(0)
   const lastUtteranceAtRef = useRef<number>(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -1935,6 +1943,13 @@ function ConsultationConversation({
       } catch {
         /* already stopped */
       }
+      try {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+          mediaRecorderRef.current.stop()
+        }
+      } catch {
+        /* already stopped */
+      }
       streamRef.current?.getTracks().forEach((track) => track.stop())
     }
   }, [])
@@ -1957,9 +1972,6 @@ function ConsultationConversation({
       const sinceLast = now - (lastUtteranceAtRef.current || now)
       const previous = turnsRef.current[turnsRef.current.length - 1]
 
-      // A pause means the floor changed hands, so the previous speaker is no
-      // longer evidence for who is talking now; without one, a continuing
-      // speaker is the better prior.
       const previousSpeaker =
         sinceLast > TURN_GAP_MS ? undefined : previous?.speaker
 
@@ -1972,10 +1984,6 @@ function ConsultationConversation({
       if (!turn) return
 
       lastUtteranceAtRef.current = now
-      // One `onresult` event can carry several finalised utterances, and React
-      // will not have re-rendered between them. Advance the ref here rather than
-      // waiting for the render, or the second utterance in a burst overwrites
-      // the first and a sentence vanishes from the record.
       const next = [...turnsRef.current, turn]
       turnsRef.current = next
       emittedRef.current = next
@@ -1984,7 +1992,99 @@ function ConsultationConversation({
     [onTurns],
   )
 
-  const stop = useCallback(() => {
+  // ── Whisper Large V3 Audio Transcription ──────────────────────────────────
+
+  const processAudioWithWhisper = async (audioBlob: Blob, recordingDuration: number) => {
+    setTranscribingWhisper(true)
+    setMicError(null)
+    try {
+      const rawText = await transcribeAudioWithWhisper(audioBlob, whisperLanguage)
+      if (!rawText.trim()) {
+        setMicError("Whisper STT processed the audio but found no spoken text.")
+        return
+      }
+      const parsedTurns = diarizeTranscript(rawText)
+      if (parsedTurns.length > 0) {
+        const updatedTurns = [...turnsRef.current, ...parsedTurns]
+        turnsRef.current = updatedTurns
+        emittedRef.current = updatedTurns
+        onTurns(updatedTurns, elapsed + recordingDuration)
+      } else {
+        setMicError("Speech recognized by Whisper, but could not split into consultation turns.")
+      }
+    } catch (err: any) {
+      setMicError(err.message || "Failed to transcribe audio recording with Whisper Large V3.")
+    } finally {
+      setTranscribingWhisper(false)
+    }
+  }
+
+  const stopWhisper = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current)
+    timerRef.current = null
+    const finalDuration = Math.round((Date.now() - startedAtRef.current) / 1000)
+    setListening(false)
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.onstop = () => {
+        streamRef.current?.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: mediaRecorderRef.current?.mimeType || "audio/webm",
+        })
+        processAudioWithWhisper(audioBlob, finalDuration)
+      }
+      mediaRecorderRef.current.stop()
+    } else {
+      streamRef.current?.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+  }, [elapsed, whisperLanguage])
+
+  const startWhisper = useCallback(async () => {
+    setMicError(null)
+    audioChunksRef.current = []
+    try {
+      streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true })
+    } catch {
+      setMicError("Microphone access blocked. Please allow microphone permission or upload an audio file.")
+      return
+    }
+
+    startedAtRef.current = Date.now()
+    const recorder = new MediaRecorder(streamRef.current)
+    mediaRecorderRef.current = recorder
+
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        audioChunksRef.current.push(event.data)
+      }
+    }
+
+    recorder.start(1000)
+    setListening(true)
+    timerRef.current = setInterval(() => {
+      setElapsed((prev) => prev + 1)
+    }, 1000)
+  }, [])
+
+  const handleAudioFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setMicError(null)
+    setTranscribingWhisper(true)
+    try {
+      await processAudioWithWhisper(file, 0)
+    } catch (err: any) {
+      setMicError(err.message || "Error reading audio file.")
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  // ── WebSpeech Browser Native Handlers ─────────────────────────────────────
+
+  const stopWebSpeech = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current)
     timerRef.current = null
     try {
@@ -1999,14 +2099,14 @@ function ConsultationConversation({
     setListening(false)
   }, [])
 
-  const start = useCallback(async () => {
+  const startWebSpeech = useCallback(async () => {
     setMicError(null)
     const SpeechRecognitionCtor =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition
     if (!SpeechRecognitionCtor) {
       setMicError(
-        "This browser has no speech recognition. Chrome or Edge can transcribe; otherwise paste or type the conversation below -- the speakers are separated either way.",
+        "This browser has no WebSpeech recognition. Switch engine to Whisper Large V3 AI above.",
       )
       setPasteOpen(true)
       return
@@ -2041,14 +2141,12 @@ function ConsultationConversation({
       }
       setInterim(pending)
     }
-    // A recogniser drops out on its own after a silence; a consultation has
-    // plenty of those, so restart it rather than ending the recording.
     recognition.onend = () => {
       if (recognitionRef.current === recognition) {
         try {
           recognition.start()
         } catch {
-          /* the browser refused the restart; the doctor can press record again */
+          /* browser refused restart */
         }
       }
     }
@@ -2060,7 +2158,7 @@ function ConsultationConversation({
         setMicError(
           "Speech recognition was denied. Paste or type the conversation below instead.",
         )
-        stop()
+        stopWebSpeech()
       }
     }
 
@@ -2070,7 +2168,21 @@ function ConsultationConversation({
     timerRef.current = setInterval(() => {
       setElapsed(Math.round((Date.now() - startedAtRef.current) / 1000))
     }, 1000)
-  }, [commitUtterance, elapsed, language, stop])
+  }, [commitUtterance, elapsed, language, stopWebSpeech])
+
+  const toggleRecording = () => {
+    if (listening) {
+      if (sttEngine === "whisper") stopWhisper()
+      else stopWebSpeech()
+    } else {
+      if (sttEngine === "whisper") startWhisper()
+      else startWebSpeech()
+    }
+  }
+
+  const stop = sttEngine === "whisper" ? stopWhisper : stopWebSpeech
+  const start = sttEngine === "whisper" ? startWhisper : startWebSpeech
+
 
   const reassign = (turnId: string, speaker: Speaker) =>
     onTurns(setTurnSpeaker(turns, turnId, speaker))
@@ -2116,14 +2228,65 @@ function ConsultationConversation({
 
   return (
     <div className="max-w-[1400px] mx-auto space-y-4">
+      {/* Engine Selection Bar */}
+      <div className="bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-[12px]">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-[#334155] uppercase tracking-wide text-[10.5px]">STT Engine:</span>
+          <div className="inline-flex border border-[#CBD5E1] p-0.5 bg-white">
+            <button
+              type="button"
+              onClick={() => {
+                if (listening) stop()
+                setSttEngine("whisper")
+              }}
+              className={`px-3 py-1 font-semibold text-[11.5px] transition-colors cursor-pointer ${
+                sttEngine === "whisper"
+                  ? "bg-[#1B4FD8] text-white"
+                  : "text-[#475569] hover:bg-[#F1F5F9]"
+              }`}
+            >
+              Whisper Large V3 AI (99+ Languages)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (listening) stop()
+                setSttEngine("webspeech")
+              }}
+              className={`px-3 py-1 font-semibold text-[11.5px] transition-colors cursor-pointer ${
+                sttEngine === "webspeech"
+                  ? "bg-[#1B4FD8] text-white"
+                  : "text-[#475569] hover:bg-[#F1F5F9]"
+              }`}
+            >
+              Live Browser WebSpeech
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-[#64748B] text-[11.5px]">
+          {sttEngine === "whisper" ? (
+            <span className="inline-flex items-center gap-1.5 font-medium text-[#1E40AF]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Neural Multilingual STT (Whisper Large V3) Active
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 font-medium text-[#475569]">
+              Live Browser Recognition
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Recorder */}
       <section className="bg-white border border-[#E2E8F0] rounded-none shadow-sm overflow-hidden">
         <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 min-w-0">
             <button
               type="button"
-              onClick={listening ? stop : start}
-              className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all flex-shrink-0 cursor-pointer ${
+              onClick={toggleRecording}
+              disabled={transcribingWhisper}
+              className={`relative w-12 h-12 rounded-full flex items-center justify-center transition-all flex-shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                 listening
                   ? "bg-[#DC2626] text-white shadow-lg shadow-red-200"
                   : "bg-[#1B4FD8] text-white hover:bg-[#1E40AF] shadow-md"
@@ -2141,16 +2304,20 @@ function ConsultationConversation({
                 <h2 className="text-[14px] font-bold text-[#0F172A]">
                   Consultation conversation
                 </h2>
-                <span className="text-[9.5px] font-bold uppercase tracking-wider bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0] px-1.5 py-0.5 rounded-none">
-                  History &amp; advice only
+                <span className="text-[9.5px] font-bold uppercase tracking-wider bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE] px-1.5 py-0.5 rounded-none">
+                  {sttEngine === "whisper" ? "Whisper Large V3 STT" : "Browser WebSpeech"}
                 </span>
               </div>
               <p className="text-[11.5px] text-[#64748B] mt-0.5">
-                {listening
-                  ? "Listening — speak normally, the two voices are separated as you go."
-                  : turns.length
-                    ? `${turns.length} exchanges captured. Correct any speaker below.`
-                    : "Record what is said in the room. Medicines and tests come from the prescription sheet in step 3."}
+                {transcribingWhisper
+                  ? "Transcribing audio with Whisper Large V3 AI..."
+                  : listening
+                    ? sttEngine === "whisper"
+                      ? "Recording audio... Click stop when finished to transcribe with Whisper Large V3."
+                      : "Listening live... speak normally, speakers are separated as you talk."
+                    : turns.length
+                      ? `${turns.length} exchanges captured. Correct any speaker below.`
+                      : "Record what is said in the room or upload an audio clip. Medicines and tests come from step 3."}
               </p>
             </div>
           </div>
@@ -2166,22 +2333,56 @@ function ConsultationConversation({
               {mmss}
             </div>
 
-            <select
-              value={language}
-              onChange={(event) =>
-                setLanguage(event.target.value as typeof language)
-              }
-              disabled={listening}
-              title="Recognition language. Switching mid-consultation needs the recording restarted."
-              className="text-[12px] font-semibold border border-[#E2E8F0] rounded-none px-2.5 py-2 bg-white text-[#334155] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:border-[#1B4FD8]"
+            {sttEngine === "whisper" ? (
+              <select
+                value={whisperLanguage}
+                onChange={(event) => setWhisperLanguage(event.target.value)}
+                disabled={listening || transcribingWhisper}
+                title="Whisper Large V3 language model setting"
+                className="text-[12px] font-semibold border border-[#E2E8F0] rounded-none px-2.5 py-2 bg-white text-[#334155] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:border-[#1B4FD8]"
+              >
+                {WHISPER_LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <select
+                value={language}
+                onChange={(event) =>
+                  setLanguage(event.target.value as typeof language)
+                }
+                disabled={listening}
+                title="Recognition language."
+                className="text-[12px] font-semibold border border-[#E2E8F0] rounded-none px-2.5 py-2 bg-white text-[#334155] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:border-[#1B4FD8]"
+              >
+                <option value="auto">Auto (English-India)</option>
+                <option value="en-IN">English</option>
+                <option value="te-IN">తెలుగు Telugu</option>
+                <option value="hi-IN">हिंदी Hindi</option>
+                <option value="ta-IN">தமிழ் Tamil</option>
+                <option value="kn-IN">ಕನ್ನಡ Kannada</option>
+              </select>
+            )}
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleAudioFileUpload}
+              accept="audio/*"
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={listening || transcribingWhisper}
+              title="Upload an audio recording file (.mp3, .wav, .m4a, .webm)"
+              className="text-[12px] font-semibold border border-[#E2E8F0] rounded-none px-3 py-2 bg-white text-[#334155] hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-50"
             >
-              <option value="auto">Auto (English-India)</option>
-              <option value="en-IN">English</option>
-              <option value="te-IN">తెలుగు Telugu</option>
-              <option value="hi-IN">हिंदी Hindi</option>
-              <option value="ta-IN">தமிழ் Tamil</option>
-              <option value="kn-IN">ಕನ್ನಡ Kannada</option>
-            </select>
+              Upload Audio
+            </button>
 
             <button
               type="button"
@@ -2190,6 +2391,7 @@ function ConsultationConversation({
             >
               Type / paste
             </button>
+
 
             {turns.length > 0 && (
               <button
@@ -3291,7 +3493,7 @@ function PrescriptionSheetStep({
                 <span
                   title="Which engine produced this split"
                   className={`text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${
-                    split.engine === "llm"
+                    isAiEngine(split.engine)
                       ? "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
                       : "bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]"
                   }`}
@@ -3514,8 +3716,14 @@ function PrescriptionSheetStep({
   )
 }
 
+// "vision": the model read the sheet's image and split it in one pass
+// (split_prescription_file in the backend) -- an AI split like "llm", not one
+// of the weaker fallbacks the amber styling below warns about.
+const isAiEngine = (engine: string) => engine === "llm" || engine === "vision"
+
 const ENGINE_LABELS: Record<string, string> = {
   llm: "AI model",
+  vision: "AI model",
   smart_ocr: "Smart OCR",
   heuristic: "Keyword match",
   browser: "Offline match",
@@ -3659,7 +3867,7 @@ function ReviewAndDispatch({
       {split && (
         <div
           className={`border rounded px-4 py-3 ${
-            split.engine === "llm"
+            isAiEngine(split.engine)
               ? "bg-[#EFF6FF] border-[#BFDBFE]"
               : "bg-[#FFFBEB] border-[#FDE68A]"
           }`}
@@ -3669,7 +3877,7 @@ function ReviewAndDispatch({
               Extracted Items
             </span>
             <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-white border border-[#CBD5E1] text-[#475569]">
-              {split.engine === "llm"
+              {isAiEngine(split.engine)
                 ? "AI Model"
                 : split.engine === "smart_ocr"
                   ? "Smart OCR Engine"

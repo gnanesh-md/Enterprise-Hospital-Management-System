@@ -199,8 +199,10 @@ if (await portInUse(PG_PORT)) {
   log("postgres", `started on port ${PG_PORT}`)
 }
 
-// --- Enterprise HRMS Backend (port 8010) -------------------------------------
-const HRMS_PORT = 8010
+// --- Enterprise HRMS Backend (port 8011) -------------------------------------
+// 8010 belongs to the keppler-backend gateway; vite.config.ts routes
+// /hms-api/api/hr here and everything else under /hms-api to the gateway.
+const HRMS_PORT = 8011
 if (await portInUse(HRMS_PORT)) {
   log("hrms-backend", `already running on port ${HRMS_PORT}`)
 } else {

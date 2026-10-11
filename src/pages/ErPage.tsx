@@ -1889,76 +1889,8 @@ export default function ErPage({
     if (prefillPatient) setIntakeModalType("existing")
   }, [prefillPatient])
 
-  if (selectedVisitId && detail) {
-    return (
-      <div className="flex-1 bg-[#F0F2F5] p-5 sm:p-6 min-h-full">
-        {/* Fast insurance registration for ER: minimum details now, the insurance
-            desk completes the case once treatment is under way. */}
-        {!detail.is_unknown_patient && (
-          <div className="mb-3 flex flex-wrap items-center gap-2 bg-white border border-[#DDE2EC] px-3 py-2">
-            <span className="text-[12px] font-semibold text-gray-700">Payment / insurance</span>
-            <ErQuickInsurance
-              patientId={detail.patient_id || detail.visit_no}
-              patientName={`${detail.patient_name || ""} ${detail.patient_last_name || ""}`.trim() || detail.patient_id || detail.visit_no}
-              age={detail.patient_age ?? undefined}
-              gender={detail.patient_gender ?? undefined}
-              doctor={detail.assigned_doctor_name ?? undefined}
-            />
-            <span className="text-[11px] text-[#64748B]">Insurance applies once the patient is admitted from ER; OP-style ER visits are paid by the patient.</span>
-          </div>
-        )}
-        <ErErrorBoundary onReset={refreshAfterAction}>
-          <VisitDetailPanel
-            key={detail.id}
-            detail={detail}
-            loading={detailLoading}
-            categories={categories}
-            setNotice={setNotice}
-            onNavigate={onNavigate}
-            onBack={() => {
-              setSelectedVisitId(null)
-
-              setDetail(null)
-
-              loadVisits()
-            }}
-            onRefresh={refreshAfterAction}
-            onOrderMedication={() =>
-              setPrescriptionTarget({
-                id: detail.patient_id || "",
-
-                name: detail.patient_id
-                  ? detail.patient_id
-                  : detail.unknown_patient_label || detail.visit_no,
-
-                doctorName: detail.assigned_doctor_name || undefined,
-              })
-            }
-            visits={visits}
-            onSelectVisit={(id) => {
-              setSelectedVisitId(id)
-
-              loadDetail(id)
-            }}
-          />
-        </ErErrorBoundary>
-        {/* Order Medication (on VisitDetailPanel, above) sets prescriptionTarget,
-            but this component early-returns just VisitDetailPanel while a visit is
-            open -- without rendering the modal here too, that button could never
-            actually open anything. */}
-        {prescriptionTarget && (
-          <PrescriptionUploadModal
-            patientId={prescriptionTarget.id}
-            patientName={prescriptionTarget.name}
-            doctorName={prescriptionTarget.doctorName}
-            mode="manual"
-            setNotice={setNotice}
-            onClose={() => setPrescriptionTarget(null)}
-          />
-        )}
-      </div>
-    )
-  }
+  // Above the detail view's early return below: a hook after it is skipped
+  // whenever a visit is open, and React throws "Rendered fewer hooks than expected".
 
   const {
     activeCount,
@@ -2043,6 +1975,78 @@ export default function ErPage({
       wardAllocatedCount,
     }
   }, [visits])
+
+  if (selectedVisitId && detail) {
+    return (
+      <div className="flex-1 bg-[#F0F2F5] p-5 sm:p-6 min-h-full">
+        {/* Fast insurance registration for ER: minimum details now, the insurance
+            desk completes the case once treatment is under way. */}
+        {!detail.is_unknown_patient && (
+          <div className="mb-3 flex flex-wrap items-center gap-2 bg-white border border-[#DDE2EC] px-3 py-2">
+            <span className="text-[12px] font-semibold text-gray-700">Payment / insurance</span>
+            <ErQuickInsurance
+              patientId={detail.patient_id || detail.visit_no}
+              patientName={`${detail.patient_name || ""} ${detail.patient_last_name || ""}`.trim() || detail.patient_id || detail.visit_no}
+              age={detail.patient_age ?? undefined}
+              gender={detail.patient_gender ?? undefined}
+              doctor={detail.assigned_doctor_name ?? undefined}
+            />
+            <span className="text-[11px] text-[#64748B]">Insurance applies once the patient is admitted from ER; OP-style ER visits are paid by the patient.</span>
+          </div>
+        )}
+        <ErErrorBoundary onReset={refreshAfterAction}>
+          <VisitDetailPanel
+            key={detail.id}
+            detail={detail}
+            loading={detailLoading}
+            categories={categories}
+            setNotice={setNotice}
+            onNavigate={onNavigate}
+            onBack={() => {
+              setSelectedVisitId(null)
+
+              setDetail(null)
+
+              loadVisits()
+            }}
+            onRefresh={refreshAfterAction}
+            onOrderMedication={() =>
+              setPrescriptionTarget({
+                id: detail.patient_id || "",
+
+                name: detail.patient_id
+                  ? detail.patient_id
+                  : detail.unknown_patient_label || detail.visit_no,
+
+                doctorName: detail.assigned_doctor_name || undefined,
+              })
+            }
+            visits={visits}
+            onSelectVisit={(id) => {
+              setSelectedVisitId(id)
+
+              loadDetail(id)
+            }}
+          />
+        </ErErrorBoundary>
+        {/* Order Medication (on VisitDetailPanel, above) sets prescriptionTarget,
+            but this component early-returns just VisitDetailPanel while a visit is
+            open -- without rendering the modal here too, that button could never
+            actually open anything. */}
+        {prescriptionTarget && (
+          <PrescriptionUploadModal
+            patientId={prescriptionTarget.id}
+            patientName={prescriptionTarget.name}
+            doctorName={prescriptionTarget.doctorName}
+            mode="manual"
+            setNotice={setNotice}
+            onClose={() => setPrescriptionTarget(null)}
+          />
+        )}
+      </div>
+    )
+  }
+
 
   return (
     <div className="flex-1 flex flex-col bg-[#F5F7FB] p-3.5 sm:p-4 space-y-3.5 min-h-0 font-sans text-xs">

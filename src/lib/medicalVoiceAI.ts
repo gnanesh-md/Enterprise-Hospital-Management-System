@@ -19,6 +19,9 @@
  *  4. A structured clinical note (SOAP) summarised from those turns.
  */
 
+import { API_BASE } from "./constants"
+import { getCsrfToken, getHospitalCode } from "./api"
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type Speaker = "doctor" | "patient"
@@ -91,6 +94,55 @@ export interface RecognisedSymptom {
   /** The patient's own phrasing, before normalisation. */
   saidAs: string
   onset: string
+}
+
+// ── Whisper Large V3 Multilingual STT Integration ──────────────────────────
+
+export const WHISPER_LANGUAGES = [
+  { code: "auto", label: "Auto-Detect (99+ Languages)" },
+  { code: "en", label: "English" },
+  { code: "hi", label: "Hindi (हिंदी)" },
+  { code: "te", label: "Telugu (తెలుగు)" },
+  { code: "ta", label: "Tamil (தமிழ்)" },
+  { code: "kn", label: "Kannada (ಕನ್ನಡ)" },
+  { code: "ml", label: "Malayalam (മലയാളം)" },
+  { code: "mr", label: "Marathi (मराठी)" },
+  { code: "bn", label: "Bengali (বাংলা)" },
+  { code: "gu", label: "Gujarati (ગુજરાતી)" },
+  { code: "pa", label: "Punjabi (ਪੰਜਾਬੀ)" },
+  { code: "ur", label: "Urdu (اردو)" },
+]
+
+/**
+ * Transcribes audio recordings using Whisper Large V3 multilingual speech-to-text API.
+ */
+export async function transcribeAudioWithWhisper(
+  blob: Blob,
+  language: string = "auto",
+): Promise<string> {
+  const formData = new FormData()
+  formData.append("file", blob, "doctor-consultation.webm")
+  if (language && language !== "auto") {
+    formData.append("language", language)
+  }
+  formData.append("model", "whisper-large-v3")
+
+  const csrfToken = getCsrfToken()
+  const response = await fetch(`${API_BASE}/api/ai/transcribe`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "X-Hospital-Code": getHospitalCode(),
+      ...(csrfToken ? { "X-CSRF-Token": csrfToken } : {}),
+    },
+    body: formData,
+  })
+
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload.error || "Failed to transcribe recording with Whisper Large V3.")
+  }
+  return payload.text || ""
 }
 
 // ── Multi-lingual medical phonetic & terminology normalisation ───────────────

@@ -19,6 +19,7 @@ import {
   Calendar,
   Sparkles,
   BarChart3,
+  Landmark,
 } from "lucide-react"
 
 import { Icon, type IconProps } from "./components/icons"
@@ -146,6 +147,8 @@ import GenericReportPage, {
   ReportType,
 } from "./components/reports/GenericReportPage"
 
+import AccountsModule from "./components/AccountsModule"
+
 import { AuditDatabase } from "./services/auditDb"
 
 import { ALL_SYSTEM_MODULES, RoleDatabase } from "./services/roleDb"
@@ -175,7 +178,7 @@ const insuranceModule = (m: string): string =>
         : m
 
 
-type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "lab_sample_collection" | "lab_processing" | "lab_critical" | "lab_reports" | "lab_catalog" | "lab_inventory" | "lab_analytics" | "lab_tat" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
+type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "lab_sample_collection" | "lab_processing" | "lab_critical" | "lab_reports" | "lab_catalog" | "lab_inventory" | "lab_analytics" | "lab_tat" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds" | "accounts" | "accounts_dashboard" | "accounts_coa" | "accounts_gl" | "accounts_receipts" | "accounts_payments" | "accounts_ar" | "accounts_ap" | "accounts_cash_bank" | "accounts_pharmacy" | "accounts_insurance" | "accounts_tax" | "accounts_budget" | "accounts_assets" | "accounts_reports" | "accounts_period_close" | "accounts_audit" | "accounts_manager"
 
 interface NavItem {
   key: Module
@@ -401,6 +404,32 @@ const NAV: NavItem[] = [
     ],
 
 
+  },
+
+  {
+    key: "accounts",
+    label: "Accounts & Finance",
+    Icon: Landmark,
+
+    children: [
+      { key: "accounts", label: "Finance Dashboard", group: "Overview" },
+      { key: "accounts_coa", label: "Chart of Accounts", group: "General Ledger" },
+      { key: "accounts_gl", label: "General Ledger & Journals", group: "General Ledger" },
+      { key: "accounts_receipts", label: "Receipt Vouchers", group: "Vouchers & Cash" },
+      { key: "accounts_payments", label: "Payment Vouchers", group: "Vouchers & Cash" },
+      { key: "accounts_cash_bank", label: "Cash & Bank", group: "Vouchers & Cash" },
+      { key: "accounts_ar", label: "Accounts Receivable (AR)", group: "Sub-Ledgers" },
+      { key: "accounts_ap", label: "Accounts Payable (AP)", group: "Sub-Ledgers" },
+      { key: "accounts_pharmacy", label: "Pharmacy Accounts", group: "Operational Accounts" },
+      { key: "accounts_insurance", label: "Insurance Accounts", group: "Operational Accounts" },
+      { key: "accounts_tax", label: "GST & Tax Setup", group: "Tax & Compliance" },
+      { key: "accounts_budget", label: "Budgeting & Cost Centres", group: "Management" },
+      { key: "accounts_assets", label: "Fixed Assets", group: "Assets" },
+      { key: "accounts_reports", label: "Financial Statements", group: "Reporting" },
+      { key: "accounts_period_close", label: "Period Closing", group: "Closing" },
+      { key: "accounts_audit", label: "Audit & Integrations", group: "Compliance" },
+      { key: "accounts_manager", label: "Finance Manager Hub", group: "Administration" },
+    ],
   },
 
   { key: "hrms", label: "HR & Staff", Icon: UsersRound },
@@ -1417,8 +1446,8 @@ export default function App() {
       defaultModule = "billing"
     } else if (userData.role === "ROLE_INSURANCE" || userRoleKey === "insurance") {
       defaultModule = "insurance"
-    } else if (userData.role === "ROLE_FINANCE" || userRoleKey === "finance") {
-      defaultModule = "billing"
+    } else if (userData.role === "ROLE_FINANCE" || userRoleKey === "finance" || userRoleKey === "accountant") {
+      defaultModule = "accounts"
     } else if (userData.role === "ROLE_HR" || userRoleKey === "hr") {
       defaultModule = "hrms"
     }
@@ -1933,6 +1962,13 @@ export default function App() {
                       },
 
                       {
+                        roleId: "ROLE_FINANCE",
+                        username: "finance",
+                        label: "Accountant / Finance Officer",
+                        icon: "🏛️",
+                      },
+
+                      {
                         roleId: "ROLE_HR",
                         username: "hr",
                         label: "HR Administrator",
@@ -1984,6 +2020,7 @@ export default function App() {
                       const permissions =
                         r.roleId === "ROLE_SUPERADMIN" ||
                         r.roleId === "ROLE_ADMIN" ||
+                        r.roleId === "ROLE_FINANCE" ||
                         r.roleId === "ROLE_HR"
                           ? ALL_SYSTEM_MODULES
                           : RoleDatabase.getRoles().find(
@@ -2576,6 +2613,45 @@ export default function App() {
               )}
               {module === "billing" && (
                 <BillingDashboard onNavigate={(m) => setModule(m as Module)} />
+              )}
+              {(module === "accounts" || module.startsWith("accounts_")) && (
+                <AccountsModule
+                  initialTab={
+                    module === "accounts_coa"
+                      ? "coa"
+                      : module === "accounts_gl"
+                      ? "gl"
+                      : module === "accounts_receipts"
+                      ? "receipts"
+                      : module === "accounts_payments"
+                      ? "payments"
+                      : module === "accounts_ar"
+                      ? "ar"
+                      : module === "accounts_ap"
+                      ? "ap"
+                      : module === "accounts_cash_bank"
+                      ? "cash_bank"
+                      : module === "accounts_pharmacy"
+                      ? "pharmacy"
+                      : module === "accounts_insurance"
+                      ? "insurance"
+                      : module === "accounts_tax"
+                      ? "tax"
+                      : module === "accounts_budget"
+                      ? "budget"
+                      : module === "accounts_assets"
+                      ? "assets"
+                      : module === "accounts_reports"
+                      ? "statements"
+                      : module === "accounts_period_close"
+                      ? "closing"
+                      : module === "accounts_audit"
+                      ? "audit"
+                      : module === "accounts_manager"
+                      ? "manager"
+                      : "dashboard"
+                  }
+                />
               )}
               {module === "radiology" && <Radiology />}
               {(module === "icu" || module.startsWith("icu_")) && (

@@ -419,3 +419,25 @@ INSERT INTO leave_types (hospital_id, code, name, default_quota_days) VALUES
 (1, 'EL', 'Earned Leave', 15),
 (1, 'ML', 'Maternity Leave', 90)
 ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- Columns the routes read and write but the tables above were created without
+-- (routes/attendance.mjs, routes/payroll.mjs). ADD COLUMN IF NOT EXISTS so the
+-- file stays re-runnable and also repairs databases created before these.
+-- ============================================================================
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS shift_start_time VARCHAR(10);
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS shift_end_time VARCHAR(10);
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS early_exit_minutes INT DEFAULT 0;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS remarks TEXT;
+
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS paid_leave_days NUMERIC(5, 2) DEFAULT 0;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS unpaid_leave_days NUMERIC(5, 2) DEFAULT 0;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS absent_days NUMERIC(5, 2) DEFAULT 0;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS overtime_hours NUMERIC(6, 2) DEFAULT 0;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS overtime_amount NUMERIC(12, 2) DEFAULT 0;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS leave_deductions NUMERIC(12, 2) DEFAULT 0;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS attendance_summary JSONB;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS revision_number INT DEFAULT 1;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS revision_reason TEXT;
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(100);
+ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS approved_by VARCHAR(100);

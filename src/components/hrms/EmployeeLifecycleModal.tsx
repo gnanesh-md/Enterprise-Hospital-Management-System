@@ -33,13 +33,12 @@ interface EmployeeLifecycleModalProps {
 
 type LifecycleAction = "promote" | "transfer" | "salary" | "exit" | "history"
 
-export default function EmployeeLifecycleModal({
+function EmployeeLifecycleModalBody({
   staff,
   isOpen,
   onClose,
   onSuccess,
-}: EmployeeLifecycleModalProps) {
-  if (!isOpen || !staff) return null
+}: EmployeeLifecycleModalProps & { staff: NonNullable<EmployeeLifecycleModalProps["staff"]> }) {
 
   const [activeTab, setActiveTab] = useState<LifecycleAction>("promote")
   const [loading, setLoading] = useState(false)
@@ -749,4 +748,12 @@ export default function EmployeeLifecycleModal({
       </div>
     </div>
   )
+}
+
+// The hooks live in EmployeeLifecycleModalBody. Returning null before them (as this did) gives
+// closed and open renders a different hook count, and React throws "Rendered
+// more hooks than during the previous render" the moment the modal opens.
+export default function EmployeeLifecycleModal(props: EmployeeLifecycleModalProps) {
+  if (!props.isOpen || !props.staff) return null
+  return <EmployeeLifecycleModalBody {...props} staff={props.staff} />
 }

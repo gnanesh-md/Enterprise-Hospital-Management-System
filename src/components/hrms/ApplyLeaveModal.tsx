@@ -11,7 +11,7 @@ interface ApplyLeaveModalProps {
   isSelfService?: boolean
 }
 
-export default function ApplyLeaveModal({
+function ApplyLeaveModalBody({
   isOpen,
   onClose,
   onSuccess,
@@ -19,7 +19,6 @@ export default function ApplyLeaveModal({
   loggedInStaffName,
   isSelfService = false,
 }: ApplyLeaveModalProps) {
-  if (!isOpen) return null
 
   const staffList = HrmsDatabase.getStaffList()
 
@@ -514,4 +513,12 @@ export default function ApplyLeaveModal({
       </div>
     </div>
   )
+}
+
+// The hooks live in ApplyLeaveModalBody. Returning null before them (as this did) gives
+// closed and open renders a different hook count, and React throws "Rendered
+// more hooks than during the previous render" the moment the modal opens.
+export default function ApplyLeaveModal(props: ApplyLeaveModalProps) {
+  if (!props.isOpen) return null
+  return <ApplyLeaveModalBody {...props} />
 }

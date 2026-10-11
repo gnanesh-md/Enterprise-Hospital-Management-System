@@ -12,7 +12,9 @@ import eventsRouter from './routes/events.mjs';
 import { testConnection } from './db/index.mjs';
 
 const app = express();
-const PORT = parseInt(process.env.PORT || '8010', 10);
+// Not 8010: that is the backend gateway's port, which API_BASE (/hms-api) proxies to.
+// Not $PORT either: that is the HMS dev server's.
+const PORT = parseInt(process.env.HRMS_PORT || '8011', 10);
 
 app.use(cors({
   origin: ['http://localhost:8443', 'http://localhost:5173', 'http://127.0.0.1:8443', 'http://127.0.0.1:5173'],

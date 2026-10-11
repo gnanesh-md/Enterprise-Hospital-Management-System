@@ -35,7 +35,7 @@ export interface AppUser {
 //      settlements, reconciliation and five master pages.
 // v19: insurance.* action permissions; Insurance Officer, Finance and Billing roles.
 // v20: Added dedicated Email & TPA Decision Hub (insurance_emails) to Insurance suite.
-const ROLES_STORAGE_KEY = "hospai_rbac_roles_v20"
+const ROLES_STORAGE_KEY = "hospai_rbac_roles_v25"
 
 const USERS_STORAGE_KEY = "hospai_rbac_users_v2"
 
@@ -156,6 +156,25 @@ export const ALL_SYSTEM_MODULES = [
   "nl_filtering",
 
   "beds",
+  "accounts",
+  "accounts_dashboard",
+  "accounts_coa",
+  "accounts_gl",
+  "accounts_receipts",
+  "accounts_payments",
+  "accounts_ar",
+  "accounts_ap",
+  "accounts_cash_bank",
+  "accounts_pharmacy",
+  "accounts_insurance",
+  "accounts_tax",
+  "accounts_budget",
+  "accounts_assets",
+  "accounts_cost_centres",
+  "accounts_reports",
+  "accounts_period_close",
+  "accounts_audit",
+  "accounts_manager",
 ]
 
 /**
@@ -305,7 +324,7 @@ const INITIAL_ROLES: AppRole[] = [
   {
     id: "ROLE_FINANCE",
     name: "Finance / Accounts",
-    allowedModules: ["dashboard", "billing", "billing_revenue", "payments", "insurance", "insurance_claims", "insurance_settlement", "insurance_reconciliation", "insurance.view", "insurance.settlement.view", "insurance.reconciliation.manage"],
+    allowedModules: ["dashboard", "accounts", "accounts_dashboard", "accounts_coa", "accounts_gl", "accounts_receipts", "accounts_payments", "accounts_ar", "accounts_ap", "accounts_cash_bank", "accounts_pharmacy", "accounts_insurance", "accounts_tax", "accounts_budget", "accounts_assets", "accounts_cost_centres", "accounts_reports", "accounts_period_close", "accounts_audit", "accounts_manager", "billing", "billing_revenue", "payments", "insurance", "insurance_claims", "insurance_settlement", "insurance_reconciliation", "insurance.view", "insurance.settlement.view", "insurance.reconciliation.manage"],
   },
 
   {
@@ -644,12 +663,20 @@ export class RoleDatabase {
       }
 
       const parsed: AppRole[] = JSON.parse(stored)
-      // Merge any newly introduced roles that are missing from stored cache
+      // Merge any newly introduced roles or new modules missing from stored cache
       let changed = false
       for (const ir of INITIAL_ROLES) {
-        if (!parsed.some(r => r.id === ir.id)) {
+        const existingIdx = parsed.findIndex((r) => r.id === ir.id)
+        if (existingIdx === -1) {
           parsed.push(ir)
           changed = true
+        } else {
+          const role = parsed[existingIdx]
+          const missingModules = ir.allowedModules.filter((m) => !role.allowedModules.includes(m))
+          if (missingModules.length > 0) {
+            role.allowedModules = [...role.allowedModules, ...missingModules]
+            changed = true
+          }
         }
       }
       if (changed) {

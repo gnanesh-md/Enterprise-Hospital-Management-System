@@ -9,13 +9,12 @@ interface RenewCredentialModalProps {
   onSuccess?: () => void
 }
 
-export default function RenewCredentialModal({
+function RenewCredentialModalBody({
   credential,
   isOpen,
   onClose,
   onSuccess,
-}: RenewCredentialModalProps) {
-  if (!isOpen || !credential) return null
+}: RenewCredentialModalProps & { credential: NonNullable<RenewCredentialModalProps["credential"]> }) {
 
   const [newExpiry, setNewExpiry] = useState("2029-12-31")
   const [renewalDoc, setRenewalDoc] = useState("CERT-RENEW-2026.pdf")
@@ -123,4 +122,12 @@ export default function RenewCredentialModal({
       </div>
     </div>
   )
+}
+
+// The hooks live in RenewCredentialModalBody. Returning null before them (as this did) gives
+// closed and open renders a different hook count, and React throws "Rendered
+// more hooks than during the previous render" the moment the modal opens.
+export default function RenewCredentialModal(props: RenewCredentialModalProps) {
+  if (!props.isOpen || !props.credential) return null
+  return <RenewCredentialModalBody {...props} credential={props.credential} />
 }

@@ -28,15 +28,14 @@ interface EmployeeProfileModalProps {
   isHrAdmin?: boolean
 }
 
-export default function EmployeeProfileModal({
+function EmployeeProfileModalBody({
   staff,
   isOpen,
   onClose,
   onEdit,
   onViewPayslip,
   isHrAdmin = false,
-}: EmployeeProfileModalProps) {
-  if (!isOpen || !staff) return null
+}: EmployeeProfileModalProps & { staff: NonNullable<EmployeeProfileModalProps["staff"]> }) {
 
   const [activeTab, setActiveTab] = useState<"overview" | "credentials" | "attendance" | "salary">("overview")
   const [currentDuty, setCurrentDuty] = useState<DutyStatus>(staff.dutyStatus)
@@ -484,4 +483,12 @@ export default function EmployeeProfileModal({
       </div>
     </div>
   )
+}
+
+// The hooks live in EmployeeProfileModalBody. Returning null before them (as this did) gives
+// closed and open renders a different hook count, and React throws "Rendered
+// more hooks than during the previous render" the moment the modal opens.
+export default function EmployeeProfileModal(props: EmployeeProfileModalProps) {
+  if (!props.isOpen || !props.staff) return null
+  return <EmployeeProfileModalBody {...props} staff={props.staff} />
 }

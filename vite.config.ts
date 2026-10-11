@@ -24,6 +24,14 @@ const proxy = {
     changeOrigin: true,
     ws: true,
   },
+  // HR is served by the Node HRMS server (server/app.mjs), not the gateway's
+  // Flask hr-service, which has none of the credentials/payroll/KPI routes
+  // hrmsDb.ts calls. Must precede "/hms-api": the first matching prefix wins.
+  "/hms-api/api/hr": {
+    target: "http://localhost:8011",
+    changeOrigin: true,
+    rewrite: (path: string) => path.replace(/^\/hms-api/, ""),
+  },
   "/hms-api": {
     target: "http://localhost:8010",
     changeOrigin: true,

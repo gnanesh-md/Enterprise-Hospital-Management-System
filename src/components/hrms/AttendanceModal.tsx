@@ -24,14 +24,13 @@ interface AttendanceModalProps {
   staffList: StaffMember[]
 }
 
-export default function AttendanceModal({
+function AttendanceModalBody({
   isOpen,
   onClose,
   onSuccess,
   recordToEdit,
   staffList,
 }: AttendanceModalProps) {
-  if (!isOpen) return null
 
   const isEditMode = Boolean(recordToEdit)
 
@@ -296,4 +295,12 @@ export default function AttendanceModal({
       </div>
     </div>
   )
+}
+
+// The hooks live in AttendanceModalBody. Returning null before them (as this did) gives
+// closed and open renders a different hook count, and React throws "Rendered
+// more hooks than during the previous render" the moment the modal opens.
+export default function AttendanceModal(props: AttendanceModalProps) {
+  if (!props.isOpen) return null
+  return <AttendanceModalBody {...props} />
 }
