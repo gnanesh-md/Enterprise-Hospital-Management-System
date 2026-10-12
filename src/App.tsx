@@ -1267,6 +1267,8 @@ export default function App() {
     try {
       localStorage.setItem("hms.zoomLevel", String(zoomLevel))
     } catch { }
+    document.documentElement.style.fontSize = `${zoomLevel * 100}%`
+    document.documentElement.style.setProperty("--app-zoom", String(zoomLevel))
   }, [zoomLevel])
 
   const [newMenuOpen, setNewMenuOpen] = useState(false)
@@ -1461,38 +1463,205 @@ export default function App() {
     setModule(defaultModule)
   }
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement
-        .requestFullscreen()
-        .then(() => setIsFullscreen(true))
-        .catch(() => { })
+  const toggleFullscreen = useCallback(() => {
+    const doc = document as any
+    const docEl = document.documentElement as any
+
+    const isFull = !!(
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.mozFullScreenElement ||
+      doc.msFullscreenElement
+    )
+
+    if (!isFull) {
+      const request =
+        docEl.requestFullscreen ||
+        docEl.webkitRequestFullscreen ||
+        docEl.mozRequestFullScreen ||
+        docEl.msRequestFullscreen
+      if (request) {
+        request.call(docEl)
+          .then(() => setIsFullscreen(true))
+          .catch(() => {
+            setIsFullscreen((prev) => !prev)
+          })
+      } else {
+        setIsFullscreen((prev) => !prev)
+      }
     } else {
-      if (document.exitFullscreen) {
-        document
-          .exitFullscreen()
+      const exit =
+        doc.exitFullscreen ||
+        doc.webkitExitFullscreen ||
+        doc.mozCancelFullScreen ||
+        doc.msExitFullscreen
+      if (exit) {
+        exit.call(doc)
           .then(() => setIsFullscreen(false))
-          .catch(() => { })
+          .catch(() => {
+            setIsFullscreen(false)
+          })
+      } else {
+        setIsFullscreen(false)
       }
     }
-  }
-
-  // Ctrl+K
+  }, [])
 
   useEffect(() => {
-    const h = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault()
-        setCmdOpen(true)
-      }
+    const onFsChange = () => {
+      const doc = document as any
+      const isFull = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement
+      )
+      setIsFullscreen(isFull)
     }
 
-    window.addEventListener("keydown", h)
+    document.addEventListener("fullscreenchange", onFsChange)
+    document.addEventListener("webkitfullscreenchange", onFsChange)
+    document.addEventListener("mozfullscreenchange", onFsChange)
+    document.addEventListener("MSFullscreenChange", onFsChange)
 
-    return () => window.removeEventListener("keydown", h)
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange)
+      document.removeEventListener("webkitfullscreenchange", onFsChange)
+      document.removeEventListener("mozfullscreenchange", onFsChange)
+      document.removeEventListener("MSFullscreenChange", onFsChange)
+    }
   }, [])
 
   const [subModule, setSubModule] = useState<string | undefined>(undefined)
+
+  const navigate = useCallback((m: string, sub?: string) => {
+    setModule(m as Module)
+    setSubModule(sub)
+
+    if (sub === "register") setModule("register")
+
+    setCmdOpen(false)
+  }, [])
+
+  // Global Keyboard Shortcuts (Ctrl+K, F11, Ctrl+=, Ctrl+-, Ctrl+0, Ctrl+B, ?, Ctrl+M, Alt+D/R/L/P/E/B/N/I, Esc)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      const isInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+
+      // 1. F11 - Toggle Fullscreen
+      if (e.key === "F11") {
+        e.preventDefault()
+        toggleFullscreen()
+        return
+      }
+
+      // 2. Ctrl + K / Cmd + K - Command Palette
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        setCmdOpen((o) => !o)
+        return
+      }
+
+      // 3. Ctrl + B / Cmd + B - Toggle Sidebar Collapse
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault()
+        setSidebarCollapsed((c) => !c)
+        return
+      }
+
+      // 4. Zoom Controls (Ctrl + + / Ctrl + - / Ctrl + 0)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "=" || e.key === "+")) {
+        e.preventDefault()
+        setZoomLevel((z) => Math.min(1.3, Math.round((z + 0.1) * 10) / 10))
+        return
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "-" || e.key === "_")) {
+        e.preventDefault()
+        setZoomLevel((z) => Math.max(0.7, Math.round((z - 0.1) * 10) / 10))
+        return
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "0") {
+        e.preventDefault()
+        setZoomLevel(1)
+        return
+      }
+
+      // 5. ? / Shift+/ - Help Modal (only when not in text input)
+      if (!isInput && (e.key === "?" || (e.shiftKey && e.key === "/"))) {
+        e.preventDefault()
+        setHelpOpen((h) => !h)
+        return
+      }
+
+      // 6. Ctrl + M - Open Staff Messages & Handovers
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
+        e.preventDefault()
+        setMessagesOpen((m) => !m)
+        return
+      }
+
+      // 7. Alt Department Shortcuts (outside text inputs)
+      if (!isInput && e.altKey && !e.ctrlKey && !e.metaKey) {
+        const k = e.key.toLowerCase()
+        if (k === "r") {
+          e.preventDefault()
+          navigate("radiology")
+          return
+        }
+        if (k === "d") {
+          e.preventDefault()
+          navigate("doctor_portal")
+          return
+        }
+        if (k === "l") {
+          e.preventDefault()
+          navigate("lab")
+          return
+        }
+        if (k === "p") {
+          e.preventDefault()
+          navigate("pharmacy_dispensing")
+          return
+        }
+        if (k === "e") {
+          e.preventDefault()
+          navigate("emergency")
+          return
+        }
+        if (k === "b") {
+          e.preventDefault()
+          navigate("billing")
+          return
+        }
+        if (k === "n") {
+          e.preventDefault()
+          navigate("register")
+          return
+        }
+        if (k === "i") {
+          e.preventDefault()
+          navigate("inpatient")
+          return
+        }
+      }
+
+      // 8. Escape - Close active modals
+      if (e.key === "Escape") {
+        setCmdOpen(false)
+        setHelpOpen(false)
+        setMessagesOpen(false)
+        setNotifOpen(false)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [toggleFullscreen, navigate])
 
   // Any module (patient chart, admissions, ER, OT, discharge, bed board) can
   // open an insurance page on a case without threading a prop down to it.
@@ -1513,15 +1682,6 @@ export default function App() {
     window.addEventListener("hms:open-insurance", onOpen)
     return () => window.removeEventListener("hms:open-insurance", onOpen)
   }, [])
-
-  const navigate = (m: string, sub?: string) => {
-    setModule(m as Module)
-    setSubModule(sub)
-
-    if (sub === "register") setModule("register")
-
-    setCmdOpen(false)
-  }
 
   // Counts on the nav itself, so a pharmacist sees what needs attention without opening each page.
 
@@ -1714,11 +1874,14 @@ export default function App() {
 
   return (
     <div
-      className="flex flex-col overflow-hidden bg-[#F0F2F5]"
+      className={`flex flex-col overflow-hidden bg-[#F0F2F5] ${
+        isFullscreen ? "fixed inset-0 z-50 w-screen h-screen" : "min-h-screen"
+      }`}
       style={{
         fontFamily: "'Inter', system-ui, sans-serif",
-        height: `${100 / zoomLevel}vh`,
-        width: `${100 / zoomLevel}vw`,
+        height: "100vh",
+        width: "100vw",
+        fontSize: `${zoomLevel * 14}px`,
         zoom: zoomLevel,
       }}
     >
@@ -3019,6 +3182,22 @@ export default function App() {
 
               setModule("chart")
             }}
+            onZoomIn={() =>
+              setZoomLevel((z) =>
+                Math.min(1.3, Math.round((z + 0.1) * 10) / 10),
+              )
+            }
+            onZoomOut={() =>
+              setZoomLevel((z) =>
+                Math.max(0.7, Math.round((z - 0.1) * 10) / 10),
+              )
+            }
+            onZoomReset={() => setZoomLevel(1)}
+            onToggleFullscreen={toggleFullscreen}
+            onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
+            onOpenHelp={() => setHelpOpen(true)}
+            onOpenMessages={() => setMessagesOpen(true)}
+            onOpenApplyLeave={() => setGlobalApplyLeaveOpen(true)}
           />
 
           {globalApplyLeaveOpen && (
@@ -3035,6 +3214,26 @@ export default function App() {
             isOpen={helpOpen}
             onClose={() => setHelpOpen(false)}
             onOpenCommandPalette={() => setCmdOpen(true)}
+            onZoomIn={() =>
+              setZoomLevel((z) =>
+                Math.min(1.3, Math.round((z + 0.1) * 10) / 10),
+              )
+            }
+            onZoomOut={() =>
+              setZoomLevel((z) =>
+                Math.max(0.7, Math.round((z - 0.1) * 10) / 10),
+              )
+            }
+            onZoomReset={() => setZoomLevel(1)}
+            onSetZoom={(val) => setZoomLevel(val)}
+            currentZoom={zoomLevel}
+            onToggleFullscreen={toggleFullscreen}
+            isFullscreen={isFullscreen}
+            onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
+            sidebarCollapsed={sidebarCollapsed}
+            onOpenMessages={() => setMessagesOpen(true)}
+            onNavigate={(m, s) => navigate(m, s)}
+            onOpenApplyLeave={() => setGlobalApplyLeaveOpen(true)}
           />
         </>
       )}
