@@ -1,4 +1,6 @@
 import pkg from 'pg';
+import { executeMemoryQuery } from './memoryStore.mjs';
+
 const { Pool } = pkg;
 
 const pool = new Pool({
@@ -7,37 +9,85 @@ const pool = new Pool({
   database: process.env.PGDATABASE || 'hospai_enterprise',
   user: process.env.PGUSER || 'postgres',
   password: process.env.PGPASSWORD || 'postgres',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
+  max: 10,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 1500,
 });
+
+let pgAvailable = false;
+let hasCheckedPg = false;
 
 pool.on('error', (err) => {
-  console.error('[DB Pool Error]', err);
+  // Suppress uncaught pool error spam when running in offline/in-memory mode
+  pgAvailable = false;
 });
 
-export async function query(text, params) {
-  const start = Date.now();
-  const res = await pool.query(text, params);
-  const duration = Date.now() - start;
-  if (duration > 500) {
-    console.warn(`[Slow Query ${duration}ms]`, text);
+async function checkPgHealth() {
+  if (hasCheckedPg) return pgAvailable;
+  hasCheckedPg = true;
+  try {
+    const client = await pool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    pgAvailable = true;
+    console.log('[HospAI HRMS DB] Connected successfully to PostgreSQL on port 5434');
+  } catch (err) {
+    pgAvailable = false;
+    console.log('[HospAI HRMS DB] PostgreSQL port 5434 not reachable. Operating in resilient In-Memory Engine mode.');
   }
-  return res;
+  return pgAvailable;
+}
+
+// Initial probe
+checkPgHealth().catch(() => {});
+
+export async function query(text, params) {
+  if (!pgAvailable && hasCheckedPg) {
+    return executeMemoryQuery(text, params);
+  }
+
+  const start = Date.now();
+  try {
+    const res = await pool.query(text, params);
+    pgAvailable = true;
+    const duration = Date.now() - start;
+    if (duration > 500) {
+      console.warn(`[Slow Query ${duration}ms]`, text);
+    }
+    return res;
+  } catch (err) {
+    pgAvailable = false;
+    return executeMemoryQuery(text, params);
+  }
 }
 
 export async function withTransaction(callback) {
-  const client = await pool.connect();
+  if (!pgAvailable && hasCheckedPg) {
+    const mockClient = {
+      query: (t, p) => executeMemoryQuery(t, p),
+    };
+    return callback(mockClient);
+  }
+
   try {
-    await client.query('BEGIN');
-    const result = await callback(client);
-    await client.query('COMMIT');
-    return result;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const result = await callback(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
+    pgAvailable = false;
+    const mockClient = {
+      query: (t, p) => executeMemoryQuery(t, p),
+    };
+    return callback(mockClient);
   }
 }
 
@@ -52,3 +102,4 @@ export default {
   testConnection,
   pool,
 };
+

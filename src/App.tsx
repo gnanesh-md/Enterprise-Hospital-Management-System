@@ -148,6 +148,8 @@ import GenericReportPage, {
 } from "./components/reports/GenericReportPage"
 
 import AccountsModule from "./components/AccountsModule"
+import MessagesPanel from "./components/MessagesPanel"
+import HelpModal from "./components/HelpModal"
 
 import { AuditDatabase } from "./services/auditDb"
 
@@ -1239,6 +1241,9 @@ export default function App() {
   const [cmdOpen, setCmdOpen] = useState(false)
 
   const [notifOpen, setNotifOpen] = useState(false)
+  const [messagesOpen, setMessagesOpen] = useState(false)
+  const [messagesUnreadCount, setMessagesUnreadCount] = useState(3)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const [globalSearch, setGlobalSearch] = useState("")
 
@@ -1903,15 +1908,36 @@ export default function App() {
               </div>
 
               {/* Messages */}
-              <button className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors">
-                <Icon.Message />
-                <span className="absolute top-1 right-1 w-3 h-3 bg-[#16A34A] rounded-full text-[8px] text-white font-bold flex items-center justify-center">
-                  3
-                </span>
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMessagesOpen((m) => !m)}
+                  className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Staff Messages & Clinical Handovers"
+                >
+                  <Icon.Message />
+                  {messagesUnreadCount > 0 && (
+                    <span className="absolute top-1 right-1 w-3 h-3 bg-[#16A34A] rounded-full text-[8px] text-white font-bold flex items-center justify-center">
+                      {messagesUnreadCount}
+                    </span>
+                  )}
+                </button>
+                {messagesOpen && (
+                  <MessagesPanel
+                    onClose={() => setMessagesOpen(false)}
+                    onNavigate={(m, s) => navigate(m, s)}
+                    onUnreadChange={(count) => setMessagesUnreadCount(count)}
+                  />
+                )}
+              </div>
 
               {/* Help */}
-              <button className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors text-[13px] font-bold">
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                title="Hospital System Help & Keyboard Shortcuts"
+                className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors text-[13px] font-bold cursor-pointer"
+              >
                 ?
               </button>
 
@@ -3004,6 +3030,12 @@ export default function App() {
               isSelfService={userRole !== "ROLE_ADMIN" && userRole !== "ROLE_SUPERADMIN" && userRole !== "ROLE_HR"}
             />
           )}
+
+          <HelpModal
+            isOpen={helpOpen}
+            onClose={() => setHelpOpen(false)}
+            onOpenCommandPalette={() => setCmdOpen(true)}
+          />
         </>
       )}
     </div>

@@ -548,6 +548,17 @@ export interface RadiologyStudyRecord {
   digitalReceiptRef?: string
 
   signedAt?: string
+
+  nurseVerified?: boolean
+  nurseVerifiedBy?: string
+  nurseVerifiedAt?: string
+  completedAt?: string
+  completedBy?: string
+  completionNotes?: string
+  finalizedBy?: string
+  finalizedRole?: string
+  finalizedAt?: string
+  history?: any[]
 }
 
 const STORAGE_KEY_CLAIMS = "hosp_billing_claims_inr_v11"
