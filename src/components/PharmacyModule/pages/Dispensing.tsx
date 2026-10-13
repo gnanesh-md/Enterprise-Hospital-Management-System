@@ -678,8 +678,10 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     setDiscount(0)
   }
 
+  // Below lg the payment panel stacks under the cart and the page scrolls as
+  // one column; side by side, a phone left the cart about 24px wide.
   return (
-    <div className="flex h-full overflow-hidden relative">
+    <div className="flex flex-col lg:flex-row lg:h-full lg:overflow-hidden relative">
       {/* Real-time Payment Success Notification Toast */}
       {paymentToast && (
         <div className="fixed top-5 right-5 z-[9999] max-w-md w-full bg-white border-2 border-emerald-500 rounded-2xl shadow-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top-4 duration-300">
@@ -726,7 +728,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
       {/* Main Container */}
 
-      <div className="flex-1 flex flex-col overflow-hidden print:hidden bg-[#F8FAFC]">
+      <div className="flex-1 min-w-0 flex flex-col lg:overflow-hidden print:hidden bg-[#F8FAFC]">
         <div className="p-6 pb-0">
           <PageHeader
             breadcrumbs={[
@@ -952,8 +954,8 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
         ) : (
           <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 flex flex-col">
             {/* Patient / Rx Info */}
-            <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-5 flex gap-4 items-end hover:shadow-md transition-shadow">
-              <div className="grid grid-cols-2 gap-4 flex-1">
+            <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-5 flex flex-col sm:flex-row gap-4 sm:items-end hover:shadow-md transition-shadow">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
                 <div>
                   <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
                     Prescription ID
@@ -1150,7 +1152,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
       {/* Right: Payment summary (Only shown in New Sale tab) */}
       {activeTab === "new_sale" && (
-        <div className="w-[420px] bg-white border-l border-[#E2E8F0] shadow-[-10px_0_40px_rgba(0,0,0,0.04)] flex flex-col print:hidden z-10">
+        <div className="w-full lg:w-[420px] flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-l border-[#E2E8F0] shadow-[-10px_0_40px_rgba(0,0,0,0.04)] flex flex-col print:hidden z-10">
           <div className="p-6 border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <h3 className="font-black text-[18px] text-[#0F1624] tracking-tight">
               Payment Summary

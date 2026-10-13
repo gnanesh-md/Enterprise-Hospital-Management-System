@@ -128,7 +128,6 @@ app.use('/api', (req, res) => {
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[HospAI HRMS Backend] Running on http://localhost:${PORT}`);
-    console.log(`[HospAI HRMS Backend] Connected to PostgreSQL on port 5434`);
   });
 }
 

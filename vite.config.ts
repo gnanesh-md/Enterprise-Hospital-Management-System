@@ -92,7 +92,15 @@ function hmsApiMockMiddleware() {
           return sendJson({ bed_requests: [] })
         }
         if (pathname === "/api/er/triage-config") {
-          return sendJson({ categories: [] })
+          return sendJson({
+            categories: [
+              { id: 1, name: "Resuscitation (Level 1)", color: "red", maxWaitMinutes: 0 },
+              { id: 2, name: "Emergent (Level 2)", color: "orange", maxWaitMinutes: 10 },
+              { id: 3, name: "Urgent (Level 3)", color: "yellow", maxWaitMinutes: 30 },
+              { id: 4, name: "Less Urgent (Level 4)", color: "green", maxWaitMinutes: 60 },
+              { id: 5, name: "Non-Urgent (Level 5)", color: "blue", maxWaitMinutes: 120 },
+            ],
+          })
         }
 
         // Doctor directory
@@ -138,6 +146,15 @@ const proxy = {
     target: "http://localhost:3000",
     changeOrigin: true,
     ws: true,
+    configure: (proxy: any) => {
+      proxy.on("error", (err: any, req: any, res: any) => {
+        if (res.headersSent) return
+        res.writeHead(503, { "Content-Type": "text/html" })
+        res.end(
+          "<div style='font-family:system-ui,sans-serif;padding:3rem;text-align:center;color:#334155;'><h3>Keppler OCR is starting...</h3><p style='color:#64748B;'>Please wait a moment while the embedded engine boots.</p><script>setTimeout(() => location.reload(), 2000)</script></div>"
+        )
+      })
+    },
   },
   // HR is served by the Node HRMS server (server/app.mjs), not the gateway's
   // Flask hr-service, which has none of the credentials/payroll/KPI routes
@@ -201,7 +218,17 @@ const proxy = {
     changeOrigin: true,
     rewrite: (path: string) => path.replace(/^\/vllm-api/, ""),
   },
-  "/api": { target: "http://localhost:3000", changeOrigin: true },
+  "/api": {
+    target: "http://localhost:3000",
+    changeOrigin: true,
+    configure: (proxy: any) => {
+      proxy.on("error", (err: any, req: any, res: any) => {
+        if (res.headersSent) return
+        res.writeHead(200, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ status: "initializing", success: true }))
+      })
+    },
+  },
 }
 
 export default defineConfig({

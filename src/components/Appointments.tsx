@@ -991,9 +991,10 @@ export default function Appointments({
       {/* Main Appointments Workspace */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {view === "week" && (
-          <div className="bg-white border border-[#DDE2EC] rounded-none overflow-hidden mb-4 shadow-2xs">
+          <div className="bg-white border border-[#DDE2EC] rounded-none overflow-x-auto overflow-y-hidden mb-4 shadow-2xs">
+            {/* Eight columns can't fit a phone; the strip scrolls instead. */}
             <div
-              className="grid border-b border-[#DDE2EC]"
+              className="grid border-b border-[#DDE2EC] min-w-[640px]"
               style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
             >
               <div className="bg-[#F8FAFC] border-r border-[#DDE2EC] flex items-center justify-center font-bold text-[11px] text-[#64748B]">

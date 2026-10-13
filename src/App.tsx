@@ -20,6 +20,7 @@ import {
   Sparkles,
   BarChart3,
   Landmark,
+  Moon,
 } from "lucide-react"
 
 import { Icon, type IconProps } from "./components/icons"
@@ -149,6 +150,8 @@ import GenericReportPage, {
 
 import AccountsModule from "./components/AccountsModule"
 import MessagesPanel from "./components/MessagesPanel"
+import { useMediaQuery } from "./hooks/useMediaQuery"
+import PageErrorBoundary from "./components/PageErrorBoundary"
 import HelpModal from "./components/HelpModal"
 
 import { AuditDatabase } from "./services/auditDb"
@@ -193,7 +196,6 @@ interface NavItem {
 
   children?: { key: Module; label: string; group?: string }[]
 }
-
 
 const NAV: NavItem[] = [
   { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
@@ -298,6 +300,7 @@ const NAV: NavItem[] = [
     key: "pharmacy",
     label: "Pharmacy",
     Icon: Pill,
+    badge: 3,
 
     children: [
       { key: "pharmacy", label: "Dashboard" },
@@ -786,7 +789,7 @@ function NotificationPanel({
   const unreadCount = items.filter((i) => !readState[i.id]).length
 
   return (
-    <div className="absolute right-0 top-full mt-1 w-84 bg-white border border-[#DDE2EC] rounded shadow-xl z-50 overflow-hidden">
+    <div className="fixed left-2 right-2 top-12 sm:absolute sm:left-auto sm:right-0 sm:top-full mt-1 sm:w-84 bg-white border border-[#DDE2EC] rounded shadow-xl z-50 overflow-hidden">
       <div className="px-3.5 py-2.5 border-b border-[#DDE2EC] bg-[#FAFCFF] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[12.5px] font-bold text-gray-900">
@@ -1210,7 +1213,42 @@ export default function App() {
     [],
   )
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  // Below lg (phones, portrait tablets) the sidebar is an off-canvas drawer:
+  // a fixed 288px column would leave a phone ~90px for the page itself. On
+  // small laptops (lg..xl) it starts as the icon rail so the page keeps most
+  // of the width; the toggle still expands it.
+  const isCompactViewport = useMediaQuery("(max-width: 1023px)")
+  const isNarrowLaptop = useMediaQuery("(max-width: 1279px)")
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isNarrowLaptop)
+
+  useEffect(() => {
+    setSidebarCollapsed(isNarrowLaptop)
+  }, [isNarrowLaptop])
+
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  useEffect(() => {
+    if (!isCompactViewport) setMobileNavOpen(false)
+  }, [isCompactViewport])
+
+  useEffect(() => {
+    if (!mobileNavOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileNavOpen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [mobileNavOpen])
+
+  // The drawer shows full labels; the icon rail only exists on wide screens.
+  const railCollapsed = sidebarCollapsed && !isCompactViewport
+
+  // Picking a page from the drawer should reveal the page, not leave the menu
+  // covering it. Expanding a parent group does not close it.
+  const closeMobileNav = () => {
+    if (isCompactViewport) setMobileNavOpen(false)
+  }
 
   // Keppler OCR is a whole separate React app in an iframe: unmounting it on
 
@@ -1267,8 +1305,6 @@ export default function App() {
     try {
       localStorage.setItem("hms.zoomLevel", String(zoomLevel))
     } catch { }
-    document.documentElement.style.fontSize = `${zoomLevel * 100}%`
-    document.documentElement.style.setProperty("--app-zoom", String(zoomLevel))
   }, [zoomLevel])
 
   const [newMenuOpen, setNewMenuOpen] = useState(false)
@@ -1409,10 +1445,10 @@ export default function App() {
 
     const doctor = isDoctor
       ? resolveDoctorAccount({
-          doctorId: userData.doctorId,
-          username: userData.user,
-          name: userData.staffName || userData.user,
-        })
+        doctorId: userData.doctorId,
+        username: userData.user,
+        name: userData.staffName || userData.user,
+      })
       : null
 
     setActiveDoctor(doctor)
@@ -1463,89 +1499,35 @@ export default function App() {
     setModule(defaultModule)
   }
 
-  const toggleFullscreen = useCallback(() => {
-    const doc = document as any
-    const docEl = document.documentElement as any
-
-    const isFull = !!(
-      doc.fullscreenElement ||
-      doc.webkitFullscreenElement ||
-      doc.mozFullScreenElement ||
-      doc.msFullscreenElement
-    )
-
-    if (!isFull) {
-      const request =
-        docEl.requestFullscreen ||
-        docEl.webkitRequestFullscreen ||
-        docEl.mozRequestFullScreen ||
-        docEl.msRequestFullscreen
-      if (request) {
-        request.call(docEl)
-          .then(() => setIsFullscreen(true))
-          .catch(() => {
-            setIsFullscreen((prev) => !prev)
-          })
-      } else {
-        setIsFullscreen((prev) => !prev)
-      }
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement
+        .requestFullscreen()
+        .then(() => setIsFullscreen(true))
+        .catch(() => {
+          setIsFullscreen((prev) => !prev)
+        })
     } else {
-      const exit =
-        doc.exitFullscreen ||
-        doc.webkitExitFullscreen ||
-        doc.mozCancelFullScreen ||
-        doc.msExitFullscreen
-      if (exit) {
-        exit.call(doc)
+      if (document.exitFullscreen) {
+        document
+          .exitFullscreen()
           .then(() => setIsFullscreen(false))
           .catch(() => {
             setIsFullscreen(false)
           })
-      } else {
-        setIsFullscreen(false)
       }
     }
-  }, [])
+  }
 
   useEffect(() => {
-    const onFsChange = () => {
-      const doc = document as any
-      const isFull = !!(
-        doc.fullscreenElement ||
-        doc.webkitFullscreenElement ||
-        doc.mozFullScreenElement ||
-        doc.msFullscreenElement
-      )
-      setIsFullscreen(isFull)
-    }
-
-    document.addEventListener("fullscreenchange", onFsChange)
-    document.addEventListener("webkitfullscreenchange", onFsChange)
-    document.addEventListener("mozfullscreenchange", onFsChange)
-    document.addEventListener("MSFullscreenChange", onFsChange)
-
-    return () => {
-      document.removeEventListener("fullscreenchange", onFsChange)
-      document.removeEventListener("webkitfullscreenchange", onFsChange)
-      document.removeEventListener("mozfullscreenchange", onFsChange)
-      document.removeEventListener("MSFullscreenChange", onFsChange)
-    }
+    const onFs = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", onFs)
+    return () => document.removeEventListener("fullscreenchange", onFs)
   }, [])
 
-  const [subModule, setSubModule] = useState<string | undefined>(undefined)
-
-  const navigate = useCallback((m: string, sub?: string) => {
-    setModule(m as Module)
-    setSubModule(sub)
-
-    if (sub === "register") setModule("register")
-
-    setCmdOpen(false)
-  }, [])
-
-  // Global Keyboard Shortcuts (Ctrl+K, F11, Ctrl+=, Ctrl+-, Ctrl+0, Ctrl+B, ?, Ctrl+M, Alt+D/R/L/P/E/B/N/I, Esc)
+  // Global Shortcuts (Ctrl+K, F11, ?, Esc)
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const h = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
       const isInput =
         target &&
@@ -1553,115 +1535,36 @@ export default function App() {
           target.tagName === "TEXTAREA" ||
           target.isContentEditable)
 
-      // 1. F11 - Toggle Fullscreen
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault()
+        setCmdOpen(true)
+        return
+      }
+
       if (e.key === "F11") {
         e.preventDefault()
         toggleFullscreen()
         return
       }
 
-      // 2. Ctrl + K / Cmd + K - Command Palette
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault()
-        setCmdOpen((o) => !o)
-        return
-      }
-
-      // 3. Ctrl + B / Cmd + B - Toggle Sidebar Collapse
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
-        e.preventDefault()
-        setSidebarCollapsed((c) => !c)
-        return
-      }
-
-      // 4. Zoom Controls (Ctrl + + / Ctrl + - / Ctrl + 0)
-      if ((e.ctrlKey || e.metaKey) && (e.key === "=" || e.key === "+")) {
-        e.preventDefault()
-        setZoomLevel((z) => Math.min(1.3, Math.round((z + 0.1) * 10) / 10))
-        return
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === "-" || e.key === "_")) {
-        e.preventDefault()
-        setZoomLevel((z) => Math.max(0.7, Math.round((z - 0.1) * 10) / 10))
-        return
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "0") {
-        e.preventDefault()
-        setZoomLevel(1)
-        return
-      }
-
-      // 5. ? / Shift+/ - Help Modal (only when not in text input)
       if (!isInput && (e.key === "?" || (e.shiftKey && e.key === "/"))) {
         e.preventDefault()
-        setHelpOpen((h) => !h)
+        setHelpOpen((o) => !o)
         return
       }
 
-      // 6. Ctrl + M - Open Staff Messages & Handovers
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "m") {
-        e.preventDefault()
-        setMessagesOpen((m) => !m)
-        return
-      }
-
-      // 7. Alt Department Shortcuts (outside text inputs)
-      if (!isInput && e.altKey && !e.ctrlKey && !e.metaKey) {
-        const k = e.key.toLowerCase()
-        if (k === "r") {
-          e.preventDefault()
-          navigate("radiology")
-          return
-        }
-        if (k === "d") {
-          e.preventDefault()
-          navigate("doctor_portal")
-          return
-        }
-        if (k === "l") {
-          e.preventDefault()
-          navigate("lab")
-          return
-        }
-        if (k === "p") {
-          e.preventDefault()
-          navigate("pharmacy_dispensing")
-          return
-        }
-        if (k === "e") {
-          e.preventDefault()
-          navigate("emergency")
-          return
-        }
-        if (k === "b") {
-          e.preventDefault()
-          navigate("billing")
-          return
-        }
-        if (k === "n") {
-          e.preventDefault()
-          navigate("register")
-          return
-        }
-        if (k === "i") {
-          e.preventDefault()
-          navigate("inpatient")
-          return
-        }
-      }
-
-      // 8. Escape - Close active modals
       if (e.key === "Escape") {
         setCmdOpen(false)
         setHelpOpen(false)
-        setMessagesOpen(false)
-        setNotifOpen(false)
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [toggleFullscreen, navigate])
+    window.addEventListener("keydown", h)
+
+    return () => window.removeEventListener("keydown", h)
+  }, [])
+
+  const [subModule, setSubModule] = useState<string | undefined>(undefined)
 
   // Any module (patient chart, admissions, ER, OT, discharge, bed board) can
   // open an insurance page on a case without threading a prop down to it.
@@ -1682,6 +1585,15 @@ export default function App() {
     window.addEventListener("hms:open-insurance", onOpen)
     return () => window.removeEventListener("hms:open-insurance", onOpen)
   }, [])
+
+  const navigate = (m: string, sub?: string) => {
+    setModule(m as Module)
+    setSubModule(sub)
+
+    if (sub === "register") setModule("register")
+
+    setCmdOpen(false)
+  }
 
   // Counts on the nav itself, so a pharmacist sees what needs attention without opening each page.
 
@@ -1874,14 +1786,13 @@ export default function App() {
 
   return (
     <div
-      className={`flex flex-col overflow-hidden bg-[#F0F2F5] ${
-        isFullscreen ? "fixed inset-0 z-50 w-screen h-screen" : "min-h-screen"
-      }`}
+      className="flex flex-col overflow-hidden bg-[#F0F2F5]"
       style={{
         fontFamily: "'Inter', system-ui, sans-serif",
-        height: "100vh",
-        width: "100vw",
-        fontSize: `${zoomLevel * 14}px`,
+        // dvh, not vh: on phones vh includes the area under the browser's
+        // toolbar, which pushed the bottom of every page out of reach.
+        height: `${100 / zoomLevel}dvh`,
+        width: `${100 / zoomLevel}vw`,
         zoom: zoomLevel,
       }}
     >
@@ -1890,12 +1801,27 @@ export default function App() {
       ) : (
         <>
           {/* ── Top Header ───────────────────────────────────────────────── */}
-          <header className="bg-[#0C1524] border-b border-[#1E2D42] h-12 flex items-center gap-3 px-3 flex-shrink-0 z-40">
+          <header className="bg-[#0C1524] border-b border-[#1E2D42] h-12 flex items-center gap-1.5 sm:gap-3 px-2 sm:px-3.5 flex-shrink-0 z-40 text-slate-200 shadow-sm">
             {/* Sidebar toggle */}
             <button
-              onClick={() => setSidebarCollapsed((c) => !c)}
-              className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white transition-colors rounded-lg hover:bg-white/10"
-              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              data-sidebar-toggle
+              onClick={() =>
+                isCompactViewport
+                  ? setMobileNavOpen((o) => !o)
+                  : setSidebarCollapsed((c) => !c)
+              }
+              className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-[#94A3B8] hover:text-white transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
+              title={
+                isCompactViewport
+                  ? mobileNavOpen
+                    ? "Close menu"
+                    : "Open menu"
+                  : sidebarCollapsed
+                    ? "Expand sidebar"
+                    : "Collapse sidebar"
+              }
+              aria-label="Toggle navigation menu"
+              aria-expanded={isCompactViewport ? mobileNavOpen : !sidebarCollapsed}
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
                 <path
@@ -1907,159 +1833,125 @@ export default function App() {
               </svg>
             </button>
 
-            {/* Global Search */}
-            <div className="w-[400px] ml-auto mr-4 group">
-              <button
-                onClick={() => setCmdOpen(true)}
-                className="w-full relative flex items-center h-9 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-left text-[13px] text-[#94A3B8] transition-all shadow-sm hover:shadow-[0_0_15px_rgba(27,79,216,0.15)] overflow-hidden"
-              >
-                <span className="absolute left-3 text-[#64748B] group-hover:text-blue-400 transition-colors">
-                  <Icon.Search />
-                </span>
-                <span className="pl-10 pr-16 flex-1 truncate">
-                  Search patients, MRN, appointments...
-                </span>
-                <div className="absolute right-2 flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                  <kbd className="bg-black/30 border border-white/10 text-white text-[10px] px-2 py-0.5 rounded shadow-sm font-mono tracking-wider">
-                    Ctrl
-                  </kbd>
-                  <kbd className="bg-black/30 border border-white/10 text-white text-[10px] px-2 py-0.5 rounded shadow-sm font-mono tracking-wider">
-                    K
-                  </kbd>
-                </div>
-                {/* Inner glow */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-400/5 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-              </button>
+            {/* Top Middle: Search bar + New button */}
+            <div className="flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2.5 px-0 sm:px-3 max-w-2xl mx-auto">
+              {/* Global Search */}
+              <div className="w-full min-w-0 max-w-[420px] group">
+                <button
+                  onClick={() => setCmdOpen(true)}
+                  aria-label="Search"
+                  className="w-full relative flex items-center h-8 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-left text-[12.5px] text-[#94A3B8] transition-all overflow-hidden cursor-pointer"
+                >
+                  <span className="absolute left-2.5 text-[#64748B] group-hover:text-blue-400 transition-colors">
+                    <Icon.Search />
+                  </span>
+                  <span className="pl-9 pr-2 md:pr-16 flex-1 truncate text-[#94A3B8]">
+                    <span className="sm:hidden">Search…</span>
+                    <span className="hidden sm:inline">
+                      Search patients, MRN, appointments, reports...
+                    </span>
+                  </span>
+                  <div className="absolute right-2 hidden md:flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                    <kbd className="bg-black/40 border border-white/10 text-white text-[9.5px] px-1.5 py-0.5 rounded font-mono">
+                      Ctrl
+                    </kbd>
+                    <kbd className="bg-black/40 border border-white/10 text-white text-[9.5px] px-1.5 py-0.5 rounded font-mono">
+                      K
+                    </kbd>
+                  </div>
+                </button>
+              </div>
+
+              {/* Quick Create + New */}
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => setNewMenuOpen((o) => !o)}
+                  aria-label="New"
+                  className="flex items-center gap-1.5 h-8 px-2 sm:px-3 bg-[#1B68F8] hover:bg-blue-600 rounded-lg text-white text-[12px] font-semibold transition-colors shadow-xs cursor-pointer"
+                >
+                  <Icon.Plus /> <span className="hidden sm:inline">New</span>
+                </button>
+                {newMenuOpen && (
+                  <div className="absolute top-full right-0 sm:right-auto sm:left-0 mt-1 w-48 bg-[#0F172A] border border-[#1E2D42] rounded-lg shadow-xl z-50 py-1 text-slate-200">
+                    <button
+                      onClick={() => {
+                        setModule("register")
+                        setNewMenuOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-white/5 text-slate-200"
+                    >
+                      New Patient
+                    </button>
+                    <button
+                      onClick={() => {
+                        setModule("appointments")
+                        setNewMenuOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-white/5 text-slate-200"
+                    >
+                      New Appointment
+                    </button>
+                    <button
+                      onClick={() => {
+                        setModule("chart")
+                        setOrderOpen(true)
+                        setNewMenuOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-white/5 text-slate-200"
+                    >
+                      New Order
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Quick Create */}
-            <div className="relative ml-2">
-              <button
-                onClick={() => setNewMenuOpen((o) => !o)}
-                className="flex items-center gap-1.5 h-7 px-2.5 bg-[#1B4FD8] hover:bg-[#1740B4] rounded text-white text-[12px] font-medium transition-colors"
+            <div className="flex items-center gap-0.5 sm:gap-1.5 ml-auto flex-shrink-0">
+              {/* Text Size Zoom Controls -- pinch-zoom covers this on phones */}
+              <div
+                className="hidden md:flex items-center gap-1 px-1.5 py-1 bg-white/[0.04] hover:bg-white/[0.07] border border-[#1E2D42] rounded-lg transition-colors mr-1"
+                title={`Text Size Zoom (Current scale: ${Math.round(zoomLevel * 100)}%)`}
               >
-                <Icon.Plus /> New
-              </button>
-              {newMenuOpen && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-[#DDE2EC] rounded shadow-lg z-50 py-1">
-                  <button
-                    onClick={() => {
-                      setModule("register")
-                      setNewMenuOpen(false)
-                    }}
-                    className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
-                  >
-                    New Patient
-                  </button>
-                  <button
-                    onClick={() => {
-                      setModule("appointments")
-                      setNewMenuOpen(false)
-                    }}
-                    className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
-                  >
-                    New Appointment
-                  </button>
-                  <button
-                    onClick={() => {
-                      setModule("chart")
-                      setOrderOpen(true)
-                      setNewMenuOpen(false)
-                    }}
-                    className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
-                  >
-                    New Order
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="ml-auto flex items-center gap-1">
-              {/* Individual Staff Leave Application Button (Only for Clinical & Operational Staff) */}
-              {!["admin", "superadmin", "hr", "role_admin", "role_superadmin", "role_hr"].includes((userRole || "").toLowerCase()) && (
                 <button
                   type="button"
-                  onClick={() => setGlobalApplyLeaveOpen(true)}
-                  className="flex items-center gap-1.5 h-7 px-2.5 bg-[#1B4FD8]/40 hover:bg-[#1B4FD8]/70 border border-blue-400/30 rounded text-white text-[12px] font-medium transition-colors cursor-pointer mr-1.5 shadow-2xs"
-                  title="Apply for Individual Leave or View Status"
-                >
-                  <span>🗓️</span>
-                  <span className="hidden sm:inline">Apply Leave</span>
-                  {(() => {
-                    const myLeaves = HrmsDatabase.getLeaves().filter(
-                      (l: any) => l.staffId === activeStaff.id || l.staffName.toLowerCase() === activeStaff.name.toLowerCase()
-                    )
-                    const latest = myLeaves[0]
-                    if (!latest) return null
-                    return (
-                      <span
-                        className={`text-[9.5px] px-1.5 py-0.5 rounded font-bold ml-0.5 ${
-                          latest.status === "Approved"
-                            ? "bg-emerald-500 text-white"
-                            : latest.status === "Pending"
-                            ? "bg-amber-400 text-slate-900"
-                            : "bg-rose-500 text-white"
-                        }`}
-                      >
-                        {latest.status === "Approved" ? "✓ Approved" : latest.status}
-                      </span>
-                    )
-                  })()}
-                </button>
-              )}
-              {/* Font Controls */}
-              <div className="flex items-center bg-white/5 rounded px-1 mr-1">
-                <button
-                  title="Smaller text"
                   onClick={() =>
-                    setZoomLevel((z) =>
-                      Math.max(0.7, Math.round((z - 0.1) * 10) / 10),
-                    )
+                    setZoomLevel((z) => Math.max(0.7, Math.round((z - 0.1) * 10) / 10))
                   }
-                  className="w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-white text-[10px] font-bold"
+                  title="Decrease text size (A-)"
+                  className="px-2 py-0.5 bg-white/10 hover:bg-blue-600 text-slate-200 hover:text-white rounded text-[11px] font-bold font-mono transition-colors cursor-pointer border border-white/10 hover:border-blue-500 active:scale-95"
                 >
                   A-
                 </button>
                 <button
-                  title="Reset text size to 100%"
+                  type="button"
                   onClick={() => setZoomLevel(1)}
-                  className={`h-6 min-w-6 px-1 flex items-center justify-center font-bold hover:text-white ${zoomLevel === 1
-                    ? "text-[#94A3B8] text-[12px]"
-                    : "text-[#F59E0B] text-[10px]"
-                    }`}
+                  title={zoomLevel === 1 ? "Scale is 100%" : "Reset text size to 100%"}
+                  className="px-2 py-0.5 bg-white/10 hover:bg-slate-700 text-slate-200 hover:text-white rounded text-[11px] font-bold font-mono transition-colors cursor-pointer border border-white/10 hover:border-slate-500 active:scale-95"
                 >
-                  {zoomLevel === 1 ? "A" : `${Math.round(zoomLevel * 100)}%`}
+                  {Math.round(zoomLevel * 100)}%
                 </button>
                 <button
-                  title="Larger text"
+                  type="button"
                   onClick={() =>
-                    setZoomLevel((z) =>
-                      Math.min(1.2, Math.round((z + 0.1) * 10) / 10),
-                    )
+                    setZoomLevel((z) => Math.min(1.3, Math.round((z + 0.1) * 10) / 10))
                   }
-                  className="w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-white text-[14px] font-bold"
+                  title="Increase text size (A+)"
+                  className="px-2 py-0.5 bg-white/10 hover:bg-blue-600 text-slate-200 hover:text-white rounded text-[11px] font-bold font-mono transition-colors cursor-pointer border border-white/10 hover:border-blue-500 active:scale-95"
                 >
                   A+
                 </button>
               </div>
 
-              {/* Fullscreen */}
-              <button
-                onClick={toggleFullscreen}
-                className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors mr-1"
-              >
-                {isFullscreen ? <Icon.Minimize /> : <Icon.Maximize />}
-              </button>
-
               {/* Notifications */}
               <div className="relative">
                 <button
                   onClick={() => setNotifOpen((n) => !n)}
-                  className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors"
+                  className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Notifications"
                 >
                   <Icon.Bell />
-                  <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-[#DC2626] rounded-full text-[9px] text-white font-bold flex items-center justify-center">
-                    !
+                  <span className="absolute top-0.5 right-0.5 w-3 h-3 bg-[#DC2626] rounded-full text-[8px] text-white font-bold flex items-center justify-center">
+                    1
                   </span>
                 </button>
                 {notifOpen && (
@@ -2075,12 +1967,12 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setMessagesOpen((m) => !m)}
-                  className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors cursor-pointer"
+                  className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
                   title="Staff Messages & Clinical Handovers"
                 >
                   <Icon.Message />
                   {messagesUnreadCount > 0 && (
-                    <span className="absolute top-1 right-1 w-3 h-3 bg-[#16A34A] rounded-full text-[8px] text-white font-bold flex items-center justify-center">
+                    <span className="absolute top-0.5 right-0.5 w-3 h-3 bg-[#16A34A] rounded-full text-[8px] text-white font-bold flex items-center justify-center">
                       {messagesUnreadCount}
                     </span>
                   )}
@@ -2094,44 +1986,59 @@ export default function App() {
                 )}
               </div>
 
+              {/* Theme Toggle (Moon) */}
+              <button
+                type="button"
+                className="hidden md:flex w-8 h-8 items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="Toggle Theme"
+              >
+                <Moon size={15} />
+              </button>
+
+              {/* Fullscreen */}
+              <button
+                onClick={toggleFullscreen}
+                className="hidden md:flex w-8 h-8 items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="Toggle Fullscreen"
+              >
+                {isFullscreen ? <Icon.Minimize /> : <Icon.Maximize />}
+              </button>
+
               {/* Help */}
               <button
                 type="button"
                 onClick={() => setHelpOpen(true)}
                 title="Hospital System Help & Keyboard Shortcuts"
-                className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors text-[13px] font-bold cursor-pointer"
+                className="hidden sm:flex w-8 h-8 items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors text-[13px] font-bold cursor-pointer"
               >
                 ?
               </button>
 
-              {/* Role Switcher Menu */}
-              <div className="relative ml-1 pl-3 border-l border-white/10">
+              {/* Role Switcher / User Profile */}
+              <div className="relative ml-0.5 sm:ml-1 pl-1 sm:pl-2.5 border-l border-[#1E2D42]">
                 <button
                   onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-                  className="flex items-center gap-2 text-left hover:bg-white/10 p-1.5 rounded transition-colors cursor-pointer"
+                  className="flex items-center gap-2 text-left hover:bg-white/5 p-1 rounded-lg transition-colors cursor-pointer"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#1B4FD8] flex items-center justify-center text-[11px] font-semibold text-white flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[#1E293B] border border-white/15 flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 shadow-2xs">
                     {activeStaff.name
                       .split(" ")
                       .map((n) => n[0])
                       .join("")
-                      .slice(0, 2)}
+                      .slice(0, 2) || "SA"}
                   </div>
-                  <div className="hidden md:block">
-                    <div className="text-[11.5px] font-medium text-white leading-tight flex items-center gap-1">
-                      <span>{activeStaff.name}</span>
-                      <span className="text-[9px] bg-blue-500/30 text-blue-200 px-1 rounded font-mono">
-                        ▼ Role
-                      </span>
+                  <div className="hidden lg:block">
+                    <div className="text-xs font-bold text-white leading-tight">
+                      {activeStaff.name || "System Administrator"}
                     </div>
-                    <div className="text-[10px] text-[#93C5FD]">
-                      {activeStaff.title}
+                    <div className="text-[10px] text-[#94A3B8] font-medium">
+                      {activeStaff.title || "Hospital Administrator"}
                     </div>
                   </div>
                 </button>
 
                 {roleMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-64 bg-white border border-[#CBD5E1] shadow-2xl rounded-none z-50 p-2 text-[12px] space-y-1">
+                  <div className="absolute right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-4rem)] overflow-y-auto bg-white border border-[#CBD5E1] shadow-2xl rounded-none z-50 p-2 text-[12px] space-y-1">
                     <div className="px-2 py-1 text-[10px] font-bold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Switch Active Portal / Role
                     </div>
@@ -2208,13 +2115,13 @@ export default function App() {
                     ].map((r) => {
                       const permissions =
                         r.roleId === "ROLE_SUPERADMIN" ||
-                        r.roleId === "ROLE_ADMIN" ||
-                        r.roleId === "ROLE_FINANCE" ||
-                        r.roleId === "ROLE_HR"
+                          r.roleId === "ROLE_ADMIN" ||
+                          r.roleId === "ROLE_FINANCE" ||
+                          r.roleId === "ROLE_HR"
                           ? ALL_SYSTEM_MODULES
                           : RoleDatabase.getRoles().find(
-                              (role) => role.id === r.roleId,
-                            )?.allowedModules || ["dashboard", "employees"]
+                            (role) => role.id === r.roleId,
+                          )?.allowedModules || ["dashboard", "employees"]
 
                       return (
                         <button
@@ -2241,6 +2148,17 @@ export default function App() {
                       )
                     })}
                     <div className="border-t border-[#E2E8F0] pt-1 mt-1">
+                      {/* The header's help button is hidden on phones. */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRoleMenuOpen(false)
+                          setHelpOpen(true)
+                        }}
+                        className="sm:hidden w-full text-left px-2.5 py-1 text-[11px] text-[#334155] hover:bg-[#F8FAFC] font-semibold rounded transition-colors"
+                      >
+                        Help &amp; shortcuts
+                      </button>
                       <button
                         onClick={handleLogout}
                         className="w-full text-left px-2.5 py-1 text-[11px] text-[#B91C1C] hover:bg-red-50 font-semibold rounded transition-colors"
@@ -2273,20 +2191,41 @@ export default function App() {
           {/* ── Body ─────────────────────────────────────────────────────── */}
           <div className="flex flex-1 overflow-hidden">
             {/* ── Sidebar ──────────────────────────────────────────────── */}
+            {/* Drawer backdrop (phones / portrait tablets) */}
+            {isCompactViewport && mobileNavOpen && (
+              <div
+                className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[1px]"
+                onClick={() => setMobileNavOpen(false)}
+                aria-hidden="true"
+              />
+            )}
             <aside
-              className={`bg-[#0C1524] border-r border-[#1E2D42] flex-shrink-0 flex flex-col transition-all duration-200 overflow-y-auto ${sidebarCollapsed ? "w-14" : "w-72"
+              aria-label="Main navigation"
+              className={`bg-[#0C1524] border-r border-[#1E2D42] flex-shrink-0 flex flex-col overflow-y-auto overscroll-contain ${isCompactViewport
+                ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] shadow-2xl transition-[transform,visibility] duration-200 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full invisible"}`
+                : `transition-all duration-200 ${railCollapsed ? "w-14" : "w-72"}`
                 }`}
             >
               {/* Top Logo Section */}
-              <div className="flex items-center justify-center py-3.5 px-3 border-b border-[#1E2D42]/80 flex-shrink-0 text-center w-full">
-                {sidebarCollapsed ? (
+              <div className="relative flex items-center justify-center py-3.5 px-3 border-b border-[#1E2D42]/80 flex-shrink-0 text-center w-full">
+                {isCompactViewport && (
+                  <button
+                    type="button"
+                    onClick={() => setMobileNavOpen(false)}
+                    aria-label="Close menu"
+                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 text-[18px] leading-none cursor-pointer"
+                  >
+                    ×
+                  </button>
+                )}
+                {railCollapsed ? (
                   <HospAILogo variant="icon" className="w-10 h-10 mx-auto" />
                 ) : (
-                  <HospAILogo variant="horizontal" className="h-40 w-full justify-center mx-auto" />
+                  <HospAILogo variant="horizontal" className="h-24 lg:h-40 w-full justify-center mx-auto" />
                 )}
               </div>
               <div
-                className={`flex-1 py-2 ${sidebarCollapsed ? "px-1" : "px-2"}`}
+                className={`flex-1 py-2 ${railCollapsed ? "px-1" : "px-2"}`}
               >
                 {NAV.map((item) => {
                   // Module-based Access Control Filtering
@@ -2344,7 +2283,7 @@ export default function App() {
                     <div key={item.key} className="relative group">
                       <div
                         className={
-                          sidebarCollapsed
+                          railCollapsed
                             ? `w-10 h-10 mx-auto my-1 flex items-center justify-center rounded-xl cursor-pointer transition-all duration-150 relative ${isActive
                               ? "bg-[#1B4FD8] text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-400/40"
                               : "hover:bg-white/10 text-white"
@@ -2353,7 +2292,7 @@ export default function App() {
                         }
                         onClick={() => {
                           if (filteredChildren && filteredChildren.length > 0) {
-                            if (sidebarCollapsed) {
+                            if (railCollapsed) {
                               if (item.key === "intelligence") {
                                 setModule("intelligence")
                               } else {
@@ -2374,25 +2313,26 @@ export default function App() {
                           } else {
                             setInsuranceCaseId(undefined)
                             setModule(item.key)
+                            closeMobileNav()
                           }
                         }}
-                        title={sidebarCollapsed ? item.label : undefined}
+                        title={railCollapsed ? item.label : undefined}
                       >
                         <item.Icon
-                          size={sidebarCollapsed ? 20 : 18}
-                          className={`${sidebarCollapsed
-                            ? "w-5 h-5 transition-transform duration-150 group-hover:scale-110 flex-shrink-0"
+                          size={railCollapsed ? 20 : 18}
+                          className={`${railCollapsed
+                            ? "w-5 h-5 flex-shrink-0"
                             : "w-4.5 h-4.5 mr-3 flex-shrink-0"
-                            } ${isActive ? "text-white" : "text-[#94A3B8] group-hover:text-white"}`}
+                            } nav-icon ${isActive ? "text-white" : "text-[#94A3B8] group-hover:text-white"}`}
                         />
 
                         {/* Collapsed Badge Dot */}
-                        {sidebarCollapsed && navBadge && !isActive && (
+                        {railCollapsed && navBadge && !isActive && (
                           <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#DC2626] border border-[#0C1524] rounded-full"></span>
                         )}
 
                         {/* Collapsed Hover Tooltip */}
-                        {sidebarCollapsed && (
+                        {railCollapsed && (
                           <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#0F172A] text-white text-[12px] font-semibold rounded-lg shadow-2xl border border-white/10 whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 flex items-center gap-2">
                             <span>{item.label}</span>
                             {navBadge && (
@@ -2403,7 +2343,7 @@ export default function App() {
                           </div>
                         )}
 
-                        {!sidebarCollapsed && (
+                        {!railCollapsed && (
                           <>
                             <span className="flex-1 truncate">
                               {item.label}
@@ -2425,7 +2365,7 @@ export default function App() {
                           </>
                         )}
                       </div>
-                      {!sidebarCollapsed &&
+                      {!railCollapsed &&
                         filteredChildren &&
                         filteredChildren.length > 0 &&
                         isExpanded && (
@@ -2443,6 +2383,7 @@ export default function App() {
                                   onClick={() => {
                                     setInsuranceCaseId(undefined)
                                     setModule(child.key)
+                                    closeMobileNav()
                                   }}
                                 >
                                   {child.label}
@@ -2503,7 +2444,7 @@ export default function App() {
                                     >
                                       <GroupIcon
                                         size={16}
-                                        className="w-4 h-4"
+                                        className="w-4 h-4 nav-icon"
                                       />
                                       <span className="flex-1 truncate">
                                         {group}
@@ -2528,9 +2469,10 @@ export default function App() {
                                               key={`${child.key}_${child.label}`}
                                               className={`nav-item sub justify-between ${isChildActive ? "active" : ""
                                                 }`}
-                                              onClick={() =>
+                                              onClick={() => {
                                                 setModule(child.key)
-                                              }
+                                                closeMobileNav()
+                                              }}
                                             >
                                               <span className="flex-1 truncate">
                                                 {child.label}
@@ -2593,7 +2535,10 @@ export default function App() {
                                           ? "active"
                                           : ""
                                           }`}
-                                        onClick={() => setModule(child.key)}
+                                        onClick={() => {
+                                          setModule(child.key)
+                                          closeMobileNav()
+                                        }}
                                       >
                                         <span className="flex-1 truncate">
                                           {child.label}
@@ -2616,12 +2561,12 @@ export default function App() {
                 })}
               </div>
 
-              {sidebarCollapsed ? (
+              {railCollapsed ? (
                 <div className="p-2 border-t border-[#1E2D42]/60 flex justify-center">
                   <button
                     onClick={() => setCmdOpen(true)}
                     title="Command Palette (Ctrl+K)"
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
                     <Icon.Cmd size={18} className="w-8 h-8 p-1.5" />
                   </button>
@@ -2629,8 +2574,11 @@ export default function App() {
               ) : (
                 <div className="p-3 border-t border-[#1E2D42]">
                   <button
-                    onClick={() => setCmdOpen(true)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded border border-white/10 text-[#64748B] hover:text-white hover:border-white/20 transition-colors text-[11.5px]"
+                    onClick={() => {
+                      closeMobileNav()
+                      setCmdOpen(true)
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded border border-white/10 text-[#64748B] hover:text-white hover:border-white/20 transition-colors text-[11.5px] cursor-pointer"
                   >
                     <Icon.Cmd />
                     <span>Command Palette</span>
@@ -2643,10 +2591,10 @@ export default function App() {
             {/* ── Main Workspace ───────────────────────────────────────── */}
             <main
               ref={mainRef}
-              className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden"
+              className="app-main flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto overflow-x-auto"
             >
               {/* Breadcrumb strip */}
-              <div className="bg-white border-b border-slate-200 px-5 py-2 flex items-center gap-2 text-xs text-slate-500 flex-shrink-0 font-medium">
+              <div className="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 flex items-center gap-2 text-xs text-slate-500 flex-shrink-0 font-medium overflow-x-auto whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => setModule("dashboard")}
@@ -2672,6 +2620,7 @@ export default function App() {
               </div>
 
               {/* Module Content */}
+              <PageErrorBoundary resetKey={module}>
               {module === "dashboard" && (
                 <Dashboard
                   navigate={navigate}
@@ -2768,12 +2717,12 @@ export default function App() {
                 module === "lab_inventory" ||
                 module === "lab_analytics" ||
                 module === "lab_tat") && (
-                <Laboratory
-                  technician={activeStaff.name}
-                  activeSubPage={module}
-                  onNavigate={(m) => setModule(m as Module)}
-                />
-              )}
+                  <Laboratory
+                    technician={activeStaff.name}
+                    activeSubPage={module}
+                    onNavigate={(m) => setModule(m as Module)}
+                  />
+                )}
               {(module === "pharmacy" || module.startsWith("pharmacy_")) && (
                 <Pharmacy
                   activeModule={module}
@@ -2809,36 +2758,36 @@ export default function App() {
                     module === "accounts_coa"
                       ? "coa"
                       : module === "accounts_gl"
-                      ? "gl"
-                      : module === "accounts_receipts"
-                      ? "receipts"
-                      : module === "accounts_payments"
-                      ? "payments"
-                      : module === "accounts_ar"
-                      ? "ar"
-                      : module === "accounts_ap"
-                      ? "ap"
-                      : module === "accounts_cash_bank"
-                      ? "cash_bank"
-                      : module === "accounts_pharmacy"
-                      ? "pharmacy"
-                      : module === "accounts_insurance"
-                      ? "insurance"
-                      : module === "accounts_tax"
-                      ? "tax"
-                      : module === "accounts_budget"
-                      ? "budget"
-                      : module === "accounts_assets"
-                      ? "assets"
-                      : module === "accounts_reports"
-                      ? "statements"
-                      : module === "accounts_period_close"
-                      ? "closing"
-                      : module === "accounts_audit"
-                      ? "audit"
-                      : module === "accounts_manager"
-                      ? "manager"
-                      : "dashboard"
+                        ? "gl"
+                        : module === "accounts_receipts"
+                          ? "receipts"
+                          : module === "accounts_payments"
+                            ? "payments"
+                            : module === "accounts_ar"
+                              ? "ar"
+                              : module === "accounts_ap"
+                                ? "ap"
+                                : module === "accounts_cash_bank"
+                                  ? "cash_bank"
+                                  : module === "accounts_pharmacy"
+                                    ? "pharmacy"
+                                    : module === "accounts_insurance"
+                                      ? "insurance"
+                                      : module === "accounts_tax"
+                                        ? "tax"
+                                        : module === "accounts_budget"
+                                          ? "budget"
+                                          : module === "accounts_assets"
+                                            ? "assets"
+                                            : module === "accounts_reports"
+                                              ? "statements"
+                                              : module === "accounts_period_close"
+                                                ? "closing"
+                                                : module === "accounts_audit"
+                                                  ? "audit"
+                                                  : module === "accounts_manager"
+                                                    ? "manager"
+                                                    : "dashboard"
                   }
                 />
               )}
@@ -2925,7 +2874,7 @@ export default function App() {
               )}
               {/* Page 3: Intake */}
               {module === "insurance_patient_policies" && <PatientPoliciesPage />}
-            {module === "insurance_eligibility" && (
+              {module === "insurance_eligibility" && (
                 <InsuranceIntakeView
                   onBack={() => setModule("insurance_overview" as any)}
                   onComplete={(id) => {
@@ -3155,6 +3104,7 @@ export default function App() {
               {module === "intelligence" && (
                 <IntelligenceHub navigate={navigate} />
               )}
+              </PageErrorBoundary>
             </main>
           </div>
 
@@ -3182,22 +3132,6 @@ export default function App() {
 
               setModule("chart")
             }}
-            onZoomIn={() =>
-              setZoomLevel((z) =>
-                Math.min(1.3, Math.round((z + 0.1) * 10) / 10),
-              )
-            }
-            onZoomOut={() =>
-              setZoomLevel((z) =>
-                Math.max(0.7, Math.round((z - 0.1) * 10) / 10),
-              )
-            }
-            onZoomReset={() => setZoomLevel(1)}
-            onToggleFullscreen={toggleFullscreen}
-            onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
-            onOpenHelp={() => setHelpOpen(true)}
-            onOpenMessages={() => setMessagesOpen(true)}
-            onOpenApplyLeave={() => setGlobalApplyLeaveOpen(true)}
           />
 
           {globalApplyLeaveOpen && (
@@ -3216,7 +3150,7 @@ export default function App() {
             onOpenCommandPalette={() => setCmdOpen(true)}
             onZoomIn={() =>
               setZoomLevel((z) =>
-                Math.min(1.3, Math.round((z + 0.1) * 10) / 10),
+                Math.min(1.2, Math.round((z + 0.1) * 10) / 10),
               )
             }
             onZoomOut={() =>
@@ -3225,15 +3159,11 @@ export default function App() {
               )
             }
             onZoomReset={() => setZoomLevel(1)}
-            onSetZoom={(val) => setZoomLevel(val)}
             currentZoom={zoomLevel}
             onToggleFullscreen={toggleFullscreen}
             isFullscreen={isFullscreen}
-            onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
-            sidebarCollapsed={sidebarCollapsed}
+            onNavigate={(m) => navigate(m)}
             onOpenMessages={() => setMessagesOpen(true)}
-            onNavigate={(m, s) => navigate(m, s)}
-            onOpenApplyLeave={() => setGlobalApplyLeaveOpen(true)}
           />
         </>
       )}

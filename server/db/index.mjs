@@ -16,6 +16,7 @@ const pool = new Pool({
 
 let pgAvailable = false;
 let hasCheckedPg = false;
+let lastCheckTime = 0;
 
 pool.on('error', (err) => {
   // Suppress uncaught pool error spam when running in offline/in-memory mode
@@ -23,17 +24,26 @@ pool.on('error', (err) => {
 });
 
 async function checkPgHealth() {
-  if (hasCheckedPg) return pgAvailable;
-  hasCheckedPg = true;
+  const now = Date.now();
+  if (hasCheckedPg && !pgAvailable && (now - lastCheckTime < 4000)) {
+    return false;
+  }
+  lastCheckTime = now;
   try {
     const client = await pool.connect();
     await client.query('SELECT 1');
     client.release();
+    if (!pgAvailable) {
+      console.log('[HospAI HRMS DB] Connected successfully to PostgreSQL on port 5434');
+    }
     pgAvailable = true;
-    console.log('[HospAI HRMS DB] Connected successfully to PostgreSQL on port 5434');
+    hasCheckedPg = true;
   } catch (err) {
+    if (!hasCheckedPg) {
+      console.log('[HospAI HRMS DB] PostgreSQL port 5434 not reachable. Operating in resilient In-Memory Engine mode.');
+    }
     pgAvailable = false;
-    console.log('[HospAI HRMS DB] PostgreSQL port 5434 not reachable. Operating in resilient In-Memory Engine mode.');
+    hasCheckedPg = true;
   }
   return pgAvailable;
 }
@@ -42,6 +52,12 @@ async function checkPgHealth() {
 checkPgHealth().catch(() => {});
 
 export async function query(text, params) {
+  if (!pgAvailable) {
+    if (Date.now() - lastCheckTime >= 4000) {
+      await checkPgHealth().catch(() => {});
+    }
+  }
+
   if (!pgAvailable && hasCheckedPg) {
     return executeMemoryQuery(text, params);
   }

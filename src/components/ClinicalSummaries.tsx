@@ -132,9 +132,9 @@ export default function ClinicalSummaries() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-auto p-5 flex gap-4">
+      <div className="flex-1 overflow-auto p-5 flex flex-col md:flex-row gap-4">
         {/* Left Panel: Configuration */}
-        <div className="w-80 bg-white border border-[#DDE2EC] rounded flex flex-col flex-shrink-0">
+        <div className="w-full md:w-80 bg-white border border-[#DDE2EC] rounded flex flex-col flex-shrink-0">
           <div className="px-4 py-2.5 border-b border-[#DDE2EC]">
             <h2 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
               Summary Parameters
@@ -251,7 +251,7 @@ export default function ClinicalSummaries() {
         </div>
 
         {/* Right Panel: Output */}
-        <div className="flex-1 bg-white border border-[#DDE2EC] rounded flex flex-col">
+        <div className="flex-1 min-w-0 min-h-[240px] bg-white border border-[#DDE2EC] rounded flex flex-col">
           {!summary && !generating && (
             <div className="flex-1 flex flex-col items-center justify-center text-[#94A3B8]">
               <div className="w-14 h-14 bg-[#F1F5F9] rounded-full flex items-center justify-center mb-3">

@@ -54,7 +54,21 @@ export default function Readmission({
         const result = await apiFetch<ReadmissionAnalytics>(
           `/api/patients/readmissions?window_days=${windowDays}`,
         )
-        setData(result)
+        // The gateway can answer with a bare `{ success, status }` envelope
+        // (no analytics fields at all), which used to crash the page on
+        // `readmission_events.filter`. Missing fields fall back to empty.
+        setData({
+          ...EMPTY,
+          ...result,
+          readmission_events: Array.isArray(result?.readmission_events)
+            ? result.readmission_events
+            : [],
+          high_frequency_patients: Array.isArray(
+            result?.high_frequency_patients,
+          )
+            ? result.high_frequency_patients
+            : [],
+        })
       } catch (error: any) {
         reportError(setNotice, error, "Failed to load readmission analytics.")
         setData(EMPTY)
@@ -72,7 +86,7 @@ export default function Readmission({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F0F2F5]">
-      <div className="bg-white border-b border-[#DDE2EC] px-6 py-4 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-[#DDE2EC] px-6 py-4 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
         <div>
           <h1 className="text-lg font-semibold text-gray-900">
             Readmission Tracking
@@ -150,10 +164,10 @@ export default function Readmission({
           ))}
         </div>
 
-        <div className="flex gap-5 items-start">
+        <div className="flex flex-col lg:flex-row gap-5 lg:items-start">
           {/* Readmission events */}
           <div className="flex-1 min-w-0 bg-white border border-[#DDE2EC] rounded-none flex flex-col overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#DDE2EC] bg-[#F8FAFC] flex justify-between items-center">
+            <div className="px-5 py-3 border-b border-[#DDE2EC] bg-[#F8FAFC] flex flex-wrap gap-2 justify-between items-center">
               <h2 className="text-[14px] font-semibold text-gray-900">
                 Readmissions within {data.window_days} days
               </h2>
@@ -231,7 +245,7 @@ export default function Readmission({
           </div>
 
           {/* High-frequency patients */}
-          <div className="w-80 shrink-0 bg-white border border-[#DDE2EC] rounded-md flex flex-col overflow-hidden">
+          <div className="w-full lg:w-80 shrink-0 bg-white border border-[#DDE2EC] rounded-md flex flex-col overflow-hidden">
             <div className="px-5 py-4 border-b border-[#DDE2EC]">
               <h2 className="text-[14px] font-bold text-gray-900">
                 High-Frequency Admissions

@@ -1146,13 +1146,10 @@ export default function BedManagementPage({
       ) : (
         <div className="px-6 sm:px-8 pb-12 space-y-5">
           <>
-            {/* Explicit 4-up: the shared .stat-grid is repeat(5,...) for modules
-              with five counts, which left this page's four cards ending ~250px
-              short of the panel below them. */}
-            <div
-              className="stat-grid"
-              style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
-            >
+            {/* Explicit 4-up (.stat-grid-4): the shared .stat-grid is
+              repeat(5,...) for modules with five counts, which left this
+              page's four cards ending ~250px short of the panel below them. */}
+            <div className="stat-grid stat-grid-4">
               <StatCard
                 icon={<FaBed aria-hidden />}
                 label={

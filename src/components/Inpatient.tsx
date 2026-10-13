@@ -336,10 +336,12 @@ export default function Inpatient({
               Open Bed Management →
             </Btn>
           </div>
-        </div>        <div className="px-6 pb-3 flex items-end justify-between gap-6 flex-wrap">
-          <div className="flex items-stretch divide-x divide-[#E2E8F0] border border-[#E2E8F0] rounded-none overflow-hidden">
+        </div>        <div className="px-6 pb-3 flex items-end justify-between gap-3 sm:gap-6 flex-wrap">
+          {/* gap-px over a border-coloured fill draws the dividers, so the
+            strip reads the same as one row of four or a 2x2 on a phone. */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[#E2E8F0] border border-[#E2E8F0] rounded-none overflow-hidden w-full sm:w-auto">
             {boardStats.map((stat) => (
-              <div key={stat.label} className="px-4 py-2 min-w-[104px]">
+              <div key={stat.label} className="px-4 py-2 sm:min-w-[104px] bg-white">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
                   {stat.label}
                 </div>

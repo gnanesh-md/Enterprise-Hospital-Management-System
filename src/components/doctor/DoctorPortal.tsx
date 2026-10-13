@@ -716,7 +716,7 @@ export default function DoctorPortal({
   // ── Rendering ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#F0F2F5] overflow-hidden">
+    <div className="flex-1 flex flex-col lg:h-full bg-[#F0F2F5] lg:overflow-hidden">
       <PortalHeader
         doctor={doctor}
         unreadCount={unreadCount}
@@ -731,7 +731,9 @@ export default function DoctorPortal({
         }}
       />
 
-      <div className="flex-1 flex min-h-0">
+      {/* Below lg the inbox stacks above the workspace (capped height) and the
+        page scrolls as one column instead of squeezing the workspace. */}
+      <div className="flex-1 flex flex-col lg:flex-row lg:min-h-0">
         <PatientInbox
           notifications={notifications}
           unassigned={unassigned}
@@ -1159,7 +1161,7 @@ function PatientInbox({
   now: number
 }) {
   return (
-    <aside className="w-[330px] flex-shrink-0 bg-white border-r border-[#DDE2EC] flex flex-col min-h-0">
+    <aside className="w-full lg:w-[330px] max-h-[45dvh] lg:max-h-none flex-shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-[#DDE2EC] flex flex-col min-h-0">
       <div className="px-4 py-3 border-b border-[#DDE2EC]">
         <div className="flex items-center justify-between">
           <h2 className="text-[13px] font-bold text-gray-900">

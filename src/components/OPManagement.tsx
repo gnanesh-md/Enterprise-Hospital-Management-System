@@ -476,13 +476,13 @@ export default function OPManagement({
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F1F5F9] text-slate-800 font-sans overflow-hidden">
       {/* ── MINIMALIST COLORFUL HEADER WITH SEARCH ── */}
-      <div className="bg-white border-b border-[#CBD5E1] px-6 py-3 flex items-center justify-between flex-shrink-0 shadow-2xs gap-4">
-        <div className="flex items-center gap-3 shrink-0">
+      <div className="bg-white border-b border-[#CBD5E1] px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between flex-shrink-0 shadow-2xs gap-3 sm:gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 bg-blue-600 text-white font-bold flex items-center justify-center text-base rounded-none shadow-xs">
             🏥
           </div>
           <div>
-            <h1 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <h1 className="text-base font-bold text-slate-900 tracking-tight flex flex-wrap items-center gap-x-2 gap-y-1">
               OP Management Hub
               <span className="text-[10.5px] bg-blue-100 text-blue-800 border border-blue-300 px-2 py-0.5 rounded-none font-mono uppercase font-bold">
                 Live Floor Operations
@@ -496,14 +496,14 @@ export default function OPManagement({
         </div>
 
         {/* Header Search & Actions */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
           {/* Global Search Box in Header */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none min-w-0">
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search patient, UMR, token..."
-              className="pl-8 pr-3 h-8 text-xs border border-[#CBD5E1] rounded-none bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600 w-56 sm:w-64 font-medium shadow-2xs"
+              className="pl-8 pr-3 h-8 text-xs border border-[#CBD5E1] rounded-none bg-slate-50 focus:bg-white focus:outline-none focus:border-blue-600 w-full sm:w-56 lg:w-64 font-medium shadow-2xs"
             />
             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">
               <Icon.Search size={13} />
@@ -513,7 +513,7 @@ export default function OPManagement({
           <button
             type="button"
             onClick={() => setIsExportModalOpen(true)}
-            className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-800 text-[12px] font-bold rounded-none transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs h-8"
+            className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-800 text-[12px] font-bold rounded-none transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs h-8 whitespace-nowrap flex-shrink-0"
           >
             <Icon.Download size={13} /> Daily Report
           </button>

@@ -396,7 +396,7 @@ export default function NurseStation({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#F1F5F9] text-slate-800 font-sans">
+    <div className="flex-1 flex flex-col lg:min-h-0 bg-[#F1F5F9] text-slate-800 font-sans">
       {/* ── HEADER BAR ── */}
       <div className="bg-white border-b border-[#CBD5E1] px-6 py-3 flex flex-wrap items-center justify-between gap-4 shadow-2xs">
         <div className="flex items-center gap-3">
@@ -582,9 +582,11 @@ export default function NurseStation({
       )}
 
       {/* ── MAIN TWO-COLUMN WORKSPACE ── */}
-      <div className="flex-1 flex min-h-0 gap-4 p-6 pt-4">
+      {/* Below lg the list stacks above the vitals form (capped, so the form
+        is reachable) and the page scrolls as one column. */}
+      <div className="flex-1 flex flex-col lg:flex-row lg:min-h-0 gap-4 p-6 pt-4">
         {/* SIDEBAR: WAITING PATIENTS LIST */}
-        <aside className="w-[350px] flex-shrink-0 bg-white border border-[#CBD5E1] rounded-none flex flex-col min-h-0 shadow-2xs">
+        <aside className="w-full lg:w-[350px] max-h-[55dvh] lg:max-h-none flex-shrink-0 bg-white border border-[#CBD5E1] rounded-none flex flex-col min-h-0 shadow-2xs">
           <div className="p-3 border-b border-[#CBD5E1] bg-slate-100 space-y-2">
             <div className="flex items-center justify-between">
               <h2 className="text-[13px] font-bold text-slate-900 flex items-center gap-1.5">

@@ -16,6 +16,26 @@ services:
       timeout: 5s
       retries: 10
 
+  hrms-postgres:
+    restart: unless-stopped
+    image: postgres:16-alpine
+    container_name: hospai-hrms-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hospai_enterprise
+    ports:
+      - "5434:5432"
+    volumes:
+      - hrms_postgres_data:/var/lib/postgresql/data
+      - ../server/db/schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hospai_enterprise"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
   redis:
     restart: unless-stopped
     image: redis:7-alpine
@@ -94,3 +114,4 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  hrms_postgres_data:

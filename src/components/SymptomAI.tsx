@@ -450,7 +450,7 @@ export default function SymptomAiPage({ setNotice, onNavigate }: Props) {
         </p>
       </div>
 
-      <div className="p-5 grid grid-cols-[1fr_320px] gap-4 items-start">
+      <div className="p-5 grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_320px] gap-4 items-start">
         {/* Left column */}
         <div className="flex flex-col gap-3">
           <Step1

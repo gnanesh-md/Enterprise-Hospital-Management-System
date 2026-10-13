@@ -151,10 +151,12 @@ body {
   padding-left: 36px;
   font-size: 12px;
   color: #64748B;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .nav-item.sub:hover {
-  color: #94A3B8;
-  background: rgba(255,255,255,0.04);
+  color: #CBD5E1;
+  background: rgba(255,255,255,0.06);
+  transform: translateX(3px);
 }
 .nav-item.sub.active {
   background: rgba(27, 79, 216, 0.25);
@@ -179,12 +181,43 @@ body {
   background: rgba(27, 79, 216, 0.28);
 }
 
-/* Nav icons must never be squeezed by the flex row */
-.nav-item > svg {
+/* Nav icons must never be squeezed by the flex row & animate smoothly on cursor hover */
+.nav-item > svg,
+.nav-icon {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
+  transform-origin: center;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+              filter 0.25s ease,
+              color 0.15s ease;
+  will-change: transform;
 }
+
+/* Micro-animation triggered when moving cursor over nav items */
+.nav-item:hover > svg,
+.nav-item:hover .nav-icon,
+.group:hover .nav-icon,
+.nav-item.category:hover > svg {
+  animation: navIconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.55));
+}
+
+@keyframes navIconPop {
+  0% {
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+  30% {
+    transform: scale(1.22) translateY(-2px) rotate(-3deg);
+  }
+  65% {
+    transform: scale(1.13) translateY(-0.5px) rotate(1.5deg);
+  }
+  100% {
+    transform: scale(1.18) translateY(-1px) rotate(0deg);
+  }
+}
+
 /* Collapsed rail: icon-only rows, centered and legible */
 .nav-item.collapsed {
   justify-content: center;
@@ -572,3 +605,177 @@ textarea:focus-visible {
 
 
 
+
+/* ── Responsive layer ─────────────────────────────────────────────────────────
+   Every screen was laid out for a desktop with a fixed sidebar, and ~200 of
+   them never got breakpoints. Rather than hand-editing each one, the patterns
+   that break on phones and tablets are corrected here, scoped to the workspace
+   (.app-main) and to modal overlays.
+
+   Two rules keep this from fighting deliberate designs:
+   - only classes with NO responsive variant on the same element are touched
+     (`grid-cols-4` alone, never `grid-cols-1 md:grid-cols-4`);
+   - rules live in max-width queries, so desktop rendering is unchanged.
+   These rules are unlayered, so they beat Tailwind's @layer utilities. */
+
+/* A table inside an overflow-hidden card (rounded corners) had its right-hand
+   columns cut off whenever the workspace was narrower than the table. At any
+   width it now scrolls sideways instead. Safe for sticky headers: an
+   overflow-hidden box is already the scroll container they stick to. */
+.app-main :is(div, section, article).overflow-hidden:is(:has(> table), :has(> div > table)) {
+  overflow-x: auto;
+}
+
+/* Icon + label buttons in page headers were squeezed into two- and three-line
+   blobs by long titles beside them. The label holds its line; the title wraps.
+   Stacked tile buttons (flex-col) keep wrapping. */
+@media (max-width: 1279px) {
+  .app-main button:not(.flex-col):has(> svg + span) {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* Wide content scrolls inside its own card instead of being clipped by, or
+   dragging sideways, the whole page. Below lg only: on desktop the tables fit,
+   and a new scroll container here would detach `sticky top-0` table headers
+   from the scroller they were written against. */
+@media (max-width: 1023px) {
+  .app-main :is(div, section, article):has(> table) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-main th {
+    white-space: nowrap;
+  }
+  /* Tab strips and toolbars made of nowrap buttons scroll rather than spill. */
+  .app-main [role="tablist"] {
+    overflow-x: auto;
+  }
+  .app-main [role="tablist"] > :is(button, a, [role="tab"]) {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  /* Segmented controls -- a bordered, overflow-hidden row of buttons -- used
+     to cut their last options off; they scroll sideways instead. */
+  .app-main .flex.overflow-hidden:not(.flex-col):has(> button + button) {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .app-main .flex.overflow-hidden:not(.flex-col):has(> button + button) > button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .app-main img,
+  .app-main video,
+  .app-main canvas,
+  .app-main iframe {
+    max-width: 100%;
+  }
+}
+
+/* Phones (and the small side of tablets in portrait). */
+@media (max-width: 639px) {
+  /* Multi-column grids with no breakpoint of their own drop to two columns. */
+  .app-main :is(.grid-cols-3, .grid-cols-4, .grid-cols-5, .grid-cols-6):not([class*=":grid-cols-"]),
+  .fixed.inset-0 :is(.grid-cols-3, .grid-cols-4, .grid-cols-5, .grid-cols-6):not([class*=":grid-cols-"]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* 12-column page grids and fixed-track layouts stack. */
+  .app-main .grid-cols-12:not([class*=":grid-cols-"]),
+  .fixed.inset-0 .grid-cols-12:not([class*=":grid-cols-"]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* A child spanning more columns than its grid now has would otherwise mint
+     implicit columns and push the grid off-screen -- including in grids that
+     do have breakpoints but a one-column phone layout. */
+  .app-main .grid > [class*="col-span-"]:not(.col-span-1):not([class*=":col-span-"]),
+  .fixed.inset-0 .grid > [class*="col-span-"]:not(.col-span-1):not([class*=":col-span-"]) {
+    grid-column: 1 / -1;
+  }
+
+  /* Desktop gutters are a third of a phone screen. */
+  .app-main :is(.p-6, .p-7, .p-8, .p-10, .p-12) {
+    padding: 0.875rem;
+  }
+  .app-main :is(.px-6, .px-7, .px-8, .px-10, .px-12) {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+  .app-main :is(.py-8, .py-10, .py-12) {
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+  }
+  /* Full-bleed headers cancel their parent's gutter with a matching negative
+     margin (-mx-6 inside p-6); it has to shrink with the gutter or the header
+     overshoots the screen edge. */
+  .app-main :is(.-mx-6, .-mx-7, .-mx-8) {
+    margin-left: -0.875rem;
+    margin-right: -0.875rem;
+  }
+  .app-main :is(.-mt-6, .-mt-7, .-mt-8) {
+    margin-top: -0.875rem;
+  }
+  .app-main :is(.-m-6, .-m-8) {
+    margin: -0.875rem;
+  }
+  .app-main :is(.gap-6, .gap-8, .gap-10) {
+    gap: 0.875rem;
+  }
+  .app-main :is(.space-y-6, .space-y-8) > :not(:last-child) {
+    margin-block-end: 0.875rem;
+  }
+
+  .app-main .text-4xl:not([class*=":text-"]) {
+    font-size: 1.75rem;
+    line-height: 2.1rem;
+  }
+  .app-main .text-3xl:not([class*=":text-"]) {
+    font-size: 1.5rem;
+    line-height: 1.9rem;
+  }
+
+  /* Page headers and toolbars: title on one side, a row of actions on the
+     other. On a phone the actions wrap underneath instead of off the edge. */
+  .app-main .flex.justify-between:not(.flex-col):not(.flex-nowrap),
+  .app-main .flex.justify-end:not(.flex-col):not(.flex-nowrap) {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+
+  /* Fixed-width panels and fields never exceed the screen. */
+  .app-main :is([class*=" w-["], [class^="w-["], .w-64, .w-72, .w-80, .w-96):not([class*=":w-"]) {
+    max-width: 100%;
+  }
+}
+
+/* Modals: on a short or narrow screen the dialog must stay reachable. A
+   centred flex child taller than the viewport loses its top edge (and the
+   close button with it), so the overlay scrolls and centres "safely". */
+@media (max-width: 1023px), (max-height: 700px) {
+  .fixed.inset-0.flex.items-center {
+    align-items: safe center;
+    overflow-y: auto;
+  }
+  .fixed.inset-0.flex.items-center > :not(.absolute):not(.fixed) {
+    max-width: 100%;
+    flex-shrink: 0;
+  }
+}
+@media (max-width: 639px) {
+  .fixed.inset-0.flex.items-center.p-4,
+  .fixed.inset-0.flex.items-center.p-6,
+  .fixed.inset-0.flex.items-center.p-8 {
+    padding: 0.5rem;
+  }
+}
+
+/* iOS zooms the page into any focused field under 16px and does not zoom
+   back out; on touch phones fields are 16px so typing never reflows the page. */
+@media (max-width: 767px) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

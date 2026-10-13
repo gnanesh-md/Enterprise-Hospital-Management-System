@@ -256,9 +256,9 @@ export default function Emergency({ onSelect }: { onSelect?: () => void }) {
       <div className="p-5">
         {view === "board" ? (
           /* Track Board */
-          <div className="bg-white border border-[#DDE2EC] rounded overflow-hidden">
+          <div className="bg-white border border-[#DDE2EC] rounded overflow-x-auto overflow-y-hidden">
             <div
-              className="grid text-[10.5px] font-semibold text-[#64748B] uppercase tracking-wider bg-[#F8FAFC] border-b border-[#DDE2EC]"
+              className="grid min-w-[860px] text-[10.5px] font-semibold text-[#64748B] uppercase tracking-wider bg-[#F8FAFC] border-b border-[#DDE2EC]"
               style={{
                 gridTemplateColumns:
                   "32px 1fr 80px 70px 60px 120px 120px 100px 80px",
@@ -283,7 +283,7 @@ export default function Emergency({ onSelect }: { onSelect?: () => void }) {
             {ED_PATIENTS.map((p, i) => (
               <div
                 key={i}
-                className={`grid items-center border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC] cursor-pointer transition-colors
+                className={`grid min-w-[860px] items-center border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC] cursor-pointer transition-colors
                   ${
                     p.acuity === 1
                       ? "bg-[#FEF2F2]"
