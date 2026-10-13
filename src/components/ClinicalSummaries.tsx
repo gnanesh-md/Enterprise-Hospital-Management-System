@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react"
 import { Icon } from "./icons"
 import { kepplerFetch } from "../lib/kepplerAuth"
+import MarkdownReport from "./MarkdownReport"
 
 export default function ClinicalSummaries() {
   const [generating, setGenerating] = useState(false)
@@ -301,11 +302,8 @@ export default function ClinicalSummaries() {
                     verified clinical truth without review.
                   </div>
 
-                  <textarea
-                    readOnly
-                    value={summary || ""}
-                    className="w-full h-[600px] border-none bg-transparent text-[13px] leading-relaxed focus:outline-none resize-none"
-                  />
+                  {/* Rendered, not shown as raw "## Heading / **Field:**" text. */}
+                  <MarkdownReport text={summary || ""} />
                 </div>
               </div>
             </>
