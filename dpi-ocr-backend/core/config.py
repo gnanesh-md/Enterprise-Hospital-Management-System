@@ -68,3 +68,41 @@ settings = Settings()
 
 # Ensure critical directories exist
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# Served-model resolution
+# ---------------------------------------------------------------------------
+# Model names are configured (and in places hardcoded) as "qwen2.5-vl-7b", but
+# the vLLM deployment on a given machine may serve a different model -- this
+# one serves "qwen3-vl-8b". vLLM answers a request for a model it does not
+# serve with a 404, and the summarizer swallowed that per chunk, so every
+# summary came back as "Not documented" with no visible error. Ask the server
+# what it actually serves and fall back to that.
+_served_models_cache = {"ids": None, "at": 0.0}
+
+
+def served_model(preferred: str) -> str:
+    """The model name to send to vLLM: `preferred` if the server serves it,
+    otherwise the first model it does serve. If the server cannot be asked,
+    `preferred` is returned unchanged."""
+    import json
+    import time
+    import urllib.request
+
+    now = time.time()
+    ids = _served_models_cache["ids"]
+    # Re-ask every minute, or every 10s while the server was unreachable.
+    ttl = 60.0 if ids else 10.0
+    if ids is None or now - _served_models_cache["at"] > ttl:
+        try:
+            url = settings.VLLM_BASE_URL.rstrip("/") + "/models"
+            with urllib.request.urlopen(url, timeout=3) as resp:
+                ids = [m["id"] for m in json.load(resp).get("data", [])]
+        except Exception:
+            ids = []
+        _served_models_cache.update(ids=ids, at=now)
+
+    if not ids or preferred in ids:
+        return preferred
+    return ids[0]

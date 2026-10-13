@@ -120,7 +120,20 @@ app.get('/api/doctors', (req, res) => {
 // Generic resilient fallback for any other /api endpoints
 app.use('/api', (req, res) => {
   if (res.headersSent) return;
-  res.json({ success: true, status: 'ok', path: req.path });
+  res.json({
+    success: true,
+    status: 'ok',
+    path: req.path,
+    employees: [],
+    attendance: [],
+    leaves: [],
+    credentials: [],
+    payroll: [],
+    shifts: [],
+    departments: [],
+    items: [],
+    data: [],
+  });
 });
 
 

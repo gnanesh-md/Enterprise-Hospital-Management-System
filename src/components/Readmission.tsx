@@ -139,7 +139,7 @@ export default function Readmission({
             },
             {
               label: "High-frequency patients",
-              value: data.high_frequency_patients.length,
+              value: data.high_frequency_patients?.length || 0,
               tone: "#B91C1C",
               note: "3+ admissions in 12 months",
             },
@@ -261,12 +261,12 @@ export default function Readmission({
             >
               {loading ? (
                 <p className="text-[12px] text-[#94A3B8]">Loading...</p>
-              ) : data.high_frequency_patients.length === 0 ? (
+              ) : (data.high_frequency_patients?.length || 0) === 0 ? (
                 <p className="text-[12px] text-[#94A3B8]">
                   No patients meet this threshold.
                 </p>
               ) : (
-                data.high_frequency_patients.map((p) => (
+                (data.high_frequency_patients || []).map((p) => (
                   <div
                     key={p.patient_id}
                     className="bg-[#F8FAFC] border border-[#F1F5F9] rounded-lg p-3"

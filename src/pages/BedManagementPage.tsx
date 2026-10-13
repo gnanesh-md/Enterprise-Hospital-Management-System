@@ -1803,8 +1803,7 @@ export default function BedManagementPage({
                         </span>
                       </div>
                       {!checklist.billing?.ok &&
-                        checklist.billing?.pending_invoices &&
-                        checklist.billing.pending_invoices.length > 0 && (
+                        (checklist.billing?.pending_invoices?.length || 0) > 0 && (
                           <div
                             style={{
                               background: "#fffbeb",
@@ -1826,7 +1825,7 @@ export default function BedManagementPage({
                               Pending Inpatient Invoices (Settle at Central
                               Billing):
                             </strong>
-                            {checklist.billing.pending_invoices.map(
+                            {(checklist.billing?.pending_invoices || []).map(
                               (inv, i) => (
                                 <div
                                   key={i}

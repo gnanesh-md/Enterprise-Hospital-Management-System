@@ -37,21 +37,21 @@ export default function FinanceDashboard({ onNavigate, feedRevision }: { onNavig
               )}
 
               <Grid cols={5}>
-                <Stat label="Cash in hand" value={formatINRShort(o.cash)} onClick={() => onNavigate("cash_bank")} />
-                <Stat label="Bank balances" value={formatINRShort(o.bank)} onClick={() => onNavigate("cash_bank")} />
+                <Stat label="Cash in hand" value={formatINRShort(o.cash || 0)} onClick={() => onNavigate("cash_bank")} />
+                <Stat label="Bank balances" value={formatINRShort(o.bank || 0)} onClick={() => onNavigate("cash_bank")} />
                 <Stat
                   label="Receivables"
-                  value={formatINRShort(o.receivables)}
-                  hint={o.receivables_overdue_90 > 0 ? `${formatINRShort(o.receivables_overdue_90)} over 90 days` : "Nothing over 90 days"}
-                  tone={o.receivables_overdue_90 > 0 ? "warn" : "default"}
+                  value={formatINRShort(o.receivables || 0)}
+                  hint={o.receivables_overdue_90 && o.receivables_overdue_90 > 0 ? `${formatINRShort(o.receivables_overdue_90)} over 90 days` : "Nothing over 90 days"}
+                  tone={o.receivables_overdue_90 && o.receivables_overdue_90 > 0 ? "warn" : "default"}
                   onClick={() => onNavigate("ar")}
                 />
-                <Stat label="Payables" value={formatINRShort(o.payables)} onClick={() => onNavigate("ap")} />
+                <Stat label="Payables" value={formatINRShort(o.payables || 0)} onClick={() => onNavigate("ap")} />
                 <Stat
                   label="Surplus, year to date"
-                  value={formatINRShort(o.year.surplus)}
-                  hint={`Since ${formatDate(o.year.from)}`}
-                  tone={o.year.surplus < 0 ? "bad" : "good"}
+                  value={formatINRShort(o.year?.surplus || 0)}
+                  hint={o.year?.from ? `Since ${formatDate(o.year.from)}` : "Current financial year"}
+                  tone={(o.year?.surplus || 0) < 0 ? "bad" : "good"}
                   onClick={() => onNavigate("statements")}
                 />
               </Grid>
@@ -62,22 +62,22 @@ export default function FinanceDashboard({ onNavigate, feedRevision }: { onNavig
                     <tbody>
                       <tr>
                         <Td>Income</Td>
-                        <Td right><Money value={o.month.income} /></Td>
+                        <Td right><Money value={o.month?.income || 0} /></Td>
                       </tr>
                       <tr>
                         <Td>Expenses</Td>
-                        <Td right><Money value={o.month.expense} /></Td>
+                        <Td right><Money value={o.month?.expense || 0} /></Td>
                       </tr>
                       <tr>
                         <Td className="font-semibold">Surplus</Td>
-                        <Td right><Money value={o.month.surplus} strong /></Td>
+                        <Td right><Money value={o.month?.surplus || 0} strong /></Td>
                       </tr>
                     </tbody>
                   </Table>
                 </Card>
 
                 <Card title="Income by service line, year to date" padded={false}>
-                  {o.revenue_by_section.length === 0 ? (
+                  {(!o.revenue_by_section || o.revenue_by_section.length === 0) ? (
                     <Empty>No income posted this financial year yet.</Empty>
                   ) : (
                     <Table>
@@ -89,7 +89,7 @@ export default function FinanceDashboard({ onNavigate, feedRevision }: { onNavig
                         </tr>
                       </thead>
                       <tbody>
-                        {o.revenue_by_section.map((r) => (
+                        {(o.revenue_by_section || []).map((r) => (
                           <tr key={r.name}>
                             <Td>{r.name}</Td>
                             <Td right><Money value={r.amount} /></Td>
@@ -105,7 +105,7 @@ export default function FinanceDashboard({ onNavigate, feedRevision }: { onNavig
               </div>
 
               <Card title="Month by month, this financial year" padded={false}>
-                {o.trend.length === 0 ? (
+                {(!o.trend || o.trend.length === 0) ? (
                   <Empty>No income or expense posted this financial year yet.</Empty>
                 ) : (
                   <Table>
@@ -118,7 +118,7 @@ export default function FinanceDashboard({ onNavigate, feedRevision }: { onNavig
                       </tr>
                     </thead>
                     <tbody>
-                      {o.trend.map((t) => (
+                      {(o.trend || []).map((t) => (
                         <tr key={t.month}>
                           <Td>{monthLabel(t.month)}</Td>
                           <Td right><Money value={t.income} /></Td>

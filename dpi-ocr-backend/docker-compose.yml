@@ -79,7 +79,10 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
-      VLLM_BASE_URL: http://host.docker.internal:8000/v1
+      # vLLM is published on host port 8700 (container vllm-qwen3vl8b). 8000
+      # is another app on this machine, so every model call failed with
+      # "Connection error" and summaries came back empty.
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8700/v1}
     volumes:
       - .:/app
       - ./uploads:/app/uploads
@@ -101,7 +104,10 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
-      VLLM_BASE_URL: http://host.docker.internal:8000/v1
+      # vLLM is published on host port 8700 (container vllm-qwen3vl8b). 8000
+      # is another app on this machine, so every model call failed with
+      # "Connection error" and summaries came back empty.
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8700/v1}
     volumes:
       - .:/app
       - ./uploads:/app/uploads

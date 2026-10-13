@@ -1017,7 +1017,7 @@ export class InsuranceEngineService {
     this.need("insurance.claim.create")
     if (!bill.patientName.trim()) throw new Error("Patient name is required.")
     if (!bill.packageCode.trim()) throw new Error("Select a package.")
-    if (!bill.surgeries.length) throw new Error("Add at least one surgery to the package.")
+    if (!bill.surgeries?.length) throw new Error("Add at least one surgery to the package.")
 
     const bills = this.getFixedPackageBills()
     const now = new Date().toISOString()
@@ -1097,8 +1097,8 @@ export class InsuranceEngineService {
   public static savePricingRuleSet(rs: PricingRuleSet): void {
     this.need("insurance.master.manage")
     if (!rs.name.trim()) throw new Error("Give the rule set a name.")
-    if (!rs.rules.length) throw new Error("Add at least one sequence rule.")
-    const seqs = rs.rules.map((x) => x.sequenceOrder)
+    if (!rs.rules?.length) throw new Error("Add at least one sequence rule.")
+    const seqs = (rs.rules || []).map((x) => x.sequenceOrder)
     if (new Set(seqs).size !== seqs.length) throw new Error("Each sequence number can appear only once.")
     if (rs.rules.some((x) => x.discountPercentage < 0 || x.discountPercentage > 100)) throw new Error("Rates must be between 0% and 100%.")
     const all = this.getPricingRuleSets()
@@ -1135,8 +1135,8 @@ export class InsuranceEngineService {
       (d) =>
         d.status === "Active" &&
         d.stage === stage &&
-        (!d.encounterTypes.length || d.encounterTypes.includes(c.encounterType)) &&
-        (!d.insurerIds.length || d.insurerIds.includes(c.policy.insurerId)),
+        (!d.encounterTypes?.length || d.encounterTypes.includes(c.encounterType)) &&
+        (!d.insurerIds?.length || d.insurerIds.includes(c.policy.insurerId)),
     )
   }
 

@@ -2,126 +2,301 @@ import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
 import tailwindcss from "@tailwindcss/vite"
 import path from "node:path"
+import net from "node:net"
 // @ts-expect-error - JavaScript module without types
 import memoryStore from "./server/db/memoryStore.mjs"
 
 
+// Whether a local backend port is accepting connections, cached briefly so
+// every request does not pay for a probe.
+const portUpCache = new Map<number, { up: boolean; at: number }>()
+function portUp(port: number): Promise<boolean> {
+  const hit = portUpCache.get(port)
+  if (hit && Date.now() - hit.at < 3000) return Promise.resolve(hit.up)
+  return new Promise((resolve) => {
+    const socket = net.connect({ port, host: "127.0.0.1" })
+    const done = (up: boolean) => {
+      socket.destroy()
+      portUpCache.set(port, { up, at: Date.now() })
+      resolve(up)
+    }
+    socket.setTimeout(400, () => done(false))
+    socket.once("connect", () => done(true))
+    socket.once("error", () => done(false))
+  })
+}
+
+function getSafeFallbackPayload(urlOrPath: string): any {
+  const p = (urlOrPath || "").toLowerCase()
+  if (p.includes("/auth/login")) {
+    return {
+      status: "success",
+      authenticated: true,
+      user: { id: "ADM-001", username: "admin", role: "admin", name: "Administrator" },
+      token: "mock_jwt_token",
+    }
+  }
+  if (p.includes("/auth/session")) {
+    return {
+      authenticated: true,
+      user: { id: "ADM-001", username: "admin", role: "admin", name: "Administrator" },
+    }
+  }
+  if (p.includes("/er/visits")) {
+    return { visits: [] }
+  }
+  if (p.includes("/er/bed-requests")) {
+    return { bed_requests: [] }
+  }
+  if (p.includes("/er/triage-config")) {
+    return {
+      categories: [
+        { id: 1, name: "Resuscitation (Level 1)", color: "red", maxWaitMinutes: 0 },
+        { id: 2, name: "Emergent (Level 2)", color: "orange", maxWaitMinutes: 10 },
+        { id: 3, name: "Urgent (Level 3)", color: "yellow", maxWaitMinutes: 30 },
+        { id: 4, name: "Less Urgent (Level 4)", color: "green", maxWaitMinutes: 60 },
+        { id: 5, name: "Non-Urgent (Level 5)", color: "blue", maxWaitMinutes: 120 },
+      ],
+    }
+  }
+  if (p.includes("/discharge-checklist")) {
+    return {
+      clear: true,
+      billing: { ok: true, pending_invoices: [] },
+      prescriptions: { ok: true, pending_count: 0 },
+      documents: { count: 0 },
+      room_charges: { segments: [] },
+    }
+  }
+  if (p.includes("/beds/discharged")) {
+    return { discharged_patients: [] }
+  }
+  if (p.includes("/beds")) {
+    return {
+      beds: [],
+      summary: { total: 0, available: 0, occupied: 0, maintenance: 0 },
+    }
+  }
+  if (p.includes("/readmissions")) {
+    return {
+      window_days: 30,
+      total_discharges: 0,
+      total_readmissions: 0,
+      readmission_rate_pct: 0,
+      readmission_events: [],
+      high_frequency_patients: [],
+    }
+  }
+  if (p.includes("/patients")) {
+    return {
+      patients: [],
+      counts: { all: 0, op: 0, ip: 0, er: 0 },
+    }
+  }
+  if (p.includes("/appointments")) {
+    return { appointments: [] }
+  }
+  if (p.includes("/queue")) {
+    return { queue: [] }
+  }
+  if (p.includes("/ot/cases") || p.includes("/pacu-ready")) {
+    return { cases: [] }
+  }
+  if (p.includes("/billing/claims")) {
+    return { claims: [] }
+  }
+  if (p.includes("/billing/invoices")) {
+    return { invoices: [] }
+  }
+  if (p.includes("/pharmacy/summary")) {
+    return {
+      totalSales: 0,
+      pendingPrescriptions: 0,
+      lowStockCount: 0,
+      expiringCount: 0,
+    }
+  }
+  if (p.includes("/accounts/overview")) {
+    return {
+      cash: 450000,
+      bank: 1850000,
+      receivables: 320000,
+      receivables_overdue_90: 0,
+      payables: 210000,
+      month: { income: 750000, expense: 520000, surplus: 230000 },
+      year: { from: "2026-04-01", surplus: 1820000 },
+      revenue_by_section: [
+        { name: "Pharmacy", amount: 340000 },
+        { name: "Consultations", amount: 180000 },
+        { name: "Diagnostics / Lab", amount: 150000 },
+        { name: "Inpatient Wards", amount: 80000 },
+      ],
+      trend: [
+        { month: "2026-04", income: 650000, expense: 480000, surplus: 170000 },
+        { month: "2026-05", income: 710000, expense: 510000, surplus: 200000 },
+        { month: "2026-06", income: 750000, expense: 520000, surplus: 230000 },
+      ],
+      posting_exceptions: 0,
+    }
+  }
+  if (p.includes("/accounts/accounts") || p.includes("/accounts/chart")) {
+    return { accounts: [], cost_centres: [], tax_codes: [] }
+  }
+  if (p.includes("/accounts/ageing")) {
+    return {
+      as_of: new Date().toISOString().split("T")[0],
+      ledger: p.includes("ap") ? "AP" : "AR",
+      totals: { current: 0, "1-30": 0, "31-60": 0, "61-90": 0, "90+": 0 },
+      items: [],
+    }
+  }
+  if (p.includes("/accounts/journals")) {
+    return { journals: [] }
+  }
+  if (p.includes("/accounts/vouchers")) {
+    return { vouchers: [], me: "Accounts Officer" }
+  }
+  if (p.includes("/accounts/cash-sessions")) {
+    return { sessions: [], me: "Cashier" }
+  }
+  if (p.includes("/accounts/tax-codes")) {
+    return { tax_codes: [] }
+  }
+  if (p.includes("/accounts/budget")) {
+    return { fiscal_year: "2026-27", months_elapsed: 6, rows: [], totals: { budgeted: 0, actual: 0, variance: 0 } }
+  }
+  if (p.includes("/accounts/assets") || p.includes("/accounts/fixed-assets")) {
+    return { assets: [] }
+  }
+  if (p.includes("/accounts/trial-balance")) {
+    return { as_of: new Date().toISOString().split("T")[0], rows: [], total_debit: 0, total_credit: 0 }
+  }
+  if (p.includes("/accounts/balance-sheet")) {
+    return { as_of: new Date().toISOString().split("T")[0], assets: [], liabilities: [], equity: [] }
+  }
+  if (p.includes("/accounts/profit-loss")) {
+    return { from: "2026-04-01", to: new Date().toISOString().split("T")[0], income: [], expenses: [], net_profit: 0 }
+  }
+  if (p.includes("/accounts/periods") || p.includes("/accounts/fiscal-years")) {
+    return { fiscal_years: [] }
+  }
+  if (p.includes("/accounts/exceptions") || p.includes("/accounts/posting-exceptions")) {
+    return { exceptions: [] }
+  }
+  if (p.includes("/icu") && p.includes("/flowsheets")) {
+    return { flowsheets: [] }
+  }
+
+  // Safe universal fallback with initialized arrays for all standard collection fields
+  return {
+    success: true,
+    status: "ok",
+    items: [],
+    data: [],
+    results: [],
+    patients: [],
+    beds: [],
+    cases: [],
+    visits: [],
+    claims: [],
+    invoices: [],
+    queue: [],
+    appointments: [],
+  }
+}
+
 function hmsApiMockMiddleware() {
+  // One function for both servers. Vite calls plugin hooks with its own
+  // context as `this`, not the plugin object, so the preview hook calling
+  // `this.configureServer` threw and `vite preview` never started.
+  const attach = (server: any) => {
+    server.middlewares.use(async (req: any, res: any, next: any) => {
+      const url = req.url || ""
+      if (!url.startsWith("/hms-api/")) {
+        return next()
+      }
+
+      const parsedUrl = new URL(url, "http://localhost:8443")
+      const pathname = parsedUrl.pathname.replace(/^\/hms-api/, "")
+
+      // Canned answers are for when the real service is down. Answering
+      // /api/auth/login here while the gateway was up meant no session cookie
+      // was ever issued, so every authenticated call (prescription reading,
+      // OCR) failed with 401 -- the real backend handles it whenever it can.
+      const realPort = pathname.startsWith("/api/hr/") ? 8011 : 8010
+      if (await portUp(realPort)) return next()
+
+      const sendJson = (data: any) => {
+        res.statusCode = 200
+        res.setHeader("Content-Type", "application/json")
+        res.end(JSON.stringify(data))
+      }
+
+      // HRMS routes
+      if (pathname === "/api/hr/employees") {
+        return sendJson({ employees: memoryStore.EMPLOYEES })
+      }
+      if (pathname === "/api/hr/attendance") {
+        return sendJson({
+          date: new Date().toISOString().split("T")[0],
+          total: memoryStore.ATTENDANCE.length,
+          attendance: memoryStore.ATTENDANCE,
+        })
+      }
+      if (pathname === "/api/hr/leaves") {
+        return sendJson({ leaves: memoryStore.LEAVES })
+      }
+      if (pathname === "/api/hr/overview/kpis") {
+        return sendJson({
+          totalWorkforce: memoryStore.EMPLOYEES.length,
+          onDutyNow: memoryStore.EMPLOYEES.filter((e: any) => e.duty_status === "On Duty").length,
+          doctorsOnDuty: memoryStore.EMPLOYEES.filter((e: any) => e.category === "Doctor" && e.duty_status === "On Duty").length,
+          nursesOnDuty: memoryStore.EMPLOYEES.filter((e: any) => e.category === "Nursing" && e.duty_status === "On Duty").length,
+          pendingLeaves: memoryStore.LEAVES.filter((l: any) => l.status === "Pending").length,
+          expiringLicenses: 2,
+          monthlyPayrollEstimate: memoryStore.EMPLOYEES.reduce((acc: number, e: any) => acc + (e.net_pay || 0), 0),
+        })
+      }
+      if (pathname === "/api/hr/credentials") {
+        return sendJson({ credentials: memoryStore.CREDENTIALS })
+      }
+      if (pathname === "/api/hr/payroll") {
+        return sendJson({
+          month: "September",
+          year: 2026,
+          run: memoryStore.PAYROLL_RUNS[0],
+          payroll: memoryStore.PAYROLL_ITEMS,
+        })
+      }
+      if (pathname === "/api/hr/shifts") {
+        return sendJson({ shifts: memoryStore.SHIFTS })
+      }
+      if (pathname === "/api/hr/departments") {
+        return sendJson({ departments: memoryStore.DEPARTMENTS })
+      }
+
+      // Doctor directory
+      if (pathname === "/api/doctors" || pathname === "/api/doctors/directory" || pathname === "/api/op/doctors") {
+        return sendJson({
+          doctors: memoryStore.EMPLOYEES.filter((e: any) => e.category === "Doctor").map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            department: d.department,
+            designation: d.designation,
+            dutyStatus: d.duty_status,
+          })),
+        })
+      }
+
+      // Safe fallback for all other routes when port 8010 is down
+      return sendJson(getSafeFallbackPayload(pathname))
+    })
+  }
+
   return {
     name: "hms-api-mock-middleware",
-    configureServer(server: any) {
-      server.middlewares.use((req: any, res: any, next: any) => {
-        const url = req.url || ""
-        if (!url.startsWith("/hms-api/")) {
-          return next()
-        }
-
-        const parsedUrl = new URL(url, "http://localhost:8443")
-        const pathname = parsedUrl.pathname.replace(/^\/hms-api/, "")
-
-        const sendJson = (data: any) => {
-          res.statusCode = 200
-          res.setHeader("Content-Type", "application/json")
-          res.end(JSON.stringify(data))
-        }
-
-        // HRMS routes
-        if (pathname === "/api/hr/employees") {
-          return sendJson({ employees: memoryStore.EMPLOYEES })
-        }
-        if (pathname === "/api/hr/attendance") {
-          return sendJson({
-            date: new Date().toISOString().split("T")[0],
-            total: memoryStore.ATTENDANCE.length,
-            attendance: memoryStore.ATTENDANCE,
-          })
-        }
-        if (pathname === "/api/hr/leaves") {
-          return sendJson({ leaves: memoryStore.LEAVES })
-        }
-        if (pathname === "/api/hr/overview/kpis") {
-          return sendJson({
-            totalWorkforce: memoryStore.EMPLOYEES.length,
-            onDutyNow: memoryStore.EMPLOYEES.filter((e: any) => e.duty_status === "On Duty").length,
-            doctorsOnDuty: memoryStore.EMPLOYEES.filter((e: any) => e.category === "Doctor" && e.duty_status === "On Duty").length,
-            nursesOnDuty: memoryStore.EMPLOYEES.filter((e: any) => e.category === "Nursing" && e.duty_status === "On Duty").length,
-            pendingLeaves: memoryStore.LEAVES.filter((l: any) => l.status === "Pending").length,
-            expiringLicenses: 2,
-            monthlyPayrollEstimate: memoryStore.EMPLOYEES.reduce((acc: number, e: any) => acc + (e.net_pay || 0), 0),
-          })
-        }
-        if (pathname === "/api/hr/credentials") {
-          return sendJson({ credentials: memoryStore.CREDENTIALS })
-        }
-        if (pathname === "/api/hr/payroll") {
-          return sendJson({
-            month: "September",
-            year: 2026,
-            run: memoryStore.PAYROLL_RUNS[0],
-            payroll: memoryStore.PAYROLL_ITEMS,
-          })
-        }
-        if (pathname === "/api/hr/shifts") {
-          return sendJson({ shifts: memoryStore.SHIFTS })
-        }
-        if (pathname === "/api/hr/departments") {
-          return sendJson({ departments: memoryStore.DEPARTMENTS })
-        }
-
-        // Auth routes
-        if (pathname === "/api/auth/login") {
-          return sendJson({
-            status: "success",
-            authenticated: true,
-            user: { id: "ADM-001", username: "admin", role: "admin", name: "Administrator" },
-            token: "mock_jwt_token",
-          })
-        }
-        if (pathname === "/api/auth/session") {
-          return sendJson({
-            authenticated: true,
-            user: { id: "ADM-001", username: "admin", role: "admin", name: "Administrator" },
-          })
-        }
-
-        // ER routes
-        if (pathname === "/api/er/visits") {
-          return sendJson({ visits: [] })
-        }
-        if (pathname === "/api/er/bed-requests") {
-          return sendJson({ bed_requests: [] })
-        }
-        if (pathname === "/api/er/triage-config") {
-          return sendJson({
-            categories: [
-              { id: 1, name: "Resuscitation (Level 1)", color: "red", maxWaitMinutes: 0 },
-              { id: 2, name: "Emergent (Level 2)", color: "orange", maxWaitMinutes: 10 },
-              { id: 3, name: "Urgent (Level 3)", color: "yellow", maxWaitMinutes: 30 },
-              { id: 4, name: "Less Urgent (Level 4)", color: "green", maxWaitMinutes: 60 },
-              { id: 5, name: "Non-Urgent (Level 5)", color: "blue", maxWaitMinutes: 120 },
-            ],
-          })
-        }
-
-        // Doctor directory
-        if (pathname === "/api/doctors" || pathname === "/api/doctors/directory" || pathname === "/api/op/doctors") {
-          return sendJson({
-            doctors: memoryStore.EMPLOYEES.filter((e: any) => e.category === "Doctor").map((d: any) => ({
-              id: d.id,
-              name: d.name,
-              department: d.department,
-              designation: d.designation,
-              dutyStatus: d.duty_status,
-            })),
-          })
-        }
-
-        next()
-      })
-    },
-    configurePreviewServer(server: any) {
-      this.configureServer(server)
-    },
+    configureServer: attach,
+    configurePreviewServer: attach,
   }
 }
 
@@ -181,35 +356,7 @@ const proxy = {
         if (res.headersSent) return;
         const url = req.url || "";
         res.writeHead(200, { "Content-Type": "application/json" });
-        if (url.includes("/auth/login")) {
-          res.end(JSON.stringify({
-            status: "success",
-            authenticated: true,
-            user: { id: "ADM-001", username: "admin", role: "admin", name: "Administrator" },
-            token: "mock_jwt_token",
-          }));
-        } else if (url.includes("/auth/session")) {
-          res.end(JSON.stringify({
-            authenticated: true,
-            user: { id: "ADM-001", username: "admin", role: "admin", name: "Administrator" },
-          }));
-        } else if (url.includes("/er/visits")) {
-          res.end(JSON.stringify({ visits: [] }));
-        } else if (url.includes("/er/bed-requests")) {
-          res.end(JSON.stringify({ bed_requests: [] }));
-        } else if (url.includes("/er/triage-config")) {
-          res.end(JSON.stringify({
-            categories: [
-              { id: 1, name: "Resuscitation (Level 1)", color: "red", maxWaitMinutes: 0 },
-              { id: 2, name: "Emergent (Level 2)", color: "orange", maxWaitMinutes: 10 },
-              { id: 3, name: "Urgent (Level 3)", color: "yellow", maxWaitMinutes: 30 },
-              { id: 4, name: "Less Urgent (Level 4)", color: "green", maxWaitMinutes: 60 },
-              { id: 5, name: "Non-Urgent (Level 5)", color: "blue", maxWaitMinutes: 120 },
-            ],
-          }));
-        } else {
-          res.end(JSON.stringify({ success: true, status: "ok" }));
-        }
+        res.end(JSON.stringify(getSafeFallbackPayload(url)));
       });
     },
   },

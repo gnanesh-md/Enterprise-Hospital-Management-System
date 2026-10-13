@@ -28,3 +28,6 @@ uploads/
 # Datasets (large binary files — add to git-lfs if needed)
 datasets/*.joblib
 datasets/*.json
+# ...except the summary blueprint: 10 KB of config the summarizer cannot run
+# without, and it was being left out of every clone and image build.
+!datasets/case_summary_blueprint.json
