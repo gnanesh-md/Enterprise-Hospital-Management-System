@@ -28,7 +28,7 @@ export default function FinancialStatementsView() {
       addBlock("Assets", bsState.data.assets)
       addBlock("Liabilities", bsState.data.liabilities)
       addBlock("Equity", bsState.data.equity)
-      downloadCsv(`Balance_Sheet_${to}.csv`, rows)
+      downloadCsv(`Balance_Sheet_${to}.csv`, rows[0] as string[], rows.slice(1))
     } else if (tab === "pnl" && pnlState.data) {
       const rows: (string | number)[][] = [["Category", "Section", "Code", "Name", "Amount"]]
       const addBlock = (cat: string, block: typeof pnlState.data.income) => {
@@ -40,13 +40,13 @@ export default function FinancialStatementsView() {
       }
       addBlock("Income", pnlState.data.income)
       addBlock("Expense", pnlState.data.expense)
-      downloadCsv(`Profit_And_Loss_${from}_${to}.csv`, rows)
+      downloadCsv(`Profit_And_Loss_${from}_${to}.csv`, rows[0] as string[], rows.slice(1))
     } else if (tab === "trial_balance" && tbState.data) {
       const rows: (string | number)[][] = [["Code", "Name", "Category", "Opening Dr", "Opening Cr", "Period Dr", "Period Cr", "Closing Dr", "Closing Cr"]]
       tbState.data.rows.forEach(r => {
         rows.push([r.code, r.name, r.category, r.opening_dr, r.opening_cr, r.period_dr, r.period_cr, r.closing_dr, r.closing_cr])
       })
-      downloadCsv(`Trial_Balance_${from}_${to}.csv`, rows)
+      downloadCsv(`Trial_Balance_${from}_${to}.csv`, rows[0] as string[], rows.slice(1))
     }
   }
 
@@ -261,22 +261,22 @@ export default function FinancialStatementsView() {
                     <Th>Code</Th>
                     <Th>Account Name</Th>
                     <Th>Category</Th>
-                    <Th align="right">Opening (₹)</Th>
-                    <Th align="right">Period Debits (₹)</Th>
-                    <Th align="right">Period Credits (₹)</Th>
-                    <Th align="right">Closing Balance (₹)</Th>
+                    <Th right>Opening (₹)</Th>
+                    <Th right>Period Debits (₹)</Th>
+                    <Th right>Period Credits (₹)</Th>
+                    <Th right>Closing Balance (₹)</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {tb.rows.map(r => (
                     <tr key={r.account_id} className="hover:bg-[#F8FAFC]">
-                      <Td mono bold tone="accent">{r.code}</Td>
-                      <Td bold>{r.name}</Td>
+                      <Td className="font-mono font-bold text-blue-700">{r.code}</Td>
+                      <Td className="font-bold">{r.name}</Td>
                       <Td><span className="text-[11px] capitalize text-[#64748B]">{r.category}</span></Td>
-                      <Td align="right"><Money value={r.opening_dr - r.opening_cr} /></Td>
-                      <Td align="right"><Money value={r.period_dr} /></Td>
-                      <Td align="right"><Money value={r.period_cr} /></Td>
-                      <Td align="right"><Money value={r.closing_dr - r.closing_cr} strong /></Td>
+                      <Td right><Money value={r.opening_dr - r.opening_cr} /></Td>
+                      <Td right><Money value={r.period_dr} /></Td>
+                      <Td right><Money value={r.period_cr} /></Td>
+                      <Td right><Money value={r.closing_dr - r.closing_cr} strong /></Td>
                     </tr>
                   ))}
                 </tbody>

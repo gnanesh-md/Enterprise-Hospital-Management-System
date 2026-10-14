@@ -32,7 +32,7 @@ export default function PatientDetailsModal({
     db.getPatients().find(
       (p) =>
         p.umr === study.umr ||
-        p.mrn === study.mrn ||
+        (p as any).mrn === study.mrn ||
         p.name.toLowerCase() === study.patient.toLowerCase(),
     )
 
@@ -65,7 +65,7 @@ export default function PatientDetailsModal({
                   {study.patient}
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-500/30 text-indigo-200 border border-indigo-400/30">
-                  {realPatient?.gender || "Patient"} • {realPatient?.age || 38} yrs
+                  {realPatient?.sex || (realPatient as any)?.gender || "Patient"} • {realPatient?.age || 38} yrs
                 </span>
               </div>
               <p className="text-xs text-slate-300 flex items-center gap-2 mt-0.5">
@@ -108,7 +108,7 @@ export default function PatientDetailsModal({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Gender / Age:</span>
-                  <span className="font-medium text-slate-800">{realPatient?.gender || "Male"}, {realPatient?.age || 38}y</span>
+                  <span className="font-medium text-slate-800">{realPatient?.sex || (realPatient as any)?.gender || "Male"}, {realPatient?.age || 38}y</span>
                 </div>
               </div>
             </div>
