@@ -85,6 +85,11 @@ import { BedDatabase } from "../../services/bedDb"
 import { PharmacyDatabase } from "../../services/pharmacyDb"
 import { LabOrderDatabase } from "../../services/labOrdersDb"
 import { useLiveClinic } from "../../hooks/useLiveClinic"
+import { GlobalReportsSearchBar } from "./GlobalReportsSearchBar"
+import { PatientGlobalProfileView } from "./PatientGlobalProfileView"
+import { DoctorGlobalProfileView } from "./DoctorGlobalProfileView"
+import { StaffGlobalProfileView } from "./StaffGlobalProfileView"
+import { SearchResultItem } from "../../services/globalSearchService"
 
 interface GeneralReportsOverviewPageProps {
   onNavigate?: (module: string) => void
@@ -435,6 +440,9 @@ export default function GeneralReportsOverviewPage({
   // Export dropdown
   const [exportMenuOpen, setExportMenuOpen] = useState(false)
 
+  // Global Search Active Entity State
+  const [selectedEntity, setSelectedEntity] = useState<SearchResultItem | null>(null)
+
   // Detail Modal inspection
   const [selectedItem, setSelectedItem] = useState<RecentActivityItem | null>(
     null,
@@ -765,7 +773,29 @@ export default function GeneralReportsOverviewPage({
       </div>
 
       <div className="w-full px-6 py-4 space-y-3.5">
-        {/* ── 2. FILTER PANEL ──────────────────────────────────────────────── */}
+        {/* ── GLOBAL SEARCH BAR ────────────────────────────────────────── */}
+        <GlobalReportsSearchBar onSelect={(item) => setSelectedEntity(item)} />
+
+        {selectedEntity ? (
+          selectedEntity.type === "patient" ? (
+            <PatientGlobalProfileView
+              patientIdOrUmr={selectedEntity.identifier}
+              onBack={() => setSelectedEntity(null)}
+            />
+          ) : selectedEntity.type === "doctor" ? (
+            <DoctorGlobalProfileView
+              doctorId={selectedEntity.identifier}
+              onBack={() => setSelectedEntity(null)}
+            />
+          ) : (
+            <StaffGlobalProfileView
+              staffId={selectedEntity.identifier}
+              onBack={() => setSelectedEntity(null)}
+            />
+          )
+        ) : (
+          <>
+            {/* ── 2. FILTER PANEL ──────────────────────────────────────────────── */}
         <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 shadow-2xs">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b border-slate-100">
             <div className="flex items-center gap-2">
@@ -1827,6 +1857,8 @@ export default function GeneralReportsOverviewPage({
             </table>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* ── DETAIL MODAL (QUICK INSPECTION) ─────────────────────────────────── */}
