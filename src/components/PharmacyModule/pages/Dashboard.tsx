@@ -1,5 +1,5 @@
 import { usePharmacyData } from "../data/usePharmacyData"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   AreaChart,
   Area,
@@ -24,7 +24,9 @@ import {
   RefreshCcw,
   BarChart3,
   ArrowRight,
+  Trash2,
 } from "lucide-react"
+import { PharmacyDatabase } from "../../../services/pharmacyDb"
 
 import StatusBadge from "../components/StatusBadge"
 import PageHeader from "../components/PageHeader"
@@ -50,6 +52,12 @@ const quickActions = [
     page: "expiry-low-stock",
   },
   {
+    label: "Write-Off Stock",
+    icon: Trash2,
+    color: "#be123c",
+    page: "write-off",
+  },
+  {
     label: "Generate Report",
     icon: BarChart3,
     color: "#0284c7",
@@ -69,11 +77,23 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     bills,
     supplierReturns,
     returns,
+    refresh,
   } = usePharmacyData()
   const [chartView, setChartView] = useState<"weekly" | "monthly">("weekly")
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0],
   )
+
+  // Real-time synchronization across pharmacy operations (sales, returns, inventory)
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
 
   // Dynamically generate chart data ending on selectedDate
   const last7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -97,24 +117,31 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       (acc, r) => acc + (r.refundAmount || 0),
       0,
     )
-    const dayNetRevenue = Math.max(0, dayGross - dayRefunds)
+    const dayNet = Math.max(0, dayGross - dayRefunds)
+
+    // Number of active bills (bills that were not completely returned)
+    const activeBillsCount = dayBills.filter((b) => {
+      const bReturns = PharmacyDatabase.getReturnsForBill(b.billNumber)
+      const bRefund = bReturns.reduce((s, r) => s + (r.refundAmount || 0), 0)
+      return (b.totalAmount || 0) > bRefund
+    }).length
 
     return {
       date: new Date(dateStr).toLocaleDateString("en-US", { weekday: "short" }),
-      revenue: dayNetRevenue,
+      revenue: dayNet, // Actual net sales after deducting returns
       gross: dayGross,
       refunds: dayRefunds,
-      orders: dayBills.length,
+      orders: activeBillsCount,
+      totalOrders: dayBills.length,
     }
   })
 
-  const totalGross = chartData.reduce((sum, d) => sum + (d.gross || 0), 0)
-  const totalRefunds = chartData.reduce((sum, d) => sum + (d.refunds || 0), 0)
-  const totalSales = Math.max(0, totalGross - totalRefunds)
+  // Total Sales across period (reflects actual sales after returns)
+  const totalSales = chartData.reduce((sum, d) => sum + (d.revenue || 0), 0)
   const totalOrders = chartData.reduce((sum, d) => sum + d.orders, 0)
   const avgSales = chartData.length > 0 ? totalSales / chartData.length : 0
 
-  // Selected Date specific metric
+  // Selected Date specific metric (Total sales after returns for selected date)
   const selectedDateStats = chartData[chartData.length - 1]
   const selectedDateNet = selectedDateStats?.revenue || 0
 
@@ -127,25 +154,23 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     {
       title: isToday ? "Today's Total Sales" : "Selected Date Total Sales",
       value: `₹${selectedDateNet.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      change:
-        selectedDateStats?.refunds > 0
-          ? `-₹${selectedDateStats.refunds.toLocaleString("en-IN")}`
-          : "Active",
-      up: !selectedDateStats?.refunds,
-      sub:
-        selectedDateStats?.refunds > 0
-          ? `Gross: ₹${selectedDateStats.gross.toLocaleString("en-IN")} · Refunds: ₹${selectedDateStats.refunds.toLocaleString("en-IN")}`
-          : "Net revenue (Gross - Refunds)",
+      change: selectedDateStats?.refunds && selectedDateStats.refunds > 0
+        ? `${selectedDateStats.orders} Active (${selectedDateStats.totalOrders - selectedDateStats.orders} Returned)`
+        : `${selectedDateStats?.orders || 0} Bills`,
+      up: selectedDateNet > 0,
+      sub: selectedDateStats?.refunds && selectedDateStats.refunds > 0
+        ? `₹${(selectedDateStats.gross || 0).toLocaleString("en-IN")} sales - ₹${(selectedDateStats.refunds || 0).toLocaleString("en-IN")} ret.`
+        : "Total pharmacy sales",
       icon: ShoppingCart,
       color: "#0F766E",
       borderColor: "#0F766E",
       bg: "#E8EDF5",
-      page: "sales-returns",
+      page: "dispensing",
     },
     {
       title: isToday ? "Prescriptions Today" : "Selected Date Prescriptions",
       value: selectedDatePrescriptions.length.toString(),
-      change: "0%",
+      change: "Active",
       up: true,
       sub: "For selected date",
       icon: ClipboardList,
@@ -159,7 +184,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       value: medicines
         .filter((m) => m.stock < m.reorderLevel)
         .length.toString(),
-      change: "0",
+      change: "Alert",
       up: false,
       sub: "Requires attention",
       icon: AlertTriangle,
@@ -171,7 +196,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     {
       title: "Expiring Soon",
       value: expiringMedicines.length.toString(),
-      change: "0",
+      change: "Within 30d",
       up: false,
       sub: "Within 30 days",
       icon: Clock,
@@ -206,65 +231,63 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     },
   ]
 
-  // Calculate Supplier Return KPIs
-  const currentMonthReturns = supplierReturns.filter(
+  // 1. Supplier Returns (Procurement Debit Notes to Vendors)
+  const currentMonthSupplierReturns = supplierReturns.filter(
     (r) =>
       r.createdAt && new Date(r.createdAt).getMonth() === new Date().getMonth(),
   )
-  const returnTotalMonth = currentMonthReturns.reduce(
+  const supplierReturnsThisMonth = currentMonthSupplierReturns.reduce(
     (acc, curr) => acc + (curr.returnAmount || 0),
     0,
   )
-
-  const pendingCreditsReturns = supplierReturns.filter(
-    (r) =>
-      r.status === "Credit Note Pending" || r.status === "Sent To Supplier",
-  )
-  const pendingCreditAmount = pendingCreditsReturns.reduce(
+  const totalSupplierReturnsAmount = supplierReturns.reduce(
     (acc, curr) => acc + (curr.returnAmount || 0),
     0,
   )
-
-  const expiredStockReturned = supplierReturns
+  const expiredStockReturnedUnits = supplierReturns
     .filter((r) => (r.reason || "").toLowerCase().includes("expired"))
     .reduce((acc, curr) => acc + (curr.quantity || 0), 0)
 
-  const allTimeReturnValue = supplierReturns.reduce(
-    (acc, curr) => acc + (curr.returnAmount || 0),
+  // 2. Patient Returns (Sales Returns / Counter Refunds)
+  const currentMonthPatientReturns = returns.filter(
+    (r) =>
+      r.createdAt && new Date(r.createdAt).getMonth() === new Date().getMonth(),
+  )
+  const patientReturnsThisMonth = currentMonthPatientReturns.reduce(
+    (acc, curr) => acc + (curr.refundAmount || 0),
+    0,
+  )
+  const totalPatientReturnsAmount = returns.reduce(
+    (acc, curr) => acc + (curr.refundAmount || 0),
     0,
   )
 
   const returnKpis = [
     {
-      title: "Supplier Returns This Month",
-      value: `₹${returnTotalMonth.toLocaleString()}`,
+      title: "Total Patient Returns",
+      value: `₹${totalPatientReturnsAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      sub: `${returns.length} patient returns refunded (${patientReturnsThisMonth > 0 ? `₹${patientReturnsThisMonth.toLocaleString("en-IN")} this mo.` : "Sales counter refunds"})`,
       icon: RefreshCcw,
-      color: "#0284C7",
+      color: "#D97706",
+      bg: "#FEF3C7",
+      page: "sales-returns",
+    },
+    {
+      title: "Total Supplier Returns",
+      value: `₹${totalSupplierReturnsAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      sub: `${supplierReturns.length} vendor debit notes (${supplierReturnsThisMonth > 0 ? `₹${supplierReturnsThisMonth.toLocaleString("en-IN")} this mo.` : "Procurement debit notes"})`,
+      icon: IndianRupee,
+      color: "#0F766E",
       bg: "#E0F2FE",
       page: "supplier-returns",
     },
     {
-      title: "Pending Credit Amount",
-      value: `₹${pendingCreditAmount.toLocaleString()}`,
-      icon: AlertTriangle,
-      color: "#D97706",
-      bg: "#FEF3C7",
-      page: "supplier-returns",
-    },
-    {
       title: "Expired Stock Returned",
-      value: `${expiredStockReturned} Units`,
+      value: `${expiredStockReturnedUnits} Units`,
+      sub: "Stock returned to vendors",
       icon: Package,
       color: "#DC2626",
       bg: "#FEE2E2",
-      page: "supplier-returns",
-    },
-    {
-      title: "Total Return Value",
-      value: `₹${allTimeReturnValue.toLocaleString()}`,
-      icon: IndianRupee,
-      color: "#16A34A",
-      bg: "#DCFCE7",
       page: "supplier-returns",
     },
   ]
@@ -342,7 +365,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       </div>
 
       {/* KPI Cards Row 2 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {returnKpis.map((kpi) => (
           <button
             key={kpi.title}
@@ -707,10 +730,10 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                     </td>
                     <td className="py-3 px-4">
                       <button
-                        onClick={() => onNavigate("purchase-orders")}
+                        onClick={() => onNavigate("ocr")}
                         className="text-[11px] font-medium px-2 py-1 rounded bg-[#E8EDF5] text-[#0F766E] hover:bg-[#DDE2EC] transition-colors"
                       >
-                        Order
+                        Inward
                       </button>
                     </td>
                   </tr>

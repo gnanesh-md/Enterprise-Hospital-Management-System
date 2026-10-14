@@ -18,10 +18,11 @@ const MODULE_TO_PAGE: Record<string, string> = {
   pharmacy_medicine: "medicines",
   pharmacy_category: "categories",
   pharmacy_suppliers: "suppliers",
-  pharmacy_po: "purchase-orders",
+  pharmacy_po: "ocr", // Redirect old PO requests to Inward GRN
   pharmacy_grn: "ocr",
   pharmacy_ledger: "inventory-ledger",
   pharmacy_expiry: "expiry-low-stock",
+  pharmacy_write_off: "write-off",
   pharmacy_analytics: "reports",
   pharmacy_notifications: "notifications",
   pharmacy_users: "users",

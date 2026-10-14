@@ -67,6 +67,7 @@ export const ALL_SYSTEM_MODULES = [
   "pharmacy_ledger",
   "pharmacy_transfers",
   "pharmacy_expiry",
+  "pharmacy_write_off",
   "pharmacy_analytics",
 
   "pharmacy_notifications",
@@ -263,6 +264,7 @@ const INITIAL_ROLES: AppRole[] = [
       "pharmacy_medicine",
       "pharmacy_ledger",
       "pharmacy_expiry",
+      "pharmacy_write_off",
 
       "laboratory",
       "radiology",
@@ -356,6 +358,7 @@ const INITIAL_ROLES: AppRole[] = [
       "pharmacy_ledger",
       "pharmacy_transfers",
       "pharmacy_expiry",
+      "pharmacy_write_off",
       "pharmacy_analytics",
 
       "pharmacy_notifications",
@@ -475,6 +478,7 @@ const INITIAL_ROLES: AppRole[] = [
       "pharmacy_ledger",
       "pharmacy_transfers",
       "pharmacy_expiry",
+      "pharmacy_write_off",
       "pharmacy_analytics",
     ],
   },

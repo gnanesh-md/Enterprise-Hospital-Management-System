@@ -12,7 +12,6 @@ import {
   XCircle,
   MessageSquare,
   ChevronRight,
-  PlusCircle,
 } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
 
@@ -39,16 +38,6 @@ export default function PrescriptionQueue({
   const [activeFilter, setActiveFilter] = useState("All")
   const [selected, setSelected] = useState<typeof prescriptions[0] | null>(null)
   const [search, setSearch] = useState("")
-
-  useEffect(() => {
-    // If the queue has no pending prescriptions or lacks Mr. G KUMAR, automatically seed it!
-    const rxList = PharmacyDatabase.getPrescriptions()
-    const hasKumar = rxList.some((r) => r.id === "RX-OPD-112320")
-    if (!hasKumar || rxList.length === 0) {
-      PharmacyDatabase.seedTestPrescriptionForSelling()
-      refresh()
-    }
-  }, [])
 
   const filtered = prescriptions.filter((rx) => {
     const matchStatus =
@@ -100,17 +89,6 @@ export default function PrescriptionQueue({
               ))}
             </div>
             <div className="flex items-center gap-2 ml-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  PharmacyDatabase.seedTestPrescriptionForSelling()
-                  refresh()
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#0F766E] text-white text-[12px] font-semibold rounded hover:bg-[#0c5e58] transition-colors shadow-sm"
-                title="Seed Mr. G KUMAR prescription with ready batch stock"
-              >
-                <PlusCircle size={14} /> Add Test Prescription (Mr. G KUMAR)
-              </button>
               <div className="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded px-3 py-2">
                 <Search size={14} className="text-[#94A3B8]" />
                 <input
