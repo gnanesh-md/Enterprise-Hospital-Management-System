@@ -8,6 +8,7 @@ import {
   subscribe as subscribeNotifications,
   type PatientNotification,
 } from "../services/patientNotifications"
+import { notifyPatientCalledToNurse } from "../services/patientMessaging"
 
 /** Statuses considered awaiting triage at Nurse Station */
 const AWAITING_VITALS: DBOPEncounter["status"][] = [
@@ -244,6 +245,21 @@ export default function NurseStation({
   const clearVitalsDraft = () => setVitals({ ...EMPTY_VITALS })
   const [sent, setSent] = useState<{ name: string; doctor: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
+  const [callAlert, setCallAlert] = useState<{ message: string; timestamp: string } | null>(null)
+
+  const handleCallPatient = (enc: DBOPEncounter, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    db.callToNurseStation(enc.id, nurseName)
+    notifyPatientCalledToNurse(enc, nurseName)
+    const token = enc.queueToken ? `#${enc.queueToken}` : enc.opNumber || "OP"
+    setCallAlert({
+      message: `Token ${token} - ${enc.patientName} called to Nurse Station! SMS & WhatsApp dispatched.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    })
+    setTimeout(() => {
+      setCallAlert((curr) => (curr?.message.includes(enc.patientName) ? null : curr))
+    }, 6000)
+  }
 
   useEffect(() => {
     const unsub = db.subscribe(() => setEncounters(db.getEncounters()))
@@ -510,6 +526,19 @@ export default function NurseStation({
         </div>
       )}
 
+      {/* Live Call Confirmation Banner */}
+      {callAlert && (
+        <div className="mx-6 mt-4 px-4 py-2.5 rounded-none bg-emerald-600 text-white flex items-center justify-between shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <span className="text-base">📢</span>
+            <span>{callAlert.message}</span>
+          </div>
+          <span className="text-[11px] font-mono text-emerald-100">
+            {callAlert.timestamp}
+          </span>
+        </div>
+      )}
+
       {/* Dispatch Confirmation Banner */}
       {sent && (
         <div className="mx-6 mt-4 px-4 py-3 rounded-none bg-emerald-50 border border-emerald-300 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
@@ -676,13 +705,28 @@ export default function NurseStation({
                       )}
 
                       {e.timestamps?.calledToNurse ? (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-none bg-emerald-100 text-emerald-900 border border-emerald-300">
-                          📢 Called {e.timestamps.calledToNurse}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-none bg-emerald-100 text-emerald-900 border border-emerald-300">
+                            📢 Called {e.timestamps.calledToNurse}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(evt) => handleCallPatient(e, evt)}
+                            className="text-[9.5px] font-bold text-blue-700 hover:text-blue-900 hover:underline px-1 py-0.5 bg-blue-50 border border-blue-200 cursor-pointer"
+                            title="Re-call patient & re-send notification"
+                          >
+                            Re-call
+                          </button>
+                        </div>
                       ) : (
-                        <span className="text-[10px] font-medium text-slate-400">
-                          Room {e.room || "101"}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={(evt) => handleCallPatient(e, evt)}
+                          className="text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-white px-2 py-0.5 shadow-2xs transition-colors cursor-pointer flex items-center gap-1"
+                          title="Call patient from waiting area to Nurse Station now & dispatch SMS/WhatsApp notification"
+                        >
+                          📢 Call
+                        </button>
                       )}
                     </div>
                   </button>
@@ -710,14 +754,25 @@ export default function NurseStation({
                     : "No patients are currently waiting for baseline vitals."}
                 </p>
                 {waiting.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => select(waiting[0])}
-                    className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-none transition-colors cursor-pointer shadow-xs"
-                  >
-                    Triage First Patient: {waiting[0].patientName} (
-                    {waitMinutes(waiting[0])}m wait) →
-                  </button>
+                  <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCallPatient(waiting[0])
+                        select(waiting[0])
+                      }}
+                      className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-none transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+                    >
+                      📢 Call Next: {waiting[0].patientName} (#{waiting[0].queueToken || waiting[0].opNumber})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => select(waiting[0])}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-none transition-colors cursor-pointer shadow-xs"
+                    >
+                      Open Vitals Form →
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -828,16 +883,52 @@ export default function NurseStation({
                       · {selected.phone} · {selected.dept}
                     </p>
                   </div>
-                  <div className="text-right bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-none">
-                    <p className="text-[10.5px] uppercase font-bold text-blue-900">
-                      Booked Doctor
-                    </p>
-                    <p className="text-[13px] font-bold text-blue-900">
-                      👨‍⚕️ {selected.assignedDoctor || "Not assigned"}
-                    </p>
-                    <p className="text-[11px] font-mono font-bold text-slate-700">
-                      Chamber: {selected.room || "101"}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    {/* Call to Station Action */}
+                    <div className="text-right">
+                      {selected.timestamps?.calledToNurse ? (
+                        <div className="bg-emerald-50 border border-emerald-300 px-3 py-1.5 flex items-center gap-2">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-emerald-800 block">
+                              Patient Status
+                            </span>
+                            <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                              Called at {selected.timestamps.calledToNurse}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCallPatient(selected)}
+                            className="text-[11px] font-bold bg-white text-emerald-800 hover:text-emerald-950 border border-emerald-300 px-2 py-1 shadow-2xs cursor-pointer ml-1"
+                            title="Re-call patient & re-send notification"
+                          >
+                            Re-call 🔔
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleCallPatient(selected)}
+                          className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 rounded-none"
+                          title="Call patient from waiting area to Nurse Station now & dispatch SMS/WhatsApp notification"
+                        >
+                          📢 Call Patient to Station
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="text-right bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-none">
+                      <p className="text-[10.5px] uppercase font-bold text-blue-900">
+                        Booked Doctor
+                      </p>
+                      <p className="text-[13px] font-bold text-blue-900">
+                        👨‍⚕️ {selected.assignedDoctor || "Not assigned"}
+                      </p>
+                      <p className="text-[11px] font-mono font-bold text-slate-700">
+                        Chamber: {selected.room || "101"}
+                      </p>
+                    </div>
                   </div>
                 </div>
 

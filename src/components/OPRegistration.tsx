@@ -8,6 +8,7 @@ import {
   findMatchingPatient,
 } from "../services/db"
 import { HospAILogo } from "./HospAILogo"
+import { notifyOpRegistered } from "../services/patientMessaging"
 
 // Accurate age calculation from Date of Birth
 const calculateAge = (dobString: string): number => {
@@ -157,6 +158,7 @@ export default function OPRegistration({
       })
 
     setSelectedEncounter(createdEncounter)
+    notifyOpRegistered(createdEncounter)
     setGenerationAlert({
       type: "new",
       umr: createdPatient.umr,
@@ -188,6 +190,7 @@ export default function OPRegistration({
   // 2. Handle Existing Patient Revisit -> Retains Permanent UMR -> generates new OP Number
   const handleCreateRevisitEncounter = (p: DBPatient) => {
     const newEncounter = db.createRevisitEncounter(p.umr)
+    notifyOpRegistered(newEncounter)
 
     setSelectedEncounter(newEncounter)
     setGenerationAlert({

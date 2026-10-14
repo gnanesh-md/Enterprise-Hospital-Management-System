@@ -10,6 +10,8 @@ import {
   numberToWordsINR,
 } from "../utils/receiptFormatter"
 import { RECEIPT_LOGO_BASE64 } from "../assets/receiptLogoBase64"
+import { SendToPatientButton } from "./messaging/SendToPatientDialog"
+import { billMessageVars, buildBillDocument } from "../lib/patientDocuments"
 
 interface HospitalReceiptModalProps {
   claim: ClaimRecord
@@ -224,6 +226,15 @@ export default function HospitalReceiptModal({
 
   const printedOnStr = `${formatReceiptDateShort(new Date())} ${formatReceiptTimeWithSeconds(new Date())}`
 
+  // The bill as a PDF, by SMS (as a link) and/or WhatsApp (attached).
+  const sendBillProps = {
+    patient: { name: claim.patientName, phone: claim.phone, id: claim.patientId },
+    kind: "bill" as const,
+    vars: billMessageVars(claim),
+    buildDocument: () => buildBillDocument(claim, payment),
+    documentLabel: `${billTitle} ${claim.invoiceNo}`,
+  }
+
   const handlePrint = () => {
     const printEl = document.getElementById("printable-receipt")
 
@@ -384,6 +395,11 @@ export default function HospitalReceiptModal({
           </div>
 
           <div className="flex items-center gap-2">
+            <SendToPatientButton
+              label="Send"
+              className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded shadow-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+              {...sendBillProps}
+            />
             <button
               type="button"
               onClick={handlePrint}
@@ -895,6 +911,11 @@ export default function HospitalReceiptModal({
             >
               Close
             </button>
+            <SendToPatientButton
+              label="Send to patient"
+              className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-colors"
+              {...sendBillProps}
+            />
             <button
               type="button"
               onClick={handlePrint}

@@ -475,11 +475,30 @@ textarea:focus-visible {
     max-height: none !important;
   }
 
-  /* When printing specific reports, ensure report content is visible */
-  body:has(#hospital-printable-receipt) *,
-  body:has(#printable-receipt) *,
-  body:has(#op-reports-printable) * {
-    visibility: hidden;
+  /* When printing specific reports, ensure ONLY the report element is displayed and all background app views are completely removed from flow */
+  body:has(#hospital-printable-receipt) #root > *:not(:has(#hospital-printable-receipt)),
+  body:has(#printable-receipt) #root > *:not(:has(#printable-receipt)),
+  body:has(#op-reports-printable) #root > *:not(:has(#op-reports-printable)),
+  body:has(#patient-journey-print-sheet) #root,
+  body:has(#printable-area) #root > *:not(:has(#printable-area)),
+  body:has(.printable-area) #root > *:not(:has(.printable-area)) {
+    display: none !important;
+  }
+
+  /* Reset modal backdrop wrappers so they introduce 0 extra height, margins, or blank pages */
+  body:has(#printable-area) .fixed.inset-0,
+  body:has(.printable-area) .fixed.inset-0 {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    inset: auto !important;
   }
 
   /* Target all printable medical passes, receipts, summaries, and census reports */
@@ -495,30 +514,35 @@ textarea:focus-visible {
   #printable-prescription,
   #printable-invoice,
   #printable-area,
+  #patient-journey-print-sheet,
+  .patient-journey-print-sheet,
   .printable-handover-document {
-    visibility: visible !important;
     display: block !important;
-    position: relative !important;
+    visibility: visible !important;
+    position: static !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
-    max-width: 800px !important;
-    margin: 10px auto !important;
-    padding: 20px !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     box-shadow: none !important;
-    border: 1.5px solid #0F172A !important;
+    border: none !important;
     border-radius: 0px !important;
     background: #FFFFFF !important;
     color: #0F172A !important;
-    page-break-inside: avoid !important;
+    page-break-inside: auto !important;
+    break-inside: auto !important;
   }
 
-  #hospital-printable-receipt,
-  #printable-receipt {
-    border: none !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
+  #patient-journey-print-sheet .break-inside-avoid,
+  #patient-journey-print-sheet table,
+  #patient-journey-print-sheet .border,
+  #printable-area .break-inside-avoid,
+  #printable-area table,
+  #printable-area .border {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   #op-reports-printable {

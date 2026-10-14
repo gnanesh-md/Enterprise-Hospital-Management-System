@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { ACTIVE_DOCTORS, MasterDoctor } from "../services/doctorMaster"
-import { notifyPatientCalledToNurse } from "../services/patientNotifications"
+import { notifyPatientCalledToNurse } from "../services/patientMessaging"
 import { Icon } from "./icons"
 import { db, DBOPEncounter, DBPatient } from "../services/db"
 

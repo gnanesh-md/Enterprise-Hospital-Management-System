@@ -27,6 +27,7 @@ export interface Patient {
   allergies?: string
   symptoms?: string
   phone?: string
+  email?: string
   address?: string
   blood_group?: string
   emergency_contact?: string

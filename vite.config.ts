@@ -288,6 +288,15 @@ function hmsApiMockMiddleware() {
         })
       }
 
+      // Patient messaging gets no stand-in: a canned {"success": true} for a
+      // send would tell the desk a patient had been sent their bill when
+      // nothing left the building. 503 lets the app queue it honestly.
+      if (pathname.startsWith("/api/messaging") || pathname.startsWith("/api/whatsapp")) {
+        res.statusCode = 503
+        res.setHeader("Content-Type", "application/json")
+        return res.end(JSON.stringify({ error: "The hospital backend is not running." }))
+      }
+
       // Safe fallback for all other routes when port 8010 is down
       return sendJson(getSafeFallbackPayload(pathname))
     })

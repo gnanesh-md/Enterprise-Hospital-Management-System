@@ -191,7 +191,14 @@ export function BedCard<T extends BedCardData>({
           </div>
         ) : (
           <div className="bed-info-card-body">
-            <div className="bed-info-card-status">Available</div>
+            <div className="bed-info-card-status flex items-center justify-between">
+              <span>Available</span>
+              {!readOnly && (
+                <span className="text-[10px] text-emerald-700 font-semibold opacity-75">
+                  Click to allocate &rarr;
+                </span>
+              )}
+            </div>
           </div>
         )}
       </div>

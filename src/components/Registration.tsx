@@ -15,6 +15,7 @@ import {
 } from "../services/db"
 import PatientJourneyModal from "./PatientJourneyModal"
 import { HospAILogo } from "./HospAILogo"
+import { notifyOpRegistered, whatsAppHandoffUrl, smsHandoffUrl } from "../services/patientMessaging"
 
 // Accurate age calculation from Date of Birth
 const calculateAge = (dobString: string): number => {
@@ -225,6 +226,7 @@ export default function Registration({
       })
 
     setSelectedEncounter(createdEncounter)
+    notifyOpRegistered(createdEncounter)
     setGenerationAlert({
       type: "new",
       umr: createdPatient.umr,
@@ -267,6 +269,7 @@ export default function Registration({
   // 2. Handle Existing Patient Workflow -> View Record -> Generate Visit Pass -> Show Digital Card
   const handleCreateRevisitEncounter = (p: DBPatient) => {
     const newEncounter = db.createRevisitEncounter(p.umr)
+    notifyOpRegistered(newEncounter)
 
     setSelectedEncounter(newEncounter)
     setGenerationAlert({
@@ -1014,7 +1017,7 @@ export default function Registration({
                   <span className="font-mono">{booked.token}</span>
                 </p>
 
-                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <div className="mt-4 grid gap-2 sm:grid-cols-4">
                   <div className="bg-white border border-[#BBF7D0] rounded px-3 py-2">
                     <p className="text-[10.5px] font-bold uppercase tracking-wide text-[#15803D]">
                       Sent to OP department
@@ -1031,6 +1034,14 @@ export default function Registration({
                       {booked.doctor} — in their workspace
                     </p>
                   </div>
+                  <div className="bg-white border border-[#86EFAC] rounded px-3 py-2">
+                    <p className="text-[10.5px] font-bold uppercase tracking-wide text-[#15803D]">
+                      📱 Patient Alert
+                    </p>
+                    <p className="text-[11.5px] text-[#166534] mt-0.5 truncate" title={booked.phone}>
+                      SMS &amp; WhatsApp sent ({booked.phone || "patient"})
+                    </p>
+                  </div>
                   <div className="bg-white border border-[#FDE68A] rounded px-3 py-2">
                     <p className="text-[10.5px] font-bold uppercase tracking-wide text-[#92400E]">
                       Next at this desk
@@ -1042,6 +1053,36 @@ export default function Registration({
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {booked.phone && (
+                    <>
+                      <a
+                        href={
+                          whatsAppHandoffUrl(
+                            booked.phone,
+                            `Dear ${booked.name}, your appointment with ${booked.doctor} (${booked.dept}) is confirmed. Token ${booked.token}, Room ${booked.room}. Imperial Hospitals`,
+                          ) || "#"
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-3.5 py-2 bg-[#25D366] hover:bg-[#20BD5A] text-white text-[12.5px] font-semibold rounded shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        title="Open in WhatsApp directly"
+                      >
+                        <span>💬</span> Open in WhatsApp
+                      </a>
+                      <a
+                        href={
+                          smsHandoffUrl(
+                            booked.phone,
+                            `Dear ${booked.name}, your appointment with ${booked.doctor} (${booked.dept}) is confirmed. Token ${booked.token}, Room ${booked.room}. Imperial Hospitals`,
+                          ) || "#"
+                        }
+                        className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white text-[12.5px] font-semibold rounded shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                        title="Open SMS app directly"
+                      >
+                        <span>📲</span> Open in SMS
+                      </a>
+                    </>
+                  )}
                   {onGoToBilling && (
                     <button
                       type="button"
