@@ -7,6 +7,7 @@
 // modal is a picture of whatever happened to be scrolled into view.
 
 import { getMessagingSettings, type PatientDocument } from "../services/patientMessaging"
+import { getBranding, hospitalInitials } from "./branding"
 
 export type DocSection = {
   heading: string
@@ -70,36 +71,75 @@ export async function buildPatientPdf(spec: PatientDocSpec): Promise<PatientDocu
   doc.rect(margin, y, width, 1.2, "F")
   y += 3.5
 
-  // Hospital Main Header
+  // Letterhead: the hospital (its uploaded logo, if any, and name) on the left,
+  // HospAI on the right. The same identity as the printed documents
+  // (components/branding/DocumentBranding.tsx).
+  const brand = getBranding()
+  const right = pageW - margin
+  let nameX = margin
+  if (brand.hospitalLogo) {
+    const lw = Math.min(11 * brand.hospitalLogo.ratio, 36)
+    const lh = lw / brand.hospitalLogo.ratio
+    try {
+      doc.addImage(brand.hospitalLogo.src, "PNG", margin, y + (11 - lh) / 2, lw, lh)
+      nameX = margin + lw + 3
+    } catch {
+      // an unreadable logo must not stop the document
+    }
+  } else {
+    // No logo uploaded yet: the hospital's initials, as on the printed page.
+    doc.setFillColor(27, 79, 216)
+    doc.roundedRect(margin, y, 11, 11, 2, 2, "F")
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(255, 255, 255)
+    doc.text(hospitalInitials(brand.hospitalName), margin + 5.5, y + 7.2, { align: "center" })
+    nameX = margin + 14
+  }
+
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(14)
+  doc.setFontSize(13)
+  const wHosp = doc.getTextWidth("Hosp")
+  const wAI = doc.getTextWidth("AI")
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(6.2)
+  const tagline = "AI-DRIVEN HEALTHCARE"
+  const brandTextX = right - Math.max(wHosp + wAI, doc.getTextWidth(tagline))
+  const markH = 10
+  const markW = markH * brand.hospaiMarkRatio
+  const markX = brandTextX - 2 - markW
+  doc.addImage(brand.hospaiMark, "PNG", markX, y + 0.5, markW, markH)
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(13)
   doc.setTextColor(15, 23, 42)
-  doc.text(pdfSafe(settings.hospitalName.toUpperCase()), margin, y + 4.2)
+  doc.text("Hosp", brandTextX, y + 5.4)
+  doc.setTextColor(225, 29, 46)
+  doc.text("AI", brandTextX + wHosp, y + 5.4)
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(6.2)
+  doc.setTextColor(100, 116, 139)
+  doc.text(tagline, brandTextX, y + 9.2)
+
+  // Hospital name, shrunk to fit beside the HospAI block if it is long.
+  const nameRoom = markX - 4 - nameX
+  let nameSize = 14
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(nameSize)
+  while (nameSize > 9 && doc.getTextWidth(pdfSafe(brand.hospitalName.toUpperCase())) > nameRoom) {
+    nameSize -= 0.5
+    doc.setFontSize(nameSize)
+  }
+  doc.setTextColor(15, 23, 42)
+  doc.text(pdfSafe(brand.hospitalName.toUpperCase()), nameX, y + 4.4)
 
   doc.setFont("helvetica", "normal")
   doc.setFontSize(7.5)
   doc.setTextColor(71, 85, 105)
-  doc.text(pdfSafe("DEPARTMENT OF CLINICAL SERVICES · OUTPATIENT CARE DIVISION"), margin, y + 8.5)
-
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(7.5)
+  doc.text(pdfSafe("DEPARTMENT OF CLINICAL SERVICES"), nameX, y + 8.4)
+  doc.setFontSize(7)
   doc.setTextColor(100, 116, 139)
-  doc.text(
-    pdfSafe(`Helpline: ${settings.helpline}  |  OP: ${settings.opHours}`),
-    pageW - margin,
-    y + 4.2,
-    { align: "right" },
-  )
-  doc.setFont("helvetica", "bold")
-  doc.setFontSize(7.5)
-  doc.setTextColor(27, 79, 216)
-  doc.text(
-    pdfSafe("ELECTRONIC HEALTH RECORD (NABH ACCREDITED)"),
-    pageW - margin,
-    y + 8.5,
-    { align: "right" },
-  )
-  y += 12
+  doc.text(pdfSafe(`Helpline: ${settings.helpline}  |  OP: ${settings.opHours}`), nameX, y + 11.8)
+  y += 14.5
 
   // Divider Rules
   doc.setDrawColor(27, 79, 216)
@@ -346,10 +386,33 @@ export async function buildPatientPdf(spec: PatientDocSpec): Promise<PatientDocu
       ),
       margin,
       pageH - 6,
-      { maxWidth: width - 26 },
+      { maxWidth: width - 70 },
     )
     doc.setFont("helvetica", "bold")
-    doc.text(`Page ${i} of ${pages}`, pageW - margin, pageH - 6, { align: "right" })
+    const pageLabel = `Page ${i} of ${pages}`
+    doc.text(pageLabel, right, pageH - 6, { align: "right" })
+
+    // "Powered by [mark] Kalpra Tech", to the left of the page number.
+    let px = right - doc.getTextWidth(pageLabel) - 5
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(7)
+    const wTech = doc.getTextWidth(" Tech")
+    const wKalpra = doc.getTextWidth("Kalpra")
+    px -= wTech
+    doc.setTextColor(56, 56, 104)
+    doc.text(" Tech", px, pageH - 6)
+    px -= wKalpra
+    doc.setTextColor(176, 32, 48)
+    doc.text("Kalpra", px, pageH - 6)
+    const kH = 3.4
+    const kW = kH * brand.kalpraMarkRatio
+    px -= kW + 0.8
+    doc.addImage(brand.kalpraMark, "PNG", px, pageH - 6 - kH + 0.6, kW, kH)
+    doc.setFont("helvetica", "normal")
+    doc.setTextColor(148, 163, 184)
+    px -= 0.8
+    doc.text("Powered by", px, pageH - 6, { align: "right" })
+    doc.setTextColor(100, 116, 139)
   }
 
   const dataUri: string = doc.output("datauristring")

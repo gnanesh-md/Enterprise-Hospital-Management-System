@@ -266,6 +266,54 @@ Both stores are localStorage-backed with `BroadcastChannel` fan-out, like the re
 `hospai_rbac_roles_v3` (bumped from v2) is what grants the new `doctor_portal` and `lab_billing`
 modules to existing browsers.
 
+## Clinical Summaries → discharge summary
+
+**Hosp AI → Clinical Summaries** opens on *Discharge summary*: search a patient (name / UMR / phone),
+pick a stay, get the complete summary; the old PDF summarizer is the second tab
+([src/components/clinicalSummaries/](src/components/clinicalSummaries/)).
+
+[src/services/dischargeSummaryCompiler.ts](src/services/dischargeSummaryCompiler.ts) has two layers, kept apart:
+
+- **Record** (`compileDischargeSummary`): copies only what desks recorded -- bed discharges, ICU
+  discharges, current beds, ER visits, OP encounters, doctor-portal consultations, prescriptions, lab
+  orders, OT booklets, and the backend EMR. A missing field is `null` and the page says "Not recorded".
+  Do **not** reuse `GlobalSearchService.getPatientActivityProfile` here: it fills gaps with invented
+  values (age 38, O+, a placeholder phone).
+- **Narrative** (`generateDischargeNarrative`): one Qwen call per patient / stay, at temperature 0,
+  writes the hospital course, advice, follow-up and warning signs from a pruned fact sheet. It also lists
+  diagnoses and discharge medicines *stated in the notes*, which the page shows only when none are
+  coded or prescribed, tagged "confirm". If vLLM is down it falls back to `recordBasedNarrative`.
+
+The stores share no patient key, so records join by any shared id and, failing that, by full name
+(never across conflicting ages); a name-only link puts a "verify identity" warning on the summary.
+Stays are windowed by date (admission − 3 days → discharge + 1 day), because clinical rows carry no
+admission id. The backend EMR is read with a raw `fetch`, never `apiFetch`, whose offline mock
+invents demographics. Print uses `.printable-area`; PDF and Send use
+`buildCompiledDischargeSummaryDocument` in [src/lib/patientDocuments.ts](src/lib/patientDocuments.ts).
+
+**Review before signing** ([useDischargeReview.ts](src/components/clinicalSummaries/useDischargeReview.ts)):
+only the AI-written narrative is editable (hospital course, advice, follow-up, warning signs,
+condition); recorded facts are corrected at the desk that recorded them. Edits, the checklist and
+the "reviewed by" stamp live per patient + stay + scope in localStorage
+(`hospai_discharge_review_v1:*`, not yet saved to the chart), and any edit after sign-off reopens the
+review. Print, PDF, copy and Send all go through `withEdits()`, and the PDF says "not yet reviewed"
+until someone has. The page is `PatientSearchPanel` + `ReviewPanel` + `SummaryDocument`, wired by
+`PatientDischargeSummary`; children of its scroll column are `shrink-0`, because a flex column
+otherwise squashes the document instead of scrolling it.
+
+## Document branding
+
+Printed clinical documents carry one identity from [src/lib/branding.ts](src/lib/branding.ts): the
+hospital's own logo and name on the left, HospAI on the right, "Powered by Kalpra Tech" at the foot.
+Screen/print use `DocumentBrandHeader` / `PoweredByKalpra`
+([src/components/branding/DocumentBranding.tsx](src/components/branding/DocumentBranding.tsx)) -- the
+discharge summary and the OP clinical journey print sheet (`PatientJourneyModal.tsx`); every patient
+PDF gets the same header and footer in `buildPatientPdf`. The hospital logo is uploaded under
+**Patient Messages → Templates & routing** (scaled to 600 × 240, stored in
+`hospai_hospital_logo_v1`); until then the hospital's initials stand in. Use the cropped marks in
+`src/assets/brandMarks.ts`, not `HOSPAI_LOGO_BASE64` on paper: that logo sets "Hosp" in white for the
+dark sidebar and vanishes on a white page. `public/*.png` are Git LFS pointers, not images.
+
 ## Insurance department
 
 One insurance engine shared by OP / IP / ER / OT / ICU —

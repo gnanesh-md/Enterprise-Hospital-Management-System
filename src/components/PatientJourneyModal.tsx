@@ -10,6 +10,7 @@ import {
   type JourneyStep,
 } from "../lib/patientDocuments"
 import { downloadPatientDocument } from "../lib/patientDocumentPdf"
+import { DocumentBrandHeader, PoweredByKalpra, useBranding } from "./branding/DocumentBranding"
 
 interface PatientJourneyModalProps {
   encounter: DBOPEncounter | null
@@ -67,6 +68,7 @@ export default function PatientJourneyModal({
     useState<"current_journey" | "previous_consultations">("current_journey")
   const [, setTick] = useState(0)
   const [downloading, setDownloading] = useState(false)
+  const branding = useBranding()
 
   React.useEffect(() => {
     const unsubDb = db.subscribe(() => setTick((t) => t + 1))
@@ -285,32 +287,14 @@ export default function PatientJourneyModal({
       id="patient-journey-print-sheet"
       className="patient-journey-print-sheet hidden print:block p-0 text-slate-900 bg-white font-sans text-[9.5px] space-y-1.5 w-full"
     >
-      {/* 1. Official Hospital Header */}
-      <div className="border-b-2 border-slate-900 pb-2 break-inside-avoid page-break-inside-avoid">
-        <div className="flex justify-between items-start">
-          <div>
-            <h1 className="text-xl font-bold uppercase tracking-wider text-slate-900">
-              ENTERPRISE HOSPITAL MANAGEMENT SYSTEM
-            </h1>
-            <p className="text-[11px] text-slate-700 font-semibold uppercase tracking-wide mt-0.5">
-              DEPARTMENT OF CLINICAL SERVICES · OUTPATIENT CARE DIVISION
-            </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">
-              Helpline: +91 40 6812 3456 · 24/7 Priority Emergency &amp; OPD Services · info@enterprise-hospital.org
-            </p>
-          </div>
-          <div className="text-right">
-            <span className="inline-block px-2.5 py-1 text-[10px] font-bold bg-slate-100 border border-slate-400 text-slate-900 uppercase">
-              NABH ACCREDITED HEALTHCARE
-            </span>
-            <div className="text-[12px] font-bold text-blue-900 mt-1 uppercase tracking-tight">
-              Official Outpatient Journey Record
-            </div>
-            <p className="text-[9.5px] text-slate-500 mt-0.5">
-              Generated: {new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
-            </p>
-          </div>
-        </div>
+      {/* 1. Letterhead: the hospital (its uploaded logo and name) and HospAI */}
+      <div className="pb-2 break-inside-avoid page-break-inside-avoid">
+        <DocumentBrandHeader
+          branding={branding}
+          title="Outpatient clinical journey record"
+          department="Department of Clinical Services · Outpatient care"
+          meta={`Generated ${new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}`}
+        />
       </div>
 
       {/* 2. Structured Patient Demographics Table */}
@@ -524,7 +508,7 @@ export default function PatientJourneyModal({
               Electronic Verification &amp; Attestation
             </span>
             <p className="text-slate-600 mt-0.5 leading-tight text-[9px]">
-              Digitally verified from Enterprise Hospital Information System (HIS).
+              Digitally verified from the {branding.hospitalName} record in HospAI.
               Clinical parameters authenticated against certified attending practitioner entries.
             </p>
             <div className="mt-1.5 text-[8px] font-mono text-slate-500 border-t border-slate-200 pt-0.5">
@@ -551,8 +535,12 @@ export default function PatientJourneyModal({
           </div>
         </div>
 
-        <div className="mt-1.5 text-center text-[7.5px] text-slate-500 border-t border-slate-200 pt-0.5">
-          Enterprise Hospital Management System · 24/7 Outpatient &amp; Emergency Helpline: +91 40 6812 3456 · Strictly Confidential Medical Document
+        <div className="mt-1.5 border-t border-slate-200 pt-1 flex items-center justify-between gap-3 text-[8px] text-slate-500">
+          <span>
+            {branding.hospitalName}
+            {branding.helpline ? ` · Helpline ${branding.helpline}` : ""} · Strictly confidential medical document
+          </span>
+          <PoweredByKalpra branding={branding} />
         </div>
       </div>
     </div>

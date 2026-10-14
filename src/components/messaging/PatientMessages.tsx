@@ -38,6 +38,8 @@ import {
   type PatientNotification,
 } from "../../services/patientNotifications"
 import { formatDateTimeIST } from "../../lib/format"
+import { BRANDING_EVENT, prepareHospitalLogo, saveHospitalLogo } from "../../lib/branding"
+import { HospitalMark, useBranding } from "../branding/DocumentBranding"
 
 /**
  * Patient Messages: everything sent (or waiting to be sent) to patients by
@@ -356,6 +358,8 @@ function TemplatesTab() {
   }
   const save = () => {
     saveMessagingSettings(settings)
+    // The hospital name heads every printed document -- let open ones redraw.
+    window.dispatchEvent(new Event(BRANDING_EVENT))
     setSaved(true)
   }
 
@@ -386,6 +390,7 @@ function TemplatesTab() {
             </label>
           ))}
         </div>
+        <HospitalLogoField />
       </section>
 
       {groups.map((group) => (
@@ -756,6 +761,65 @@ function SetupTab({ status, onSaved }: { status: MessagingStatus | null ;onSaved
           </>
         )}
       </section>
+    </div>
+  )
+}
+
+/**
+ * The hospital's own logo, printed beside HospAI at the head of discharge
+ * summaries, clinical journeys and patient PDFs. Saved as soon as it is chosen.
+ */
+function HospitalLogoField() {
+  const branding = useBranding()
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<{ ok: boolean ;text: string } | null>(null)
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    setBusy(true)
+    setMessage(null)
+    try {
+      saveHospitalLogo(await prepareHospitalLogo(file))
+      setMessage({ ok: true, text: "Logo saved. It now heads every printed document." })
+    } catch (err) {
+      setMessage({ ok: false, text: err instanceof Error ? err.message : "Could not use that image." })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-[#EEF1F6] flex flex-wrap items-center gap-4">
+      <div className="h-14 min-w-14 px-2 rounded-[8px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] flex items-center justify-center">
+        <HospitalMark branding={branding} height={40} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[12.5px] font-medium text-gray-900">Hospital logo</div>
+        <div className="text-[11.5px] text-[#64748B]">
+          Printed beside the HospAI logo on discharge summaries, clinical journeys and patient PDFs. PNG with a transparent background works best.
+        </div>
+        {message && <div className={`mt-1 text-[11.5px] ${message.ok ? "text-[#15803D]" : "text-[#B91C1C]"}`}>{message.text}</div>}
+      </div>
+      <div className="flex items-center gap-2">
+        <label className={`h-9 px-3 inline-flex items-center rounded-[6px] bg-[#1B4FD8] text-white text-[12.5px] font-medium cursor-pointer hover:bg-[#1740B4] ${busy ? "opacity-60 pointer-events-none" : ""}`}>
+          {busy ? "Saving…" : branding.hospitalLogo ? "Replace logo" : "Upload logo"}
+          <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif" className="hidden" onChange={onFile} />
+        </label>
+        {branding.hospitalLogo && (
+          <button
+            type="button"
+            onClick={() => {
+              saveHospitalLogo(null)
+              setMessage({ ok: true, text: "Logo removed. Documents show the hospital's initials instead." })
+            }}
+            className="h-9 px-3 rounded-[6px] border border-[#DDE2EC] text-[12.5px] font-medium text-[#475569] hover:bg-[#F8FAFC] cursor-pointer"
+          >
+            Remove
+          </button>
+        )}
+      </div>
     </div>
   )
 }

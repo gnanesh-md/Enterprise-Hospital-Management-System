@@ -19,13 +19,23 @@ type Props = {
 
 const STATUS_STYLE: Record<string, string> = {
   PENDING: "bg-[#FEF3C7] text-[#B45309]",
+  PENDING_MAPPING: "bg-[#FEF3C7] text-[#B45309]",
   MAPPING: "bg-[#DBEAFE] text-[#1D4ED8]",
+  IMPORTING: "bg-[#DBEAFE] text-[#1D4ED8]",
   PROCESSING: "bg-[#DBEAFE] text-[#1D4ED8]",
   RUNNING: "bg-[#DBEAFE] text-[#1D4ED8]",
+  AWAITING_PROMPT: "bg-[#DCFCE7] text-[#15803D]",
   COMPLETED: "bg-[#DCFCE7] text-[#15803D]",
   DONE: "bg-[#DCFCE7] text-[#15803D]",
   FAILED: "bg-[#FEE2E2] text-[#B91C1C]",
 }
+
+// The backend's job states (bulk_import/tasks.py): a spreadsheet goes
+// PENDING_MAPPING -> IMPORTING -> DONE, a document PENDING_MAPPING ->
+// AWAITING_PROMPT (text extracted). Polling used to stop at the first of these
+// it did not recognise -- PENDING_MAPPING -- so every job sat there forever.
+const ACTIVE_STATUSES = ["PENDING", "PENDING_MAPPING", "MAPPING", "IMPORTING", "PROCESSING", "RUNNING"]
+const FINISHED_STATUSES = ["COMPLETED", "DONE", "AWAITING_PROMPT"]
 
 export default function BulkAI({ setNotice }: Props) {
   const [jobs, setJobs] = useState<BulkJob[]>([])
@@ -37,13 +47,7 @@ export default function BulkAI({ setNotice }: Props) {
     pollRef.current = window.setInterval(() => {
       setJobs((prev) => {
         prev
-          .filter(
-            (j) =>
-              j.status === "PENDING" ||
-              j.status === "MAPPING" ||
-              j.status === "PROCESSING" ||
-              j.status === "RUNNING",
-          )
+          .filter((j) => ACTIVE_STATUSES.includes(j.status))
           .forEach((j) => void refreshJob(j.id))
         return prev
       })
@@ -113,12 +117,8 @@ export default function BulkAI({ setNotice }: Props) {
     }
   }
 
-  const activeCount = jobs.filter((j) =>
-    ["PENDING", "MAPPING", "PROCESSING", "RUNNING"].includes(j.status),
-  ).length
-  const completedCount = jobs.filter(
-    (j) => j.status === "COMPLETED" || j.status === "DONE",
-  ).length
+  const activeCount = jobs.filter((j) => ACTIVE_STATUSES.includes(j.status)).length
+  const completedCount = jobs.filter((j) => FINISHED_STATUSES.includes(j.status)).length
   const failedCount = jobs.filter((j) => j.status === "FAILED").length
 
   return (
@@ -237,7 +237,7 @@ export default function BulkAI({ setNotice }: Props) {
                     <span
                       className={`px-2 py-0.5 text-[10.5px] font-medium rounded uppercase tracking-wider whitespace-nowrap ${STATUS_STYLE[job.status] || "bg-[#F1F5F9] text-[#64748B]"}`}
                     >
-                      {job.status}
+                      {job.status.replace(/_/g, " ")}
                     </span>
                   </div>
                 ))}

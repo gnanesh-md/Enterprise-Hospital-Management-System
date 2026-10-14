@@ -651,11 +651,21 @@ export default function NurseStation({
               filteredWaiting.map((e) => {
                 const active = e.id === selectedId
                 const waitMins = waitMinutes(e)
+                // Not a <button>: the card holds the Call / Re-call buttons, and a
+                // button inside a button is invalid HTML (React logs it on every render).
                 return (
-                  <button
+                  <div
                     key={e.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => select(e)}
+                    onKeyDown={(evt) => {
+                      if (evt.target !== evt.currentTarget) return
+                      if (evt.key === "Enter" || evt.key === " ") {
+                        evt.preventDefault()
+                        select(e)
+                      }
+                    }}
                     className={`w-full text-left p-3 transition-colors border-l-4 cursor-pointer ${
                       active
                         ? "bg-blue-50/90 border-l-blue-600 shadow-2xs"
@@ -729,7 +739,7 @@ export default function NurseStation({
                         </button>
                       )}
                     </div>
-                  </button>
+                  </div>
                 )
               })
             )}

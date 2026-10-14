@@ -6,6 +6,12 @@ import type { ClaimRecord, PaymentRecord } from "../services/billingDb"
 import type { PatientDocument } from "../services/patientMessaging"
 import { buildPatientPdf, documentFilename, type DocSection } from "./patientDocumentPdf"
 import { formatDateTimeIST } from "./format"
+import {
+  formatDate as formatSummaryDate,
+  type DischargeNarrative,
+  type DischargeSummaryData,
+  type SummaryReview,
+} from "../services/dischargeSummaryCompiler"
 
 const rs = (n: number | undefined | null) =>
   `Rs ${(Number(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -157,6 +163,177 @@ export async function buildDischargeSummaryDocument(input: {
       : [{ heading: "Summary", text: input.text }],
     footnote:
       "Compiled from the hospital record of this admission. Continue medicines only as advised by your doctor.",
+  })
+}
+
+// ── Discharge summary (Hosp AI → Clinical Summaries) ─────────────────────────
+
+/**
+ * The compiled, sectioned discharge summary -- same content and order as the
+ * page shows, so the PDF a patient is sent matches what the doctor reviewed.
+ */
+const flagWord = (flag: string) => {
+  const f = flag.toUpperCase()
+  return f.startsWith("C") ? "Critical" : f === "H" ? "High" : f === "L" ? "Low" : flag
+}
+
+export async function buildCompiledDischargeSummaryDocument(
+  data: DischargeSummaryData,
+  narrative: DischargeNarrative | null,
+  review?: SummaryReview | null,
+): Promise<PatientDocument> {
+  const ep = data.episode
+  const day = (iso?: string | null) => (iso ? formatSummaryDate(iso) : "")
+  const extra: [string, string][] = []
+  if (data.patient.age != null || data.patient.gender) {
+    extra.push(["Age / Sex", `${data.patient.age ?? "-"} / ${data.patient.gender || "-"}`])
+  }
+  if (data.patient.bloodGroup) extra.push(["Blood group", data.patient.bloodGroup])
+  if (ep) {
+    extra.push(["Admitted", ep.admittedAt ? when(ep.admittedAt) : "Not recorded"])
+    extra.push(["Discharged", ep.dischargedAt ? when(ep.dischargedAt) : "Currently admitted"])
+    if (ep.ward) extra.push(["Ward", `${ep.ward}${ep.bed ? ` (${ep.bed})` : ""}`])
+    if (ep.attendingDoctor) extra.push(["Consultant", ep.attendingDoctor])
+    if (ep.lengthOfStayDays) extra.push(["Length of stay", `${ep.lengthOfStayDays} day(s)`])
+    if (ep.dischargeType) extra.push(["Discharge type", ep.dischargeType])
+  }
+  if (data.patient.address) extra.push(["Address", data.patient.address])
+  if (data.patient.emergencyContact) extra.push(["Emergency contact", data.patient.emergencyContact])
+  if (data.patient.allergies) extra.push(["Allergies", data.patient.allergies])
+
+  const none = "Not recorded for this stay."
+  const sections: DocSection[] = [
+    {
+      heading: data.diagnoses.length || !narrative?.diagnoses.length ? "Diagnosis" : "Diagnosis (as stated in the notes)",
+      table: data.diagnoses.length
+        ? { head: ["Diagnosis", "ICD-10"], body: data.diagnoses.map((d) => [d.text, d.code || "-"]) }
+        : narrative?.diagnoses.length
+          ? { head: ["Diagnosis"], body: narrative.diagnoses.map((d) => [d]) }
+          : undefined,
+      empty: none,
+    },
+  ]
+  // The same "Key findings" strip the page shows under the diagnosis.
+  const flagged = data.investigations.filter((i) => i.flag && i.result)
+  if (flagged.length) {
+    sections.push({
+      heading: "Key findings",
+      table: { head: ["Test", "Result", "Flag"], body: flagged.slice(0, 8).map((i) => [i.test, i.result, flagWord(i.flag!)]) },
+    })
+  }
+  sections.push({
+    heading: "Presenting complaints",
+    text: data.complaints.map((c) => `- ${c.text}${c.detail ? ` (${c.detail})` : ""}`).join("\n") || undefined,
+    empty: none,
+  })
+  const arrival = data.arrival
+  if (arrival) {
+    const rows = ([
+      ["Arrived", arrival.at ? when(arrival.at) : ""],
+      ["Mode of arrival", arrival.mode || ""],
+      ["Brought by", arrival.broughtBy || ""],
+      ["Condition on arrival", arrival.condition || ""],
+      ["Consciousness", arrival.consciousness || ""],
+      ["Triage", [arrival.triage, arrival.triageReason].filter(Boolean).join(" - ")],
+    ] as [string, string][]).filter(([, v]) => v)
+    if (rows.length) sections.push({ heading: "Arrival", rows })
+  }
+  if (narrative?.hospitalCourse) {
+    sections.push({
+      // Says "reviewed" only once someone has -- an unreviewed AI draft is labelled as one.
+      heading: !narrative.aiGenerated
+        ? "Hospital course"
+        : review
+          ? `Hospital course (AI drafted, reviewed by ${review.by})`
+          : "Hospital course (AI draft, not yet reviewed)",
+      text: narrative.hospitalCourse,
+    })
+  }
+  if (data.vitals.length) {
+    // One column per measurement actually recorded, in the order a chart reads.
+    const ORDER = ["BP", "Pulse", "Resp. rate", "SpO₂", "Temp", "GCS", "Pain", "Weight"]
+    const recorded = new Set(data.vitals.flatMap((v) => v.values.map(([k]) => k)))
+    const cols = [...ORDER.filter((k) => recorded.has(k)), ...[...recorded].filter((k) => !ORDER.includes(k))]
+    sections.push({
+      heading: "Vitals",
+      table: {
+        head: ["When", "Where", ...cols.map((c) => c.replace("SpO₂", "SpO2"))],
+        body: data.vitals.map((v) => [when(v.at), v.label, ...cols.map((c) => v.values.find(([k]) => k === c)?.[1] || "-")]),
+      },
+    })
+  }
+  if (data.procedures.length || data.treatments.length) {
+    sections.push({
+      heading: "Procedures & treatment",
+      table: {
+        head: ["Date", "Procedure / treatment", "By / notes"],
+        body: [
+          ...data.procedures.map((p) => [day(p.date), p.name, [p.by, p.notes].filter(Boolean).join(" · ")]),
+          ...data.treatments.map((t) => [day(t.date), `${t.kind}: ${t.text}`, t.author || ""]),
+        ],
+      },
+    })
+  }
+  sections.push({
+    heading: "Investigations",
+    table: data.investigations.length
+      ? {
+          head: ["Test", "Result", "Reference", "Flag", "Date"],
+          body: data.investigations.map((i) => [i.test, i.result || i.status, i.range || "", i.flag || "", day(i.date)]),
+        }
+      : undefined,
+    empty: none,
+  })
+  const notedMeds = !data.dischargeMedications.length ? narrative?.dischargeMedications || [] : []
+  sections.push({
+    heading: notedMeds.length ? "Discharge medications (as stated in the notes)" : "Discharge medications",
+    table: data.dischargeMedications.length
+      ? {
+          head: ["#", "Medicine", "Dose", "Frequency", "Duration", "Instructions"],
+          body: data.dischargeMedications.map((m, n) => [String(n + 1), m.medicine, m.dose, m.frequency, m.duration, m.instructions]),
+        }
+      : notedMeds.length
+        ? {
+            head: ["#", "Medicine", "Dose", "Frequency", "Duration"],
+            body: notedMeds.map((m, n) => [String(n + 1), m.medicine, m.dose, m.frequency, m.duration]),
+          }
+        : undefined,
+    empty: "No discharge medications recorded.",
+  })
+  if (data.stayMedications.length) {
+    sections.push({
+      heading: "Also given during the stay",
+      text: data.stayMedications.map((m) => `- ${[m.medicine, m.dose, m.frequency].filter(Boolean).join(" ")}`).join("\n"),
+    })
+  }
+  const advice = [...data.advice.map((a) => a.text), ...(narrative?.advice || [])]
+  if (advice.length) sections.push({ heading: "Advice", text: advice.map((a) => `- ${a}`).join("\n") })
+  if (narrative?.followUp) sections.push({ heading: "Follow-up", text: narrative.followUp })
+  if (narrative?.warningSigns.length) {
+    sections.push({ heading: "Return to hospital immediately if", text: narrative.warningSigns.map((w) => `- ${w}`).join("\n") })
+  }
+  const condition = narrative?.conditionAtDischarge || ep?.condition || ep?.dischargeReason
+  if (condition) sections.push({ heading: "Condition at discharge", text: condition })
+  if (data.notes.length) {
+    sections.push({
+      heading: "Clinical notes",
+      table: {
+        head: ["When", "Note", "Details"],
+        body: data.notes.map((n) => [day(n.date), [n.kind.charAt(0).toUpperCase() + n.kind.slice(1), n.author].filter(Boolean).join("\n"), n.text]),
+      },
+    })
+  }
+
+  return buildPatientPdf({
+    title: "Discharge Summary",
+    filename: documentFilename(data.patient.name, "discharge-summary"),
+    patient: { name: data.patient.name, id: data.patient.ids[0], phone: data.patient.phone || undefined, extra },
+    sections,
+    footnote: review
+      ? `Compiled from the hospital record and reviewed by ${review.by} on ${when(review.at)}. Continue medicines only as advised by your doctor.`
+      : narrative?.aiGenerated
+        ? `Compiled from the hospital record; narrative sections drafted by AI (${narrative.engine}) and not yet reviewed by the treating consultant. Continue medicines only as advised by your doctor.`
+        : "Compiled from the hospital record of this stay. Continue medicines only as advised by your doctor.",
   })
 }
 
