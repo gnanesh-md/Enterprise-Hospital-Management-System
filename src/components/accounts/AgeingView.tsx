@@ -33,12 +33,14 @@ export default function AgeingView({ ledger }: { ledger: "AR" | "AP" }) {
       />
       <Loaded state={state}>
         {(data) => {
-          const items = party ? data.items.filter((i) => `${i.party_type}:${i.party_id}` === party) : data.items
+          const rawItems = Array.isArray(data?.items) ? data.items : []
+          const totals = data?.totals || { current: 0, "1-30": 0, "31-60": 0, "61-90": 0, "90+": 0 }
+          const items = party ? rawItems.filter((i) => `${i.party_type}:${i.party_id}` === party) : rawItems
           return (
             <div className="space-y-4">
               <Grid cols={5}>
                 {BUCKETS.map((b) => (
-                  <Stat key={b} label={BUCKET_LABEL[b]} value={formatINRShort(data.totals[b])} tone={b === "90+" && data.totals[b] > 0 ? "bad" : b === "61-90" && data.totals[b] > 0 ? "warn" : "default"} />
+                  <Stat key={b} label={BUCKET_LABEL[b]} value={formatINRShort(totals[b] || 0)} tone={b === "90+" && (totals[b] || 0) > 0 ? "bad" : b === "61-90" && (totals[b] || 0) > 0 ? "warn" : "default"} />
                 ))}
               </Grid>
               <div className="flex items-center justify-between gap-2">
@@ -57,7 +59,7 @@ export default function AgeingView({ ledger }: { ledger: "AR" | "AP" }) {
                       downloadCsv(
                         `${ledger.toLowerCase()}-ageing-${asOf}.csv`,
                         ["Party", "Document", "Date", "Due", "Days overdue", "Amount", "Settled", "Outstanding"],
-                        data.items.map((i) => [i.party_name, i.document_no, i.document_date, i.due_date, i.days_overdue, i.amount, i.settled, i.outstanding]),
+                        rawItems.map((i) => [i.party_name, i.document_no, i.document_date, i.due_date, i.days_overdue, i.amount, i.settled, i.outstanding]),
                       )
                     }
                   >
@@ -66,7 +68,7 @@ export default function AgeingView({ ledger }: { ledger: "AR" | "AP" }) {
                 </div>
               </div>
               <Card padded={false}>
-                {data.items.length === 0 ? (
+                {rawItems.length === 0 ? (
                   <Empty>Nothing outstanding as of {formatDate(asOf)}.</Empty>
                 ) : view === "party" && !party ? (
                   <Table dense>

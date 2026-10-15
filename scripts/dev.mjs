@@ -44,6 +44,31 @@ const portInUse = (port) =>
     socket.on("error", () => resolve(false))
   })
 
+const killPort = (port) => {
+  try {
+    if (isWin) {
+      const out = execSync(`netstat -ano`, { encoding: "utf8" })
+      for (const line of out.split("\n")) {
+        const parts = line.trim().split(/\s+/)
+        if (parts.length >= 5 && parts[1].endsWith(`:${port}`) && parts[3] === "LISTENING") {
+          execSync(`taskkill /F /PID ${parts[4]}`, { stdio: "ignore" })
+        }
+      }
+    } else {
+      execSync(`lsof -ti tcp:${port} | xargs kill -9 2>/dev/null || true`, { stdio: "ignore" })
+    }
+  } catch {}
+}
+
+const checkHttpHealthy = async (url, timeoutMs = 1500) => {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) })
+    return res.status < 500
+  } catch {
+    return false
+  }
+}
+
 const log = (name, msg) => console.log(`[${name}] ${msg}`)
 
 // Vite dev-transforms every module on first request, so the very first page
@@ -87,11 +112,12 @@ process.on("SIGINT", () => shutdown(0))
 process.on("SIGTERM", () => shutdown(0))
 
 function run(name, cmd, args, cwd, shell = isWin) {
+  const actualShell = cmd.toLowerCase().endsWith(".exe") ? false : shell
   const child = spawn(cmd, args, {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
     env: process.env,
-    shell,
+    shell: actualShell,
   })
   owned.push(child)
   const pipe = (stream, out) => {
@@ -131,10 +157,8 @@ function exec(name, cmd, args, cwd) {
   })
 }
 
-// --- Keppler OCR frontend (port 3000), started detached ----------------------
-if (await portInUse(OCR_PORT)) {
-  log("keppler-ocr", `already running on port ${OCR_PORT} -- leaving it alone`)
-} else if (!existsSync(OCR_DIR)) {
+// --- Keppler OCR frontend (port 3000) ----------------------------------------
+if (!existsSync(OCR_DIR)) {
   console.warn(
     `[keppler-ocr] ${OCR_DIR} not found -- skipping (Keppler OCR tab will 502)`,
   )
@@ -153,8 +177,22 @@ if (await portInUse(OCR_PORT)) {
       OCR_DIR,
     )
   }
-  const ocrBin = viteBin(OCR_DIR)
-  if (isWin) {
+
+  // Check if port 3000 is occupied
+  if (await portInUse(OCR_PORT)) {
+    const healthy = await checkHttpHealthy(`http://127.0.0.1:${OCR_PORT}/keppler-ocr/`)
+    if (healthy) {
+      log("keppler-ocr", `already running and responsive on port ${OCR_PORT}`)
+    } else {
+      log("keppler-ocr", `port ${OCR_PORT} held by unresponsive process -- clearing...`)
+      killPort(OCR_PORT)
+      await new Promise((r) => setTimeout(r, 600))
+    }
+  }
+
+  // If port 3000 is free (or was cleared above), start OCR frontend as an owned process
+  if (!(await portInUse(OCR_PORT))) {
+    const ocrBin = viteBin(OCR_DIR)
     run(
       "keppler-ocr",
       ocrBin.cmd,
@@ -162,41 +200,59 @@ if (await portInUse(OCR_PORT)) {
       OCR_DIR,
       ocrBin.shell,
     )
-    log("keppler-ocr", `started on port ${OCR_PORT}`)
-  } else {
-    const out = openSync(OCR_LOG, "a")
-    const ocr = spawn(
-      ocrBin.cmd,
-      [...ocrBin.args, "--port", String(OCR_PORT), "--host", "0.0.0.0"],
-      {
-        cwd: OCR_DIR,
-        stdio: ["ignore", out, out],
-        detached: true,
-        env: process.env,
-      },
-    )
-    ocr.unref() // survives this launcher, so restarting the app won't restart it
-    log(
-      "keppler-ocr",
-      `started on port ${OCR_PORT} (pid ${ocr.pid}), logging to ${path.relative(ROOT, OCR_LOG)}`,
-    )
-    log(
-      "keppler-ocr",
-      "stays up across app restarts -- stop it with `npm run dev:stop`",
-    )
+    log("keppler-ocr", `started on port ${OCR_PORT} (running simultaneously with HMS)`)
   }
+
   warmUp(OCR_PORT, "/keppler-ocr/")
+}
+
+// --- Keppler OCR Backend (port 7620) -----------------------------------------
+const OCR_BACKEND_PORT = 7620
+if (await portInUse(OCR_BACKEND_PORT)) {
+  log("ocr-backend", `already running on port ${OCR_BACKEND_PORT}`)
+} else {
+  const composePath = path.join(ROOT, "dpi-ocr-backend", "docker-compose.yml")
+  if (existsSync(composePath)) {
+    try {
+      const docker = isWin ? "docker.cmd" : "docker"
+      spawn(docker, ["compose", "-f", composePath, "up", "-d"], {
+        cwd: path.dirname(composePath),
+        stdio: "ignore",
+        shell: isWin,
+      }).on("error", () => {})
+      log("ocr-backend", `ensuring OCR backend services are up on port ${OCR_BACKEND_PORT}`)
+    } catch {}
+  }
 }
 
 // --- PostgreSQL Service (port 5434) ------------------------------------------
 const PG_PORT = 5434
 const PG_DIR = path.join(ROOT, "pgdata")
-const PG_BIN = "C:\\Program Files\\PostgreSQL\\16\\bin\\postgres.exe"
+const PG_BIN = isWin ? "C:\\Program Files\\PostgreSQL\\16\\bin\\postgres.exe" : ""
 if (await portInUse(PG_PORT)) {
   log("postgres", `already running on port ${PG_PORT}`)
-} else if (existsSync(PG_BIN) && existsSync(PG_DIR)) {
+} else if (PG_BIN && existsSync(PG_BIN) && existsSync(PG_DIR)) {
   run("postgres", PG_BIN, ["-D", PG_DIR, "-p", String(PG_PORT)], ROOT)
   log("postgres", `started on port ${PG_PORT}`)
+} else {
+  const composePath = path.join(ROOT, "dpi-ocr-backend", "docker-compose.yml")
+  if (existsSync(composePath)) {
+    try {
+      const docker = isWin ? "docker.cmd" : "docker"
+      spawn(docker, ["compose", "-f", composePath, "up", "-d", "hrms-postgres"], {
+        cwd: path.dirname(composePath),
+        stdio: "ignore",
+        shell: isWin,
+      }).on("error", () => {})
+      log("postgres", `ensuring PostgreSQL service is up on port ${PG_PORT}`)
+      for (let i = 0; i < 25; i++) {
+        await new Promise((r) => setTimeout(r, 200))
+        if (await portInUse(PG_PORT)) {
+          break
+        }
+      }
+    } catch {}
+  }
 }
 
 // --- Enterprise HRMS Backend (port 8011) -------------------------------------

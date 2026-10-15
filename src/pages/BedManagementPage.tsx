@@ -17,6 +17,7 @@ import {
   FiTool,
   FiUser,
   FiX,
+  FiZap,
 } from "react-icons/fi"
 import StatCard from "../components/StatCard"
 import {
@@ -38,7 +39,11 @@ import DischargedDirectoryView from "../components/bed/DischargedDirectoryView"
 import { WardBedBoard } from "../components/bed/WardBedBoard"
 import { BedTransferNotificationPanel } from "../components/bed/BedTransferNotificationPanel"
 import { WardAlertsNotificationPanel } from "../components/bed/WardAlertsNotificationPanel"
-import { BedDatabase, type BedTransferNotification } from "../services/bedDb"
+import {
+  BedDatabase,
+  type BedTransferNotification,
+  type PendingBedAllocation,
+} from "../services/bedDb"
 
 type Props = {
   setNotice: (notice: Notice | null) => void
@@ -91,6 +96,7 @@ type ErBedRequest = {
   requested_level_of_care: string
   requested_specialty: string | null
   requested_at: string
+  status?: string
 }
 
 function erRequestPatientLabel(req: ErBedRequest): string {
@@ -305,6 +311,8 @@ export default function BedManagementPage({
   const [printCensusOpen, setPrintCensusOpen] = useState(false)
   const [allocating, setAllocating] = useState(false)
   const [filterMatchingOnly, setFilterMatchingOnly] = useState(true)
+  const [activePendingAllocation, setActivePendingAllocation] =
+    useState<PendingBedAllocation | null>(null)
 
   // Discharged Directory View
   const [activeView, setActiveView] = useState<"bed_board" | "discharged">(
@@ -440,6 +448,30 @@ export default function BedManagementPage({
 
   const handleAllocateFromNotification = (notif: BedTransferNotification) => {
     setActiveView("bed_board")
+    const pendingAlloc: PendingBedAllocation = {
+      patient_id: notif.patient_id,
+      name: notif.patient_name,
+      last_name: notif.patient_last_name || undefined,
+      phone: notif.patient_phone || undefined,
+      age: notif.patient_age || undefined,
+      gender: notif.patient_gender || undefined,
+      source: "ER",
+      visit_no: notif.er_visit_id
+        ? `ER-${notif.er_visit_id}`
+        : `TR-${notif.patient_id}`,
+      er_bed_request_id: notif.er_bed_request_id,
+      er_visit_id: notif.er_visit_id,
+      notification_id: notif.id,
+      requested_level_of_care:
+        notif.target_bed_type === "ICU" ? "ICU" : notif.target_destination,
+      requested_specialty: notif.target_ward || notif.target_destination,
+      clinical_notes: `Admitted via Transfer from ${notif.source_department}. Clinical Notes: ${notif.clinical_reason}`,
+      priority: notif.priority,
+      timestamp: notif.sent_at,
+    }
+    setActivePendingAllocation(pendingAlloc)
+    BedDatabase.setPendingAllocation(pendingAlloc)
+
     setAllocatingRequest({
       id: notif.er_bed_request_id || 1000 + Math.floor(Math.random() * 9000),
       er_visit_id: notif.er_visit_id || 1,
@@ -464,10 +496,38 @@ export default function BedManagementPage({
     if (!allocatingRequest || !allocateBedId) return
     setAllocating(true)
     try {
-      await apiFetch(`/api/er/bed-requests/${allocatingRequest.id}/allocate`, {
-        method: "POST",
-        body: JSON.stringify({ bed_id: allocateBedId, notes: allocateNotes }),
-      })
+      try {
+        await apiFetch(`/api/er/bed-requests/${allocatingRequest.id}/allocate`, {
+          method: "POST",
+          body: JSON.stringify({ bed_id: allocateBedId, notes: allocateNotes }),
+        })
+      } catch {
+        // Fallback to direct bed assignment if ER request ID was ad-hoc or from notification
+        await apiFetch(`/api/beds/${allocateBedId}/assign`, {
+          method: "POST",
+          body: JSON.stringify({
+            patient_id: allocatingRequest.patient_id,
+            patient_name: allocatingRequest.patient_name,
+            patient: {
+              patient_id: allocatingRequest.patient_id,
+              name: allocatingRequest.patient_name,
+              last_name: allocatingRequest.patient_last_name || "",
+              age:
+                (allocatingRequest as any).patient_age ||
+                (allocatingRequest as any).age,
+              gender:
+                (allocatingRequest as any).patient_gender ||
+                (allocatingRequest as any).gender,
+              phone:
+                (allocatingRequest as any).patient_phone ||
+                (allocatingRequest as any).phone,
+            },
+            notes: allocateNotes,
+            expected_los_days:
+              allocatingRequest.requested_level_of_care === "ICU" ? 7 : 4,
+          }),
+        })
+      }
 
       // Synchronize Transfer Notification status
       const allocatedBed = beds.find((b) => b.id === allocateBedId)
@@ -488,7 +548,24 @@ export default function BedManagementPage({
           allocateBedId,
           bedLabel,
         )
+      } else {
+        const matchByPat = notifs.find(
+          (n) =>
+            n.patient_id === allocatingRequest.patient_id &&
+            n.status !== "allocated",
+        )
+        if (matchByPat) {
+          BedDatabase.updateNotificationStatus(
+            matchByPat.id,
+            "allocated",
+            allocateBedId,
+            bedLabel,
+          )
+        }
       }
+
+      BedDatabase.clearPendingAllocation()
+      setActivePendingAllocation(null)
 
       setNotice({
         type: "success",
@@ -499,7 +576,7 @@ export default function BedManagementPage({
     } catch (error) {
       reportError(
         setNotice,
-        error as { message?: string ;status?: number },
+        error as { message?: string; status?: number },
         "Unable to allocate this bed.",
       )
     } finally {
@@ -530,12 +607,63 @@ export default function BedManagementPage({
     void loadBeds()
     void loadErRequests()
     void loadDischarged()
-    // ER bed requests used to only ever load once on mount -- reception had
-    // no way to know a new one landed without leaving and reopening this
-    // page. Same poll interval as the Emergency/Triage nav badges.
+    // ER bed requests poll interval
     const interval = window.setInterval(() => void loadErRequests(), 20000)
     return () => window.clearInterval(interval)
   }, [])
+
+  // Auto-listen to pending allocation handovers from ER & other departments
+  useEffect(() => {
+    const existing = BedDatabase.getPendingAllocation()
+    if (existing) {
+      setActivePendingAllocation(existing)
+      setActiveView("bed_board")
+      if (
+        existing.requested_level_of_care === "ICU" ||
+        (existing.requested_specialty || "").toLowerCase().includes("icu")
+      ) {
+        setSelectedWard("ICU")
+      }
+    }
+
+    const handleInitiate = (e: any) => {
+      const alloc: PendingBedAllocation =
+        e.detail || BedDatabase.getPendingAllocation()
+      if (alloc) {
+        setActivePendingAllocation(alloc)
+        setActiveView("bed_board")
+        if (
+          alloc.requested_level_of_care === "ICU" ||
+          (alloc.requested_specialty || "").toLowerCase().includes("icu")
+        ) {
+          setSelectedWard("ICU")
+        }
+      }
+    }
+
+    const handleClear = () => {
+      setActivePendingAllocation(null)
+    }
+
+    window.addEventListener("bed:initiate_allocation", handleInitiate)
+    window.addEventListener("bed:clear_allocation", handleClear)
+    return () => {
+      window.removeEventListener("bed:initiate_allocation", handleInitiate)
+      window.removeEventListener("bed:clear_allocation", handleClear)
+    }
+  }, [])
+
+  // Auto-open targeted bed from board click
+  useEffect(() => {
+    const targetBedId = sessionStorage.getItem("hospai_target_bed_id")
+    if (targetBedId && beds.length > 0) {
+      sessionStorage.removeItem("hospai_target_bed_id")
+      const found = beds.find((b) => String(b.id) === targetBedId)
+      if (found) {
+        openBed(found)
+      }
+    }
+  }, [beds])
 
   useEffect(() => {
     if (patientQuery.trim().length < 2) {
@@ -588,11 +716,33 @@ export default function BedManagementPage({
           BED_TYPE_DEFAULT_DAILY_RATE.General,
       ),
     })
-    setPatientQuery("")
-    setPatientResults([])
-    setSelectedPatient(null)
-    setAssignNotes("")
-    setExpectedLosDays("")
+
+    // If an active pending allocation is present, AUTO-FETCH and pre-fill immediately!
+    const pending = activePendingAllocation || BedDatabase.getPendingAllocation()
+    if (bed.status === "Available" && pending) {
+      const pat: Patient = {
+        patient_id: pending.patient_id,
+        name: pending.name,
+        last_name: pending.last_name || "",
+        phone: pending.phone || "",
+        age: pending.age ?? undefined,
+        gender: pending.gender || "Male",
+      }
+      setSelectedPatient(pat)
+      setPatientQuery(`${pending.name} ${pending.last_name || ""}`.trim())
+      setAssignNotes(
+        pending.clinical_notes ||
+          `Admitted from ${pending.source || "ER"} (${pending.visit_no || "Transfer"})`,
+      )
+      setExpectedLosDays(bed.bed_type === "ICU" ? "7" : "4")
+    } else {
+      setPatientQuery("")
+      setPatientResults([])
+      setSelectedPatient(null)
+      setAssignNotes("")
+      setExpectedLosDays("")
+    }
+
     setTransferOpen(false)
     setDischargeOpen(false)
     setChecklist(null)
@@ -737,13 +887,12 @@ export default function BedManagementPage({
 
   const handleAssign = async () => {
     if (!selectedBed) return
-    const patientToAssign =
+    const patientToAssign: Patient | null =
       selectedPatient ||
       (patientQuery.trim()
         ? {
             patient_id: `P-${Math.floor(100000 + Math.random() * 900000)}`,
             name: patientQuery.trim(),
-            first_name: patientQuery.trim(),
             last_name: "",
             gender: "Male",
             phone: "(555) 000-0000",
@@ -762,16 +911,65 @@ export default function BedManagementPage({
         body: JSON.stringify({
           patient_id: patientToAssign.patient_id,
           patient_name: patientToAssign.name,
+          patient: {
+            patient_id: patientToAssign.patient_id,
+            name: patientToAssign.name,
+            last_name: patientToAssign.last_name || "",
+            age: patientToAssign.age,
+            gender: patientToAssign.gender,
+            phone: patientToAssign.phone,
+          },
           notes: assignNotes.trim(),
           expected_los_days: expectedLosDays.trim() || undefined,
         }),
       })
+
+      // Synchronize any matching transfer notifications or ER requests
+      try {
+        const notifs = BedDatabase.getTransferNotifications()
+        const matchNotif = notifs.find(
+          (n) =>
+            n.patient_id === patientToAssign.patient_id &&
+            n.status !== "allocated",
+        )
+        if (matchNotif) {
+          BedDatabase.updateNotificationStatus(
+            matchNotif.id,
+            "allocated",
+            selectedBed.id,
+            `${selectedBed.ward} (Room ${selectedBed.room_no} / Bed ${selectedBed.bed_no})`,
+          )
+        }
+
+        const matchEr = erRequests.find(
+          (r) =>
+            (r.patient_id === patientToAssign.patient_id ||
+              (r.visit_no &&
+                activePendingAllocation?.visit_no === r.visit_no)) &&
+            r.status === "pending",
+        )
+        if (matchEr) {
+          await apiFetch(`/api/er/bed-requests/${matchEr.id}/allocate`, {
+            method: "POST",
+            body: JSON.stringify({
+              bed_id: selectedBed.id,
+              notes: assignNotes.trim(),
+            }),
+          }).catch(() => {})
+        }
+      } catch {
+        // best-effort
+      }
+
+      BedDatabase.clearPendingAllocation()
+      setActivePendingAllocation(null)
+
       setNotice({
         type: "success",
         message: `${patientToAssign.name || "Patient"} admitted to ${selectedBed.ward} / Room ${selectedBed.room_no} / Bed ${selectedBed.bed_no}.`,
       })
       resetSelection()
-      await loadBeds()
+      await Promise.all([loadBeds(), loadErRequests()])
     } catch (error) {
       reportError(
         setNotice,
@@ -1145,14 +1343,81 @@ export default function BedManagementPage({
         />
       ) : (
         <div className="px-6 sm:px-8 pb-12 space-y-5">
+          {/* Active Allocation Mode Banner */}
+          {activePendingAllocation && (
+            <div className="relative overflow-hidden bg-gradient-to-r from-[#0C1524] via-[#1B4FD8] to-[#2563EB] text-white p-4 sm:p-5 rounded-2xl shadow-xl border border-blue-400/40 animate-in slide-in-from-top-3 duration-300">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-start sm:items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-amber-300 text-xl shadow-inner shrink-0">
+                    <FaBed className="animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-wider bg-amber-400 text-amber-950 rounded font-mono shadow-xs">
+                        {activePendingAllocation.priority || "Stat / ER Transfer"}
+                      </span>
+                      <span className="text-blue-100 text-xs font-semibold flex items-center gap-1.5">
+                        <span>
+                          {activePendingAllocation.source ||
+                            "Emergency Department"}
+                        </span>
+                        <span className="text-blue-300">&rarr;</span>
+                        <span className="text-white font-bold">
+                          {activePendingAllocation.requested_level_of_care ||
+                            activePendingAllocation.requested_specialty ||
+                            "Inpatient Bed"}
+                        </span>
+                      </span>
+                    </div>
+                    <h2 className="text-base sm:text-lg font-extrabold text-white mt-1 flex items-center gap-2 flex-wrap">
+                      Allocating Bed for: {activePendingAllocation.name}{" "}
+                      {activePendingAllocation.last_name || ""}
+                      <span className="text-xs font-mono font-normal text-blue-200 bg-white/10 px-2 py-0.5 rounded">
+                        {activePendingAllocation.patient_id}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-blue-100/90 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                      <span>
+                        Age: {activePendingAllocation.age ?? "—"}y &middot;{" "}
+                        {activePendingAllocation.gender ?? "—"}
+                      </span>
+                      {activePendingAllocation.phone && (
+                        <span>
+                          &middot; Phone: {activePendingAllocation.phone}
+                        </span>
+                      )}
+                      {activePendingAllocation.visit_no && (
+                        <span>
+                          &middot; Visit: {activePendingAllocation.visit_no}
+                        </span>
+                      )}
+                      <span className="text-emerald-300 font-bold bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-500/30">
+                        ⚡ Click any Available Bed below to allocate with auto-fetched details
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      BedDatabase.clearPendingAllocation()
+                      setActivePendingAllocation(null)
+                    }}
+                    className="text-xs font-bold text-white bg-white/15 hover:bg-white/25 border border-white/25 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Cancel Allocation
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <>
-            {/* Explicit 4-up: the shared .stat-grid is repeat(5,...) for modules
-              with five counts, which left this page's four cards ending ~250px
-              short of the panel below them. */}
-            <div
-              className="stat-grid"
-              style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}
-            >
+            {/* Explicit 4-up (.stat-grid-4): the shared .stat-grid is
+              repeat(5,...) for modules with five counts, which left this
+              page's four cards ending ~250px short of the panel below them. */}
+            <div className="stat-grid stat-grid-4">
               <StatCard
                 icon={<FaBed aria-hidden />}
                 label={
@@ -1806,8 +2071,7 @@ export default function BedManagementPage({
                         </span>
                       </div>
                       {!checklist.billing?.ok &&
-                        checklist.billing?.pending_invoices &&
-                        checklist.billing.pending_invoices.length > 0 && (
+                        (checklist.billing?.pending_invoices?.length || 0) > 0 && (
                           <div
                             style={{
                               background: "#fffbeb",
@@ -1829,7 +2093,7 @@ export default function BedManagementPage({
                               Pending Inpatient Invoices (Settle at Central
                               Billing):
                             </strong>
-                            {checklist.billing.pending_invoices.map(
+                            {(checklist.billing?.pending_invoices || []).map(
                               (inv, i) => (
                                 <div
                                   key={i}
@@ -2018,67 +2282,251 @@ export default function BedManagementPage({
                     {selectedBed.status === "Available" && canManageBeds && (
                       <>
                         <div className="bed-form-section">
-                          <Label>
-                            Find patient
-                            <Input
-                              value={patientQuery}
-                              onChange={(e) => {
-                                setPatientQuery(e.target.value)
-                                setSelectedPatient(null)
-                              }}
-                              placeholder="Search by name, phone, or patient ID"
-                            />
-                          </Label>
                           {selectedPatient ? (
-                            <div className="bed-selected-patient">
-                              <span>
-                                {selectedPatient.name}{" "}
-                                {selectedPatient.last_name || ""}{" "}
-                                <span className="muted">
-                                  ({selectedPatient.patient_id})
-                                </span>
-                              </span>
+                            <div className="p-3.5 bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-blue-50/90 border border-blue-200 rounded-xl mb-3 flex items-center justify-between gap-3 shadow-xs">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-10 h-10 rounded-xl bg-[#1B4FD8] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                                  {(selectedPatient.name || "P")
+                                    .charAt(0)
+                                    .toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-sm font-bold text-[#0F172A] truncate">
+                                      {selectedPatient.name}{" "}
+                                      {selectedPatient.last_name || ""}
+                                    </span>
+                                    <span className="text-[10px] font-mono font-bold text-[#1B4FD8] bg-white border border-blue-200 px-1.5 py-0.2 rounded">
+                                      {selectedPatient.patient_id}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.2 rounded-full flex items-center gap-1">
+                                      <FiCheckCircle className="w-3 h-3 text-emerald-600" />{" "}
+                                      Auto-Fetched
+                                    </span>
+                                  </div>
+                                  <div className="text-[11.5px] text-[#64748B] mt-0.5 flex items-center gap-2 flex-wrap">
+                                    <span>
+                                      {selectedPatient.gender || "Gender N/A"}
+                                    </span>
+                                    {selectedPatient.age && (
+                                      <span>
+                                        &middot; {selectedPatient.age} yrs
+                                      </span>
+                                    )}
+                                    {selectedPatient.phone && (
+                                      <span>
+                                        &middot; {selectedPatient.phone}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                               <button
                                 type="button"
-                                className="bed-selected-patient-clear"
                                 onClick={() => {
                                   setSelectedPatient(null)
                                   setPatientQuery("")
                                 }}
-                                aria-label="Clear selected patient"
+                                className="text-xs text-[#64748B] hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-white/80 transition-colors flex items-center gap-1 shrink-0 cursor-pointer border border-[#E2E8F0]"
+                                title="Clear and select different patient"
                               >
-                                <FiX aria-hidden />
+                                <FiX className="w-3.5 h-3.5" /> Change
                               </button>
                             </div>
                           ) : (
-                            patientResults.length > 0 && (
-                              <div className="bed-patient-results">
-                                {patientResults.map((patient) => (
-                                  <button
-                                    type="button"
-                                    key={patient.patient_id}
-                                    className="bed-patient-result"
-                                    onClick={() => {
-                                      setSelectedPatient(patient)
-                                      setPatientQuery(
-                                        `${patient.name} ${patient.last_name || ""}`.trim(),
-                                      )
-                                      setPatientResults([])
-                                    }}
-                                  >
-                                    <strong>
-                                      {patient.name} {patient.last_name || ""}
-                                    </strong>
-                                    <span className="muted">
-                                      {patient.patient_id}
-                                      {patient.phone
-                                        ? ` · ${patient.phone}`
-                                        : ""}
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            )
+                            <>
+                              {/* 1-click Auto-fetch from Pending ER / Transfer requests */}
+                              {(() => {
+                                const notifs =
+                                  BedDatabase.getTransferNotifications().filter(
+                                    (n) =>
+                                      n.status === "pending" ||
+                                      n.status === "in_transit",
+                                  )
+                                const pendingEr = erRequests.filter(
+                                  (r) => r.status === "pending",
+                                )
+                                if (
+                                  notifs.length === 0 &&
+                                  pendingEr.length === 0
+                                )
+                                  return null
+
+                                return (
+                                  <div className="mb-4 p-3.5 bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-blue-50/50 border border-amber-200/90 rounded-xl shadow-xs">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                                        <FiZap className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+                                        Pending ER Transfers Awaiting Bed (
+                                        {notifs.length + pendingEr.length})
+                                      </span>
+                                      <span className="text-[10.5px] text-amber-800 font-semibold">
+                                        1-Click Auto-Fetch
+                                      </span>
+                                    </div>
+                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                      {notifs.map((n) => (
+                                        <div
+                                          key={n.id}
+                                          className="p-2.5 bg-white border border-amber-200 hover:border-blue-500 rounded-lg flex items-center justify-between gap-3 transition-all hover:shadow-xs"
+                                        >
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className="text-xs font-bold text-[#0F172A] truncate">
+                                                {n.patient_name}{" "}
+                                                {n.patient_last_name || ""}
+                                              </span>
+                                              <span className="text-[10px] font-mono text-[#64748B] bg-[#F1F5F9] px-1.5 py-0.2 rounded">
+                                                {n.patient_id}
+                                              </span>
+                                              <span className="text-[9.5px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-red-100 text-red-800">
+                                                {n.priority}
+                                              </span>
+                                            </div>
+                                            <p className="text-[11px] text-[#64748B] truncate mt-0.5">
+                                              {n.source_department} &rarr;{" "}
+                                              <span className="font-semibold text-blue-700">
+                                                {n.target_destination}
+                                              </span>{" "}
+                                              &middot; {n.clinical_reason}
+                                            </p>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const pat: Patient = {
+                                                patient_id: n.patient_id,
+                                                name: n.patient_name,
+                                                last_name:
+                                                  n.patient_last_name || "",
+                                                phone: n.patient_phone || "",
+                                                age: n.patient_age ?? undefined,
+                                                gender:
+                                                  n.patient_gender || "Male",
+                                              }
+                                              setSelectedPatient(pat)
+                                              setPatientQuery(
+                                                `${n.patient_name} ${n.patient_last_name || ""}`.trim(),
+                                              )
+                                              setAssignNotes(
+                                                `Admitted from ${n.source_department}. Reason: ${n.clinical_reason}`,
+                                              )
+                                              setExpectedLosDays(
+                                                selectedBed.bed_type === "ICU"
+                                                  ? "7"
+                                                  : "4",
+                                              )
+                                            }}
+                                            className="px-3 py-1 text-xs font-bold bg-[#1B4FD8] hover:bg-[#153eb5] text-white rounded-md transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                                          >
+                                            ⚡ Auto-Fill
+                                          </button>
+                                        </div>
+                                      ))}
+                                      {pendingEr.map((req) => (
+                                        <div
+                                          key={req.id}
+                                          className="p-2.5 bg-white border border-blue-200 hover:border-blue-500 rounded-lg flex items-center justify-between gap-3 transition-all hover:shadow-xs"
+                                        >
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                              <span className="text-xs font-bold text-[#0F172A] truncate">
+                                                {erRequestPatientLabel(req)}
+                                              </span>
+                                              <span className="text-[10px] font-mono text-[#64748B] bg-[#F1F5F9] px-1.5 py-0.2 rounded">
+                                                {req.visit_no}
+                                              </span>
+                                              <span className="text-[9.5px] font-bold uppercase px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">
+                                                {req.requested_level_of_care}
+                                              </span>
+                                            </div>
+                                            <p className="text-[11px] text-[#64748B] truncate mt-0.5">
+                                              Requested:{" "}
+                                              {req.requested_level_of_care}{" "}
+                                              {req.requested_specialty
+                                                ? `· ${req.requested_specialty}`
+                                                : ""}
+                                            </p>
+                                          </div>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const pat: Patient = {
+                                                patient_id:
+                                                  req.patient_id ||
+                                                  `P-ER-${req.er_visit_id || req.id}`,
+                                                name:
+                                                  req.patient_name ||
+                                                  "Emergency Patient",
+                                                last_name:
+                                                  req.patient_last_name || "",
+                                                phone: "",
+                                                gender: "Male",
+                                              }
+                                              setSelectedPatient(pat)
+                                              setPatientQuery(
+                                                `${pat.name} ${pat.last_name || ""}`.trim(),
+                                              )
+                                              setAssignNotes(
+                                                `Admitted from ER (${req.visit_no}) for ${req.requested_level_of_care}`,
+                                              )
+                                              setExpectedLosDays(
+                                                selectedBed.bed_type === "ICU"
+                                                  ? "7"
+                                                  : "4",
+                                              )
+                                            }}
+                                            className="px-3 py-1 text-xs font-bold bg-[#1B4FD8] hover:bg-[#153eb5] text-white rounded-md transition-colors shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                                          >
+                                            ⚡ Auto-Fill
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              })()}
+
+                              <Label>
+                                Search patient database
+                                <Input
+                                  value={patientQuery}
+                                  onChange={(e) => {
+                                    setPatientQuery(e.target.value)
+                                    setSelectedPatient(null)
+                                  }}
+                                  placeholder="Search by name, phone, or patient ID"
+                                />
+                              </Label>
+                              {patientResults.length > 0 && (
+                                <div className="bed-patient-results">
+                                  {patientResults.map((patient) => (
+                                    <button
+                                      type="button"
+                                      key={patient.patient_id}
+                                      className="bed-patient-result"
+                                      onClick={() => {
+                                        setSelectedPatient(patient)
+                                        setPatientQuery(
+                                          `${patient.name} ${patient.last_name || ""}`.trim(),
+                                        )
+                                        setPatientResults([])
+                                      }}
+                                    >
+                                      <strong>
+                                        {patient.name} {patient.last_name || ""}
+                                      </strong>
+                                      <span className="muted">
+                                        {patient.patient_id}
+                                        {patient.phone
+                                          ? ` · ${patient.phone}`
+                                          : ""}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
 

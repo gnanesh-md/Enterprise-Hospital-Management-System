@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 from openai import AsyncOpenAI
 
-from core.config import settings
+from core.config import settings, served_model
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ class AsyncRegionOCR:
     
     def __init__(self, max_concurrent: int = 3, model_name: str = "qwen2.5-vl-7b"):
         self.semaphore = asyncio.Semaphore(max_concurrent)
-        self.model_name = model_name
+        self.model_name = served_model(model_name)
         # Deliberately NOT a module-level singleton: this class is instantiated
         # fresh inside every asyncio.run() call in modules/precision_ocr.py's
         # process_single_page (once per page). A module-level AsyncOpenAI

@@ -275,10 +275,21 @@ export function Table({ children, dense }: { children: React.ReactNode; dense?: 
   )
 }
 
-export function Th({ children, right, className = "" }: { children?: React.ReactNode; right?: boolean; className?: string }) {
+export function Th({
+  children,
+  right,
+  align,
+  className = "",
+}: {
+  children?: React.ReactNode
+  right?: boolean
+  align?: string
+  className?: string
+}) {
+  const isRight = right || align === "right"
   return (
     <th
-      className={`py-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748B] bg-[#F8FAFC] border-b border-[#EEF1F6] ${right ? "text-right" : "text-left"} ${className}`}
+      className={`py-2 text-[11px] font-semibold uppercase tracking-wide text-[#64748B] bg-[#F8FAFC] border-b border-[#EEF1F6] ${isRight ? "text-right" : "text-left"} ${className}`}
     >
       {children}
     </th>
@@ -288,28 +299,44 @@ export function Th({ children, right, className = "" }: { children?: React.React
 export function Td({
   children,
   right,
+  align,
+  mono,
+  bold,
+  tone,
   className = "",
   colSpan,
 }: {
   children?: React.ReactNode
   right?: boolean
+  align?: string
+  mono?: boolean
+  bold?: boolean
+  tone?: string
   className?: string
   colSpan?: number
 }) {
+  const isRight = right || align === "right"
+  const fontClass = `${mono ? "font-mono " : ""}${bold ? "font-semibold " : ""}`
   return (
-    <td colSpan={colSpan} className={`border-b border-[#F2F4F7] align-top ${right ? "text-right" : ""} ${className}`}>
+    <td colSpan={colSpan} className={`border-b border-[#F2F4F7] align-top ${isRight ? "text-right" : ""} ${fontClass} ${className}`}>
       {children}
     </td>
   )
 }
 
-/** Download rows as CSV (statements, ageing, ledgers). */
-export function downloadCsv(filename: string, header: string[], rows: (string | number | null | undefined)[][]) {
+export function downloadCsv(
+  filename: string,
+  headerOrRows: string[] | (string | number | null | undefined)[][],
+  maybeRows?: (string | number | null | undefined)[][],
+) {
   const escape = (v: string | number | null | undefined) => {
     const s = v === null || v === undefined ? "" : String(v)
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
-  const csv = [header, ...rows].map((r) => r.map(escape).join(",")).join("\n")
+  const allRows: (string | number | null | undefined)[][] = maybeRows
+    ? [headerOrRows as string[], ...maybeRows]
+    : (headerOrRows as (string | number | null | undefined)[][])
+  const csv = allRows.map((r) => r.map(escape).join(",")).join("\n")
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }))
   const a = document.createElement("a")
   a.href = url

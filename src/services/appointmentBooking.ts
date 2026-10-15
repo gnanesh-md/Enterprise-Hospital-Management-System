@@ -1,5 +1,6 @@
 import { db } from "./db"
 import { getDoctorByName, getDoctorConsultationFee } from "./doctorMaster"
+import { notifyAppointmentBooked } from "./patientMessaging"
 
 /**
  * Booking an outpatient appointment -- the one place that turns a booking into a
@@ -12,6 +13,9 @@ import { getDoctorByName, getDoctorConsultationFee } from "./doctorMaster"
  * the confirmation the other branch produced -- so booking for an existing patient
  * looked like nothing had happened, and reception never got the consultation-fee
  * step.
+ *
+ * Being the one place, it is also where the patient's confirmation SMS goes from
+ * (if the hospital has it switched on -- see `patientMessaging.ts`).
  */
 
 export interface AppointmentBooking {
@@ -37,6 +41,8 @@ export interface BookedAppointment {
   dept: string
   room: string
   token: string
+  phone: string
+  time: string
 }
 
 export function bookAppointment(
@@ -74,7 +80,8 @@ export function bookAppointment(
       },
     })
 
-    return {
+    const phone = existing?.phone || booking.phone
+    const booked: BookedAppointment = {
       encounterId: booking.encounterId,
       name: existing?.patientName || booking.patient,
       umr: existing?.umr || "",
@@ -83,7 +90,11 @@ export function bookAppointment(
       dept: booking.dept,
       room,
       token,
+      phone,
+      time: booking.time,
     }
+    notifyAppointmentBooked(booked)
+    return booked
   }
 
   // Walk-in: register the patient and the encounter, then assign the doctor.
@@ -108,7 +119,7 @@ export function bookAppointment(
     timestamps: { ...encounter.timestamps, doctorAssigned: booking.time },
   })
 
-  return {
+  const booked: BookedAppointment = {
     encounterId: encounter.id,
     name: encounter.patientName,
     umr: encounter.umr,
@@ -117,5 +128,9 @@ export function bookAppointment(
     dept: booking.dept,
     room,
     token,
+    phone: booking.phone,
+    time: booking.time,
   }
+  notifyAppointmentBooked(booked)
+  return booked
 }

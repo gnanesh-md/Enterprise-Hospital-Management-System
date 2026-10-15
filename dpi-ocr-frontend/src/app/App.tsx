@@ -612,7 +612,7 @@ const AuthWelcome = ({ onNavigate }: { onNavigate: (s: Screen) => void }) => {
     },
     {
       label: "Active Jobs",
-      value: String(summary?.active_jobs.length ?? "—"),
+      value: String(summary?.active_jobs?.length ?? "—"),
       icon: <Clock className="w-4 h-4 text-med-warning" />,
     },
   ]
@@ -951,16 +951,16 @@ const WorkspaceHome = ({ onNavigate }: { onNavigate: (s: Screen) => void }) => {
               <span className="text-xs text-muted-foreground">
                 {loading
                   ? "Loading…"
-                  : `${summary?.active_jobs.length ?? 0} job(s) running`}
+                  : `${summary?.active_jobs?.length ?? 0} job(s) running`}
               </span>
             </div>
             <div className="bg-card border border-border rounded-xl divide-y divide-muted">
-              {summary && summary.active_jobs.length === 0 && (
+              {summary && (summary.active_jobs?.length ?? 0) === 0 && (
                 <div className="p-4 text-sm text-muted-foreground">
                   No documents currently processing.
                 </div>
               )}
-              {summary?.active_jobs.map((item) => (
+              {summary?.active_jobs?.map((item) => (
                 <div
                   key={item.job_id}
                   className="p-4 hover:bg-muted/30 transition-colors flex flex-col gap-3"
@@ -1012,13 +1012,13 @@ const WorkspaceHome = ({ onNavigate }: { onNavigate: (s: Screen) => void }) => {
               </button>
             </div>
             <div className="bg-card border border-border rounded-xl divide-y divide-muted">
-              {summary && summary.recent_documents.length === 0 && (
+              {summary && (summary.recent_documents?.length ?? 0) === 0 && (
                 <div className="p-4 text-sm text-muted-foreground">
                   Your vault is empty — process a document in the OCR Workspace
                   to get started.
                 </div>
               )}
-              {summary?.recent_documents.map((doc) => (
+              {summary?.recent_documents?.map((doc) => (
                 <div
                   key={doc.id}
                   className="p-4 flex items-center gap-4 hover:bg-muted/30 transition-colors cursor-pointer group"

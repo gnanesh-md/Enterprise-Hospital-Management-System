@@ -30,7 +30,7 @@ from typing import List
 
 from openai import AsyncOpenAI, OpenAI
 
-from core.config import settings
+from core.config import settings, served_model
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ _DEFAULT_TIMEOUT = 90.0
 
 
 def model_name_for_role(role: Role) -> str:
-    return _ROLE_MODEL[role]
+    return served_model(_ROLE_MODEL[role])
 
 
 def get_client_for_role(role: Role) -> AsyncOpenAI:

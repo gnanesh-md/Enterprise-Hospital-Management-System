@@ -8,6 +8,8 @@ import {
   PaymentRecord,
 } from "../services/billingDb"
 import HospitalReceiptModal from "./HospitalReceiptModal"
+import { SendToPatientButton } from "./messaging/SendToPatientDialog"
+import { billMessageVars, buildBillDocument } from "../lib/patientDocuments"
 import {
   BillingHeader,
   KpiTile,
@@ -1304,6 +1306,26 @@ export default function Billing({
                             >
                               <Printer size={14} /> Print Bill
                             </button>
+                            <SendToPatientButton
+                              label="Send to patient"
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold rounded-sm cursor-pointer transition-colors inline-flex items-center gap-1.5 shrink-0 shadow-xs"
+                              kind="bill"
+                              patient={{
+                                name: selectedClaim.patientName,
+                                phone: selectedClaim.phone,
+                                email: selectedClaim.email,
+                                id: selectedClaim.patientId,
+                              }}
+                              vars={billMessageVars(selectedClaim)}
+                              buildDocument={() =>
+                                buildBillDocument(
+                                  selectedClaim,
+                                  selectedClaim.payments && selectedClaim.payments.length > 0
+                                    ? selectedClaim.payments[selectedClaim.payments.length - 1]
+                                    : null,
+                                )
+                              }
+                            />
                           </div>
                         </div>
 
@@ -1721,22 +1743,44 @@ export default function Billing({
                                 {kind === "ip" ? "discharge" : kind === "er" ? "the ER visit" : "the visit"}.
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setReceiptData({
-                                  claim: selectedClaim,
-                                  payment:
+                            <div className="ml-auto flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReceiptData({
+                                    claim: selectedClaim,
+                                    payment:
+                                      selectedClaim.payments && selectedClaim.payments.length > 0
+                                        ? selectedClaim.payments[selectedClaim.payments.length - 1]
+                                        : null,
+                                  })
+                                  setShowReceiptModal(true)
+                                }}
+                                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-bold rounded-sm cursor-pointer inline-flex items-center gap-1.5 transition-colors shadow-2xs"
+                              >
+                                <Printer size={15} /> Print Official Bill / Slip
+                              </button>
+                              <SendToPatientButton
+                                label="Send to patient"
+                                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-bold rounded-sm cursor-pointer inline-flex items-center gap-1.5 transition-colors shadow-2xs"
+                                kind="bill"
+                                patient={{
+                                  name: selectedClaim.patientName,
+                                  phone: selectedClaim.phone,
+                                  email: selectedClaim.email,
+                                  id: selectedClaim.patientId,
+                                }}
+                                vars={billMessageVars(selectedClaim)}
+                                buildDocument={() =>
+                                  buildBillDocument(
+                                    selectedClaim,
                                     selectedClaim.payments && selectedClaim.payments.length > 0
                                       ? selectedClaim.payments[selectedClaim.payments.length - 1]
                                       : null,
-                                })
-                                setShowReceiptModal(true)
-                              }}
-                              className="ml-auto px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-bold rounded-sm cursor-pointer inline-flex items-center gap-1.5 transition-colors shadow-2xs"
-                            >
-                              <Printer size={15} /> Print Official Bill / Slip
-                            </button>
+                                  )
+                                }
+                              />
+                            </div>
                           </div>
                         </section>
                       )}

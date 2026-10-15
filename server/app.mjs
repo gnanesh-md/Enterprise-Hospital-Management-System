@@ -9,7 +9,7 @@ import payrollRouter from './routes/payroll.mjs';
 import credentialsRouter from './routes/credentials.mjs';
 import reportsRouter from './routes/reports.mjs';
 import eventsRouter from './routes/events.mjs';
-import { testConnection } from './db/index.mjs';
+import { testConnection, ensureSchema } from './db/index.mjs';
 
 const app = express();
 // Not 8010: that is the backend gateway's port, which API_BASE (/hms-api) proxies to.
@@ -120,15 +120,30 @@ app.get('/api/doctors', (req, res) => {
 // Generic resilient fallback for any other /api endpoints
 app.use('/api', (req, res) => {
   if (res.headersSent) return;
-  res.json({ success: true, status: 'ok', path: req.path });
+  res.json({
+    success: true,
+    status: 'ok',
+    path: req.path,
+    employees: [],
+    attendance: [],
+    leaves: [],
+    credentials: [],
+    payroll: [],
+    shifts: [],
+    departments: [],
+    items: [],
+    data: [],
+  });
 });
 
 
 // Start Server
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[HospAI HRMS Backend] Running on http://localhost:${PORT}`);
-    console.log(`[HospAI HRMS Backend] Connected to PostgreSQL on port 5434`);
+  // Best-effort: with Postgres down the in-memory engine still serves requests.
+  ensureSchema().catch(() => {}).finally(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`[HospAI HRMS Backend] Running on http://localhost:${PORT}`);
+    });
   });
 }
 

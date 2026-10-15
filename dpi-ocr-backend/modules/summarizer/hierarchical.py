@@ -2,7 +2,7 @@ import json
 import logging
 from openai import OpenAI
 
-from core.config import settings
+from core.config import settings, served_model
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ class HierarchicalSummarizer:
     Maps extraction prompts across all chunks and reduces them into a single structured schema.
     """
     def __init__(self, model_name: str = "qwen2.5-vl-7b", base_url: str = None):
-        self.model_name = model_name
+        self.model_name = served_model(model_name)
         # Bounded timeout (SDK default is 600s) — see modules/region_ocr.py for why.
         self.client = OpenAI(base_url=base_url or settings.VLLM_BASE_URL, api_key="EMPTY", timeout=120.0)
         
@@ -59,7 +59,9 @@ class HierarchicalSummarizer:
             data = chunker.load_cached_chunk(i)
             if not data:
                 data = self._extract_chunk_data(chunk_text)
-                chunker.save_chunk_cache(i, data)
+                # A failed extraction returns {} -- don't cache it as a result.
+                if data:
+                    chunker.save_chunk_cache(i, data)
             return i, data
 
         results = [None] * total

@@ -90,14 +90,15 @@ export default function GlobalSearch({
       })
     }
 
-    if (pos.length > 0) {
+    const returns = PharmacyDatabase.getSupplierReturns()
+    if (returns.length > 0) {
       groups.push({
-        group: "Purchase Orders",
+        group: "Supplier Returns (Debit Notes)",
         icon: ShoppingBag,
-        items: pos.slice(0, 10).map((p) => ({
-          label: p.id,
-          sub: `Value: ₹${p.totalOrderValue} · ${p.status}`,
-          page: "purchase-orders",
+        items: returns.slice(0, 10).map((r) => ({
+          label: r.debitNoteNumber,
+          sub: `Reason: ${r.reason} · ₹${r.returnAmount || 0}`,
+          page: "supplier-returns",
         })),
       })
     }

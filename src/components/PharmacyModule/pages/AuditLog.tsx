@@ -27,10 +27,20 @@ interface AuditLogProps {
 }
 
 export default function AuditLog({ onNavigate }: AuditLogProps) {
-  const { auditLogs } = usePharmacyData()
+  const { auditLogs, refresh } = usePharmacyData()
   const [expanded, setExpanded] = useState<number | null>(null)
   const [search, setSearch] = useState("")
   const [moduleFilter, setModuleFilter] = useState("All")
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
 
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20

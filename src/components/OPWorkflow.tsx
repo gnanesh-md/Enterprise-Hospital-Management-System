@@ -4,6 +4,7 @@ import { StatusBadge, Btn, Input } from "./shared"
 import { db, DBPatient, DBOPEncounter } from "../services/db"
 import { getDoctorMaster, getDoctorConsultationFee } from "../services/doctorMaster"
 import { HospAILogo } from "./HospAILogo"
+import { notifyAppointmentBooked } from "../services/patientMessaging"
 
 export interface OPPatient {
   id?: string
@@ -1252,7 +1253,7 @@ export default function OPWorkflow({
       patient.chiefComplaint || patient.symptoms.join(", "),
     )
 
-    // 2. Dispatch Patient SMS notification
+    // 2. Dispatch Patient SMS & WhatsApp notification immediately
     triggerPatientNotification(
       patient.name,
       patient.phone,
@@ -1260,6 +1261,17 @@ export default function OPWorkflow({
       assignedRoom,
       queueToken,
     )
+    notifyAppointmentBooked({
+      encounterId: patient.id || "",
+      name: patient.name,
+      umr: patient.umr,
+      phone: patient.phone,
+      doctor: assignedDoc,
+      dept: specialty,
+      room: assignedRoom,
+      token: queueToken,
+      time: nowTime,
+    })
   }
 
   // Doctor assignment & Queue
@@ -1295,6 +1307,17 @@ export default function OPWorkflow({
           queueToken: queueToken,
           queuePosition: queuePos,
           status: newStatus as any,
+        })
+        notifyAppointmentBooked({
+          encounterId: patient.id,
+          name: patient.name,
+          umr: patient.umr,
+          phone: patient.phone,
+          doctor: doc.name,
+          dept: doc.specialty || patient.aiSpecialty || "General Medicine",
+          room: doc.room,
+          token: queueToken,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         })
       } catch (e) {
         console.warn("DB update failed:", e)

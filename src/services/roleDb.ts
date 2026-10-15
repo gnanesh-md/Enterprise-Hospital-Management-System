@@ -67,6 +67,7 @@ export const ALL_SYSTEM_MODULES = [
   "pharmacy_ledger",
   "pharmacy_transfers",
   "pharmacy_expiry",
+  "pharmacy_write_off",
   "pharmacy_analytics",
 
   "pharmacy_notifications",
@@ -145,6 +146,7 @@ export const ALL_SYSTEM_MODULES = [
   "hrms",
   "employees",
   "patient_exp",
+  "patient_messages",
 
   "intelligence",
   "ocr",
@@ -263,6 +265,7 @@ const INITIAL_ROLES: AppRole[] = [
       "pharmacy_medicine",
       "pharmacy_ledger",
       "pharmacy_expiry",
+      "pharmacy_write_off",
 
       "laboratory",
       "radiology",
@@ -297,6 +300,7 @@ const INITIAL_ROLES: AppRole[] = [
       // No op_nurse: vitals are the OP department's job, not the front desk's.
 
       "op_registration",
+      "patient_messages",
       "billing",
       "billing_op",
       "billing_ip",
@@ -330,7 +334,7 @@ const INITIAL_ROLES: AppRole[] = [
   {
     id: "ROLE_BILLING",
     name: "Billing Specialist",
-    allowedModules: ["dashboard", "patients", "billing", "billing_op", "billing_ip", "billing_er", "billing_unified", "billing_revenue", "payments", "lab_billing", "insurance", "insurance_claims", "insurance_packages", "insurance.view", "insurance.claim.create"],
+    allowedModules: ["dashboard", "patients", "patient_messages", "billing", "billing_op", "billing_ip", "billing_er", "billing_unified", "billing_revenue", "payments", "lab_billing", "insurance", "insurance_claims", "insurance_packages", "insurance.view", "insurance.claim.create"],
   },
 
   {
@@ -356,6 +360,7 @@ const INITIAL_ROLES: AppRole[] = [
       "pharmacy_ledger",
       "pharmacy_transfers",
       "pharmacy_expiry",
+      "pharmacy_write_off",
       "pharmacy_analytics",
 
       "pharmacy_notifications",
@@ -475,6 +480,7 @@ const INITIAL_ROLES: AppRole[] = [
       "pharmacy_ledger",
       "pharmacy_transfers",
       "pharmacy_expiry",
+      "pharmacy_write_off",
       "pharmacy_analytics",
     ],
   },

@@ -8,10 +8,8 @@ import Dispensing from "./pages/Dispensing"
 import PrescriptionQueue from "./pages/PrescriptionQueue"
 import MedicineMaster from "./pages/MedicineMaster"
 import Suppliers from "./pages/Suppliers"
-import PurchaseOrders from "./pages/PurchaseOrders"
 import InvoiceOCR from "./pages/InvoiceOCR"
 import InventoryLedger from "./pages/InventoryLedger"
-import StockTransfers from "./pages/StockTransfers"
 import ExpiryLowStock from "./pages/ExpiryLowStock"
 import SalesReturns from "./pages/SalesReturns"
 import Reports from "./pages/Reports"
@@ -19,6 +17,7 @@ import Notifications from "./pages/Notifications"
 import AuditLog from "./pages/AuditLog"
 
 import SupplierReturns from "./pages/SupplierReturns"
+import MedicineWriteOff from "./pages/MedicineWriteOff"
 
 const pages: Record<string, React.ComponentType<{
   onNavigate: (page: string) => void
@@ -28,14 +27,14 @@ const pages: Record<string, React.ComponentType<{
   prescriptions: PrescriptionQueue,
   medicines: MedicineMaster,
   suppliers: Suppliers,
-  "purchase-orders": PurchaseOrders,
+  "purchase-orders": InvoiceOCR, // PO removed; redirects to Inward Stock Entry
   grn: InvoiceOCR,
   ocr: InvoiceOCR,
   "inventory-ledger": InventoryLedger,
-  "stock-transfers": StockTransfers,
   "expiry-low-stock": ExpiryLowStock,
   "sales-returns": SalesReturns,
   "supplier-returns": SupplierReturns,
+  "write-off": MedicineWriteOff,
   reports: Reports,
   notifications: Notifications,
   "audit-log": AuditLog,

@@ -3,7 +3,12 @@ import { Btn, AlertBanner } from "./shared"
 import { Icon } from "./icons"
 import { apiFetch, reportError } from "../lib/api"
 import { formatDateTimeIST } from "../lib/format"
-import { generateAndSaveDischargeSummary } from "../lib/dischargeSummary"
+import {
+  generateAndSaveDischargeSummary,
+  type SavedDischargeSummary,
+} from "../lib/dischargeSummary"
+import { buildDischargeSummaryDocument } from "../lib/patientDocuments"
+import { SendToPatientButton } from "./messaging/SendToPatientDialog"
 import type { Notice } from "../types"
 import {
   getDischargedIcuPatients,
@@ -118,6 +123,7 @@ export default function Discharge({
   const [dischargeReason, setDischargeReason] = useState("")
   const [discharging, setDischarging] = useState(false)
   const [summaryFailed, setSummaryFailed] = useState(false)
+  const [savedSummary, setSavedSummary] = useState<SavedDischargeSummary | null>(null)
   const [icuDischarges, setIcuDischarges] = useState<IcuDischargeRecord[]>(() =>
     getDischargedIcuPatients(),
   )
@@ -192,6 +198,7 @@ export default function Discharge({
     if (!selectedBed) return
     setDischarging(true)
     setSummaryFailed(false)
+    setSavedSummary(null)
     try {
       const roomChargeTotal = checklist?.room_charges.total
       await apiFetch(`/api/beds/${selectedBed.id}/release`, {
@@ -203,9 +210,11 @@ export default function Discharge({
       })
       if (selectedBed.patient_id) {
         try {
-          await generateAndSaveDischargeSummary(
-            selectedBed.patient_id,
-            selectedBed.admission_id ?? undefined,
+          setSavedSummary(
+            await generateAndSaveDischargeSummary(
+              selectedBed.patient_id,
+              selectedBed.admission_id ?? undefined,
+            ),
           )
         } catch {
           setSummaryFailed(true)
@@ -547,6 +556,50 @@ export default function Discharge({
                 </div>
               </div>
             </div>
+            <div className="bg-white border border-[#DDE2EC] rounded p-4">
+              <div className="text-[13px] font-semibold text-gray-900">Send to the patient</div>
+              <p className="text-[12px] text-[#64748B] mb-3">
+                The discharge summary as a PDF (WhatsApp attachment, or a link by SMS), and a
+                request to rate their stay.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {savedSummary ? (
+                  <SendToPatientButton
+                    label="Send discharge summary"
+                    patient={{
+                      name: savedSummary.patientName,
+                      phone: savedSummary.phone,
+                      email: savedSummary.email,
+                      id: savedSummary.patientId,
+                    }}
+                    kind="discharge_summary"
+                    buildDocument={() =>
+                      buildDischargeSummaryDocument({
+                        name: savedSummary.patientName,
+                        id: savedSummary.patientId,
+                        phone: savedSummary.phone,
+                        text: savedSummary.text,
+                      })
+                    }
+                    documentLabel="Discharge summary"
+                  />
+                ) : (
+                  <span className="text-[12px] text-[#92400E]">
+                    No summary to send -- it could not be generated.
+                  </span>
+                )}
+                <SendToPatientButton
+                  label="Request feedback"
+                  patient={{
+                    name: savedSummary?.patientName || occupantName(selectedBed),
+                    phone: savedSummary?.phone || "",
+                    email: savedSummary?.email,
+                    id: selectedBed.patient_id || undefined,
+                  }}
+                  kind="feedback_request"
+                />
+              </div>
+            </div>
             <div className="flex justify-center gap-2">
               <Btn
                 variant="outline"
@@ -555,6 +608,7 @@ export default function Discharge({
                   setStep(0)
                   setSelectedBed(null)
                   setChecklist(null)
+                  setSavedSummary(null)
                 }}
               >
                 Discharge Another Patient

@@ -19,7 +19,7 @@
  */
 
 import { db, DBOPEncounter } from "./db"
-import { notifyPatientCalled } from "./patientNotifications"
+import { notifyPatientCalled } from "./patientMessaging"
 import { LabOrder, LabOrderDatabase } from "./labOrdersDb"
 import { AppPrescription, PharmacyDatabase } from "./pharmacyDb"
 import {
@@ -557,7 +557,8 @@ export function callPatientIn(
 
   // Calling a patient in is the moment two other people need to know: the
   // patient, on their own phone, and the OP floor, so the sister can walk them
-  // through. Queued rather than sent -- see `patientNotifications.ts`.
+  // through. Sent as an SMS if the hospital has that switched on -- see
+  // `patientMessaging.ts`.
   notifyPatientCalled(
     encounter,
     doctorName || encounter.assignedDoctor || "Your doctor",

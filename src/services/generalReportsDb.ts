@@ -104,6 +104,7 @@ export interface RecentActivityItem {
 }
 
 const STORAGE_GENERAL_REPORTS_SEEDED = "hospai_gen_reports_seeded_v6"
+let generalSeedScheduled = false
 
 export class GeneralReportsService {
   /**
@@ -495,9 +496,31 @@ export class GeneralReportsService {
   public static ensureAllLongitudinalData(): void {
     if (typeof window === "undefined") return
 
-    // 1. Ensure OP data
+    // 1. Ensure OP data (plain localStorage writes, no broadcast -- safe inline)
     OpReportsService.ensureLongitudinalData()
 
+    if (generalSeedScheduled) return
+    try {
+      if (localStorage.getItem(STORAGE_GENERAL_REPORTS_SEEDED)) return
+    } catch {
+      return
+    }
+
+    // The report getters call this from inside a page's render (useMemo), and the
+    // seed below writes through stores that broadcast synchronously --
+    // PharmacyDatabase.saveBills dispatches a same-tab "storage" event. Mid-render,
+    // that set state in whatever was still subscribed (the Dashboard being
+    // navigated away from): React's "Cannot update a component while rendering a
+    // different component". Deferred past the commit, the same broadcast is what
+    // refreshes the report pages (useLiveClinic bumps on it).
+    generalSeedScheduled = true
+    window.setTimeout(() => {
+      generalSeedScheduled = false
+      this.seedGeneralReportsData()
+    }, 0)
+  }
+
+  private static seedGeneralReportsData(): void {
     try {
       const alreadySeeded = localStorage.getItem(STORAGE_GENERAL_REPORTS_SEEDED)
       if (alreadySeeded) return
@@ -570,6 +593,10 @@ export class GeneralReportsService {
               triage.includes("1") || triage.includes("2")
                 ? "Critical"
                 : "Stable",
+            // 60 demo visits fired at once used to mean 60 concurrent Qwen
+            // calls (and 60 console failures whenever vLLM was busy or down),
+            // for a triage that the .then() below overwrites anyway.
+            skipAiTriage: true,
           })
             .then((res) => {
               if (res.visit) {

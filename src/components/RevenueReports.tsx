@@ -100,7 +100,7 @@ export default function RevenueReports() {
   return (
     <div ref={containerRef} className="flex-1 flex flex-col h-full bg-slate-50/50 overflow-y-auto">
       {/* Top Bar */}
-      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 py-5 flex items-center justify-between flex-shrink-0 sticky top-0 z-10 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 py-5 flex flex-wrap items-center justify-between gap-3 flex-shrink-0 sticky top-0 z-10 shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
         <div>
           <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">
             Revenue &amp; Financial Reports
@@ -109,7 +109,7 @@ export default function RevenueReports() {
             Real-time multi-department revenue, insurance claims, and billing analytics (INR ₹).
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select
             value={preset}
             onChange={(e) => setPreset(e.target.value as DateRangePreset)}
@@ -125,13 +125,13 @@ export default function RevenueReports() {
           </select>
           <button
             onClick={handlePrint}
-            className="h-8 px-3.5 bg-white border border-[#CBD5E1] text-slate-700 text-[12px] font-semibold rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            className="h-8 px-3.5 bg-white border border-[#CBD5E1] text-slate-700 text-[12px] font-semibold rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
           >
             <Icon.Printer /> Print Report
           </button>
           <button
             onClick={handleExportPdf}
-            className="h-8 px-3.5 bg-[#1B4FD8] text-white text-[12px] font-semibold rounded-lg hover:bg-[#1740B4] transition-colors flex items-center gap-2 cursor-pointer shadow-2xs"
+            className="h-8 px-3.5 bg-[#1B4FD8] text-white text-[12px] font-semibold rounded-lg hover:bg-[#1740B4] transition-colors flex items-center gap-2 cursor-pointer shadow-2xs whitespace-nowrap"
           >
             <Icon.Download /> Export Financial PDF
           </button>

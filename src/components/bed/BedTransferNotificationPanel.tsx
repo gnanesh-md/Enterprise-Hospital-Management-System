@@ -197,6 +197,27 @@ export function BedTransferNotificationPanel({
     BedDatabase.markNotificationRead(notif.id)
     loadNotifications()
     setIsOpen(false)
+    BedDatabase.setPendingAllocation({
+      patient_id: notif.patient_id,
+      name: notif.patient_name,
+      last_name: notif.patient_last_name || undefined,
+      phone: notif.patient_phone || undefined,
+      age: notif.patient_age || undefined,
+      gender: notif.patient_gender || undefined,
+      source: "ER",
+      visit_no: notif.er_visit_id
+        ? `ER-${notif.er_visit_id}`
+        : `TR-${notif.patient_id}`,
+      er_bed_request_id: notif.er_bed_request_id,
+      er_visit_id: notif.er_visit_id,
+      notification_id: notif.id,
+      requested_level_of_care:
+        notif.target_bed_type === "ICU" ? "ICU" : notif.target_destination,
+      requested_specialty: notif.target_ward || notif.target_destination,
+      clinical_notes: `Transferred from ${notif.source_department}. Clinical reason: ${notif.clinical_reason}`,
+      priority: notif.priority,
+      timestamp: notif.sent_at,
+    })
     onAllocateTransfer?.(notif)
   }
 

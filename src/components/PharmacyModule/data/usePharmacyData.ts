@@ -158,57 +158,47 @@ export function usePharmacyData() {
 
   const [returns, setReturns] = useState(() => PharmacyDatabase.getReturns())
 
+  const [writeOffs, setWriteOffs] = useState(() =>
+    PharmacyDatabase.getWriteOffs(),
+  )
+
   const mappedMedicines = medicines.map((m) => {
     const mBatches = batches.filter((b) => b.medicineId === m.id)
-
     const latestBatch =
       mBatches.length > 0 ? mBatches[mBatches.length - 1] : null
 
-    const mrp = latestBatch ? latestBatch.mrp : 0
+    const mrp = latestBatch?.mrp || (m as any).mrp || 0
+    const batchStock = mBatches.reduce((sum, b) => sum + (b.availableQuantity ?? b.quantity ?? 0), 0)
+    const stock = Math.max(0, mBatches.length > 0 ? batchStock : ((m as any).stock || 0))
+    const purchasePrice = latestBatch?.purchasePrice || (m as any).purchasePrice || (mrp > 0 ? +(mrp * 0.75).toFixed(2) : 0)
+    const gstRate = m.taxPercentage !== undefined ? m.taxPercentage : 5
 
     return {
       id: m.id,
-
       name: m.brandName || m.medicineName,
-
       generic: m.genericName,
-
       strength: m.strength || "N/A",
-
       form: m.dosageForm || "N/A",
-
+      packing: (m as any).packing || (m as any).pack || "",
       manufacturer: m.manufacturer,
-
-      // Stock for *this* medicine -- summing every batch in the store counted
-
-      // the whole pharmacy's inventory against each row.
-
-      stock: mBatches.reduce((sum, b) => sum + b.availableQuantity, 0),
-
-      mrp: mrp,
-
-      price: mrp * 0.8,
-
-      gst: m.taxPercentage || 12,
-
+      stock,
+      mrp,
+      price: purchasePrice,
+      purchasePrice,
+      gst: gstRate,
+      batchNumber: latestBatch?.batchNumber || (m as any).batchNumber || "",
+      expiryDate: latestBatch?.expiryDate || (m as any).expiryDate || "",
+      discount: latestBatch?.discount || (m as any).discount || 0,
       status: m.activeStatus === "Active" ? "active" : "inactive",
-
       sku: m.hsnCode || m.id,
-
       hsnCode: m.hsnCode || "3004 039",
-
-      mnfCode: (m as any).mnfCode || (m.manufacturer ? m.manufacturer.substring(0, 3).toUpperCase() : "MAN"),
-
+      mnfCode: (m as any).mnfCode || (m.manufacturer ? m.manufacturer.substring(0, 4).toUpperCase() : "MANK"),
       binNo: (latestBatch as any)?.location || (m as any).binNo || "",
-
+      supplierName: (m as any).supplierName || latestBatch?.supplierName || "VH MEDICALS AND CHEMICALS",
       barcode: m.barcode || "89000000000",
-
       schedule: m.scheduleType || "H",
-
       prescription: m.controlledSubstanceFlag || false,
-
       category: (m as any).categoryId || "General",
-
       reorderLevel: m.reorderLevel || 10,
     }
   })
@@ -227,21 +217,14 @@ export function usePharmacyData() {
       )
       return {
         id: b.id,
-
+        medicineId: b.medicineId,
         name: m ? m.medicineName : "Unknown",
-
         medicine: m ? m.medicineName : "Unknown",
-
         batch: b.batchNumber,
-
         expiry: b.expiryDate,
-
         stock: b.availableQuantity,
-
         quantity: b.availableQuantity,
-
         daysLeft,
-
         status: new Date(b.expiryDate) < new Date() ? "expired" : "expiring",
       }
     })
@@ -307,15 +290,10 @@ export function usePharmacyData() {
     setSupplierReturns(PharmacyDatabase.getSupplierReturns())
     setAdjustments(PharmacyDatabase.getAdjustments())
     setReturns(PharmacyDatabase.getReturns())
+    setWriteOffs(PharmacyDatabase.getWriteOffs())
   }
 
   useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      !window.localStorage.getItem("hospai_pharm_fresh_demo_purged_v3")
-    ) {
-      PharmacyDatabase.clearAllPharmacyData()
-    }
     refresh()
 
     const handleUpdate = () => refresh()
@@ -421,13 +399,13 @@ export function usePharmacyData() {
         dynamicNotifications.push({
           id,
           title: `Stockout: ${m.name}`,
-          message: `Zero units in stock. Immediate purchase order replenishment required.`,
+          message: `Zero units in stock. Immediate supplier replenishment required.`,
           type: "critical",
           timestamp: "Urgent",
           time: "Urgent",
           read: readIds.includes(id),
-          actionPage: "purchase-orders",
-          actionLabel: "Create PO",
+          actionPage: "ocr",
+          actionLabel: "Inward Stock",
           category: "stock",
         })
       }
@@ -473,8 +451,8 @@ export function usePharmacyData() {
           timestamp: "Warning",
           time: "Warning",
           read: readIds.includes(id),
-          actionPage: "purchase-orders",
-          actionLabel: "Order Stock",
+          actionPage: "ocr",
+          actionLabel: "Inward Stock",
           category: "stock",
         })
       }
@@ -523,27 +501,7 @@ export function usePharmacyData() {
     }
   }
 
-  // 6. Pending Ward Stock Transfers (Info)
-  const pendingTransfersCount = stockTransfers.filter(
-    (t) => t.status === "Requested",
-  ).length
-  if (pendingTransfersCount > 0) {
-    const id = "sys-pending-transfers"
-    if (!dismissedIds.includes(id)) {
-      dynamicNotifications.push({
-        id,
-        title: `${pendingTransfersCount} Ward Transfer Request${pendingTransfersCount > 1 ? "s" : ""}`,
-        message: `Inpatient departments have requested urgent stock replenishment.`,
-        type: "info",
-        timestamp: "Live Transfer",
-        time: "Live Transfer",
-        read: readIds.includes(id),
-        actionPage: "stock-transfers",
-        actionLabel: "Review Requests",
-        category: "transfer",
-      })
-    }
-  }
+
 
   // 7. Persisted custom notifications from database (e.g. Sales Returns, Supplier Credits)
   const persistedNotifications = notifications
@@ -710,6 +668,8 @@ export function usePharmacyData() {
     adjustments,
 
     returns,
+
+    writeOffs,
 
     refresh,
   }

@@ -6,7 +6,13 @@ import { formatDateTimeIST } from "./format"
 // so both the Clinical page and Bed Management's discharge flow can build
 // the same summary without depending on each other.
 type EmrSlice = {
-  patient: { patient_id: string ;name: string ;last_name?: string | null }
+  patient: {
+    patient_id: string
+    name: string
+    last_name?: string | null
+    phone?: string | null
+    email?: string | null
+  }
   admissions: {
     id: number
     admission_date: string
@@ -183,13 +189,23 @@ export function buildDischargeSummaryText(
   ].join("\n")
 }
 
+export type SavedDischargeSummary = {
+  patientId: string
+  patientName: string
+  phone: string
+  email?: string
+  text: string
+}
+
 // Generates the summary from the real /api/emr/<patient_id> data and saves
 // it as a real certificate record (certificate_type: "discharge_summary") --
 // so it's a permanent part of the patient's chart, not a one-off printout.
+// Returns what was saved, so the discharge desk can send that same summary to
+// the patient rather than a second, separately-built one.
 export async function generateAndSaveDischargeSummary(
   patientId: string,
   admissionId?: number,
-): Promise<void> {
+): Promise<SavedDischargeSummary> {
   const emr = await apiFetch<EmrSlice>(`/api/emr/${patientId}`)
   const body = buildDischargeSummaryText(emr, admissionId)
   const patientName =
@@ -203,4 +219,11 @@ export async function generateAndSaveDischargeSummary(
       admission_id: admissionId,
     }),
   })
+  return {
+    patientId,
+    patientName: patientName || patientId,
+    phone: emr.patient.phone || "",
+    email: emr.patient.email || "",
+    text: body,
+  }
 }

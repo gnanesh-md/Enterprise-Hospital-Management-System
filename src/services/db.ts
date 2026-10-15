@@ -18,6 +18,10 @@ export interface DBPatient {
 
   sex: "Male" | "Female" | "Other"
 
+  gender?: string
+
+  mrn?: string
+
   phone: string
 
   address: string

@@ -15,6 +15,7 @@ import {
   RefreshCw,
   QrCode,
   Play,
+  ArrowRightLeft,
 } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
 import PageHeader from "../components/PageHeader"
@@ -24,6 +25,7 @@ const paymentMethods = [
   { id: "cash", label: "Cash", icon: Wallet },
   { id: "upi", label: "UPI", icon: Smartphone },
   { id: "card", label: "Card", icon: CreditCard },
+  { id: "split", label: "Split Payment", icon: ArrowRightLeft },
 ]
 
 function numberToWords(num: number): string {
@@ -96,7 +98,7 @@ interface DispensingProps {
 }
 
 export default function Dispensing({ onNavigate }: DispensingProps) {
-  const { medicines, bills } = usePharmacyData()
+  const { medicines, bills, refresh } = usePharmacyData()
   const [searchQuery, setSearchQuery] = useState("")
   const [cart, setCart] = useState<any[]>([])
 
@@ -105,6 +107,33 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
   )
   const [historySearch, setHistorySearch] = useState("")
   const [printBill, setPrintBill] = useState<any>(null)
+
+  // Payment Mode Selection for New Sale
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<"cash" | "upi" | "card" | "split">("cash")
+  const [cashTendered, setCashTendered] = useState<number>(0)
+  const [singleUpiRef, setSingleUpiRef] = useState<string>("")
+  const [singleCardRef, setSingleCardRef] = useState<string>("")
+
+  // Split payment state (Requirement 2)
+  const [splitMethod1, setSplitMethod1] = useState<"cash" | "upi" | "card">("cash")
+  const [splitAmount1, setSplitAmount1] = useState<number>(0)
+  const [splitMethod2, setSplitMethod2] = useState<"cash" | "upi" | "card">("upi")
+  const [splitAmount2, setSplitAmount2] = useState<number>(0)
+  const [splitRef1, setSplitRef1] = useState<string>("")
+  const [splitRef2, setSplitRef2] = useState<string>("")
+
+  // Sales History: Edit Payment Mode Modal state (Requirement 3)
+  const [editingBill, setEditingBill] = useState<any | null>(null)
+  const [editPaymentMode, setEditPaymentMode] = useState<"cash" | "upi" | "card" | "split">("cash")
+  const [editCashTendered, setEditCashTendered] = useState<number>(0)
+  const [editUpiRef, setEditUpiRef] = useState<string>("")
+  const [editCardRef, setEditCardRef] = useState<string>("")
+  const [editSplitMethod1, setEditSplitMethod1] = useState<"cash" | "upi" | "card">("cash")
+  const [editSplitAmount1, setEditSplitAmount1] = useState<number>(0)
+  const [editSplitMethod2, setEditSplitMethod2] = useState<"cash" | "upi" | "card">("upi")
+  const [editSplitAmount2, setEditSplitAmount2] = useState<number>(0)
+  const [editSplitRef1, setEditSplitRef1] = useState<string>("")
+  const [editSplitRef2, setEditSplitRef2] = useState<string>("")
 
   const [payments, setPayments] = useState<Record<string, number>>({})
   const [paymentRefs, setPaymentRefs] = useState<Record<string, string>>({})
@@ -291,14 +320,17 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
           batchId: b.id,
           medicine: med.brandName || med.medicineName,
           generic: med.genericName,
+          form: med.dosageForm || (med as any).form || "TABLET",
+          packing: (med as any).packing || (med as any).pack || "",
           batch: b.batchNumber,
           expiry: b.expiryDate,
           qty: split.usedQty,
           mrp: b.mrp,
+          rate: b.purchasePrice || (med as any).purchasePrice || +(b.mrp * 0.75).toFixed(2),
           discount: 0,
           tax: med.taxPercentage ?? 5,
           hsnCode: med.hsnCode || "3004 039",
-          mnf: (med as any).mnfCode || (med.manufacturer ? med.manufacturer.substring(0, 3).toUpperCase() : "MAN"),
+          mnf: (med as any).mnfCode || (med.manufacturer ? med.manufacturer.substring(0, 4).toUpperCase() : "MANK"),
           sh: med.scheduleType || "H",
           binNo: (b as any).location || (med as any).binNo || "",
           total: b.mrp * split.usedQty * (1 + (med.taxPercentage ?? 5) / 100),
@@ -323,14 +355,21 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
   }
 
   const filteredMeds =
-    searchQuery.length > 1
+    searchQuery.trim().length > 0
       ? medicines
-          .filter(
-            (m) =>
-              m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              m.generic.toLowerCase().includes(searchQuery.toLowerCase()),
-          )
-          .slice(0, 6)
+          .filter((m) => {
+            const q = searchQuery.toLowerCase().trim()
+            return (
+              m.name.toLowerCase().includes(q) ||
+              (m.generic && m.generic.toLowerCase().includes(q)) ||
+              (m.mnfCode && m.mnfCode.toLowerCase().includes(q)) ||
+              (m.hsnCode && m.hsnCode.toLowerCase().includes(q)) ||
+              (m.packing && m.packing.toLowerCase().includes(q)) ||
+              (m.sku && m.sku.toLowerCase().includes(q)) ||
+              (m.barcode && m.barcode.toLowerCase().includes(q))
+            )
+          })
+          .slice(0, 8)
       : []
 
   const subtotal = cart.reduce((s, i) => s + i.mrp * i.qty, 0)
@@ -352,19 +391,33 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
   const updateQty = (id: number, delta: number) => {
     setCart((prev) =>
-      prev.map((i) =>
-        i.id === id
-          ? {
-              ...i,
-              qty: Math.max(1, i.qty + delta),
-              total:
-                Math.max(1, i.qty + delta) *
-                i.mrp *
-                (1 - (i.discount || 0) / 100) *
-                (1 + (i.tax || 0) / 100),
-            }
-          : i,
-      ),
+      prev.map((i) => {
+        if (i.id !== id) return i
+        const newQty = i.qty + delta
+        if (newQty < 1) return i
+
+        // Lookup available stock from batch or medicine
+        const liveBatches = PharmacyDatabase.getBatches()
+        const b = liveBatches.find((bat) => bat.id === i.batchId)
+        const med = medicines.find((m) => m.id === i.medicineId)
+        const maxStock = b ? (b.availableQuantity ?? b.quantity ?? 0) : (med?.stock ?? 0)
+
+        if (delta > 0 && newQty > maxStock) {
+          alert(`Cannot increase quantity! Only ${maxStock} unit(s) available in stock for batch ${i.batch || ""}.`)
+          return i
+        }
+
+        return {
+          ...i,
+          qty: newQty,
+          maxStock,
+          total:
+            newQty *
+            i.mrp *
+            (1 - (i.discount || 0) / 100) *
+            (1 + (i.tax || 0) / 100),
+        }
+      }),
     )
   }
   const removeItem = (id: number) =>
@@ -373,22 +426,55 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
   const addMedicine = (med: typeof medicines[0]) => {
     const exists = cart.find((i) => i.medicine === med.name)
     if (exists) {
+      const liveBatches = PharmacyDatabase.getBatches()
+      const b = liveBatches.find((bat) => bat.id === exists.batchId)
+      const maxStock = b ? (b.availableQuantity ?? b.quantity ?? 0) : (med.stock ?? 0)
+      if (exists.qty >= maxStock) {
+        alert(`Cannot add more "${med.name}". Maximum available stock is ${maxStock} unit(s)!`)
+        return
+      }
       updateQty(exists.id, 1)
+      setSearchQuery("")
       return
     }
 
-    // Use FEFO (First Expiry First Out) to pick the oldest batch
+    // Use FEFO (First Expiry First Out) to pick the oldest available batch with stock > 0
     const allBatches = PharmacyDatabase.getBatches().filter(
-      (b) => b.medicineId === med.id && b.availableQuantity > 0,
+      (b) => b.medicineId === med.id && (b.availableQuantity > 0 || (b.quantity && b.quantity > 0)),
     )
     const sortedBatches = allBatches.sort(
       (a, b) =>
         new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime(),
     )
 
-    const b = sortedBatches[0]
+    let b = sortedBatches.find((bat) => (bat.availableQuantity ?? bat.quantity ?? 0) > 0)
     if (!b) {
-      alert("No stock available for this medicine!")
+      if (med.stock > 0) {
+        // Auto-allocate batch from medicine master stock
+        b = {
+          id: "BAT_AUTO_" + Date.now(),
+          medicineId: med.id,
+          batchNumber: (med as any).batchNumber || "B" + Math.floor(100000 + Math.random() * 900000),
+          expiryDate: (med as any).expiryDate || "2028-12-31",
+          manufacturingDate: new Date().toISOString().split("T")[0],
+          quantity: med.stock,
+          availableQuantity: med.stock,
+          mrp: med.mrp,
+          purchasePrice: (med as any).purchasePrice || med.mrp * 0.75,
+          createdAt: new Date().toISOString(),
+        } as any
+        PharmacyDatabase.addBatch(b)
+      } else {
+        alert(`Cannot add "${med.name}". Out of stock (0 units available)!`)
+        return
+      }
+    }
+
+    if (!b) return
+
+    const availableStock = b.availableQuantity ?? b.quantity ?? med.stock ?? 0
+    if (availableStock <= 0) {
+      alert(`Cannot add "${med.name}". Out of stock (0 units available)!`)
       return
     }
 
@@ -400,11 +486,15 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       medicineId: med.id,
       batchId: b.id,
       medicine: med.name,
+      form: med.form || (med as any).dosageForm || "TABLET",
+      packing: (med as any).packing || (med as any).pack || "",
       generic: med.generic,
       batch: b.batchNumber,
       expiry: b.expiryDate,
       qty: 1,
+      maxStock: availableStock,
       mrp: itemMrp,
+      rate: b.purchasePrice || (med as any).purchasePrice || +(itemMrp * 0.75).toFixed(2),
       discount: 0,
       tax: taxPct,
       hsnCode: (med as any).hsnCode || med.sku || "3004 039",
@@ -415,6 +505,149 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     }
     setCart((prev) => [...prev, newItem])
     setSearchQuery("")
+  }
+
+  useEffect(() => {
+    if (finalAmount > 0) {
+      const half = Math.round(finalAmount / 2)
+      setSplitAmount1(half)
+      setSplitAmount2(finalAmount - half)
+    }
+  }, [finalAmount])
+
+  const handleSplitAmount1Change = (val: number) => {
+    setSplitAmount1(val)
+    setSplitAmount2(Math.max(0, finalAmount - val))
+  }
+
+  const handleQuickHalfSplit = () => {
+    const half = Math.round(finalAmount / 2)
+    setSplitAmount1(half)
+    setSplitAmount2(finalAmount - half)
+  }
+
+  const openChangePaymentModal = (billRecord: any) => {
+    setEditingBill(billRecord)
+    const mode = (billRecord.paymentMode || "").toLowerCase()
+    const total = billRecord.totalAmount || 0
+
+    if (
+      mode.includes("split") ||
+      Object.keys(billRecord.paymentsData?.amounts || {}).length > 1
+    ) {
+      setEditPaymentMode("split")
+      const amounts = billRecord.paymentsData?.amounts || {}
+      const keys = Object.keys(amounts)
+      const m1 = (keys[0]?.toLowerCase() as any) || "cash"
+      const m2 = (keys[1]?.toLowerCase() as any) || "upi"
+      const a1 = Number(amounts[keys[0]]) || Math.round(total / 2)
+      const a2 = Number(amounts[keys[1]]) || total - a1
+      setEditSplitMethod1(m1 === "card" || m1 === "upi" ? m1 : "cash")
+      setEditSplitAmount1(a1)
+      setEditSplitMethod2(m2 === "card" || m2 === "cash" ? m2 : "upi")
+      setEditSplitAmount2(a2)
+      setEditSplitRef1((billRecord.paymentsData?.refs as any)?.[keys[0]] || "")
+      setEditSplitRef2((billRecord.paymentsData?.refs as any)?.[keys[1]] || "")
+    } else if (mode.includes("upi")) {
+      setEditPaymentMode("upi")
+      setEditUpiRef((billRecord.paymentsData?.refs as any)?.upi || (billRecord.paymentsData?.refs as any)?.UPI || "")
+    } else if (mode.includes("card")) {
+      setEditPaymentMode("card")
+      setEditCardRef((billRecord.paymentsData?.refs as any)?.card || (billRecord.paymentsData?.refs as any)?.Card || "")
+    } else {
+      setEditPaymentMode("cash")
+      setEditCashTendered(0)
+    }
+  }
+
+  const handleEditSplitAmount1Change = (val: number) => {
+    setEditSplitAmount1(val)
+    const total = editingBill?.totalAmount || 0
+    setEditSplitAmount2(Math.max(0, total - val))
+  }
+
+  const handleEditQuickHalfSplit = () => {
+    const total = editingBill?.totalAmount || 0
+    const half = Math.round(total / 2)
+    setEditSplitAmount1(half)
+    setEditSplitAmount2(total - half)
+  }
+
+  const saveUpdatedPaymentMode = () => {
+    if (!editingBill) return
+
+    const total = editingBill.totalAmount || 0
+    let updatedMode = "Cash"
+    let updatedPaymentsData: {
+      amounts: Record<string, number>
+      refs: Record<string, string>
+    } = {
+      amounts: {},
+      refs: {},
+    }
+
+    if (editPaymentMode === "cash") {
+      updatedMode = "Cash"
+      updatedPaymentsData = {
+        amounts: { Cash: total },
+        refs: {},
+      }
+    } else if (editPaymentMode === "upi") {
+      updatedMode = "UPI"
+      updatedPaymentsData = {
+        amounts: { UPI: total },
+        refs: editUpiRef ? { UPI: editUpiRef } : {},
+      }
+    } else if (editPaymentMode === "card") {
+      updatedMode = "Card"
+      updatedPaymentsData = {
+        amounts: { Card: total },
+        refs: editCardRef ? { Card: editCardRef } : {},
+      }
+    } else if (editPaymentMode === "split") {
+      const a1 = Number(editSplitAmount1) || 0
+      const a2 = Number(editSplitAmount2) || 0
+      if (a1 + a2 !== total) {
+        alert(
+          `Split amounts (₹${(a1 + a2).toFixed(2)}) must equal total bill amount (₹${total.toFixed(2)}).`,
+        )
+        return
+      }
+      updatedMode = `Split (${editSplitMethod1.toUpperCase()} ₹${a1} + ${editSplitMethod2.toUpperCase()} ₹${a2})`
+      updatedPaymentsData = {
+        amounts: {
+          [editSplitMethod1.toUpperCase()]: a1,
+          [editSplitMethod2.toUpperCase()]: a2,
+        },
+        refs: {
+          ...(editSplitRef1 ? { [editSplitMethod1.toUpperCase()]: editSplitRef1 } : {}),
+          ...(editSplitRef2 ? { [editSplitMethod2.toUpperCase()]: editSplitRef2 } : {}),
+        },
+      }
+    }
+
+    const updated = PharmacyDatabase.updatePharmacyBill(editingBill.id, {
+      paymentMode: updatedMode,
+      paymentsData: updatedPaymentsData,
+    })
+
+    PharmacyDatabase.logAudit(
+      "Pharmacist (You)",
+      "Updated",
+      "Billing",
+      editingBill.billNumber,
+      `Payment mode changed from ${editingBill.paymentMode} to ${updatedMode}`,
+    )
+
+    refresh()
+    setEditingBill(null)
+
+    const billToPrint = updated || {
+      ...editingBill,
+      paymentMode: updatedMode,
+      paymentsData: updatedPaymentsData,
+    }
+    setPrintBill(billToPrint)
   }
 
   const totalPaid = Object.values(payments).reduce(
@@ -553,6 +786,59 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       rxMeta = PharmacyDatabase.getPrescriptions().find((p) => p.id === rxId)
     }
 
+    let finalPaymentMode = "Cash"
+    let finalPaymentsData: {
+      amounts: Record<string, number>
+      refs: Record<string, string>
+    } = { amounts: {}, refs: {} }
+
+    if (selectedPaymentMode === "cash") {
+      finalPaymentMode = "Cash"
+      finalPaymentsData = {
+        amounts: { Cash: finalAmount },
+        refs: {},
+      }
+    } else if (selectedPaymentMode === "upi") {
+      finalPaymentMode = "UPI"
+      finalPaymentsData = {
+        amounts: { UPI: finalAmount },
+        refs: singleUpiRef ? { UPI: singleUpiRef } : {},
+      }
+    } else if (selectedPaymentMode === "card") {
+      finalPaymentMode = "Card"
+      finalPaymentsData = {
+        amounts: { Card: finalAmount },
+        refs: singleCardRef ? { Card: singleCardRef } : {},
+      }
+    } else if (selectedPaymentMode === "split") {
+      const a1 = Number(splitAmount1) || 0
+      const a2 = Number(splitAmount2) || 0
+      finalPaymentMode = `Split (${splitMethod1.toUpperCase()} ₹${a1} + ${splitMethod2.toUpperCase()} ₹${a2})`
+      finalPaymentsData = {
+        amounts: {
+          [splitMethod1.toUpperCase()]: a1,
+          [splitMethod2.toUpperCase()]: a2,
+        },
+        refs: {
+          ...(splitRef1 ? { [splitMethod1.toUpperCase()]: splitRef1 } : {}),
+          ...(splitRef2 ? { [splitMethod2.toUpperCase()]: splitRef2 } : {}),
+        },
+      }
+    }
+
+    // Pre-validate stock availability for all cart items before proceeding
+    const liveBatches = PharmacyDatabase.getBatches()
+    for (const c of cart) {
+      const b = liveBatches.find((bat) => bat.id === c.batchId)
+      const available = b ? (b.availableQuantity ?? b.quantity ?? 0) : 0
+      if (c.qty > available) {
+        alert(
+          `Cannot complete sale! Insufficient stock for "${c.medicine}". Requested ${c.qty} unit(s), but only ${available} available in batch ${c.batch || ""}.`,
+        )
+        return
+      }
+    }
+
     // Update DB
     const bill = {
       id: billId,
@@ -562,25 +848,25 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       uhid: rxMeta?.uhid || "",
       doctorName: rxMeta?.doctorName || "Self",
       department: rxMeta?.department || "Pharmacy",
-      billType: "Cash",
+      billType: finalPaymentMode,
       paymentStatus: "Paid",
-      paymentMode:
-        Object.keys(payments).length > 0
-          ? Object.keys(payments).join(",")
-          : "Cash",
-      paymentsData: { amounts: payments, refs: paymentRefs },
+      paymentMode: finalPaymentMode,
+      paymentsData: finalPaymentsData,
       prescriptionId: rxId || undefined,
       items: cart.map((c: any) => ({
         medicineId: c.medicineId,
-        medicineName: c.medicine,
+        medicineName: c.packing && !c.medicine.includes(c.packing) ? `${c.medicine} (${c.packing})` : c.medicine,
+        form: c.form || "TABLET",
+        packing: c.packing || "",
         batchNumber: c.batch,
         expiryDate: c.expiry,
         quantity: c.qty,
         unitPrice: c.mrp,
+        rate: c.rate || c.mrp,
         grossAmount: c.qty * c.mrp,
         discount: c.discount || 0,
         hsnCode: c.hsnCode || "3004 039",
-        mnf: c.mnf || "MAN",
+        mnf: c.mnf || "MANK",
         sh: c.sh || "H",
         binNo: c.binNo || "",
         taxableAmount: c.total - c.total * (c.tax / (100 + c.tax)),
@@ -596,8 +882,8 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       cgstTotal: totalCGST,
       sgstTotal: totalSGST,
       totalAmount: finalAmount,
-      totalPaid: totalPaid,
-      balanceDue: Math.max(0, balanceDue),
+      totalPaid: finalAmount,
+      balanceDue: 0,
       createdBy: "Pharmacist",
       createdAt: new Date().toISOString(),
     }
@@ -605,12 +891,13 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     PharmacyDatabase.addPharmacyBill(bill as any)
     setLastBillId(bill) // Pass the whole bill object to the modal
 
-    // Update Batches
+    // Update Batches & Medicine Stock
     const currentBatches = PharmacyDatabase.getBatches()
+    const allMedicines = PharmacyDatabase.getMedicines()
     cart.forEach((c) => {
       const b = currentBatches.find((bat) => bat.id === c.batchId)
       if (b) {
-        b.availableQuantity -= c.qty
+        b.availableQuantity = Math.max(0, (b.availableQuantity ?? 0) - c.qty)
         PharmacyDatabase.updateBatch(b.id, b)
 
         PharmacyDatabase.addTransaction({
@@ -624,14 +911,25 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
           billId: billId,
         })
       }
+
+      // Deduct from master medicine stock
+      const med = allMedicines.find((m) => m.id === c.medicineId)
+      if (med) {
+        const curStock = (med as any).stock ?? (med as any).currentStock ?? 0
+        const updatedStock = Math.max(0, curStock - c.qty)
+        PharmacyDatabase.updateMedicine(med.id, {
+          stock: updatedStock,
+          currentStock: updatedStock,
+        } as any)
+      }
     })
 
     if (rxId) {
       PharmacyDatabase.updatePrescription(rxId, {
-        status: isPaid ? "Dispensed" : "Processing",
-        dispensingStatus: isPaid ? "Dispensed" : "Partially Dispensed",
-        paidAmount: totalPaid,
-        remainingDue: Math.max(0, balanceDue),
+        status: "Dispensed",
+        dispensingStatus: "Dispensed",
+        paidAmount: finalAmount,
+        remainingDue: 0,
       } as any)
     }
 
@@ -647,7 +945,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     try {
       PharmacyDatabase.addNotification(
         `Sale & Dispense Completed (${billId})`,
-        `Successfully dispensed ${cart.length} item(s) for ${patientName || "Walk-in Patient"}. Bill Total: ₹${finalAmount.toFixed(2)} (Paid: ₹${totalPaid.toFixed(2)}${balanceDue > 0 ? `, Due: ₹${balanceDue.toFixed(2)}` : ""}) via ${bill.paymentMode}.`,
+        `Successfully dispensed ${cart.length} item(s) for ${patientName || "Walk-in Patient"}. Bill Total: ₹${finalAmount.toFixed(2)} via ${bill.paymentMode}.`,
         "success",
       )
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
@@ -664,6 +962,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       ref: billId,
     })
 
+    refresh()
     setShowInvoice(true)
   }
 
@@ -676,10 +975,23 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     setPaymentRefs({})
     setTenderedCash(0)
     setDiscount(0)
+    setSelectedPaymentMode("cash")
+    setCashTendered(0)
+    setSingleUpiRef("")
+    setSingleCardRef("")
+    setSplitMethod1("cash")
+    setSplitMethod2("upi")
+    setSplitAmount1(0)
+    setSplitAmount2(0)
+    setSplitRef1("")
+    setSplitRef2("")
+    refresh()
   }
 
+  // Below lg the payment panel stacks under the cart and the page scrolls as
+  // one column; side by side, a phone left the cart about 24px wide.
   return (
-    <div className="flex h-full overflow-hidden relative">
+    <div className="flex flex-col lg:flex-row lg:h-full lg:overflow-hidden relative">
       {/* Real-time Payment Success Notification Toast */}
       {paymentToast && (
         <div className="fixed top-5 right-5 z-[9999] max-w-md w-full bg-white border-2 border-emerald-500 rounded-2xl shadow-2xl p-4 flex items-start gap-3 animate-in slide-in-from-top-4 duration-300">
@@ -726,7 +1038,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
       {/* Main Container */}
 
-      <div className="flex-1 flex flex-col overflow-hidden print:hidden bg-[#F8FAFC]">
+      <div className="flex-1 min-w-0 flex flex-col lg:overflow-hidden print:hidden bg-[#F8FAFC]">
         <div className="p-6 pb-0">
           <PageHeader
             breadcrumbs={[
@@ -837,14 +1149,21 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                   </thead>
                   <tbody className="divide-y divide-[#E2E8F0]">
                     {bills
-                      .filter(
-                        (b) =>
-                          !historySearch ||
-                          b.billNumber.includes(historySearch) ||
-                          b.patientName
-                            .toLowerCase()
-                            .includes(historySearch.toLowerCase()),
-                      )
+                      .filter((b) => {
+                        if (!historySearch) return true
+                        const q = historySearch.toLowerCase().trim()
+                        const qDigits = q.replace(/\D/g, "")
+                        const bNo = (b.billNumber || "").toLowerCase()
+                        const pName = (b.patientName || "").toLowerCase()
+                        const uhid = (b.uhid || "").toLowerCase()
+                        const bDigits = bNo.replace(/\D/g, "")
+                        return (
+                          bNo.includes(q) ||
+                          pName.includes(q) ||
+                          uhid.includes(q) ||
+                          (qDigits.length >= 2 && bDigits.endsWith(qDigits))
+                        )
+                      })
                       .map((inv, i) => {
                         const isModified =
                           inv.isModifiedReturnBill ||
@@ -869,8 +1188,8 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                                   {inv.billNumber}
                                 </span>
                                 {isModified && (
-                                  <span className="px-1.5 py-0.5 text-[10px] bg-purple-100 text-purple-700 font-bold rounded">
-                                    MODIFIED
+                                  <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${(inv.totalAmount || 0) === 0 ? "bg-emerald-100 text-emerald-800" : "bg-purple-100 text-purple-700"}`}>
+                                    {(inv.totalAmount || 0) === 0 ? "FULLY RETURNED" : "MODIFIED"}
                                   </span>
                                 )}
                                 {hasReturns && !isModified && (
@@ -924,12 +1243,23 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                               )}
                             </td>
                             <td className="px-5 py-3 text-right">
-                              <button
-                                onClick={() => setPrintBill(inv)}
-                                className="p-1.5 rounded bg-white border border-[#E2E8F0] hover:bg-[#F0F2F5] text-[#475569] transition-colors inline-flex items-center justify-center shadow-xs"
-                              >
-                                <Printer size={14} />
-                              </button>
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => openChangePaymentModal(inv)}
+                                  className="px-2.5 py-1 text-[11px] font-semibold rounded bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 transition-colors inline-flex items-center gap-1 shadow-2xs"
+                                  title="Change Payment Mode & Reprint"
+                                >
+                                  <ArrowRightLeft size={12} />
+                                  <span>Change Mode</span>
+                                </button>
+                                <button
+                                  onClick={() => setPrintBill(inv)}
+                                  className="p-1.5 rounded bg-white border border-[#E2E8F0] hover:bg-[#F0F2F5] text-[#475569] transition-colors inline-flex items-center justify-center shadow-2xs"
+                                  title="Print Bill"
+                                >
+                                  <Printer size={14} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         )
@@ -952,8 +1282,8 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
         ) : (
           <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-4 flex flex-col">
             {/* Patient / Rx Info */}
-            <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-5 flex gap-4 items-end hover:shadow-md transition-shadow">
-              <div className="grid grid-cols-2 gap-4 flex-1">
+            <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-5 flex flex-col sm:flex-row gap-4 sm:items-end hover:shadow-md transition-shadow">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
                 <div>
                   <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide mb-1">
                     Prescription ID
@@ -1013,12 +1343,12 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           {m.name}
                         </p>
                         <p className="text-[11px] text-[#64748B]">
-                          {m.generic} · {m.form} · {m.manufacturer}
+                          {(m as any).mnfCode || m.manufacturer} · Pack: {(m as any).packing || "1's"} · HSN: {(m as any).hsnCode || m.sku || "3004 039"}{m.generic ? ` · (${m.generic})` : ""}
                         </p>
                       </div>
                       <div className="text-right ml-4">
                         <p className="text-[13px] font-bold text-[#0F1624]">
-                          ₹{m.mrp}
+                          ₹{Number(m.mrp).toFixed(2)}
                         </p>
                         <p
                           className="text-[11px]"
@@ -1094,7 +1424,10 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                       <tr key={i} className="hover:bg-[#F0FDFA] transition-colors border-b border-[#E2E8F0] last:border-0 hover:bg-[#F5F7FA]"
                       >
                         <td className="px-5 py-4 font-medium text-[13px] text-[#0F1624]">
-                          {item.medicine}
+                          <div>{item.medicine}</div>
+                          <div className="text-[11px] text-[#64748B]">
+                            {item.mnf || "MANK"} · Pack: {item.packing || "1's"} · HSN: {item.hsnCode || "3004 039"}{item.rate ? ` · Rate: ₹${Number(item.rate).toFixed(2)}` : ""}
+                          </div>
                         </td>
                         <td className="px-5 py-4 text-[#64748B] font-mono text-[12px]">
                           {item.batch}
@@ -1103,22 +1436,32 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                           {item.expiry}
                         </td>
                         <td className="px-5 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => updateQty(item.id, -1)}
-                              className="p-1 hover:bg-[#DDE2EC] rounded text-[#64748B]"
-                            >
-                              <Minus size={14} />
-                            </button>
-                            <span className="w-8 text-center font-medium text-[13px] text-[#0F1624]">
-                              {item.qty}
-                            </span>
-                            <button
-                              onClick={() => updateQty(item.id, 1)}
-                              className="p-1 hover:bg-[#DDE2EC] rounded text-[#64748B]"
-                            >
-                              <Plus size={14} />
-                            </button>
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => updateQty(item.id, -1)}
+                                disabled={item.qty <= 1}
+                                className="p-1 hover:bg-[#DDE2EC] disabled:opacity-30 rounded text-[#64748B]"
+                              >
+                                <Minus size={14} />
+                              </button>
+                              <span className="w-8 text-center font-bold text-[13px] text-[#0F1624]">
+                                {item.qty}
+                              </span>
+                              <button
+                                onClick={() => updateQty(item.id, 1)}
+                                disabled={item.maxStock !== undefined && item.qty >= item.maxStock}
+                                title={item.maxStock !== undefined && item.qty >= item.maxStock ? `Maximum available stock reached (${item.maxStock} units)` : "Increase quantity"}
+                                className="p-1 hover:bg-[#DDE2EC] disabled:opacity-30 disabled:cursor-not-allowed rounded text-[#64748B]"
+                              >
+                                <Plus size={14} />
+                              </button>
+                            </div>
+                            {item.maxStock !== undefined && (
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${item.qty >= item.maxStock ? "bg-amber-100 text-amber-800" : "bg-teal-50 text-teal-700"}`}>
+                                Stock: {item.maxStock}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-5 py-4 text-right text-[13px] text-[#0F1624]">
@@ -1150,7 +1493,7 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
       {/* Right: Payment summary (Only shown in New Sale tab) */}
       {activeTab === "new_sale" && (
-        <div className="w-[420px] bg-white border-l border-[#E2E8F0] shadow-[-10px_0_40px_rgba(0,0,0,0.04)] flex flex-col print:hidden z-10">
+        <div className="w-full lg:w-[420px] flex-shrink-0 bg-white border-t lg:border-t-0 lg:border-l border-[#E2E8F0] shadow-[-10px_0_40px_rgba(0,0,0,0.04)] flex flex-col print:hidden z-10">
           <div className="p-6 border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <h3 className="font-black text-[18px] text-[#0F1624] tracking-tight">
               Payment Summary
@@ -1205,531 +1548,545 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
               <div className="h-px bg-[#DDE2EC] my-3"></div>
 
-              {/* Live Real-time Payment & Balance Due Summary */}
-              <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-3.5 space-y-2">
-                <div className="flex justify-between items-center text-[13px]">
-                  <span className="text-[#64748B] font-medium">Total Bill Amount:</span>
-                  <span className="font-bold text-[#0F1624] text-[15px]">₹{finalAmount.toFixed(2)}</span>
+              {/* Total Bill Amount display */}
+              <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 space-y-1">
+                <div className="flex justify-between items-center text-[12px] text-emerald-800 font-semibold uppercase tracking-wider">
+                  <span>Total Amount Payable</span>
+                  <span className="text-[10px] bg-emerald-200/70 text-emerald-900 px-2 py-0.5 rounded-full font-bold">
+                    Net Bill
+                  </span>
                 </div>
-
-                {totalPaid > 0 && (
-                  <div className="flex justify-between items-center text-[13px] text-[#047857] font-bold bg-[#ECFDF5] border border-[#A7F3D0] px-3 py-1.5 rounded-lg">
-                    <span className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Deducted / Paid {payments["upi"] ? `(UPI: ₹${Number(payments["upi"]).toFixed(2)})` : ""}{payments["card"] ? ` (Card: ₹${Number(payments["card"]).toFixed(2)})` : ""}{payments["cash"] ? ` (Cash: ₹${Number(payments["cash"]).toFixed(2)})` : ""}:
-                    </span>
-                    <span className="text-[14px] font-mono">- ₹{totalPaid.toFixed(2)}</span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center pt-2 border-t border-[#E2E8F0]">
-                  <div>
-                    <span className="text-[12px] font-bold text-[#334155] uppercase tracking-wide block">
-                      {balanceDue <= 0 ? "Payment Status" : "Remaining to Pay"}
-                    </span>
-                    {balanceDue > 0 && (
-                      <span className="text-[10px] text-[#64748B]">After deducting paid ₹{totalPaid.toFixed(2)}</span>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <span className={`text-[28px] font-black leading-none ${balanceDue <= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                      {balanceDue <= 0 ? "PAID ✓" : `₹${balanceDue.toFixed(2)}`}
-                    </span>
-                  </div>
+                <div className="flex justify-between items-baseline pt-1">
+                  <span className="text-[11px] text-emerald-700">
+                    Incl. Taxes & Discounts
+                  </span>
+                  <span className="text-[28px] font-black text-emerald-800 leading-none">
+                    ₹{finalAmount.toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Payment Allocation */}
-            <div>
-              <div className="flex justify-between items-end mb-3">
-                <label className="block text-[11px] font-semibold text-[#64748B] uppercase tracking-wide">
-                  Payment Allocation
-                </label>
-                <span className="text-[12px] font-bold text-[#dc2626]">
-                  Balance: ₹{Math.max(0, balanceDue).toFixed(2)}
-                </span>
+            {/* Payment Mode Selection */}
+            <div className="space-y-3">
+              <label className="block text-[11px] font-bold text-[#475569] uppercase tracking-wider">
+                Select Payment Mode
+              </label>
+
+              {/* 4 Mode Buttons Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {paymentMethods.map((pm) => {
+                  const Icon = pm.icon
+                  const isSelected = selectedPaymentMode === pm.id
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => setSelectedPaymentMode(pm.id as any)}
+                      className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-center cursor-pointer ${
+                        isSelected
+                          ? "bg-teal-700 text-white border-teal-700 shadow-md ring-2 ring-teal-500/30"
+                          : "bg-white text-[#334155] border-[#E2E8F0] hover:bg-slate-50 hover:border-slate-300"
+                      }`}
+                    >
+                      <Icon size={20} className={isSelected ? "text-white" : "text-teal-700"} />
+                      <span className="text-[12px] font-bold">{pm.label}</span>
+                    </button>
+                  )
+                })}
               </div>
 
-              <div className="space-y-3">
-                {/* Cash */}
-                <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center gap-2 bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
-                    <Wallet size={16} className="text-[#1B4FD8]" />
-                    <span className="text-[13px] font-semibold text-[#0F1624]">
-                      Cash
-                    </span>
-                  </div>
-                  <div className="p-3 bg-white space-y-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[12px] text-[#475569]">
-                          Paying (₹)
-                        </span>
-                        {balanceDue > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setPayments((p) => ({ ...p, cash: balanceDue }))}
-                            className="text-[10px] text-[#1B4FD8] font-semibold hover:underline"
-                          >
-                            (Fill Balance ₹{balanceDue.toFixed(2)})
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="number"
-                        value={payments["cash"] || ""}
-                        onChange={(e) =>
-                          setPayments((p) => ({
-                            ...p,
-                            cash: Number(e.target.value),
-                          }))
-                        }
-                        className="w-24 px-2 py-1 text-right text-[13px] border border-[#E2E8F0] focus:border-[#1B4FD8] outline-none rounded font-bold"
-                        placeholder="0.00"
-                      />
+              {/* Mode-Specific Controls */}
+              <div className="bg-white border border-[#E2E8F0] rounded-xl p-3.5 space-y-3 shadow-2xs">
+                {/* CASH MODE */}
+                {selectedPaymentMode === "cash" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-[#64748B]">Cash Payment:</span>
+                      <span className="font-bold text-[#0F1624] text-[15px]">
+                        ₹{finalAmount.toFixed(2)}
+                      </span>
                     </div>
-                    {payments["cash"] > 0 && (
-                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F0F2F5]">
-                        <span className="text-[12px] text-[#475569]">
-                          Tendered
-                        </span>
+
+                    <div className="pt-2 border-t border-[#F1F5F9] space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-[11px] font-medium text-[#475569]">
+                          Cash Tendered by Patient (₹):
+                        </label>
                         <input
                           type="number"
-                          value={tenderedCash || ""}
-                          onChange={(e) =>
-                            setTenderedCash(Number(e.target.value))
-                          }
-                          className="w-24 px-2 py-1 text-right text-[13px] border border-[#E2E8F0] focus:border-[#1B4FD8] outline-none rounded"
-                          placeholder="0.00"
+                          value={cashTendered || ""}
+                          onChange={(e) => setCashTendered(Number(e.target.value))}
+                          placeholder="e.g. 500"
+                          className="w-28 px-2.5 py-1 text-right text-[13px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] rounded outline-none"
                         />
                       </div>
-                    )}
-                    {tenderedCash > 0 && payments["cash"] > 0 && (
-                      <div className="flex items-center justify-between gap-2 text-[12px]">
-                        <span className="text-[#64748B] font-medium uppercase tracking-wide">
-                          Change Due:
-                        </span>
-                        <span className="text-[16px] font-black text-[#16a34a] bg-[#DCFCE7] px-2 py-0.5 rounded">
-                          ₹
-                          {Math.max(0, tenderedCash - payments["cash"]).toFixed(
-                            2,
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* UPI */}
-                {/* UPI */}
-                <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center justify-between bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
-                    <div className="flex items-center gap-2">
-                      <Smartphone size={16} className="text-[#0F766E]" />
-                      <span className="text-[13px] font-semibold text-[#0F1624]">
-                        UPI (GPay / PhonePe / QR)
-                      </span>
-                    </div>
-                    {paymentRefs["upi"] && (
-                      <span className="text-[10px] bg-[#DCFCE7] text-[#15803d] px-1.5 py-0.5 rounded font-mono">
-                        {paymentRefs["upi"]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-3 bg-white space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[12px] text-[#475569]">Amount (₹)</span>
-                        {(!payments["upi"] || payments["upi"] === 0) && balanceDue > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setPayments((p) => ({ ...p, upi: balanceDue }))}
-                            className="text-[10px] text-[#0F766E] font-semibold hover:underline"
+                      {cashTendered > 0 && (
+                        <div className="flex items-center justify-between text-[12px] pt-1">
+                          <span className="text-[#64748B] font-semibold">Change Return:</span>
+                          <span
+                            className={`font-black text-[14px] px-2 py-0.5 rounded ${
+                              cashTendered >= finalAmount
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-rose-100 text-rose-800"
+                            }`}
                           >
-                            (Fill ₹{balanceDue.toFixed(2)})
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="number"
-                        value={payments["upi"] || ""}
-                        onChange={(e) => {
-                          setPayments((p) => ({
-                            ...p,
-                            upi: Number(e.target.value),
-                          }))
-                        }}
-                        className="w-28 px-3 py-1.5 text-right text-[14px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] outline-none rounded"
-                        placeholder="0.00"
-                      />
+                            ₹{Math.max(0, cashTendered - finalAmount).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* UPI MODE */}
+                {selectedPaymentMode === "upi" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-[#64748B]">UPI Payment:</span>
+                      <span className="font-bold text-[#0F1624] text-[15px]">
+                        ₹{finalAmount.toFixed(2)}
+                      </span>
                     </div>
 
-                    {/* LIVE UPI RECEIVER CONFIGURATION */}
-                    <div className="bg-[#F0FDFA] border border-[#99F6E4] rounded-lg p-2.5 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-[#0F766E] flex items-center gap-1">
-                          <span>Your Receiver UPI ID (Live Real-Time)</span>
-                        </label>
-                        <span className="text-[9px] bg-[#CCFBF1] text-[#0F766E] font-bold px-1.5 py-0.5 rounded uppercase">
-                          Real-Time QR
-                        </span>
+                    <div className="pt-2 border-t border-[#F1F5F9] space-y-2">
+                      <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] p-2.5 rounded-lg font-medium flex items-center gap-2">
+                        <CheckCircle size={15} className="text-emerald-600 shrink-0" />
+                        <span>Patient scans Pharmacy Counter QR Stand / Soundbox. No Transaction ID required.</span>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                    </div>
+                  </div>
+                )}
+
+                {/* CARD MODE */}
+                {selectedPaymentMode === "card" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="text-[#64748B]">Card POS Payment:</span>
+                      <span className="font-bold text-[#0F1624] text-[15px]">
+                        ₹{finalAmount.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#F1F5F9] space-y-2">
+                      <div>
+                        <label className="block text-[11px] font-medium text-[#475569] mb-1">
+                          POS Slip No / Auth Code (Optional):
+                        </label>
                         <input
                           type="text"
-                          value={hospitalUpiId}
-                          onChange={(e) => {
-                            setHospitalUpiId(e.target.value)
-                            localStorage.setItem("hospai_pharmacy_upi_id", e.target.value)
-                          }}
-                          placeholder="8790689532@ibl"
-                          className="flex-1 px-2.5 py-1.5 text-[12px] font-mono font-bold bg-white border border-[#5EEAD4] focus:border-[#0F766E] rounded outline-none"
+                          value={singleCardRef}
+                          onChange={(e) => setSingleCardRef(e.target.value)}
+                          placeholder="e.g. POS-884920"
+                          className="w-full px-2.5 py-1.5 text-[12px] border border-[#CBD5E1] focus:border-[#0F766E] rounded font-mono outline-none"
                         />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const amt = payments["upi"] || (balanceDue > 0 ? balanceDue : finalAmount)
-                            setPayments((p) => ({ ...p, upi: amt }))
-                            setShowUpiQrModal(true)
-                          }}
-                          className="flex-1 py-1.5 bg-[#0F766E] text-white text-[11px] rounded font-bold flex items-center justify-center gap-1.5 hover:bg-[#0c5e58] transition-colors shadow-sm cursor-pointer"
+                    </div>
+                  </div>
+                )}
+
+                {/* SPLIT PAYMENT MODE */}
+                {selectedPaymentMode === "split" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#F1F5F9]">
+                      <span className="text-[12px] font-bold text-[#334155]">
+                        Split Between 2 Methods
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleQuickHalfSplit}
+                        className="text-[11px] px-2 py-0.5 bg-teal-100 hover:bg-teal-200 text-teal-800 rounded font-bold transition-colors cursor-pointer"
+                        title="Split amount 50% / 50%"
+                      >
+                        ⚡ 50% / 50% Split
+                      </button>
+                    </div>
+
+                    {/* Method 1 */}
+                    <div className="bg-[#F8FAFC] p-2.5 rounded-lg border border-[#E2E8F0] space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-[#475569] uppercase">
+                          Method 1:
+                        </span>
+                        <select
+                          value={splitMethod1}
+                          onChange={(e) => setSplitMethod1(e.target.value as any)}
+                          className="text-[12px] font-semibold border border-[#CBD5E1] rounded px-2 py-1 bg-white outline-none"
                         >
-                          <QrCode size={13} /> Open Live Scan & Pay QR
-                        </button>
+                          <option value="cash">Cash</option>
+                          <option value="upi">UPI</option>
+                          <option value="card">Card</option>
+                        </select>
                       </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F0F2F5]">
-                      <input
-                        type="text"
-                        value={paymentRefs["upi"] || ""}
-                        onChange={(e) =>
-                          setPaymentRefs((p) => ({
-                            ...p,
-                            upi: e.target.value,
-                          }))
-                        }
-                        placeholder="12-digit Bank UTR / Ref No."
-                        className="flex-1 px-2.5 py-1 text-[11px] border border-[#E2E8F0] outline-none rounded font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const amt = payments["upi"] || (balanceDue > 0 ? balanceDue : finalAmount)
-                          setPayments((p) => ({ ...p, upi: amt }))
-                          if (!paymentRefs["upi"]) {
-                            setPaymentRefs((p) => ({
-                              ...p,
-                              upi: "UTR" + Date.now().toString().slice(-8),
-                            }))
-                          }
-                        }}
-                        className="px-2.5 py-1 bg-[#16a34a] text-white text-[11px] rounded font-semibold hover:bg-[#15803d] transition-colors"
-                      >
-                        ✓ Mark Paid
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card - Physical POS */}
-                <div className="border border-[#E2E8F0] rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow duration-200">
-                  <div className="flex items-center justify-between bg-[#F8FAFC] p-3 border-b border-[#E2E8F0]">
-                    <div className="flex items-center gap-2">
-                      <CreditCard size={16} className="text-[#1B4FD8]" />
-                      <span className="text-[13px] font-semibold text-[#0F1624]">
-                        Card (Debit / Credit POS)
-                      </span>
-                    </div>
-                    {paymentRefs["card"] && (
-                      <span className="text-[10px] bg-[#DCFCE7] text-[#15803d] px-1.5 py-0.5 rounded font-mono">
-                        {paymentRefs["card"]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-3 bg-white space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[12px] text-[#475569]">Amount (₹)</span>
-                        {(!payments["card"] || payments["card"] === 0) && balanceDue > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setPayments((p) => ({ ...p, card: balanceDue }))}
-                            className="text-[10px] text-[#1B4FD8] font-semibold hover:underline"
-                          >
-                            (Fill ₹{balanceDue.toFixed(2)})
-                          </button>
-                        )}
-                      </div>
-                      <input
-                        type="number"
-                        value={payments["card"] || ""}
-                        onChange={(e) => {
-                          setPayments((p) => ({
-                            ...p,
-                            card: Number(e.target.value),
-                          }))
-                        }}
-                        className="w-28 px-3 py-1.5 text-right text-[14px] font-bold border border-[#CBD5E1] focus:border-[#1B4FD8] outline-none rounded"
-                        placeholder="0.00"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F0F2F5]">
-                      <input
-                        type="text"
-                        value={paymentRefs["card"] || ""}
-                        onChange={(e) =>
-                          setPaymentRefs((p) => ({
-                            ...p,
-                            card: e.target.value,
-                          }))
-                        }
-                        placeholder="POS Auth Code / Slip No."
-                        className="flex-1 px-2.5 py-1 text-[11px] border border-[#E2E8F0] outline-none rounded font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const amt = payments["card"] || (balanceDue > 0 ? balanceDue : finalAmount)
-                          confirmCardPayment(amt)
-                        }}
-                        className="px-2.5 py-1 bg-[#1B4FD8] text-white text-[11px] rounded font-semibold hover:bg-[#1540B3] transition-colors"
-                      >
-                        Swiped & Paid
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handlePhysicalPOSPayment(
-                            payments["card"] || (balanceDue > 0 ? balanceDue : finalAmount)
-                          )
-                        }
-                        disabled={posStatus !== null}
-                        className="px-2 py-1 border border-[#CBD5E1] text-[#334155] text-[11px] rounded font-medium hover:bg-[#F8FAFC] transition-colors"
-                        title="Simulate Card Machine Tap"
-                      >
-                        Send POS
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleRazorpayPayment(
-                            "card",
-                            payments["card"] || (balanceDue > 0 ? balanceDue : finalAmount)
-                          )
-                        }
-                        className="px-2 py-1 bg-[#0F1624] text-white text-[11px] rounded font-medium hover:bg-[#1E293B] transition-colors"
-                        title="Open Card Checkout Gateway"
-                      >
-                        Card PG
-                      </button>
-                    </div>
-
-                    {posStatus && (
-                      <div
-                        className={`text-[11px] font-semibold p-2 rounded ${
-                          posStatus === "Approved!"
-                            ? "bg-[#DCFCE7] text-[#15803d]"
-                            : "bg-[#E8EDF5] text-[#0F766E]"
-                        }`}
-                      >
-                        <RefreshCw
-                          size={12}
-                          className={`inline mr-1 ${
-                            posStatus === "Approved!"
-                              ? "hidden"
-                              : "animate-spin"
-                          }`}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-[#64748B]">Amount (₹):</span>
+                        <input
+                          type="number"
+                          value={splitAmount1 || ""}
+                          onChange={(e) => handleSplitAmount1Change(Number(e.target.value))}
+                          placeholder="0.00"
+                          className="w-28 px-2.5 py-1 text-right text-[13px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] rounded outline-none bg-white"
                         />
-                        {posStatus}
                       </div>
-                    )}
+                      {splitMethod1 === "card" && (
+                        <input
+                          type="text"
+                          value={splitRef1}
+                          onChange={(e) => setSplitRef1(e.target.value)}
+                          placeholder="POS Slip No / Auth Code (Optional)"
+                          className="w-full px-2 py-1 text-[11px] border border-[#CBD5E1] rounded font-mono outline-none bg-white"
+                        />
+                      )}
+                    </div>
+
+                    {/* Method 2 */}
+                    <div className="bg-[#F8FAFC] p-2.5 rounded-lg border border-[#E2E8F0] space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-[#475569] uppercase">
+                          Method 2:
+                        </span>
+                        <select
+                          value={splitMethod2}
+                          onChange={(e) => setSplitMethod2(e.target.value as any)}
+                          className="text-[12px] font-semibold border border-[#CBD5E1] rounded px-2 py-1 bg-white outline-none"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="upi">UPI</option>
+                          <option value="card">Card</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-[#64748B]">Amount (₹):</span>
+                        <input
+                          type="number"
+                          value={splitAmount2 || ""}
+                          onChange={(e) => setSplitAmount2(Number(e.target.value))}
+                          placeholder="0.00"
+                          className="w-28 px-2.5 py-1 text-right text-[13px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] rounded outline-none bg-white"
+                        />
+                      </div>
+                      {splitMethod2 === "card" && (
+                        <input
+                          type="text"
+                          value={splitRef2}
+                          onChange={(e) => setSplitRef2(e.target.value)}
+                          placeholder="POS Slip No / Auth Code (Optional)"
+                          className="w-full px-2 py-1 text-[11px] border border-[#CBD5E1] rounded font-mono outline-none bg-white"
+                        />
+                      )}
+                    </div>
+
+                    {/* Split Validation Notice */}
+                    {(() => {
+                      const sum = Number(splitAmount1 || 0) + Number(splitAmount2 || 0)
+                      const isMatch = sum === finalAmount
+                      return (
+                        <div
+                          className={`p-2 rounded-lg text-[11px] font-semibold flex items-center justify-between ${
+                            isMatch
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : "bg-rose-50 text-rose-800 border border-rose-200"
+                          }`}
+                        >
+                          <span>
+                            {isMatch
+                              ? "✓ Total split matches bill"
+                              : `Difference: ₹${Math.abs(finalAmount - sum).toFixed(2)}`}
+                          </span>
+                          <span className="font-bold">
+                            ₹{sum.toFixed(2)} / ₹{finalAmount.toFixed(2)}
+                          </span>
+                        </div>
+                      )
+                    })()}
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="p-5 border-t border-[#E2E8F0] bg-white space-y-2.5">
-            {balanceDue > 0 && totalPaid > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPayments((p) => ({ ...p, cash: balanceDue }))
-                }}
-                className="w-full py-2.5 bg-[#1B4FD8] hover:bg-[#1640b0] text-white text-[12px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-              >
-                <Wallet size={15} /> Settle Remaining ₹{balanceDue.toFixed(2)} in Cash
-              </button>
-            )}
+          {/* Bottom Complete & Print Bill Button */}
+          <div className="p-5 border-t border-[#E2E8F0] bg-white">
+            {(() => {
+              const isSplitValid =
+                selectedPaymentMode !== "split" ||
+                Number(splitAmount1 || 0) + Number(splitAmount2 || 0) === finalAmount
+              const canDispense = cart.length > 0 && isSplitValid
 
-            <button
-              onClick={completeTransaction}
-              disabled={cart.length === 0}
-              className={`w-full py-4 text-[14px] font-bold rounded-lg shadow-sm transition-colors uppercase tracking-wide flex items-center justify-center gap-2 ${
-                cart.length > 0
-                  ? isPaid
-                    ? "bg-[#0F766E] text-white hover:bg-[#0c5e58]"
-                    : "bg-[#D97706] text-white hover:bg-[#b45309]"
-                  : "bg-[#F0F2F5] text-[#94A3B8] cursor-not-allowed"
-              }`}
-            >
-              {isPaid ? (
-                <>
-                  <CheckCircle size={18} /> Dispense & Print Invoice (Full Paid)
-                </>
-              ) : totalPaid > 0 ? (
-                <>
-                  <Play size={18} /> Dispense (₹{totalPaid.toFixed(2)} Paid · ₹{balanceDue.toFixed(2)} Due)
-                </>
-              ) : (
-                "Select Payment Method Above"
-              )}
-            </button>
+              return (
+                <button
+                  type="button"
+                  onClick={completeTransaction}
+                  disabled={!canDispense}
+                  className={`w-full py-3.5 text-[14px] font-bold rounded-xl shadow-sm transition-all uppercase tracking-wide flex items-center justify-center gap-2 cursor-pointer ${
+                    canDispense
+                      ? "bg-[#0F766E] text-white hover:bg-[#0c5e58] hover:shadow-md active:scale-[0.99]"
+                      : "bg-[#F1F5F9] text-[#94A3B8] border border-[#CBD5E1] cursor-not-allowed"
+                  }`}
+                >
+                  <Printer size={18} />
+                  <span>
+                    {cart.length === 0
+                      ? "Add Medicines To Bill"
+                      : !isSplitValid
+                      ? "Split Amounts Must Equal Total"
+                      : `Print Bill (₹${finalAmount.toFixed(2)})`}
+                  </span>
+                </button>
+              )
+            })()}
           </div>
         </div>
       )}
 
-      {/* Dynamic Counter UPI QR Code Modal */}
-      {showUpiQrModal && (
+
+
+      {/* Change Payment Mode Modal for Sales History (Requirement 3) */}
+      {editingBill && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(15,23,42,0.7)" }}
         >
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center relative border border-[#E2E8F0] animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative border border-[#E2E8F0] animate-in fade-in zoom-in-95">
             <button
-              onClick={() => setShowUpiQrModal(false)}
+              onClick={() => setEditingBill(null)}
               className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-[#F1F5F9] text-[#64748B] transition-colors"
             >
               <X size={18} />
             </button>
 
-            <div className="w-12 h-12 rounded-full bg-[#E6FFFA] text-[#0F766E] flex items-center justify-center mx-auto mb-2.5 border border-[#99F6E4]">
-              <QrCode size={24} />
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-teal-700 flex items-center justify-center">
+                <ArrowRightLeft size={20} />
+              </div>
+              <div>
+                <h3 className="text-[17px] font-bold text-[#0F1624]">
+                  Change Payment Mode
+                </h3>
+                <p className="text-[12px] text-[#64748B]">
+                  Bill #{editingBill.billNumber} · {editingBill.patientName || "Walk-in Patient"}
+                </p>
+              </div>
             </div>
 
-            <h3 className="text-[17px] font-bold text-[#0F1624]">
-              Scan & Pay via UPI
-            </h3>
-            <p className="text-[12px] text-[#64748B] mt-0.5">
-              GPay · PhonePe · Paytm · BHIM · Any Bank UPI App
-            </p>
-
-            {/* Editable Receiver UPI ID directly on modal */}
-            <div className="mt-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3 text-left">
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-[10px] font-bold text-[#64748B] uppercase tracking-wide">
-                  Receiver UPI ID (Your Account):
-                </label>
-                <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded">
-                  Live Active
+            {/* Bill Info Card */}
+            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3.5 mb-4 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-[#64748B] font-semibold uppercase block">
+                  Total Bill Amount
+                </span>
+                <span className="text-[20px] font-black text-[#0F1624]">
+                  ₹{(editingBill.totalAmount || 0).toFixed(2)}
                 </span>
               </div>
-              <input
-                type="text"
-                value={hospitalUpiId}
-                onChange={(e) => {
-                  setHospitalUpiId(e.target.value)
-                  localStorage.setItem("hospai_pharmacy_upi_id", e.target.value)
-                }}
-                placeholder="8790689532@ibl"
-                className="w-full px-2.5 py-1.5 text-[13px] border border-[#CBD5E1] focus:border-[#0F766E] rounded font-mono font-bold text-[#0F1624] outline-none bg-white shadow-sm"
-              />
+              <div className="text-right">
+                <span className="text-[11px] text-[#64748B] font-semibold uppercase block">
+                  Current Mode
+                </span>
+                <span className="text-[12px] font-bold px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full inline-block">
+                  {editingBill.paymentMode || "Cash"}
+                </span>
+              </div>
             </div>
 
-            {/* QR Code Container */}
-            <div className="bg-[#F8FAFC] border-2 border-dashed border-[#0D9488] rounded-xl p-4 my-3 flex flex-col items-center justify-center">
-              {hospitalUpiId.trim() ? (
-                <>
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=10&data=${encodeURIComponent(
-                      `upi://pay?pa=${hospitalUpiId.trim()}&pn=VH Pharmacy&am=${((payments["upi"] || finalAmount) || 0).toFixed(2)}&cu=INR`
-                    )}`}
-                    alt="UPI QR Code"
-                    className="w-48 h-48 rounded-lg shadow-sm bg-white p-2 border border-[#E2E8F0]"
-                  />
-                  <div className="mt-2.5 flex flex-col items-center">
-                    <span className="text-[10px] text-[#64748B] uppercase font-bold tracking-wider">Amount to Pay</span>
-                    <div className="flex items-center justify-center gap-1 mt-0.5">
-                      <span className="text-[18px] font-black text-[#0F766E]">₹</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={payments["upi"] !== undefined ? payments["upi"] : finalAmount}
-                        onChange={(e) => setPayments((p) => ({ ...p, upi: Number(e.target.value) }))}
-                        className="w-24 text-[22px] font-black text-[#0F766E] border-b-2 border-[#0D9488] text-center outline-none bg-transparent"
-                      />
+            {/* Mode selection buttons */}
+            <div className="space-y-3 mb-5">
+              <label className="block text-[11px] font-bold text-[#475569] uppercase tracking-wider">
+                Select New Payment Mode
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                {paymentMethods.map((pm) => {
+                  const Icon = pm.icon
+                  const isSelected = editPaymentMode === pm.id
+                  return (
+                    <button
+                      key={pm.id}
+                      type="button"
+                      onClick={() => setEditPaymentMode(pm.id as any)}
+                      className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all text-center cursor-pointer ${
+                        isSelected
+                          ? "bg-teal-700 text-white border-teal-700 shadow-md ring-2 ring-teal-500/30"
+                          : "bg-white text-[#334155] border-[#E2E8F0] hover:bg-slate-50 hover:border-slate-300"
+                      }`}
+                    >
+                      <Icon size={18} className={isSelected ? "text-white" : "text-teal-700"} />
+                      <span className="text-[12px] font-bold">{pm.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Mode Specific Inputs */}
+              <div className="bg-[#F8FAFC] border border-[#CBD5E1] rounded-xl p-3.5 space-y-3">
+                {editPaymentMode === "cash" && (
+                  <div className="text-[13px] text-[#334155]">
+                    Full amount of <strong className="text-teal-800">₹{(editingBill.totalAmount || 0).toFixed(2)}</strong> will be recorded as paid in <strong>Cash</strong>.
+                  </div>
+                )}
+
+                {editPaymentMode === "upi" && (
+                  <div className="space-y-2">
+                    <div className="text-[13px] text-[#334155]">
+                      Full amount of <strong className="text-teal-800">₹{(editingBill.totalAmount || 0).toFixed(2)}</strong> will be recorded as paid via <strong>UPI</strong>.
                     </div>
-                    <div className="flex gap-1.5 mt-2">
-                      <button
-                        type="button"
-                        onClick={() => setPayments((p) => ({ ...p, upi: 1 }))}
-                        className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold hover:bg-emerald-200 transition-colors"
-                      >
-                        ⚡ Quick ₹1 Test
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPayments((p) => ({ ...p, upi: finalAmount }))}
-                        className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-800 rounded font-bold hover:bg-slate-200 transition-colors"
-                      >
-                        Full (₹{finalAmount})
-                      </button>
+                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] p-2 rounded-lg font-medium flex items-center gap-2">
+                      <CheckCircle size={14} className="text-emerald-600 shrink-0" />
+                      <span>QR Stand / Soundbox Verified. No Transaction ID required.</span>
                     </div>
                   </div>
-                  <a
-                    href={`upi://pay?pa=${hospitalUpiId.trim()}&pn=VH Pharmacy&am=${((payments["upi"] || finalAmount) || 0).toFixed(2)}&cu=INR`}
-                    className="mt-2 text-[11px] text-[#0F766E] hover:underline font-semibold flex items-center gap-1"
-                  >
-                    Open directly in UPI App ↗
-                  </a>
-                </>
-              ) : (
-                <div className="py-8 text-center text-rose-600 font-semibold text-[13px]">
-                  Please enter your receiver UPI ID above
-                </div>
-              )}
+                )}
+
+                {editPaymentMode === "card" && (
+                  <div className="space-y-2">
+                    <div className="text-[13px] text-[#334155]">
+                      Full amount of <strong className="text-teal-800">₹{(editingBill.totalAmount || 0).toFixed(2)}</strong> will be recorded as paid via <strong>Card</strong>.
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-[#475569] mb-1">
+                        POS Slip No / Auth Code (Optional):
+                      </label>
+                      <input
+                        type="text"
+                        value={editCardRef}
+                        onChange={(e) => setEditCardRef(e.target.value)}
+                        placeholder="e.g. POS-884920"
+                        className="w-full px-2.5 py-1.5 text-[12px] border border-[#CBD5E1] focus:border-[#0F766E] rounded font-mono outline-none bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {editPaymentMode === "split" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#E2E8F0]">
+                      <span className="text-[12px] font-bold text-[#334155]">
+                        Split Between 2 Methods
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleEditQuickHalfSplit}
+                        className="text-[11px] px-2 py-0.5 bg-teal-100 hover:bg-teal-200 text-teal-800 rounded font-bold transition-colors cursor-pointer"
+                      >
+                        ⚡ 50% / 50% Split
+                      </button>
+                    </div>
+
+                    {/* Method 1 */}
+                    <div className="bg-white p-2.5 rounded-lg border border-[#E2E8F0] space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-[#475569] uppercase">Method 1:</span>
+                        <select
+                          value={editSplitMethod1}
+                          onChange={(e) => setEditSplitMethod1(e.target.value as any)}
+                          className="text-[12px] font-semibold border border-[#CBD5E1] rounded px-2 py-1 bg-white outline-none"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="upi">UPI</option>
+                          <option value="card">Card</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-[#64748B]">Amount (₹):</span>
+                        <input
+                          type="number"
+                          value={editSplitAmount1 || ""}
+                          onChange={(e) => handleEditSplitAmount1Change(Number(e.target.value))}
+                          placeholder="0.00"
+                          className="w-28 px-2.5 py-1 text-right text-[13px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] rounded outline-none"
+                        />
+                      </div>
+                      {editSplitMethod1 === "card" && (
+                        <input
+                          type="text"
+                          value={editSplitRef1}
+                          onChange={(e) => setEditSplitRef1(e.target.value)}
+                          placeholder="POS Slip No / Auth Code (Optional)"
+                          className="w-full px-2 py-1 text-[11px] border border-[#CBD5E1] rounded font-mono outline-none bg-white"
+                        />
+                      )}
+                    </div>
+
+                    {/* Method 2 */}
+                    <div className="bg-white p-2.5 rounded-lg border border-[#E2E8F0] space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-[#475569] uppercase">Method 2:</span>
+                        <select
+                          value={editSplitMethod2}
+                          onChange={(e) => setEditSplitMethod2(e.target.value as any)}
+                          className="text-[12px] font-semibold border border-[#CBD5E1] rounded px-2 py-1 bg-white outline-none"
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="upi">UPI</option>
+                          <option value="card">Card</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] text-[#64748B]">Amount (₹):</span>
+                        <input
+                          type="number"
+                          value={editSplitAmount2 || ""}
+                          onChange={(e) => setEditSplitAmount2(Number(e.target.value))}
+                          placeholder="0.00"
+                          className="w-28 px-2.5 py-1 text-right text-[13px] font-bold border border-[#CBD5E1] focus:border-[#0F766E] rounded outline-none"
+                        />
+                      </div>
+                      {editSplitMethod2 === "card" && (
+                        <input
+                          type="text"
+                          value={editSplitRef2}
+                          onChange={(e) => setEditSplitRef2(e.target.value)}
+                          placeholder="POS Slip No / Auth Code (Optional)"
+                          className="w-full px-2 py-1 text-[11px] border border-[#CBD5E1] rounded font-mono outline-none bg-white"
+                        />
+                      )}
+                    </div>
+
+                    {/* Validation */}
+                    {(() => {
+                      const total = editingBill.totalAmount || 0
+                      const sum = Number(editSplitAmount1 || 0) + Number(editSplitAmount2 || 0)
+                      const isMatch = sum === total
+                      return (
+                        <div
+                          className={`p-2 rounded-lg text-[11px] font-semibold flex items-center justify-between ${
+                            isMatch
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : "bg-rose-50 text-rose-800 border border-rose-200"
+                          }`}
+                        >
+                          <span>
+                            {isMatch
+                              ? "✓ Total split matches bill"
+                              : `Difference: ₹${Math.abs(total - sum).toFixed(2)}`}
+                          </span>
+                          <span className="font-bold">
+                            ₹{sum.toFixed(2)} / ₹{total.toFixed(2)}
+                          </span>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Real 12-digit UPI Ref entry */}
-            <div className="text-left mb-3 bg-[#F1F5F9] p-3 rounded-xl border border-[#CBD5E1]">
-              <label className="block text-[11px] font-bold text-[#1E293B] mb-1">
-                Enter 12-digit UPI Ref / UTR (from PhonePe / GPay screen):
-              </label>
-              <input
-                type="text"
-                maxLength={16}
-                value={paymentRefs["upi"] || ""}
-                onChange={(e) => setPaymentRefs((p) => ({ ...p, upi: e.target.value.trim() }))}
-                placeholder="e.g. 427189104821 (Check PhonePe receipt)"
-                className="w-full px-2.5 py-1.5 bg-white border border-[#94A3B8] rounded font-mono font-bold text-[13px] text-[#0F1624] tracking-wider outline-none"
-              />
-              <span className="text-[10px] text-[#64748B] mt-1 block">
-                💡 Look at your PhonePe/GPay screen for <strong>UPI Ref No</strong>. Type it here so your bill has the 100% real bank UTR!
-              </span>
-            </div>
-
-            <div className="flex gap-2">
+            {/* Modal Actions */}
+            <div className="flex gap-2.5 pt-2 border-t border-[#E2E8F0]">
               <button
                 type="button"
-                onClick={() => setShowUpiQrModal(false)}
-                className="flex-1 py-2.5 rounded-lg border border-[#E2E8F0] text-[13px] font-semibold text-[#64748B] hover:bg-[#F8FAFC]"
+                onClick={() => setEditingBill(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#CBD5E1] text-[13px] font-semibold text-[#475569] hover:bg-[#F8FAFC] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const amt = payments["upi"] !== undefined && payments["upi"] > 0 ? payments["upi"] : 1
-                  confirmUpiPayment(amt, paymentRefs["upi"])
-                }}
-                className="flex-1 py-2.5 rounded-lg text-white text-[13px] font-bold bg-[#16a34a] hover:bg-[#15803d] shadow-md transition-colors flex items-center justify-center gap-1.5"
+                onClick={saveUpdatedPaymentMode}
+                className="flex-1 py-2.5 rounded-xl bg-[#0F766E] hover:bg-[#0c5e58] text-white text-[13px] font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
               >
-                <CheckCircle size={16} /> ✓ Confirm & Record Payment
+                <Printer size={16} /> Save & Print Updated Bill
               </button>
             </div>
           </div>

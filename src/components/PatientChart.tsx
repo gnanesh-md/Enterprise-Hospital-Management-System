@@ -9,6 +9,13 @@ import AddEvaluationModal from "./AddEvaluationModal";
 import PatientJourneyModal from "./PatientJourneyModal";
 import { PatientInsuranceTab } from "./insurance/integrations";
 import { db, DBOPEncounter } from "../services/db";
+import SendToPatientMenu from "./messaging/SendToPatientMenu";
+import { SendToPatientButton } from "./messaging/SendToPatientDialog";
+import {
+  buildDischargeSummaryDocument,
+  buildEmrReportDocument,
+  buildJourneyDocument,
+} from "../lib/patientDocuments";
 
 // ==================== Directory (search across OP / IP / ER / ICU) ====================
 
@@ -304,8 +311,14 @@ type DayEntry = {
   extra?: string;
 };
 
-function dateKey(iso: string): string {
-  return new Date(iso).toISOString().slice(0, 10);
+function dateKey(iso?: string | null): string {
+  if (!iso) return new Date().toISOString().slice(0, 10);
+  try {
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
 }
 
 // Merges every source of "what happened to this patient" -- OP/IP clinical
@@ -509,6 +522,48 @@ const ENTRY_TYPE_COLOR: Record<string, { bg: string; text: string }> = {
 };
 
 const CHART_TABS = ["Summary", "Day-wise", "Timeline", "Problems", "Medications", "Allergies", "Vitals", "Labs", "Documents", "Billing", "Insurance"];
+
+// The chart's EMR as the patient-facing report (lib/patientDocuments.ts).
+function emrReportInput(row: PatientRow, emr: EmrResponse) {
+  const p = emr.patient;
+  return {
+    patient: {
+      name: rowDisplayName(row),
+      id: row.patient_id,
+      phone: p?.phone || row.phone || "",
+      age: Number(p?.age ?? row.age) || null,
+      gender: p?.gender || row.gender || null,
+      bloodGroup: p?.blood_group || null,
+      allergies: p?.allergies || null,
+    },
+    diagnoses: emr.diagnoses.map((d) => ({ name: d.diagnosis_name, at: d.created_at })),
+    vitals: emr.vitals.map((v) => ({ at: v.created_at, bp: v.bp, pulse: v.pulse, temperature: v.temperature })),
+    medications: emr.prescriptions.map((m) => ({
+      name: m.medicine_name,
+      dosage: m.dosage,
+      at: m.created_at,
+      status: m.status,
+    })),
+    labs: emr.labs.map((l) => ({ name: l.test_name, status: l.status, at: l.created_at })),
+    notes: [
+      ...emr.observation_notes.map((n) => ({
+        at: n.created_at,
+        by: n.doctor_name,
+        text: [n.note, n.treatment_plan ? `Plan: ${n.treatment_plan}` : ""].filter(Boolean).join("\n"),
+      })),
+      ...emr.notes.map((n) => ({
+        at: n.created_at,
+        by: null,
+        text: [n.chief_complaint, n.notes, n.follow_up ? `Follow-up: ${n.follow_up}` : ""]
+          .filter(Boolean)
+          .join("\n"),
+      })),
+    ]
+      .filter((n) => n.text.trim())
+      .sort((a, b) => b.at.localeCompare(a.at)),
+    admissions: emr.admissions.map((a) => ({ admitted: a.admission_date, discharged: a.discharge_date })),
+  };
+}
 
 export default function PatientChart({
   onBack,
@@ -767,6 +822,12 @@ export default function PatientChart({
   const latestAdmission = emr?.admissions[0];
   const latestInsurance = emr?.insurance_claims[0];
   const allergyList = (patient?.allergies || "").split(",").map((a) => a.trim()).filter(Boolean);
+  const chartRecipient = {
+    name: rowDisplayName(selectedRow),
+    phone: patient?.phone || selectedRow.phone || "",
+    email: patient?.email || (selectedRow as any).email || "",
+    id: selectedRow.patient_id,
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -819,9 +880,77 @@ export default function PatientChart({
               </div>
             </div>
           </div>
-          <Btn variant="primary" size="xs" onClick={() => setAddOpen(true)}>
-            <FiPlus aria-hidden /> Add Evaluation
-          </Btn>
+          <div className="flex items-center gap-2 flex-wrap">
+            {emr && (
+              <SendToPatientMenu
+                options={[
+                  {
+                    label: "EMR report",
+                    hint: "Diagnoses, medicines, tests and notes as a PDF",
+                    kind: "emr_report",
+                    patient: chartRecipient,
+                    documentLabel: "Health record summary",
+                    buildDocument: () => buildEmrReportDocument(emrReportInput(selectedRow, emr)),
+                  },
+                  {
+                    label: "Visit journey",
+                    hint: "Every step of the patient's journey as a PDF",
+                    kind: "patient_journey",
+                    patient: chartRecipient,
+                    vars: {
+                      opNumber: selectedRow.care_stream === "OP" ? selectedRow.appointment_doctor || "OP" : "IP",
+                      token: selectedRow.patient_id,
+                      doctor: selectedRow.appointment_doctor || "Attending Physician",
+                      dept: selectedRow.appointment_dept || "Clinical Care",
+                      status: selectedRow.appointment_status || "Active",
+                      vitals: emr?.vitals?.[0]?.bp
+                        ? `BP ${emr.vitals[0].bp}, Pulse ${emr.vitals[0].pulse || "--"} bpm, Temp ${emr.vitals[0].temperature || "--"}°F`
+                        : "Recorded in chart",
+                      diagnosis: emr?.diagnoses?.[0]?.diagnosis_name || "Under Clinical Care",
+                      advice: emr?.notes?.[0]?.notes || "Follow advised treatment plan",
+                      date: new Date().toLocaleDateString("en-IN"),
+                    },
+                    documentLabel: "Visit journey",
+                    buildDocument: () =>
+                      buildJourneyDocument({
+                        name: chartRecipient.name,
+                        id: chartRecipient.id,
+                        phone: chartRecipient.phone,
+                        email: chartRecipient.email,
+                        department: selectedRow.appointment_dept || undefined,
+                        doctor: selectedRow.appointment_doctor || undefined,
+                        status: selectedRow.appointment_status || undefined,
+                        vitals: emr?.vitals?.[0]
+                          ? {
+                              bp: emr.vitals[0].bp,
+                              pulse: emr.vitals[0].pulse,
+                              temp: emr.vitals[0].temperature,
+                            }
+                          : undefined,
+                        diagnosis: emr?.diagnoses?.map((d) => d.diagnosis_name).join(", "),
+                        prescriptions: emr?.prescriptions?.map((p) => ({
+                          medicine: p.medicine_name,
+                          dosage: p.dosage || undefined,
+                        })),
+                        investigations: emr?.labs?.map((l) => l.test_name),
+                        steps: [...emr.timeline]
+                          .sort((a, b) => (a.timestamp || "").localeCompare(b.timestamp || ""))
+                          .map((e) => ({ label: e.label, at: e.timestamp, detail: e.stage })),
+                      }),
+                  },
+                  {
+                    label: "Feedback request",
+                    hint: "Ask the patient to rate their visit on WhatsApp",
+                    kind: "feedback_request",
+                    patient: chartRecipient,
+                  },
+                ]}
+              />
+            )}
+            <Btn variant="primary" size="xs" onClick={() => setAddOpen(true)}>
+              <FiPlus aria-hidden /> Add Evaluation
+            </Btn>
+          </div>
         </div>
       </div>
 
@@ -1201,9 +1330,27 @@ export default function PatientChart({
                               <span className="font-mono text-[11px] text-[#94A3B8]">{formatDateTimeIST(c.created_at)}</span>
                             </button>
                             {expandedCertId === c.id && (
-                              <pre className="px-3 pb-3 text-[11.5px] text-gray-700 whitespace-pre-wrap font-sans border-t border-[#F1F5F9] pt-2">
-                                {c.body}
-                              </pre>
+                              <div className="border-t border-[#F1F5F9]">
+                                <div className="px-3 pt-2 flex justify-end">
+                                  <SendToPatientButton
+                                    label="Send to patient"
+                                    kind="discharge_summary"
+                                    patient={chartRecipient}
+                                    documentLabel={c.title}
+                                    buildDocument={() =>
+                                      buildDischargeSummaryDocument({
+                                        name: chartRecipient.name,
+                                        id: chartRecipient.id,
+                                        phone: chartRecipient.phone,
+                                        text: c.body,
+                                      })
+                                    }
+                                  />
+                                </div>
+                                <pre className="px-3 pb-3 text-[11.5px] text-gray-700 whitespace-pre-wrap font-sans pt-2">
+                                  {c.body}
+                                </pre>
+                              </div>
                             )}
                           </div>
                         ))}
