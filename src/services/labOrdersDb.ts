@@ -518,6 +518,186 @@ function getInitialDemoOrders(): LabOrder[] {
         { at: d1, actor: "STAT Phlebotomy", action: "Sample Collected", detail: "STAT specimen tubes received" },
       ],
     },
+    {
+      id: "LAB-2026-0088",
+      encounterId: "ENC-10088-1",
+      umr: "UMR10088",
+      patientName: "Appanna Chinnapati",
+      age: 54,
+      sex: "Male",
+      phone: "9848022338",
+      opNumber: "OP10088",
+      doctorId: "DOC-004",
+      doctorName: "Dr. Vikram Seth",
+      department: "Emergency Medicine / Trauma",
+      diagnosis:
+        "Blunt Abdominal Trauma, Grade IV Splenic Rupture with Hemoperitoneum in Hemorrhagic Shock",
+      clinicalNotes:
+        "STAT trauma emergency panel, massive transfusion protocol, serial ABG and coagulation profile",
+      status: "Completed",
+      createdAt: "2026-10-04T02:35:00.000Z",
+      updatedAt: "2026-10-04T02:50:00.000Z",
+      billing: {
+        status: "Paid",
+        invoiceNo: "INV-2026-0088",
+        subtotal: 4500,
+        discount: 0,
+        total: 4500,
+        mode: "Insurance",
+        receiptNo: "RCPT-2026-8801",
+        paidAt: "2026-10-04T02:35:00.000Z",
+        collectedBy: "ER Billing Desk",
+      },
+      tests: [
+        {
+          id: "LT-1",
+          name: "Complete Blood Count (CBC)",
+          category: "HEMATOLOGY",
+          urgency: "STAT",
+          price: 740,
+          status: "Completed",
+          resultedAt: "2026-10-04T02:45:00.000Z",
+          results: {
+            "Hemoglobin (Hb)": { value: "6.6", unit: "g/dL", referenceRange: "13.0 - 17.0", flag: "L" },
+            "Total Leukocyte Count (TLC)": { value: "19200", unit: "/cumm", referenceRange: "4000 - 11000", flag: "H" },
+            "Platelets": { value: "82000", unit: "/cumm", referenceRange: "150000 - 450000", flag: "L" },
+            "Hematocrit (PCV)": { value: "20.4", unit: "%", referenceRange: "40.0 - 50.0", flag: "L" },
+          },
+        },
+        {
+          id: "LT-2",
+          name: "Arterial Blood Gas (ABG)",
+          category: "BIOCHEMISTRY",
+          urgency: "STAT",
+          price: 1200,
+          status: "Completed",
+          resultedAt: "2026-10-04T02:40:00.000Z",
+          results: {
+            "pH": { value: "7.22", referenceRange: "7.35 - 7.45", flag: "L" },
+            "Lactate": { value: "5.4", unit: "mmol/L", referenceRange: "0.5 - 2.0", flag: "Critical" },
+            "Base Excess": { value: "-9.2", unit: "mmol/L", referenceRange: "-2 to +2", flag: "L" },
+            "pCO2": { value: "48", unit: "mmHg", referenceRange: "35 - 45", flag: "H" },
+            "pO2": { value: "72", unit: "mmHg", referenceRange: "80 - 100", flag: "L" },
+            "HCO3": { value: "15.0", unit: "mmol/L", referenceRange: "22 - 26", flag: "L" },
+          },
+        },
+        {
+          id: "LT-3",
+          name: "Coagulation Profile (PT/INR)",
+          category: "HEMATOLOGY",
+          urgency: "STAT",
+          price: 900,
+          status: "Completed",
+          resultedAt: "2026-10-04T02:45:00.000Z",
+          results: {
+            "Prothrombin Time (PT)": { value: "22.4", unit: "sec", referenceRange: "11.0 - 14.0", flag: "H" },
+            "INR": { value: "1.85", referenceRange: "0.8 - 1.2", flag: "H" },
+            "aPTT": { value: "44.0", unit: "sec", referenceRange: "25 - 35", flag: "H" },
+          },
+        },
+        {
+          id: "LT-4",
+          name: "Renal Function Test (RFT)",
+          category: "BIOCHEMISTRY",
+          urgency: "STAT",
+          price: 660,
+          status: "Completed",
+          resultedAt: "2026-10-04T02:48:00.000Z",
+          results: {
+            "Serum Creatinine": { value: "1.8", unit: "mg/dL", referenceRange: "0.7 - 1.3", flag: "H" },
+            "Blood Urea": { value: "58", unit: "mg/dL", referenceRange: "15 - 40", flag: "H" },
+            "Serum Sodium (Na+)": { value: "135", unit: "mEq/L", referenceRange: "135 - 145", flag: "" },
+            "Serum Potassium (K+)": { value: "4.8", unit: "mEq/L", referenceRange: "3.5 - 5.0", flag: "" },
+          },
+        },
+      ],
+      history: [
+        { at: "2026-10-04T02:35:00.000Z", actor: "Dr. Vikram Seth", action: "Ordered", detail: "STAT Trauma Panel & ABG" },
+        { at: "2026-10-04T02:35:00.000Z", actor: "ER Billing Desk", action: "Payment collected", detail: "₹4,500 via Insurance" },
+        { at: "2026-10-04T02:40:00.000Z", actor: "Central Lab", action: "Sample Collected", detail: "Arterial and venous blood samples collected STAT" },
+        { at: "2026-10-04T02:50:00.000Z", actor: "Lab Biochemist", action: "Completed", detail: "Critical values telephoned to ER Trauma Bay 1" },
+      ],
+    },
+    {
+      id: "LAB-2026-0089",
+      encounterId: "ENC-10088-1",
+      umr: "UMR10088",
+      patientName: "Appanna Chinnapati",
+      age: 54,
+      sex: "Male",
+      phone: "9848022338",
+      opNumber: "OP10088",
+      doctorId: "DOC-VANCE",
+      doctorName: "Dr. Vance",
+      department: "Surgical ICU / General Surgery",
+      diagnosis:
+        "Post-op Day 10 Exploratory Laparotomy & Splenectomy, Weaned from ICU — Pre-discharge Evaluation",
+      clinicalNotes: "Recovery check prior to step-down to ward and home discharge",
+      status: "Completed",
+      createdAt: "2026-10-14T07:00:00.000Z",
+      updatedAt: "2026-10-14T08:30:00.000Z",
+      billing: {
+        status: "Paid",
+        invoiceNo: "INV-2026-0089",
+        subtotal: 2600,
+        discount: 0,
+        total: 2600,
+        mode: "Card",
+        receiptNo: "RCPT-2026-8822",
+        paidAt: "2026-10-14T07:00:00.000Z",
+        collectedBy: "ICU Billing",
+      },
+      tests: [
+        {
+          id: "LT-1",
+          name: "Complete Blood Count (CBC)",
+          category: "HEMATOLOGY",
+          urgency: "Routine",
+          price: 740,
+          status: "Completed",
+          resultedAt: "2026-10-14T08:15:00.000Z",
+          results: {
+            "Hemoglobin (Hb)": { value: "11.2", unit: "g/dL", referenceRange: "13.0 - 17.0", flag: "" },
+            "Total Leukocyte Count (TLC)": { value: "8600", unit: "/cumm", referenceRange: "4000 - 11000", flag: "" },
+            "Platelets": { value: "220000", unit: "/cumm", referenceRange: "150000 - 450000", flag: "" },
+          },
+        },
+        {
+          id: "LT-2",
+          name: "Arterial Blood Gas (ABG)",
+          category: "BIOCHEMISTRY",
+          urgency: "Routine",
+          price: 1200,
+          status: "Completed",
+          resultedAt: "2026-10-14T08:10:00.000Z",
+          results: {
+            "pH": { value: "7.41", referenceRange: "7.35 - 7.45", flag: "" },
+            "Lactate": { value: "1.1", unit: "mmol/L", referenceRange: "0.5 - 2.0", flag: "" },
+            "Base Excess": { value: "+0.4", unit: "mmol/L", referenceRange: "-2 to +2", flag: "" },
+            "pCO2": { value: "39", unit: "mmHg", referenceRange: "35 - 45", flag: "" },
+            "pO2": { value: "96", unit: "mmHg", referenceRange: "80 - 100", flag: "" },
+          },
+        },
+        {
+          id: "LT-3",
+          name: "Renal Function Test (RFT)",
+          category: "BIOCHEMISTRY",
+          urgency: "Routine",
+          price: 660,
+          status: "Completed",
+          resultedAt: "2026-10-14T08:20:00.000Z",
+          results: {
+            "Serum Creatinine": { value: "0.9", unit: "mg/dL", referenceRange: "0.7 - 1.3", flag: "" },
+            "Blood Urea": { value: "28", unit: "mg/dL", referenceRange: "15 - 40", flag: "" },
+          },
+        },
+      ],
+      history: [
+        { at: "2026-10-14T07:00:00.000Z", actor: "Dr. Vance", action: "Ordered", detail: "Pre-discharge ICU Resolution Panel" },
+        { at: "2026-10-14T07:00:00.000Z", actor: "ICU Billing", action: "Payment collected", detail: "₹2,600 via Card" },
+        { at: "2026-10-14T08:30:00.000Z", actor: "Central Lab", action: "Completed", detail: "All values normalized" },
+      ],
+    },
   ]
 }
 
@@ -537,8 +717,14 @@ function readOrders(): LabOrder[] {
       return initial.map(normalizeOrder)
     }
 
-    // Auto-sanitize legacy cached demo results (e.g. Troponin 0.01, CBC 14.2, etc.)
     let mutated = false
+    const initial = getInitialDemoOrders()
+    const currentIds = new Set(parsed.map((o) => o.id))
+    const missing = initial.filter((o) => !currentIds.has(o.id))
+    if (missing.length > 0) {
+      parsed.push(...missing)
+      mutated = true
+    }
     const sanitized = parsed.map((order) => {
       let orderMutated = false
       let tests = order.tests.map((t) => {
@@ -1105,6 +1291,12 @@ export class LabOrderDatabase {
     }
   ): LabOrder | undefined {
     return this.mutate(orderId, (order) => {
+      // Payment enforcement: results can only be entered if patient bill has been paid
+      if (order.billing?.status !== "Paid") {
+        console.warn(`[LabOrderDatabase] Blocked result entry: Order ${orderId} has unpaid billing status: ${order.billing?.status}`)
+        return order
+      }
+
       const now = new Date().toISOString()
       const tests = order.tests.map((t) => {
         if (t.id !== testId && t.name !== testId) return t

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Users } from "lucide-react"
 import ConsultationCharges from "./ConsultationCharges"
 import { Icon } from "../icons"
 import { Btn, StatusBadge } from "../shared"
@@ -44,6 +45,7 @@ import {
   buildDoctorLiveBoard,
   LONG_WAIT_MINUTES,
 } from "../../services/doctorLiveFeed"
+import { TONE, gradient } from "./doctorTheme"
 
 /**
  * The per-doctor portal.
@@ -161,7 +163,9 @@ export default function DoctorPortal({
   const [selectedEncounterId, setSelectedEncounterId] = useState<string | null>(
     null,
   )
-  const [showClosed, setShowClosed] = useState(false)
+  const [inboxTab, setInboxTab] = useState<InboxTab>("queue")
+  // Result of taking an unclaimed patient -- shown in the inbox, not a blocking alert().
+  const [inboxNotice, setInboxNotice] = useState<{ ok: boolean ;text: string } | null>(null)
 
   // The spoken consultation. Held as attributed turns rather than one blob of
   // text so a speaker can be corrected after the fact without re-running a
@@ -223,9 +227,14 @@ export default function DoctorPortal({
   }, [])
 
   const notifications = useMemo(
-    () => DoctorPortalDatabase.getNotifications(doctor.id, showClosed),
-    [doctor.id, showClosed, revision],
+    () => DoctorPortalDatabase.getNotifications(doctor.id),
+    [doctor.id, revision],
   )
+  // Visits this doctor has finished: everything assigned, minus the open queue.
+  const finished = useMemo(() => {
+    const open = new Set(notifications.map((n) => n.encounterId))
+    return DoctorPortalDatabase.getNotifications(doctor.id, true).filter((n) => !open.has(n.encounterId))
+  }, [doctor.id, notifications, revision])
   const unreadCount = useMemo(
     () =>
       DoctorPortalDatabase.getNotifications(doctor.id).filter((n) => !n.read)
@@ -244,10 +253,10 @@ export default function DoctorPortal({
       doctor.id,
       notification.encounterId,
     )
-    if (!result.ok) {
-      window.alert(result.message)
-      return
-    }
+    setInboxNotice({ ok: result.ok, text: result.message })
+    window.setTimeout(() => setInboxNotice(null), 4000)
+    if (!result.ok) return
+    setInboxTab("queue")
     openPatient(notification)
   }
 
@@ -435,12 +444,9 @@ export default function DoctorPortal({
       true,
     ).find((n) => n.encounterId === encounterId)
     if (!notification) return
-    if (
-      !showClosed &&
-      !notifications.some((n) => n.encounterId === encounterId)
-    ) {
+    if (!notifications.some((n) => n.encounterId === encounterId)) {
       // The visit is already finished; reveal it rather than silently doing nothing.
-      setShowClosed(true)
+      setInboxTab("finished")
     }
     openPatient(notification, landOn)
   }
@@ -720,7 +726,10 @@ export default function DoctorPortal({
       <PortalHeader
         doctor={doctor}
         unreadCount={unreadCount}
-        patientCount={notifications.length}
+        waitingCount={notifications.filter((n) => n.status !== "Under Consultation").length}
+        inRoomCount={notifications.filter((n) => n.status === "Under Consultation").length}
+        unclaimedCount={unassigned.length}
+        seenTodayCount={finished.filter((n) => isToday(n.arrivedAt)).length}
         attentionCount={attentionCount}
         now={now}
         view={view}
@@ -737,10 +746,13 @@ export default function DoctorPortal({
         <PatientInbox
           notifications={notifications}
           unassigned={unassigned}
+          finished={finished}
           onClaim={claimPatient}
           selectedEncounterId={view === "patient" ? selectedEncounterId : null}
-          showClosed={showClosed}
-          onToggleClosed={() => setShowClosed((v) => !v)}
+          tab={inboxTab}
+          onTab={setInboxTab}
+          notice={inboxNotice}
+          onDismissNotice={() => setInboxNotice(null)}
           onSelect={openPatient}
           onMarkAllRead={() => DoctorPortalDatabase.markAllRead(doctor.id)}
           now={now}
@@ -770,7 +782,7 @@ export default function DoctorPortal({
               />
 
               {/* Step rail */}
-              <ol className="bg-white border-b border-[#E2E8F0] px-5 py-2.5 flex items-center gap-1 overflow-x-auto">
+              <ol className="bg-white border-b border-[#E2E8F0] px-4 lg:px-5 py-2.5 flex items-center gap-1 overflow-x-auto">
                 {TABS.map((t, index) => {
                   const isActive = tab === t.key
                   const currentIndex = TABS.findIndex((x) => x.key === tab)
@@ -800,7 +812,7 @@ export default function DoctorPortal({
                         onClick={() => setTab(t.key)}
                         title={t.hint}
                         aria-current={isActive ? "step" : undefined}
-                        className={`group flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-none border transition-colors cursor-pointer ${
+                        className={`group flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full border transition-colors cursor-pointer ${
                           isActive
                             ? "bg-[#1B4FD8] border-[#1B4FD8] text-white"
                             : isPast
@@ -809,7 +821,7 @@ export default function DoctorPortal({
                         }`}
                       >
                         <span
-                          className={`w-5 h-5 rounded-none flex items-center justify-center text-[10px] font-bold ${
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
                             isActive
                               ? "bg-white/20 text-white"
                               : isPast
@@ -825,7 +837,7 @@ export default function DoctorPortal({
                         </span>
                         {badge > 0 && (
                           <span
-                            className={`text-[10px] font-bold font-mono px-1.5 rounded-none ${
+                            className={`text-[10px] font-bold font-mono px-1.5 rounded-full ${
                               isActive
                                 ? "bg-white text-[#1B4FD8]"
                                 : "bg-[#EFF6FF] text-[#1B4FD8]"
@@ -1004,10 +1016,32 @@ export default function DoctorPortal({
 
 // ── Header ───────────────────────────────────────────────────────────────────
 
+type InboxTab = "queue" | "unclaimed" | "finished"
+
+function isToday(iso: string): boolean {
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t)) return false
+  const d = new Date(t)
+  const n = new Date()
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate()
+}
+
+const doctorInitials = (name: string) =>
+  name
+    .replace(/^Dr\.?\s*/i, "")
+    .split(/[\s.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join("")
+
 function PortalHeader({
   doctor,
   unreadCount,
-  patientCount,
+  waitingCount,
+  inRoomCount,
+  unclaimedCount,
+  seenTodayCount,
   attentionCount,
   now,
   view,
@@ -1015,111 +1049,91 @@ function PortalHeader({
 }: {
   doctor: DoctorAccount
   unreadCount: number
-  patientCount: number
+  waitingCount: number
+  inRoomCount: number
+  unclaimedCount: number
+  seenTodayCount: number
   attentionCount: number
   now: number
   view: "live" | "patient"
   onView: (view: "live" | "patient") => void
 }) {
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
+  const stats: { label: string ;value: number ;tone: string }[] = [
+    { label: "Waiting", value: waitingCount, tone: waitingCount ? "text-[#C2410C]" : "text-[#0F172A]" },
+    { label: "In room", value: inRoomCount, tone: inRoomCount ? "text-[#1D4ED8]" : "text-[#0F172A]" },
+    { label: "Unclaimed", value: unclaimedCount, tone: unclaimedCount ? "text-[#B45309]" : "text-[#0F172A]" },
+    { label: "Seen today", value: seenTodayCount, tone: "text-[#0F172A]" },
+  ]
 
   return (
-    <div className="bg-white border-b border-[#DDE2EC] px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
-      <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-none bg-gradient-to-tr from-[#1E3A8A] to-[#1B4FD8] text-white flex items-center justify-center text-lg font-bold">
-          {doctor.name
-            .replace("Dr. ", "")
-            .split(" ")
-            .map((part) => part[0])
-            .join("")
-            .slice(0, 2)}
+    <div className="bg-white border-b border-[#DDE2EC] px-4 lg:px-6 py-3 flex flex-wrap items-center gap-x-5 gap-y-3 flex-shrink-0">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#1B4FD8] to-[#1E3A8A] text-white flex items-center justify-center text-[15px] font-bold shrink-0">
+          {doctorInitials(doctor.name)}
         </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold text-gray-900">{doctor.name}</h1>
-            <span className="text-[10px] font-mono font-bold bg-blue-100 text-[#1B4FD8] px-2 py-0.5 rounded-none border border-blue-200 uppercase">
-              Workspace
-            </span>
-          </div>
-          <p className="text-[12px] text-[#64748B]">
-            {doctor.qualification} · {doctor.specialty} · {doctor.room} · Staff
-            ID {doctor.staffId}
+        <div className="min-w-0">
+          <h1 className="text-[15.5px] font-bold text-[#0F172A] leading-tight truncate">{doctor.name}</h1>
+          <p className="text-[12px] text-[#64748B] truncate">
+            {doctor.specialty} · {doctor.room} · {doctor.qualification}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex bg-[#F1F5F9] border border-[#DDE2EC] rounded-none p-0.5">
+      <div className="hidden md:flex items-stretch divide-x divide-[#EEF1F6] rounded-[10px] border border-[#EEF1F6] bg-[#F8FAFC]">
+        {stats.map((st) => (
+          <div key={st.label} className="px-3 py-1.5 text-center min-w-[70px]">
+            <div className={`text-[16px] font-bold leading-none tabular-nums ${st.tone}`}>{st.value}</div>
+            <div className="text-[10.5px] text-[#64748B] mt-1">{st.label}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 ml-auto flex-wrap">
+        <div className="flex p-0.5 rounded-[10px] bg-[#F1F5F9]" role="tablist" aria-label="Workspace view">
           {[
-            {
-              key: "live" as const,
-              label: "Live Board",
-              badge: attentionCount,
-            },
+            { key: "live" as const, label: "Live board", badge: attentionCount },
             { key: "patient" as const, label: "Patient", badge: 0 },
           ].map((option) => (
             <button
               key={option.key}
               type="button"
+              role="tab"
+              aria-selected={view === option.key}
               onClick={() => onView(option.key)}
-              className={`px-3 py-1.5 text-[12px] font-semibold rounded-none transition-colors flex items-center gap-1.5 ${
+              className={`h-8 px-3 text-[12.5px] font-semibold rounded-[8px] transition-colors flex items-center gap-1.5 cursor-pointer ${
                 view === option.key
-                  ? "bg-white text-[#1B4FD8] shadow-sm"
+                  ? "bg-white text-[#1B4FD8] shadow-[0_1px_2px_rgba(15,23,42,0.08)]"
                   : "text-[#64748B] hover:text-[#334155]"
               }`}
             >
-              {option.key === "live" && (
-                <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
-              )}
+              {option.key === "live" && <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />}
               {option.label}
               {option.badge > 0 && (
-                <span className="text-[9.5px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 py-0.5 rounded-none">
-                  {option.badge}
-                </span>
+                <span className="text-[10px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 rounded-full">{option.badge}</span>
               )}
             </button>
           ))}
         </div>
-
-        <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#DDE2EC] px-3 py-1.5 rounded-none">
-          <Icon.Bell className="w-4 h-4 text-[#64748B]" />
-          <span className="text-[12px] text-[#475569]">
-            <span className="font-bold text-[#0F172A]">{unreadCount}</span> new
+        {unreadCount > 0 && (
+          <span className="h-8 px-2.5 rounded-[8px] bg-[#EFF6FF] text-[#1D4ED8] text-[12px] font-semibold inline-flex items-center gap-1.5" title="New appointments you have not opened yet">
+            <Icon.Bell className="w-3.5 h-3.5" /> {unreadCount} new
           </span>
-          <span className="w-px h-4 bg-[#DDE2EC]" />
-          <span className="text-[12px] text-[#475569]">
-            <span className="font-bold text-[#0F172A]">{patientCount}</span> in
-            my queue
-          </span>
-        </div>
+        )}
         <button
           type="button"
           onClick={() => setIsLeaveModalOpen(true)}
-          className="px-3 py-1.5 text-[12px] font-semibold rounded-lg border border-[#CBD5E1] bg-white text-[#1B4FD8] hover:bg-[#EFF6FF] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          title="Apply for Clinical / Personal Leave"
+          className="h-8 px-3 text-[12.5px] font-semibold rounded-[8px] border border-[#DDE2EC] bg-white text-[#334155] hover:bg-[#F8FAFC] inline-flex items-center gap-1.5 cursor-pointer"
+          title="Apply for clinical or personal leave"
         >
-          <span>🗓️</span>
-          <span>Apply Leave</span>
+          <Icon.Calendar className="w-3.5 h-3.5 text-[#64748B]" /> Apply leave
         </button>
-
-        <div className="text-right flex items-center gap-2 bg-[#0F172A] text-white px-3 py-1.5 rounded-none shadow-sm border border-slate-700">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <div>
-            <div className="text-[12.5px] font-bold tracking-wider font-mono text-emerald-300">
-              {new Date(now).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-            </div>
-            <div className="text-[10px] text-slate-300 font-medium">
-              {new Date(now).toLocaleDateString(undefined, {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            </div>
+        <div className="hidden sm:block text-right pl-1">
+          <div className="text-[13px] font-semibold text-[#0F172A] tabular-nums leading-tight">
+            {new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </div>
+          <div className="text-[10.5px] text-[#94A3B8]">
+            {new Date(now).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
           </div>
         </div>
       </div>
@@ -1139,172 +1153,261 @@ function PortalHeader({
 
 // ── Inbox ────────────────────────────────────────────────────────────────────
 
+/** Where the patient physically is, in the doctor's terms. */
+function queueState(status: DoctorNotification["status"]): { label: string ;className: string } | null {
+  switch (status) {
+    case "Doctor Assigned":
+      return { label: "With the nurse · vitals pending", className: "bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]" }
+    case "In Queue":
+    case "Vitals Recorded":
+    case "Awaiting Consultation":
+      return { label: "Ready for you", className: "bg-[#F0FDF4] text-[#15803D] border-[#BBF7D0]" }
+    case "Under Consultation":
+      return { label: "In your room", className: "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]" }
+    default:
+      return null
+  }
+}
+
 function PatientInbox({
   notifications,
   unassigned,
+  finished,
   onClaim,
   selectedEncounterId,
-  showClosed,
-  onToggleClosed,
+  tab,
+  onTab,
+  notice,
+  onDismissNotice,
   onSelect,
   onMarkAllRead,
   now,
 }: {
   notifications: DoctorNotification[]
   unassigned: DoctorNotification[]
+  finished: DoctorNotification[]
   onClaim: (notification: DoctorNotification) => void
   selectedEncounterId: string | null
-  showClosed: boolean
-  onToggleClosed: () => void
+  tab: InboxTab
+  onTab: (tab: InboxTab) => void
+  notice: { ok: boolean ;text: string } | null
+  onDismissNotice: () => void
   onSelect: (notification: DoctorNotification) => void
   onMarkAllRead: () => void
   now: number
 }) {
+  const [query, setQuery] = useState("")
+  const lists: Record<InboxTab, DoctorNotification[]> = { queue: notifications, unclaimed: unassigned, finished }
+  const q = query.trim().toLowerCase()
+  const shown = lists[tab].filter(
+    (n) =>
+      !q ||
+      n.patientName.toLowerCase().includes(q) ||
+      n.umr.toLowerCase().includes(q) ||
+      (n.opNumber || "").toLowerCase().includes(q) ||
+      (n.chiefComplaint || "").toLowerCase().includes(q),
+  )
+  const empty: Record<InboxTab, { title: string ;text: string }> = {
+    queue: { title: "No patients waiting", text: "Patients appointed to you appear here the moment reception assigns them." },
+    unclaimed: { title: "Nobody unclaimed", text: "Patients in your specialty who have no doctor yet appear here for you to take." },
+    finished: { title: "No finished visits", text: "Visits you complete are kept here for reference." },
+  }
+
   return (
-    <aside className="w-full lg:w-[330px] max-h-[45dvh] lg:max-h-none flex-shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-[#DDE2EC] flex flex-col min-h-0">
-      <div className="px-4 py-3 border-b border-[#DDE2EC]">
+    <aside className="w-full lg:w-[340px] max-h-[50dvh] lg:max-h-none flex-shrink-0 bg-white border-b lg:border-b-0 lg:border-r border-[#DDE2EC] flex flex-col min-h-0">
+      <div className="px-3.5 pt-3 pb-2.5 border-b border-[#EEF1F6] space-y-2.5">
         <div className="flex items-center justify-between">
-          <h2 className="text-[13px] font-bold text-gray-900">
-            Patients appointed to me
-          </h2>
-          <button
-            type="button"
-            onClick={onMarkAllRead}
-            className="text-[11px] text-[#1B4FD8] font-semibold hover:underline"
-          >
-            Mark all read
-          </button>
+          <h2 className="text-[13.5px] font-semibold text-[#0F172A]">My patients</h2>
+          {tab === "queue" && notifications.some((n) => !n.read) && (
+            <button type="button" onClick={onMarkAllRead} className="text-[11.5px] text-[#1B4FD8] font-medium hover:underline cursor-pointer">
+              Mark all read
+            </button>
+          )}
         </div>
-        <label className="flex items-center gap-1.5 mt-2 text-[11.5px] text-[#64748B] cursor-pointer">
+        <div className="relative">
+          <Icon.Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
           <input
-            type="checkbox"
-            checked={showClosed}
-            onChange={onToggleClosed}
-            className="w-3.5 h-3.5 accent-[#1B4FD8]"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, UMR, OP no. or complaint"
+            aria-label="Search my patients"
+            className="w-full h-9 pl-8 pr-3 rounded-[8px] border border-[#DDE2EC] bg-[#F8FAFC] text-[12.5px] focus:outline-none focus:border-[#1B4FD8] focus:bg-white"
           />
-          Include visits I have finished
-        </label>
+        </div>
+        <div className="flex p-1 rounded-[10px] bg-[#F1F5F9] gap-1" role="tablist" aria-label="Patient lists">
+          {(
+            [
+              ["queue", "My queue", notifications.length, notifications.length > 0 ? "bg-[#DBEAFE] text-[#1D4ED8]" : "bg-slate-200 text-slate-600"],
+              ["unclaimed", "Unclaimed", unassigned.length, unassigned.length > 0 ? "bg-[#FEF3C7] text-[#B45309]" : "bg-slate-200 text-slate-600"],
+              ["finished", "Finished", finished.length, "bg-slate-200 text-slate-600"],
+            ] as const
+          ).map(([key, label, count, badgeCls]) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={tab === key}
+              onClick={() => onTab(key)}
+              className={`flex-1 h-8 rounded-[7px] text-[12px] font-semibold inline-flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                tab === key
+                  ? "bg-white text-[#0F172A] shadow-sm ring-1 ring-black/5"
+                  : "text-[#64748B] hover:text-[#334155] hover:bg-white/50"
+              }`}
+            >
+              {label}
+              <span className={`text-[10.5px] tabular-nums px-1.5 py-0.5 rounded-full font-bold ${badgeCls}`}>
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {notifications.length === 0 ? (
-          <div className="p-6 text-center">
-            <div className="text-2xl mb-2">🔔</div>
-            <p className="text-[12.5px] font-semibold text-[#334155]">
-              No patients waiting
-            </p>
-            <p className="text-[11.5px] text-[#94A3B8] mt-1">
-              New appointments assigned to you appear here the moment reception
-              books them.
-            </p>
+      {notice && (
+        <div
+          role="status"
+          className={`mx-3 mt-3 rounded-[8px] border px-3 py-2 text-[12px] flex items-start gap-2 ${
+            notice.ok ? "bg-[#F0FDF4] border-[#BBF7D0] text-[#15803D]" : "bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]"
+          }`}
+        >
+          <span className="flex-1">{notice.text}</span>
+          <button type="button" onClick={onDismissNotice} className="font-bold cursor-pointer" aria-label="Dismiss">×</button>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+        {shown.length === 0 ? (
+          <div className="px-5 py-10 text-center">
+            <Users size={24} className="mx-auto text-[#CBD5E1]" />
+            <p className="text-[12.5px] font-semibold text-[#334155] mt-2">{q ? `No match for "${query.trim()}"` : empty[tab].title}</p>
+            <p className="text-[11.5px] text-[#94A3B8] mt-1">{q ? "Try a UMR, an OP number or part of the name." : empty[tab].text}</p>
           </div>
         ) : (
-          notifications.map((notification) => {
+          shown.map((notification) => {
             const active = notification.encounterId === selectedEncounterId
-            const waitingMinutes = Math.max(
-              0,
-              Math.floor(
-                (now - new Date(notification.arrivedAt).getTime()) / 60000,
-              ),
+            const state = tab === "finished" ? null : queueState(notification.status)
+            const waitingMinutes = Math.max(0, Math.floor((now - (Date.parse(notification.arrivedAt) || now)) / 60000))
+            const inRoom = notification.status === "Under Consultation"
+            const isOverdue = tab === "queue" && waitingMinutes >= LONG_WAIT_MINUTES
+            const isReady = notification.status === "In Queue" || notification.status === "Vitals Recorded" || notification.status === "Awaiting Consultation"
+            const isNurse = notification.status === "Doctor Assigned"
+
+            const avatarBg = inRoom
+              ? gradient(TONE.blue)
+              : isOverdue
+              ? gradient(TONE.red)
+              : isReady
+              ? gradient(TONE.green)
+              : isNurse
+              ? gradient(TONE.amber)
+              : tab === "unclaimed"
+              ? gradient(TONE.orange)
+              : gradient(TONE.slate)
+
+            const card = (
+              <>
+                <div className="flex items-start gap-2.5">
+                  <span
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 text-white shadow-xs"
+                    style={{ background: avatarBg }}
+                  >
+                    {notification.patientName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      {!notification.read && tab === "queue" && (
+                        <span className="w-2 h-2 rounded-full bg-[#2563EB] ring-2 ring-blue-300 animate-pulse shrink-0" aria-label="New" />
+                      )}
+                      <span className="font-bold text-[13px] text-[#0F172A] truncate">{notification.patientName}</span>
+                      <span
+                        className={`ml-auto text-[10px] font-semibold px-1.5 py-[1px] rounded-[5px] border shrink-0 ${
+                          notification.isNewPatient ? "bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]" : "bg-[#EEF2FF] text-[#4338CA] border-[#C7D2FE]"
+                        }`}
+                      >
+                        {notification.isNewPatient ? "New" : "Revisit"}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-[#64748B] mt-0.5 truncate">
+                      {[notification.umr, notification.opNumber, `${notification.age || "—"}${notification.sex?.[0] || ""}`, tab !== "queue" ? notification.dept : ""].filter(Boolean).join(" · ")}
+                    </div>
+                    <p className="text-[12px] text-[#334155] mt-1 line-clamp-2">{notification.chiefComplaint || "No chief complaint recorded"}</p>
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      {inRoom ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#DBEAFE] text-[#1D4ED8] border border-[#BFDBFE] animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
+                          In Room
+                        </span>
+                      ) : state ? (
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${state.className}`}>
+                          {state.label}
+                        </span>
+                      ) : null}
+
+                      {tab === "finished" && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]">
+                          {notification.status}
+                        </span>
+                      )}
+
+                      <span
+                        className={`ml-auto text-[10.5px] tabular-nums ${
+                          tab === "finished"
+                            ? "text-[#64748B] bg-slate-100 px-2 py-0.5 rounded-full"
+                            : inRoom
+                            ? "bg-[#DBEAFE] text-[#1D4ED8] font-bold px-2 py-0.5 rounded-full border border-[#BFDBFE]"
+                            : isOverdue
+                            ? "bg-[#FEE2E2] text-[#B91C1C] font-bold px-2 py-0.5 rounded-full border border-[#FECACA] animate-pulse"
+                            : isReady
+                            ? "bg-[#DCFCE7] text-[#15803D] font-medium px-2 py-0.5 rounded-full border border-[#BBF7D0]"
+                            : "bg-[#F8FAFC] text-[#475569] font-medium px-2 py-0.5 rounded-full border border-[#E2E8F0]"
+                        }`}
+                      >
+                        {tab === "finished"
+                          ? Number.isFinite(Date.parse(notification.arrivedAt))
+                            ? new Date(notification.arrivedAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+                            : ""
+                          : `${inRoom ? "in room" : "wait"} ${formatElapsed(notification.arrivedAt, now)}`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
             )
-            return (
+            return tab === "unclaimed" ? (
+              <div key={notification.id} className="rounded-[10px] border border-[#FDE68A] bg-gradient-to-br from-[#FFFDF5] to-[#FEF3C7]/20 p-3 shadow-xs">
+                {card}
+                <button
+                  type="button"
+                  onClick={() => onClaim(notification)}
+                  className="mt-2.5 w-full h-8 rounded-[7px] bg-[#1B4FD8] text-white text-[12px] font-semibold hover:bg-[#1740B4] cursor-pointer shadow-xs transition-colors"
+                >
+                  Take patient
+                </button>
+              </div>
+            ) : (
               <button
                 key={notification.id}
                 type="button"
                 onClick={() => onSelect(notification)}
-                className={`w-full text-left px-4 py-3 border-b border-[#F1F5F9] transition-colors ${
+                className={`w-full text-left rounded-[10px] border px-3 py-2.5 transition-all cursor-pointer border-l-[4px] ${
                   active
-                    ? "bg-[#EFF6FF] border-l-[3px] border-l-[#1B4FD8]"
-                    : "hover:bg-[#F8FAFC] border-l-[3px] border-l-transparent"
+                    ? "bg-white border-[#2563EB] ring-2 ring-[#2563EB]/30 shadow-sm"
+                    : inRoom
+                    ? "border-l-[#2563EB] bg-[#F0F7FF] border-[#BFDBFE] hover:shadow-xs"
+                    : isOverdue
+                    ? "border-l-[#DC2626] bg-[#FEF2F2]/40 border-[#FECACA] hover:shadow-xs"
+                    : isReady
+                    ? "border-l-[#16A34A] bg-[#F0FDF4]/30 border-[#BBF7D0] hover:shadow-xs"
+                    : isNurse
+                    ? "border-l-[#D97706] bg-[#FFFBEB]/30 border-[#FDE68A] hover:shadow-xs"
+                    : "border-l-[#64748B] bg-white border-[#EEF1F6] hover:border-[#DDE2EC] hover:bg-[#FAFBFD]"
                 }`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      {!notification.read && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#1B4FD8] flex-shrink-0" />
-                      )}
-                      <span className="font-semibold text-[13px] text-gray-900 truncate">
-                        {notification.patientName}
-                      </span>
-                    </div>
-                    <div className="text-[11px] font-mono text-[#64748B] mt-0.5">
-                      {notification.umr} · {notification.opNumber} ·{" "}
-                      {notification.age}
-                      {notification.sex?.[0]}
-                    </div>
-                  </div>
-                  <span
-                    className={`text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded flex-shrink-0 ${
-                      notification.isNewPatient
-                        ? "bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]"
-                        : "bg-[#F1F5F9] text-[#475569] border border-[#E2E8F0]"
-                    }`}
-                  >
-                    {notification.isNewPatient ? "New" : "Revisit"}
-                  </span>
-                </div>
-
-                <p className="text-[11.5px] text-[#475569] mt-1.5 line-clamp-2">
-                  {notification.chiefComplaint || "No chief complaint recorded"}
-                </p>
-
-                {notification.symptoms.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {notification.symptoms.slice(0, 3).map((symptom) => (
-                      <span
-                        key={symptom}
-                        className="text-[10px] bg-[#FEF3C7] text-[#92400E] px-1.5 py-0.5 rounded border border-[#FDE68A]"
-                      >
-                        {symptom}
-                      </span>
-                    ))}
-                    {notification.symptoms.length > 3 && (
-                      <span className="text-[10px] text-[#94A3B8]">
-                        +{notification.symptoms.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                {/* Where the patient physically is. A visit sits at "Doctor
-                    Assigned" until the OP nurse has taken vitals and sent them
-                    in, so this separates "waiting on my colleague" from
-                    "waiting on me". */}
-                {notification.status === "Doctor Assigned" ? (
-                  <div className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] px-1.5 py-0.5 rounded bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                    With the nurse · vitals pending
-                  </div>
-                ) : notification.status === "In Queue" ? (
-                  <div className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] px-1.5 py-0.5 rounded bg-[#DCFCE7] text-[#15803D] border border-[#BBF7D0]">
-                    Vitals done · ready for you
-                  </div>
-                ) : null}
-
-                <div className="flex items-center justify-between mt-2 text-[10.5px]">
-                  <span className="font-mono text-[#94A3B8]">
-                    Token {notification.token || "--"}
-                  </span>
-                  <span
-                    className={`font-mono font-semibold ${
-                      notification.status === "Under Consultation"
-                        ? "text-[#1B4FD8]"
-                        : waitingMinutes >= LONG_WAIT_MINUTES
-                          ? "text-[#B91C1C]"
-                          : "text-[#94A3B8]"
-                    }`}
-                  >
-                    {notification.status === "Under Consultation"
-                      ? "in room "
-                      : "waiting "}
-                    {formatElapsed(notification.arrivedAt, now)}
-                  </span>
-                </div>
+                {card}
               </button>
             )
           })
         )}
-
       </div>
     </aside>
   )
@@ -1320,22 +1423,22 @@ function EmptyWorkspace({
   return (
     <div className="flex-1 flex items-center justify-center p-10">
       <div className="text-center max-w-md">
-        <div className="text-4xl mb-3">🩺</div>
-        <h2 className="text-[15px] font-bold text-gray-900">
-          Select a patient to begin
-        </h2>
-        <p className="text-[12.5px] text-[#64748B] mt-2">
-          {unreadCount > 0
-            ? `${unreadCount} new appointment${
-                unreadCount === 1 ? "" : "s"
-              } waiting on the left. Opening one shows their symptoms, plus an admit card if they are new or their full history if they have been here before.`
-            : "Appointments booked to you appear in the list on the left, with the patient's symptoms attached."}
-        </p>
-        <div className="mt-4">
-          <Btn variant="outline" size="sm" onClick={onBackToBoard}>
-            ← Back to the live board
-          </Btn>
+        <div className="w-14 h-14 mx-auto rounded-[16px] bg-[#EFF6FF] border border-[#DBEAFE] flex items-center justify-center">
+          <Icon.Stethoscope className="w-6 h-6 text-[#1B4FD8]" />
         </div>
+        <h2 className="mt-4 text-[16px] font-semibold text-[#0F172A]">Select a patient to begin</h2>
+        <p className="text-[12.5px] text-[#64748B] mt-1.5">
+          {unreadCount > 0
+            ? `${unreadCount} new appointment${unreadCount === 1 ? "" : "s"} waiting on the left. Opening one shows their symptoms, plus an admit card if they are new or their full history if they have been here before.`
+            : "Patients appointed to you appear in the list on the left, with their symptoms attached."}
+        </p>
+        <button
+          type="button"
+          onClick={onBackToBoard}
+          className="mt-4 h-9 px-4 rounded-[8px] border border-[#DDE2EC] bg-white text-[12.5px] font-medium text-[#334155] hover:bg-[#F8FAFC] cursor-pointer"
+        >
+          Back to the live board
+        </button>
       </div>
     </div>
   )
@@ -1354,9 +1457,12 @@ function PatientBanner({
 }) {
   const dispatched = consultation?.dispatch === "Dispatched"
   return (
-    <div className="bg-white border-b border-[#DDE2EC] px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div className="bg-white border-b border-[#DDE2EC] px-5 py-3 flex flex-wrap items-center justify-between gap-3 shadow-xs">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded-full bg-[#EFF6FF] text-[#1B4FD8] flex items-center justify-center font-bold text-[13px] flex-shrink-0">
+        <div
+          className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-[14px] text-white shadow-sm flex-shrink-0"
+          style={{ background: gradient(TONE.blue) }}
+        >
           {notification.patientName
             .split(" ")
             .map((p) => p[0])
@@ -1365,34 +1471,40 @@ function PatientBanner({
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-[14px] font-bold text-gray-900 truncate">
+            <h2 className="text-[15px] font-bold text-gray-900 truncate">
               {notification.patientName}
             </h2>
             <span
-              className={`text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded ${
+              className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full border ${
                 notification.isNewPatient
-                  ? "bg-[#DCFCE7] text-[#15803D]"
-                  : "bg-[#F1F5F9] text-[#475569]"
+                  ? "bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]"
+                  : "bg-[#EEF2FF] text-[#4338CA] border-[#C7D2FE]"
               }`}
             >
-              {notification.isNewPatient ? "New patient" : "Existing patient"}
+              {notification.isNewPatient ? "New Patient" : "Revisit"}
             </span>
             <StatusBadge status={notification.status} />
           </div>
-          <div className="text-[11.5px] text-[#64748B] font-mono flex items-center gap-2 flex-wrap">
+          <div className="text-[11.5px] text-[#64748B] font-mono flex items-center gap-2 flex-wrap mt-0.5">
             <span>
               {notification.umr} · {notification.opNumber} · {notification.age}{" "}
               yrs {notification.sex} · {notification.dept} · {notification.room}
             </span>
             {notification.vitals && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-700">
-                <span className="font-bold text-slate-900">BP:</span>{" "}
-                {notification.vitals.bp || "--"} ·
-                <span className="font-bold text-slate-900">Pulse:</span>{" "}
-                {notification.vitals.pulse || "--"} ·
-                <span className="font-bold text-slate-900">SpO₂:</span>{" "}
-                {notification.vitals.spo2 || "--"}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-[#EFF6FF] text-[#1E40AF] px-2 py-0.5 rounded border border-[#BFDBFE]">
+                  <span className="font-bold text-[#2563EB]">BP:</span>
+                  {notification.vitals.bp || "--"}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-[#FFF1F2] text-[#9F1239] px-2 py-0.5 rounded border border-[#FECDD3]">
+                  <span className="font-bold text-[#E11D48]">Pulse:</span>
+                  {notification.vitals.pulse || "--"}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-[#ECFDF5] text-[#065F46] px-2 py-0.5 rounded border border-[#A7F3D0]">
+                  <span className="font-bold text-[#059669]">SpO₂:</span>
+                  {notification.vitals.spo2 || "--"}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -1400,11 +1512,11 @@ function PatientBanner({
 
       <div className="flex items-center gap-2">
         {dispatched ? (
-          <span className="text-[11.5px] font-semibold text-[#15803D] bg-[#DCFCE7] border border-[#BBF7D0] px-3 py-1.5 rounded">
-            ✓ Consultation dispatched
+          <span className="text-[12px] font-semibold text-[#15803D] bg-[#F0FDF4] border border-[#BBF7D0] px-3 py-1.5 rounded-full">
+            Orders sent
           </span>
         ) : notification.status === "Under Consultation" ? (
-          <span className="text-[11.5px] font-semibold text-[#1B4FD8] bg-[#EFF6FF] border border-[#BFDBFE] px-3 py-1.5 rounded">
+          <span className="text-[12px] font-semibold text-[#1B4FD8] bg-[#EFF6FF] border border-[#BFDBFE] px-3 py-1.5 rounded-full">
             In consultation
           </span>
         ) : (
@@ -1541,7 +1653,9 @@ function PatientContextPanel({
                 ? `Recorded by ${notification.vitalsBy}${
                     notification.vitalsAt ? ` at ${notification.vitalsAt}` : ""
                   }`
-                : "Not taken yet — patient is still with the OP nurse"}
+                : notification.vitals && (notification.vitals.bp || notification.vitals.pulse || notification.vitals.spo2)
+                  ? "Recorded at registration"
+                  : "Not taken yet — patient is still with the OP nurse"}
             </span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

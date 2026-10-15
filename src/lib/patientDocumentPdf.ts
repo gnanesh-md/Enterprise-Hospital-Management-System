@@ -97,28 +97,68 @@ export async function buildPatientPdf(spec: PatientDocSpec): Promise<PatientDocu
     nameX = margin + 14
   }
 
+  // Letterhead Right: HospAI and Kalpra Tech brand logos
+  // 1. Kalpra Tech block
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(13)
+  doc.setFontSize(8.5)
+  const wKalpra = doc.getTextWidth("Kalpra")
+  const wTech = doc.getTextWidth(" Tech")
+  const kH = 6.5
+  const kW = kH * brand.kalpraMarkRatio
+  const kalpraW = kW + 1.2 + wKalpra + wTech
+  const kalpraX = right - kalpraW
+
+  // Draw Kalpra Tech
+  try {
+    doc.addImage(brand.kalpraMark, "PNG", kalpraX, y + 1.5, kW, kH)
+  } catch {
+    // fallback if image fail
+  }
+  const kalpraTextX = kalpraX + kW + 1.2
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(8.5)
+  doc.setTextColor(176, 32, 48) // Kalpra Red
+  doc.text("Kalpra", kalpraTextX, y + 5.2)
+  doc.setTextColor(56, 56, 104) // Kalpra Navy
+  doc.text(" Tech", kalpraTextX + wKalpra, y + 5.2)
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(5.2)
+  doc.setTextColor(100, 116, 139)
+  doc.text("TECHNOLOGY PLATFORM", kalpraTextX, y + 8.5)
+
+  // Separator line between Kalpra and HospAI
+  const sepX = kalpraX - 3
+  doc.setDrawColor(203, 213, 225)
+  doc.setLineWidth(0.3)
+  doc.line(sepX, y + 1, sepX, y + 9.5)
+
+  // 2. HospAI block
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(11)
   const wHosp = doc.getTextWidth("Hosp")
   const wAI = doc.getTextWidth("AI")
-  doc.setFont("helvetica", "normal")
-  doc.setFontSize(6.2)
-  const tagline = "AI-DRIVEN HEALTHCARE"
-  const brandTextX = right - Math.max(wHosp + wAI, doc.getTextWidth(tagline))
-  const markH = 10
+  const markH = 8.5
   const markW = markH * brand.hospaiMarkRatio
-  const markX = brandTextX - 2 - markW
-  doc.addImage(brand.hospaiMark, "PNG", markX, y + 0.5, markW, markH)
+  const hospaiTextW = Math.max(wHosp + wAI, 18)
+  const hospaiTotalW = markW + 1.5 + hospaiTextW
+  const markX = sepX - 3 - hospaiTotalW
+  const brandTextX = markX + markW + 1.5
+
+  try {
+    doc.addImage(brand.hospaiMark, "PNG", markX, y + 1, markW, markH)
+  } catch {
+    // fallback
+  }
   doc.setFont("helvetica", "bold")
-  doc.setFontSize(13)
+  doc.setFontSize(11)
   doc.setTextColor(15, 23, 42)
-  doc.text("Hosp", brandTextX, y + 5.4)
+  doc.text("Hosp", brandTextX, y + 5.2)
   doc.setTextColor(225, 29, 46)
-  doc.text("AI", brandTextX + wHosp, y + 5.4)
+  doc.text("AI", brandTextX + wHosp, y + 5.2)
   doc.setFont("helvetica", "normal")
-  doc.setFontSize(6.2)
+  doc.setFontSize(5.2)
   doc.setTextColor(100, 116, 139)
-  doc.text(tagline, brandTextX, y + 9.2)
+  doc.text("AI-DRIVEN HEALTHCARE", brandTextX, y + 8.5)
 
   // Hospital name, shrunk to fit beside the HospAI block if it is long.
   const nameRoom = markX - 4 - nameX

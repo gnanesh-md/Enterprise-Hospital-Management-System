@@ -81,8 +81,20 @@ export function DocumentBrandHeader({
             {branding.helpline && <div className="text-[11px] text-[#94A3B8]">Helpline {branding.helpline}</div>}
           </div>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-3 shrink-0">
           <HospAIWordmark branding={branding} />
+          <span className="text-[#CBD5E1] font-light hidden sm:inline">|</span>
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-[#64748B]">
+            <img
+              src={branding.kalpraMark}
+              alt="Kalpra Tech"
+              style={{ height: 18, width: 18 * branding.kalpraMarkRatio }}
+              className="object-contain"
+            />
+            <span className="font-bold tracking-[0.02em] text-[#B02030]">
+              Kalpra <span className="text-[#383868]">Tech</span>
+            </span>
+          </span>
         </div>
       </div>
       <div className="mt-4 pt-3 border-t border-[#E2E8F0] flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">

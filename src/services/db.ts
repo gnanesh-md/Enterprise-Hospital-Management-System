@@ -300,6 +300,20 @@ const INITIAL_SEED_PATIENTS: DBPatient[] = [
 
     updatedAt: "2026-08-31T10:00:00.000Z",
   },
+
+  {
+    umr: "UMR10088",
+    name: "Appanna Chinnapati",
+    mrn: "100888",
+    dob: "1972-04-12",
+    age: 54,
+    sex: "Male",
+    phone: "9848022338",
+    address: "D.No. 4-128, Main Road, Kankipadu, Krishna District, Andhra Pradesh - 521151",
+    bloodGroup: "B+",
+    createdAt: "2026-10-04T02:30:00.000Z",
+    updatedAt: "2026-10-15T11:00:00.000Z",
+  },
 ]
 
 const INITIAL_SEED_ENCOUNTERS: DBOPEncounter[] = [
@@ -1346,6 +1360,94 @@ const INITIAL_SEED_ENCOUNTERS: DBOPEncounter[] = [
       visitCompleted: "03:10 PM",
     },
   },
+
+  {
+    id: "ENC-10088-1",
+    umr: "UMR10088",
+    opNumber: "OP10088",
+    patientName: "Appanna Chinnapati",
+    age: 54,
+    sex: "Male",
+    phone: "9848022338",
+    address: "D.No. 4-128, Main Road, Kankipadu, Krishna District, Andhra Pradesh - 521151",
+    bloodGroup: "B+",
+    dept: "Emergency / Trauma Care",
+    isNew: true,
+    registrationTime: "02:30 AM",
+    chiefComplaint: "ద్విచక్ర వాహనం ప్రమాదం - కడుపులో తీవ్రమైన నొప్పి, రక్తస్రావం, అపస్మారక స్థితి (Severe blunt abdominal trauma post two-wheeler collision on highway, hemorrhagic shock)",
+    symptoms: ["Severe abdominal pain", "Hypovolemic shock", "Dizziness", "Abdominal guarding"],
+    aiSpecialty: "Trauma Surgery",
+    aiDoctor: "Dr. Vance",
+    aiConfidence: 99,
+    doctorGenderPref: "Any",
+    assignedDoctor: "Dr. Vance",
+    doctorStatus: "Busy",
+    queueToken: "EMR-88",
+    queuePosition: 1,
+    room: "Emergency Trauma Bay 1",
+    diagnosis: "Blunt Abdominal Trauma, Grade IV Splenic Rupture with 1800 mL Hemoperitoneum, Traumatic Mesenteric Contusion and Jejunal Tear",
+    icd10: "S36.032A",
+    prescription: [
+      {
+        medicine: "Inj. Meropenem 1g",
+        dosage: "1 vial",
+        frequency: "Q8H (Every 8 hours)",
+        duration: "7 days",
+        instructions: "IV infusion over 30 mins",
+      },
+      {
+        medicine: "Inj. Metronidazole 500mg",
+        dosage: "100ml",
+        frequency: "Q8H (Every 8 hours)",
+        duration: "5 days",
+        instructions: "IV infusion",
+      },
+      {
+        medicine: "Inj. Pantoprazole 40mg",
+        dosage: "1 vial",
+        frequency: "OD (Once daily)",
+        duration: "10 days",
+        instructions: "IV push",
+      },
+      {
+        medicine: "Tab. Cefuroxime Axetil 500mg",
+        dosage: "1 tab",
+        frequency: "BD (Twice daily)",
+        duration: "7 days",
+        instructions: "Take after food",
+      },
+    ],
+    investigations: [
+      "Bedside eFAST Abdomen (Positive Hemoperitoneum)",
+      "STAT Arterial Blood Gas (ABG) & Lactate",
+      "Complete Blood Count (CBC) & Coagulation Profile",
+      "Blood Grouping & Cross-match 4 Units PRBC",
+    ],
+    advice: "Post-splenectomy precautions: mandatory vaccination (Pneumococcal, Meningococcal, Hib) completed prior to discharge. Lifelong precautions for sudden high-grade fever. Avoid heavy physical strain for 6 weeks.",
+    vitals: {
+      bp: "82/50 mmHg",
+      pulse: "132 bpm",
+      temp: "97.4 °F",
+      spo2: "88%",
+      weight: "68 kg",
+      notes: "Hemorrhagic shock secondary to splenic rupture; resuscitated and shifted STAT to OT",
+    },
+    billing: {
+      consultationFee: 0,
+      labFee: 4500,
+      total: 4500,
+      status: "Paid",
+      mode: "Insurance",
+    },
+    furtherAction: "Admission",
+    status: "OP Completed",
+    timestamps: {
+      arrival: "02:30 AM",
+      registration: "02:32 AM",
+      doctorAssigned: "02:33 AM",
+      visitCompleted: "03:30 AM",
+    },
+  },
 ]
 
 const CROSS_TAB_CHANNEL = "hospai_db_v1"
@@ -1549,8 +1651,22 @@ class HospitalDatabase {
   public getPatients(): DBPatient[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PATIENTS)
-
-      return data ? JSON.parse(data) : INITIAL_SEED_PATIENTS
+      if (!data) return INITIAL_SEED_PATIENTS
+      const parsed: DBPatient[] = JSON.parse(data)
+      let merged = false
+      const list = [...parsed]
+      for (const sp of INITIAL_SEED_PATIENTS) {
+        if (!list.some((p) => p.umr === sp.umr || p.name.toLowerCase() === sp.name.toLowerCase())) {
+          list.push(sp)
+          merged = true
+        }
+      }
+      if (merged) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.PATIENTS, JSON.stringify(list))
+        } catch {}
+      }
+      return list
     } catch {
       return INITIAL_SEED_PATIENTS
     }
@@ -1580,8 +1696,22 @@ class HospitalDatabase {
   public getEncounters(): DBOPEncounter[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ENCOUNTERS)
-
-      return data ? JSON.parse(data) : INITIAL_SEED_ENCOUNTERS
+      if (!data) return INITIAL_SEED_ENCOUNTERS
+      const parsed: DBOPEncounter[] = JSON.parse(data)
+      let merged = false
+      const list = [...parsed]
+      for (const se of INITIAL_SEED_ENCOUNTERS) {
+        if (!list.some((e) => e.id === se.id)) {
+          list.push(se)
+          merged = true
+        }
+      }
+      if (merged) {
+        try {
+          localStorage.setItem(STORAGE_KEYS.ENCOUNTERS, JSON.stringify(list))
+        } catch {}
+      }
+      return list
     } catch {
       return INITIAL_SEED_ENCOUNTERS
     }

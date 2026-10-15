@@ -177,12 +177,6 @@ function getSafeFallbackPayload(urlOrPath: string): any {
   if (p.includes("/accounts/profit-loss")) {
     return { from: "2026-04-01", to: new Date().toISOString().split("T")[0], income: [], expenses: [], net_profit: 0 }
   }
-  if (p.includes("/accounts/periods") || p.includes("/accounts/fiscal-years")) {
-    return { fiscal_years: [] }
-  }
-  if (p.includes("/accounts/exceptions") || p.includes("/accounts/posting-exceptions")) {
-    return { exceptions: [] }
-  }
   if (p.includes("/icu") && p.includes("/flowsheets")) {
     return { flowsheets: [] }
   }
@@ -291,7 +285,14 @@ function hmsApiMockMiddleware() {
       // Patient messaging gets no stand-in: a canned {"success": true} for a
       // send would tell the desk a patient had been sent their bill when
       // nothing left the building. 503 lets the app queue it honestly.
-      if (pathname.startsWith("/api/messaging") || pathname.startsWith("/api/whatsapp")) {
+      // Accounts gets none either: its client (services/accounts/client.ts) refuses
+      // mock figures on purpose -- a canned {"success": true} was taken as a
+      // balance sheet with no sections and crashed Financial Statements.
+      if (
+        pathname.startsWith("/api/messaging") ||
+        pathname.startsWith("/api/whatsapp") ||
+        pathname.startsWith("/api/accounts")
+      ) {
         res.statusCode = 503
         res.setHeader("Content-Type", "application/json")
         return res.end(JSON.stringify({ error: "The hospital backend is not running." }))

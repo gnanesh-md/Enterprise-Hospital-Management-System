@@ -653,35 +653,56 @@ export function generateSeedRecord(
     hourlyOutput[`${h}|balance`] = String(hourlyInPerHr - hourlyOutPerHr)
   })
 
+  const isAppanna = patientId === "100888" || patientId === "P-100888" || patientId === "UMR10088"
+
   return {
     patientId,
     date: dateStr,
     fields: {
-      "admission.primary_consultant": "Dr. Patel (Cardiology)",
+      "admission.primary_consultant": isAppanna
+        ? "Dr. Vance (General & Trauma Surgery)"
+        : "Dr. Patel (Cardiology)",
       "admission.icu_consultant": "Dr. Shah (Critical Care)",
       "admission.day_in_icu": String(dayNumber),
       "admission.doa": getPastDateStr(totalDays - 1),
       "admission.dos": getPastDateStr(totalDays - 1),
-      "admission.height": "175",
-      "admission.weight": "78",
-      "admission.blood_group": "O+",
-      "admission.diagnosis":
-        "STEMI — Anterior wall, s/p PCI to LAD, Cardiogenic shock",
-      "admission.allergy": "Penicillin (rash)",
-      "admission.procedure": "Emergency PCI with EES stent to Proximal LAD",
-      "admission.past_history": "HTN, Type 2 DM, Hyperlipidemia",
-      "admission.active_problem":
-        dayNumber <= 5
-          ? "Cardiogenic Shock, Respiratory Failure"
-          : "Weaning vasopressors, Post-PCI monitoring",
-      "admission.diet_plan":
-        dayNumber <= 6
-          ? "NPO / Enteral tube feed 30ml/hr"
-          : "Diabetic, Low Salt Soft Diet",
+      "admission.height": isAppanna ? "172" : "175",
+      "admission.weight": isAppanna ? "68" : "78",
+      "admission.blood_group": "B+",
+      "admission.diagnosis": isAppanna
+        ? "Blunt Abdominal Trauma, Grade IV Splenic Rupture s/p Laparotomy & Splenectomy, Jejunal Repair, Hemorrhagic Shock"
+        : "STEMI — Anterior wall, s/p PCI to LAD, Cardiogenic shock",
+      "admission.allergy": isAppanna ? "NKDA" : "Penicillin (rash)",
+      "admission.procedure": isAppanna
+        ? "Emergency Exploratory Laparotomy + Splenectomy + Primary Two-Layer Jejunal Repair + Peritoneal Lavage"
+        : "Emergency PCI with EES stent to Proximal LAD",
+      "admission.past_history": isAppanna
+        ? "No prior chronic illness"
+        : "HTN, Type 2 DM, Hyperlipidemia",
+      "admission.active_problem": isAppanna
+        ? (dayNumber <= 4
+            ? "Post-op Hemorrhagic Shock, Mechanical Ventilation, Splenic Drain"
+            : dayNumber <= 8
+              ? "Weaned to HFNC/Room Air, Drain monitoring, Wound healing"
+              : "Extubated, Hemodynamically Stable, Tolerating Oral Diet, Cleared for Ward Stepdown")
+        : (dayNumber <= 5
+            ? "Cardiogenic Shock, Respiratory Failure"
+            : "Weaning vasopressors, Post-PCI monitoring"),
+      "admission.diet_plan": isAppanna
+        ? (dayNumber <= 4
+            ? "NPO / Continuous NG aspiration"
+            : dayNumber <= 7
+              ? "Clear liquids 50 mL/hr"
+              : "High-Protein Soft Diet")
+        : (dayNumber <= 6
+            ? "NPO / Enteral tube feed 30ml/hr"
+            : "Diabetic, Low Salt Soft Diet"),
       "balance_24h.intake": String(intakeMl),
       "balance_24h.output": String(outputMl),
       "balance_24h.uo": String(Math.round(outputMl * 0.85)),
-      "balance_24h.drain": "150",
+      "balance_24h.drain": isAppanna
+        ? String(Math.max(30, 450 - (dayNumber - 1) * 45))
+        : "150",
       "balance_24h.balance": String(netBalance),
       "balance_24h.cumulative_balance": String(cumBalance),
       "pressure_ulcer.stage": "Stage 1",
@@ -789,15 +810,32 @@ export function generateSeedRecord(
           bili: "0.9",
         },
       ],
-      antibiotics: [
-        {
-          present: "Cefepime 2g IV Q8H",
-          day: String(dayNumber),
-          previous: "Pip-Tazo",
-          start_date: getPastDateStr(totalDays - 1),
-          stop_date: "",
-        },
-      ],
+      antibiotics: isAppanna
+        ? [
+            {
+              present: "Meropenem 1g IV Q8H",
+              day: String(dayNumber),
+              previous: "Ceftriaxone",
+              start_date: getPastDateStr(totalDays - 1),
+              stop_date: "",
+            },
+            {
+              present: "Metronidazole 500mg IV Q8H",
+              day: String(dayNumber),
+              previous: "",
+              start_date: getPastDateStr(totalDays - 1),
+              stop_date: "",
+            },
+          ]
+        : [
+            {
+              present: "Cefepime 2g IV Q8H",
+              day: String(dayNumber),
+              previous: "Pip-Tazo",
+              start_date: getPastDateStr(totalDays - 1),
+              stop_date: "",
+            },
+          ],
     },
     grids: {},
     hourly: {
@@ -836,4 +874,11 @@ export function ensureMultiDaySeedData(
   } catch (err) {
     console.warn("Failed to seed multi-day ICU flow chart data:", err)
   }
+}
+
+// Auto-seed Appanna Chinnapati 10-day ICU flowsheet
+if (typeof window !== "undefined") {
+  try {
+    ensureMultiDaySeedData("100888", 10)
+  } catch {}
 }

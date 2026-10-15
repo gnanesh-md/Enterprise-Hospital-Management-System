@@ -342,11 +342,12 @@ export default function NLFiltering({ setNotice }: Props) {
     <div className="flex-1 flex flex-col h-full bg-[#F0F2F5]">
       <div className="bg-white border-b border-[#DDE2EC] px-6 py-3">
         <h1 className="text-base font-semibold text-gray-900">
-          Natural Language Patient Filtering
+          PatientReach AI
         </h1>
         <p className="text-[11.5px] text-[#64748B]">
-          Query the bulk-imported patient population, or upload an Excel/PDF
-          file to filter within just that file, using conversational language
+          Best for patient engagement, segmentation, and outreach. Query the
+          bulk-imported patient population, or upload an Excel/PDF file to
+          filter within just that file, using conversational language
           translated by the Keppler AI (Qwen) model. Select any matched patients
           to send a customized WhatsApp or SMS message.
         </p>

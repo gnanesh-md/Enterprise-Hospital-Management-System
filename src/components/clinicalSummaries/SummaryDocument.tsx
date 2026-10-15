@@ -478,12 +478,12 @@ export default function SummaryDocument({
           ai
           meta={
             edits.hospitalCourse ? (
-              <span className="text-[#1D4ED8] bg-[#EFF6FF] border border-[#BFDBFE] px-2 py-0.5 rounded-full font-medium">Edited by doctor</span>
+              <span className="text-[#1D4ED8] bg-[#EFF6FF] border border-[#BFDBFE] px-2 py-0.5 rounded-full font-medium no-print">Edited by doctor</span>
             ) : narrative.status === "ready" ? (
-              <span className="text-[#6D28D9] bg-[#F5F3FF] border border-[#DDD6FE] px-2 py-0.5 rounded-full font-medium">AI draft · {narrative.value.engine}</span>
+              <span className="text-[#6D28D9] bg-[#F5F3FF] border border-[#DDD6FE] px-2 py-0.5 rounded-full font-medium no-print">Clinical Summary Draft</span>
             ) : narrative.status === "fallback" ? (
-              <span className="text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] px-2 py-0.5 rounded-full font-medium" title={narrative.reason}>
-                From the record · AI unavailable
+              <span className="text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] px-2 py-0.5 rounded-full font-medium no-print" title={narrative.reason}>
+                From the record
               </span>
             ) : null
           }
@@ -757,11 +757,7 @@ export default function SummaryDocument({
           </Section>
         )}
 
-        {missing.length > 0 && !loading && (
-          <div className="rounded-[10px] border border-dashed border-[#E2E8F0] px-4 py-3 text-[12px] text-[#64748B]">
-            <span className="font-medium text-[#475569]">Nothing recorded for this stay:</span> {missing.join(" · ")}
-          </div>
-        )}
+
 
         {/* Signatures */}
         <div className="pt-4 grid grid-cols-3 gap-6 break-inside-avoid">
@@ -781,36 +777,19 @@ export default function SummaryDocument({
       {/* Footer */}
       <footer className="px-6 sm:px-8 py-4 bg-[#FAFBFD] border-t border-[#EEF1F6] space-y-2.5">
         {data.nameOnlyLinks && (
-          <div className="flex gap-2 text-[11.5px] text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] rounded-[8px] px-3 py-2">
+          <div className="no-print flex gap-2 text-[11.5px] text-[#92400E] bg-[#FFFBEB] border border-[#FDE68A] rounded-[8px] px-3 py-2">
             <AlertTriangle size={14} className="shrink-0 mt-[1px]" />
             Some records were matched to this patient by name, not by a shared ID. Confirm they belong to {p.name} before signing.
           </div>
         )}
         <p className="text-[11px] leading-relaxed text-[#64748B]">
           {review
-            ? `Compiled from the hospital record and reviewed by ${review.by} on ${formatDateTimeIST(review.at)}.`
-            : n?.aiGenerated
-              ? `Compiled from the hospital record. The hospital course, advice, follow-up and warning signs are an AI draft (${n.engine}) awaiting the treating doctor’s review.`
-              : "Compiled from the hospital record."}{" "}
+            ? `Compiled from the hospital clinical record and reviewed by ${review.by} on ${formatDateTimeIST(review.at)}.`
+            : "Compiled from the hospital clinical record."}{" "}
           Continue medicines only as advised by the treating doctor.
         </p>
-        {data.sources.length > 0 && (
-          <details className="text-[11px] text-[#64748B]">
-            <summary className="cursor-pointer select-none font-medium text-[#475569]">Source records ({data.sources.length})</summary>
-            <ul className="mt-1.5 grid sm:grid-cols-2 gap-x-6 gap-y-0.5">
-              {data.sources.map((s) => (
-                <li key={s.id} className="flex gap-2">
-                  <span className="font-mono text-[#334155]">{s.id}</span>
-                  <span className="truncate">{s.label}</span>
-                  {s.date && <span className="ml-auto text-[#94A3B8] whitespace-nowrap">{formatDate(s.date)}</span>}
-                  {s.matchedBy === "name" && <span className="text-[#B45309]">by name</span>}
-                </li>
-              ))}
-            </ul>
-          </details>
-        )}
         <div className="pt-2.5 border-t border-[#EEF1F6] flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[10.5px] text-[#94A3B8]">Generated with HospAI for {branding.hospitalName}</span>
+          <span className="text-[10.5px] text-[#94A3B8]">Confidential Patient Clinical Record · {branding.hospitalName}</span>
           <PoweredByKalpra branding={branding} />
         </div>
       </footer>

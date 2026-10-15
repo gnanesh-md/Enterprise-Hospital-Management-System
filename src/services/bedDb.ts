@@ -1221,6 +1221,23 @@ const INITIAL_DISCHARGED: DischargedPatientRecord[] = [
 
     attendingDoctor: "Dr. Anita Roy",
   },
+
+  {
+    id: "DISC-1088",
+    patientId: "P-100888",
+    patientName: "Appanna Chinnapati",
+    mrn: "100888",
+    ward: "3N Medical/Surgical",
+    roomNo: "208",
+    bedNo: "208-A",
+    admissionDate: "2026-10-04T02:30:00.000Z",
+    dischargeDate: "2026-10-15T11:00:00.000Z",
+    lengthOfStayDays: 11,
+    dischargeReason:
+      "Polytrauma recovery complete. S/p emergency laparotomy, splenectomy, and jejunal repair. 10-day ICU critical care stay successfully completed. Ambulation independent, surgical wound healed with primary intention, oral intake normal. Discharged home in stable and improved condition.",
+    roomChargesTotal: 185000,
+    attendingDoctor: "Dr. Vance (General & Trauma Surgery)",
+  },
 ]
 
 export class BedDatabase {
@@ -1266,7 +1283,15 @@ export class BedDatabase {
         return INITIAL_DISCHARGED
       }
 
-      return JSON.parse(stored)
+      const parsed: DischargedPatientRecord[] = JSON.parse(stored)
+      const currentIds = new Set(parsed.map((p) => p.id))
+      const missing = INITIAL_DISCHARGED.filter((p) => !currentIds.has(p.id))
+      if (missing.length > 0) {
+        const merged = [...parsed, ...missing]
+        this.saveDischarged(merged)
+        return merged
+      }
+      return parsed
     } catch {
       return INITIAL_DISCHARGED
     }

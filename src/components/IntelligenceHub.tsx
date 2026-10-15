@@ -40,8 +40,8 @@ const AI_MODULES = [
   },
   {
     id: "nl_filtering",
-    title: "NL Patient Filtering",
-    desc: 'Use natural language queries to filter the bulk-imported patient population (e.g. "male patients over 50").',
+    title: "PatientReach AI",
+    desc: "Best for patient engagement, segmentation, and outreach.",
     icon: <Icon.Search />,
     color: "#0284C7",
     metric: "Qwen-powered",

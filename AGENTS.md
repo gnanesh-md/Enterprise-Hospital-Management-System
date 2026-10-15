@@ -266,6 +266,29 @@ Both stores are localStorage-backed with `BroadcastChannel` fan-out, like the re
 `hospai_rbac_roles_v3` (bumped from v2) is what grants the new `doctor_portal` and `lab_billing`
 modules to existing browsers.
 
+**Who sees what.** A physician (`activeDoctor`) gets their own portal. Any other role with
+`doctor_portal` (admin, superadmin) gets **Doctors**
+([src/components/doctor/DoctorsOverview.tsx](src/components/doctor/DoctorsOverview.tsx)): every doctor's
+patients with a visit track, consultations, lab orders, prescriptions and an activity timeline, plus
+the **Unclaimed patients** queue where a doctor can be assigned. "Open workspace" shows that
+doctor's own portal under an amber "viewing as administrator" bar. It used to drop the admin into
+whichever doctor `resolveDoctorAccount` fell back to. The data comes from
+[src/services/doctorOversight.ts](src/services/doctorOversight.ts), derived on every read like the live
+board; records match a doctor by account id, else by name, and a name with no account
+("Dr. Vance") is listed as an unlinked doctor rather than dropped.
+
+**Signing in.** The login's Doctor role lists `DOCTOR_ROSTER` (ids `IMP-…`), because the pick is
+passed to `resolveDoctorAccount` as `doctorId`. It used to list HRMS staff: empty whenever HRMS had
+no doctors, and their ids never matched, so every doctor signed in as the same fallback physician.
+Each doctor can also sign in with their own `username` from `doctorMaster.ts` (password `password123`).
+
+**Inbox.** Tabs *My queue / Unclaimed / Finished* with search. Unclaimed patients (registered
+without a doctor, same specialty) were fetched but never rendered; *Take patient* claims them
+without a blocking `alert()`. Arrival times go through
+[src/services/encounterTime.ts](src/services/encounterTime.ts): reception writes bare clock times
+("10:30 AM", meaning today) and dated strings ("12-Jan-2026 09:15 AM"), and `new Date("10:30 AM")` is
+Invalid Date -- every wait timer read "--" and newest-first sorting was arbitrary.
+
 ## Clinical Summaries → discharge summary
 
 **Hosp AI → Clinical Summaries** opens on *Discharge summary*: search a patient (name / UMR / phone),

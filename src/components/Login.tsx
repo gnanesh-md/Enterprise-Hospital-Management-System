@@ -4,6 +4,7 @@ import { AuditDatabase } from "../services/auditDb"
 import { RoleDatabase } from "../services/roleDb"
 import { credentialsForRole } from "../lib/demoCredentials"
 import { HrmsDatabase } from "../services/hrmsDb"
+import { DOCTOR_ROSTER } from "../services/doctorPortalDb"
 import { HospAILogo } from "./HospAILogo"
 import { KalpraLogo } from "./KalpraLogo"
 
@@ -47,7 +48,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [pass, setPass] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [doctorId, setDoctorId] = useState("DOC-001")
+  const [doctorId, setDoctorId] = useState(DOCTOR_ROSTER[0]?.id || "")
   const [openRoleDropdown, setOpenRoleDropdown] = useState(false)
   const [selectedStaffId, setSelectedStaffId] = useState("")
 
@@ -60,14 +61,16 @@ export default function Login({ onLogin }: LoginProps) {
     const hrmsStaff = HrmsDatabase.getStaffList()
 
     if (roleKey === "doctor") {
-      return hrmsStaff
-        .filter((s) => s.category === "Doctor")
-        .map((s) => ({
-          id: s.id,
-          name: s.name,
-          subtitle: `${s.designation} · ${s.department}`,
-          department: s.department,
-        }))
+      // The doctor accounts themselves, not HR staff records: the pick is handed
+      // to resolveDoctorAccount as `doctorId`, which only knows these ids. Listing
+      // HR staff left the picker empty whenever HRMS had no doctors, and every
+      // doctor then signed in as the same fallback physician.
+      return DOCTOR_ROSTER.map((d) => ({
+        id: d.id,
+        name: d.name,
+        subtitle: `${d.specialty} · ${d.room}`,
+        department: d.specialty,
+      }))
     }
 
     if (roleKey === "nurse") {

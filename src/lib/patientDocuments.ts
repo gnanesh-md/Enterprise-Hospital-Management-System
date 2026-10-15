@@ -240,12 +240,7 @@ export async function buildCompiledDischargeSummaryDocument(
   }
   if (narrative?.hospitalCourse) {
     sections.push({
-      // Says "reviewed" only once someone has -- an unreviewed AI draft is labelled as one.
-      heading: !narrative.aiGenerated
-        ? "Hospital course"
-        : review
-          ? `Hospital course (AI drafted, reviewed by ${review.by})`
-          : "Hospital course (AI draft, not yet reviewed)",
+      heading: "Hospital course",
       text: narrative.hospitalCourse,
     })
   }
@@ -330,10 +325,8 @@ export async function buildCompiledDischargeSummaryDocument(
     patient: { name: data.patient.name, id: data.patient.ids[0], phone: data.patient.phone || undefined, extra },
     sections,
     footnote: review
-      ? `Compiled from the hospital record and reviewed by ${review.by} on ${when(review.at)}. Continue medicines only as advised by your doctor.`
-      : narrative?.aiGenerated
-        ? `Compiled from the hospital record; narrative sections drafted by AI (${narrative.engine}) and not yet reviewed by the treating consultant. Continue medicines only as advised by your doctor.`
-        : "Compiled from the hospital record of this stay. Continue medicines only as advised by your doctor.",
+      ? `Compiled from the hospital clinical record and reviewed by ${review.by} on ${when(review.at)}. Continue medicines only as advised by your doctor.`
+      : "Compiled from the hospital clinical record of this stay. Continue medicines only as advised by your doctor.",
   })
 }
 

@@ -19,6 +19,7 @@
  */
 
 import { db, DBOPEncounter } from "./db"
+import { encounterArrivalIso } from "./encounterTime"
 import { notifyPatientCalled } from "./patientMessaging"
 import { LabOrder, LabOrderDatabase } from "./labOrdersDb"
 import { AppPrescription, PharmacyDatabase } from "./pharmacyDb"
@@ -108,6 +109,11 @@ const WAITING_STATUSES: DBOPEncounter["status"][] = [
   "In Queue",
 ]
 
+/** Parsed arrival (see encounterTime.ts); the raw text only if nothing parses. */
+function arrivalOf(e: DBOPEncounter): string {
+  return encounterArrivalIso(e) || e.timestamps?.arrival || e.registrationTime
+}
+
 function minutesSince(iso: string | undefined, now: number): number {
   if (!iso) return 0
   const then = new Date(iso).getTime()
@@ -167,7 +173,7 @@ function countSeenToday(doctor: DoctorAccount, mine: DBOPEncounter[]): number {
       encounter.status === "Post-Consultation"
     if (
       finished &&
-      isToday(encounter.timestamps?.arrival || encounter.registrationTime)
+      isToday(arrivalOf(encounter))
     ) {
       seen.add(encounter.id)
     }
@@ -211,10 +217,7 @@ export function buildDoctorLiveBoard(
     .map((e) => ({
       encounter: e,
       isNewPatient: isFirstVisit(e, encounters),
-      waitingMinutes: minutesSince(
-        e.timestamps?.arrival || e.registrationTime,
-        now,
-      ),
+      waitingMinutes: minutesSince(arrivalOf(e), now),
       position: e.queuePosition,
     }))
     .sort((a, b) => b.waitingMinutes - a.waitingMinutes)
@@ -224,11 +227,7 @@ export function buildDoctorLiveBoard(
     ? {
         encounter: activeEncounter,
         isNewPatient: isFirstVisit(activeEncounter, encounters),
-        waitingMinutes: minutesSince(
-          activeEncounter.timestamps?.arrival ||
-            activeEncounter.registrationTime,
-          now,
-        ),
+        waitingMinutes: minutesSince(arrivalOf(activeEncounter), now),
         position: activeEncounter.queuePosition,
       }
     : undefined
@@ -269,7 +268,7 @@ export function buildDoctorLiveBoard(
 
   for (const entry of queue) {
     const e = entry.encounter
-    const arrived = e.timestamps?.arrival || e.registrationTime
+    const arrived = arrivalOf(e)
 
     // The OP nurse has taken baseline observations and sent the patient in.
     // This is the doctor's notification that the patient is physically ready:
