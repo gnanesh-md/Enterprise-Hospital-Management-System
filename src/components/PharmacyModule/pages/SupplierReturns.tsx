@@ -116,7 +116,7 @@ export default function SupplierReturns({
         id: s.id,
         name: name,
         source: "registered",
-        phone: s.phone || s.contactPerson || "",
+        phone: s.phone || (s as any).contactPerson || "",
         gstin: s.gstInformation || s.gstin || "",
         address: s.address || "",
         medicineCount: 0,

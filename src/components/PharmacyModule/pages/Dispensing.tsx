@@ -470,6 +470,8 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       }
     }
 
+    if (!b) return
+
     const availableStock = b.availableQuantity ?? b.quantity ?? med.stock ?? 0
     if (availableStock <= 0) {
       alert(`Cannot add "${med.name}". Out of stock (0 units available)!`)
