@@ -188,7 +188,7 @@ export default function PatientDetailsModal({
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-center">
                   <span className="text-[10px] text-slate-500 block uppercase font-medium">Temperature</span>
-                  <span className="text-xs font-bold text-slate-800">{encounter.vitals.temp || "98.4"}°F</span>
+                  <span className="text-xs font-bold text-slate-800">{(encounter.vitals as any).temperature || encounter.vitals.temp || "98.4"}°F</span>
                   <span className="text-[9px] text-slate-400 block">Oral</span>
                 </div>
                 <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-center">

@@ -165,116 +165,6 @@ const STATIC_ACTIONS: CommandItem[] = [
     icon: "🧾",
     type: "action",
   },
-  {
-    id: "act-zoom-in",
-    label: "Zoom In (A+)",
-    subLabel: "Increase text & interface scale (Ctrl + +)",
-    key: "action_zoom_in",
-    icon: "🔎",
-    badge: "Ctrl + +",
-    badgeColor: "bg-blue-100 text-blue-700",
-    type: "action",
-  },
-  {
-    id: "act-zoom-out",
-    label: "Zoom Out (A-)",
-    subLabel: "Decrease text & interface scale (Ctrl + -)",
-    key: "action_zoom_out",
-    icon: "🔎",
-    badge: "Ctrl + -",
-    badgeColor: "bg-blue-100 text-blue-700",
-    type: "action",
-  },
-  {
-    id: "act-zoom-reset",
-    label: "Reset Zoom to 100% (A)",
-    subLabel: "Restore standard text size (Ctrl + 0)",
-    key: "action_zoom_reset",
-    icon: "↺",
-    badge: "Ctrl + 0",
-    badgeColor: "bg-slate-100 text-slate-700",
-    type: "action",
-  },
-  {
-    id: "act-fullscreen",
-    label: "Toggle Fullscreen Mode",
-    subLabel: "Switch fullscreen display (F11)",
-    key: "action_fullscreen",
-    icon: "⛶",
-    badge: "F11",
-    badgeColor: "bg-purple-100 text-purple-700",
-    type: "action",
-  },
-  {
-    id: "act-sidebar",
-    label: "Toggle Sidebar Collapse",
-    subLabel: "Expand or collapse navigation sidebar (Ctrl + B)",
-    key: "action_sidebar",
-    icon: "📑",
-    badge: "Ctrl + B",
-    badgeColor: "bg-slate-100 text-slate-700",
-    type: "action",
-  },
-  {
-    id: "act-help",
-    label: "System Help & Emergency Codes",
-    subLabel: "Code Blue, Code Red extensions and shortcuts (?)",
-    key: "action_help",
-    icon: "❓",
-    badge: "?",
-    badgeColor: "bg-amber-100 text-amber-700",
-    type: "action",
-  },
-  {
-    id: "act-messages",
-    label: "Staff Messages & Clinical Handovers",
-    subLabel: "Inter-department doctor/nurse messages (Ctrl + M)",
-    key: "action_messages",
-    icon: "💬",
-    badge: "Ctrl + M",
-    badgeColor: "bg-emerald-100 text-emerald-700",
-    type: "action",
-  },
-  {
-    id: "act-rad-new",
-    label: "New Radiology Investigation Order",
-    subLabel: "Prescribe CT, MRI, X-Ray, Ultrasound",
-    key: "radiology",
-    icon: "🩻",
-    type: "action",
-  },
-  {
-    id: "act-doc-work",
-    label: "Doctor Workspace & Consultation",
-    subLabel: "Live board, SOAP notes, e-Prescriptions",
-    key: "doctor_portal",
-    icon: "🩺",
-    type: "action",
-  },
-  {
-    id: "act-queue",
-    label: "Live OPD Queue Board",
-    subLabel: "Call tokens, waiting patients, TV display mode",
-    key: "queue",
-    icon: "📺",
-    type: "action",
-  },
-  {
-    id: "act-pharma-disp",
-    label: "Pharmacy Counter & Dispensing",
-    subLabel: "Direct sales & barcode medicine dispensing",
-    key: "pharmacy_dispensing",
-    icon: "💊",
-    type: "action",
-  },
-  {
-    id: "act-leave",
-    label: "Apply for Staff Leave",
-    subLabel: "Submit leave request or check approval status",
-    key: "action_apply_leave",
-    icon: "🗓️",
-    type: "action",
-  },
 ]
 
 interface CommandPaletteProps {
@@ -282,14 +172,6 @@ interface CommandPaletteProps {
   onClose: () => void
   onNavigate: (key: string) => void
   onSelectPatient?: (patientId: string, encounterId?: string) => void
-  onZoomIn?: () => void
-  onZoomOut?: () => void
-  onZoomReset?: () => void
-  onToggleFullscreen?: () => void
-  onToggleSidebar?: () => void
-  onOpenHelp?: () => void
-  onOpenMessages?: () => void
-  onOpenApplyLeave?: () => void
 }
 
 export default function CommandPalette({
@@ -297,14 +179,6 @@ export default function CommandPalette({
   onClose,
   onNavigate,
   onSelectPatient,
-  onZoomIn,
-  onZoomOut,
-  onZoomReset,
-  onToggleFullscreen,
-  onToggleSidebar,
-  onOpenHelp,
-  onOpenMessages,
-  onOpenApplyLeave,
 }: CommandPaletteProps) {
   const [q, setQ] = useState("")
   const [cursor, setCursor] = useState(0)
@@ -334,11 +208,10 @@ export default function CommandPalette({
           items.push({
             id: `pat-op-${p.umr}`,
             label: p.name,
-            subLabel: `${p.umr} · ${p.age}y ${p.sex} · ${p.phone} ${
-              pEnc
+            subLabel: `${p.umr} · ${p.age}y ${p.sex} · ${p.phone} ${pEnc
                 ? `· OP: ${pEnc.opNumber} (${pEnc.dept || "General Med"})`
                 : ""
-            }`,
+              }`,
             key: "chart",
             type: "patient",
             patientId: p.umr,
@@ -453,7 +326,7 @@ export default function CommandPalette({
   }, [query])
 
   const groups = useMemo(() => {
-    const list: { group: string ;items: CommandItem[] }[] = []
+    const list: { group: string; items: CommandItem[] }[] = []
     if (filteredPatients.length > 0) {
       list.push({
         group: query
@@ -477,49 +350,6 @@ export default function CommandPalette({
   const allFiltered = useMemo(() => groups.flatMap((g) => g.items), [groups])
 
   const handleSelect = (item: CommandItem) => {
-    if (item.type === "action") {
-      if (item.key === "action_zoom_in") {
-        onZoomIn?.()
-        onClose()
-        return
-      }
-      if (item.key === "action_zoom_out") {
-        onZoomOut?.()
-        onClose()
-        return
-      }
-      if (item.key === "action_zoom_reset") {
-        onZoomReset?.()
-        onClose()
-        return
-      }
-      if (item.key === "action_fullscreen") {
-        onToggleFullscreen?.()
-        onClose()
-        return
-      }
-      if (item.key === "action_sidebar") {
-        onToggleSidebar?.()
-        onClose()
-        return
-      }
-      if (item.key === "action_help") {
-        onOpenHelp?.()
-        onClose()
-        return
-      }
-      if (item.key === "action_messages") {
-        onOpenMessages?.()
-        onClose()
-        return
-      }
-      if (item.key === "action_apply_leave") {
-        onOpenApplyLeave?.()
-        onClose()
-        return
-      }
-    }
-
     if (item.type === "patient" && item.patientId) {
       if (onSelectPatient) {
         onSelectPatient(item.patientId, item.encounterId)
@@ -612,9 +442,8 @@ export default function CommandPalette({
                     key={item.id}
                     onClick={() => handleSelect(item)}
                     onMouseEnter={() => setCursor(idx)}
-                    className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
-                      active ? "bg-[#EFF6FF]" : "hover:bg-[#F8FAFC]"
-                    }`}
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${active ? "bg-[#EFF6FF]" : "hover:bg-[#F8FAFC]"
+                      }`}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span className="text-lg w-6 text-center shrink-0">
@@ -623,18 +452,16 @@ export default function CommandPalette({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
-                            className={`text-[13px] font-semibold ${
-                              active ? "text-[#1B4FD8]" : "text-gray-900"
-                            }`}
+                            className={`text-[13px] font-semibold ${active ? "text-[#1B4FD8]" : "text-gray-900"
+                              }`}
                           >
                             {item.label}
                           </span>
                           {item.badge && (
                             <span
-                              className={`text-[10px] font-bold px-2 py-0.2 rounded border shadow-2xs ${
-                                item.badgeColor ||
+                              className={`text-[10px] font-bold px-2 py-0.2 rounded border shadow-2xs ${item.badgeColor ||
                                 "bg-slate-100 text-slate-700 border-slate-200"
-                              }`}
+                                }`}
                             >
                               {item.badge}
                             </span>

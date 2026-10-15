@@ -940,7 +940,7 @@ export default function Administration() {
         </div>
 
         {/* Clean Underline Tabs */}
-        <div className="flex items-center gap-8 text-[13px] font-semibold border-t border-[#F1F5F9] pt-1">
+        <div className="flex items-center gap-5 lg:gap-8 text-[13px] font-semibold border-t border-[#F1F5F9] pt-1 overflow-x-auto">
           {[
             {
               id: "doctors",
@@ -970,7 +970,7 @@ export default function Administration() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+                className={`py-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-2 flex-shrink-0 whitespace-nowrap ${
                   isActive
                     ? "border-[#1B4FD8] text-[#1B4FD8] font-bold"
                     : "border-transparent text-[#64748B] hover:text-[#0F172A]"
@@ -1416,7 +1416,7 @@ export default function Administration() {
                             </td>
 
                             <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
+                              <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                                 <button
                                   onClick={() => {
                                     setEditingDoctor(d)

@@ -767,12 +767,12 @@ export default function SupplierReturns({
                   <option value="">
                     {!selectedSupplierName
                       ? "-- Select Supplier First --"
-                      : supplierMedicines.length === 0
+                      : (supplierMedicines?.length || 0) === 0
                       ? "-- No in-stock medicines found for this supplier --"
                       : "-- Choose Medicine --"}
                   </option>
-                  {supplierMedicines.map((m) => {
-                    const matchingBatches = supplierBatches.filter(
+                  {(supplierMedicines || []).map((m) => {
+                    const matchingBatches = (supplierBatches || []).filter(
                       (b) => b.medicineId === m.id,
                     )
                     const totalStock =
@@ -823,11 +823,11 @@ export default function SupplierReturns({
                   <option value="">
                     {!selectedMedicineId
                       ? "-- Select Medicine First --"
-                      : activeBatches.length === 0
+                      : (activeBatches?.length || 0) === 0
                       ? "-- No active batches found --"
                       : "-- Choose Batch --"}
                   </option>
-                  {activeBatches.map((b) => (
+                  {(activeBatches || []).map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.batchNumber} (Exp: {b.expiryDate} | Stock: {b.availableQuantity} | Rate: ₹{b.purchasePrice})
                     </option>

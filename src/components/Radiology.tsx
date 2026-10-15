@@ -471,7 +471,7 @@ export default function Radiology({
       </div>
 
       {/* Top Workflow Navigation Tabs */}
-      <div className="bg-white border-b border-slate-200 px-6 flex items-center gap-6 flex-shrink-0 shadow-2xs">
+      <div className="bg-white border-b border-slate-200 px-6 flex items-center gap-4 sm:gap-6 flex-shrink-0 shadow-2xs overflow-x-auto">
         <button
           type="button"
           onClick={() => {

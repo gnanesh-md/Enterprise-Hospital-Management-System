@@ -342,7 +342,7 @@ function JournalVoucherModal({ type, onClose, onSaved }: { type: "JV" | "OB"; on
           Manual journals cannot touch receivable or payable control accounts — those move only through bills, receipts and payments.
         </p>
       )}
-      <div className="grid grid-cols-[160px_1fr] gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-[160px_1fr] gap-3">
         <Field label="Date"><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
         <Field label="Narration"><Input value={narration} onChange={(e) => setNarration(e.target.value)} /></Field>
       </div>

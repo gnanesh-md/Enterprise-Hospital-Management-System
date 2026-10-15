@@ -12,6 +12,7 @@ import {
   XCircle,
   MessageSquare,
   ChevronRight,
+  PlusCircle,
 } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
 
@@ -88,7 +89,18 @@ export default function PrescriptionQueue({
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  PharmacyDatabase.seedTestPrescriptionForSelling()
+                  refresh()
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#0F766E] text-white text-[12px] font-semibold rounded hover:bg-[#0c5e58] transition-colors shadow-sm"
+                title="Seed Mr. G KUMAR prescription with ready batch stock"
+              >
+                <PlusCircle size={14} /> Add Test Prescription (Mr. G KUMAR)
+              </button>
               <div className="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded px-3 py-2">
                 <Search size={14} className="text-[#94A3B8]" />
                 <input
@@ -145,7 +157,7 @@ export default function PrescriptionQueue({
                         <p className="font-medium text-[#0F1624] text-[13px]">
                           {rx.patient}
                         </p>
-                        <p className="text-[11px] text-[#94A3B8]">
+                        <p className="text-[11px] text-[#94A3B8] whitespace-nowrap">
                           {rx.age}y · {rx.gender} · {rx.contact}
                         </p>
                       </td>
@@ -208,9 +220,10 @@ export default function PrescriptionQueue({
         </div>
       </div>
 
-      {/* Detail Drawer */}
+      {/* Detail Drawer -- beside the list on desktop; below lg there is no
+        room for both, so it covers the screen as a sheet (X closes it). */}
       {selected && (
-        <div className="w-96 bg-white border-l border-[#E2E8F0] flex flex-col flex-shrink-0 overflow-hidden">
+        <div className="fixed inset-0 z-50 lg:static lg:inset-auto lg:z-auto w-full lg:w-96 bg-white border-l border-[#E2E8F0] flex flex-col flex-shrink-0 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0F2F5]">
             <div>
               <p className="font-semibold text-[14px] text-[#0F1624]">

@@ -5256,6 +5256,9 @@ export class ErDatabase {
     assignedDoctorName?: string
 
     assignedSpecialty?: string
+
+    /** Rule-based triage only, no LLM call -- for generated demo visits. */
+    skipAiTriage?: boolean
   }): Promise<{ visit: ErVisitRecord ;patient: ErPatient | null }> {
     let patient: ErPatient | null = null
 
@@ -5402,6 +5405,7 @@ export class ErDatabase {
     const triageCalc = await this.evaluateClinicalTriage(
       visitData.complaintText || "",
       visitData.vitals || {},
+      { ruleBasedOnly: visitData.skipAiTriage },
     )
 
     const finalDoctorName =
@@ -6576,6 +6580,8 @@ export class ErDatabase {
     complaints: string,
 
     vitals: Partial<ErVitalsItem>,
+
+    options: { ruleBasedOnly?: boolean } = {},
   ): Promise<{
     categoryCode: string
 
@@ -6788,6 +6794,8 @@ export class ErDatabase {
         ],
       }
     }
+
+    if (options.ruleBasedOnly) return runRuleBasedFallback()
 
     // Attempt to use Qwen LLM
 

@@ -132,11 +132,32 @@ export interface BedTransferNotification {
   is_read: boolean
 }
 
+export interface PendingBedAllocation {
+  patient_id: string
+  name: string
+  last_name?: string
+  phone?: string
+  age?: number | null
+  gender?: string | null
+  source?: "ER" | "Transfer" | "OT" | "OP"
+  visit_no?: string
+  er_bed_request_id?: number
+  er_visit_id?: number
+  notification_id?: string
+  requested_level_of_care?: string
+  requested_specialty?: string
+  clinical_notes?: string
+  priority?: string
+  timestamp: string
+}
+
 const STORAGE_KEY = "hospai_inpatient_beds_v9"
 
 const DISCHARGED_STORAGE_KEY = "hospai_discharged_patients_v3"
 
 const NOTIFICATIONS_STORAGE_KEY = "hospai_bed_transfer_notifications_v3"
+
+const PENDING_ALLOCATION_KEY = "hospai_pending_bed_allocation_v2"
 
 const INITIAL_TRANSFER_NOTIFICATIONS: BedTransferNotification[] = [
   {
@@ -1293,51 +1314,76 @@ export class BedDatabase {
     notes?: string,
   ): BedRecord {
     const beds = this.load()
-
     const bedIndex = beds.findIndex((b) => b.id === bedId)
-
     if (bedIndex === -1) throw new Error("Bed not found")
 
     const erRequests = ErDatabase.getBedRequests()
-
     const req = erRequests.find((r) => r.id === erBedRequestId)
-
-    if (!req) throw new Error("ER Bed Request not found")
+    
+    // Also check transfer notifications and pending allocation
+    const notifs = this.getTransferNotifications()
+    const matchNotif = notifs.find(
+      (n) => n.er_bed_request_id === erBedRequestId || n.id === String(erBedRequestId),
+    )
+    const pending = this.getPendingAllocation()
 
     const now = new Date().toISOString()
-
     const targetBed = beds[bedIndex]
 
     targetBed.status = "Occupied"
-
     targetBed.allocation_id = 1000 + bedId
-
     targetBed.admission_id = 5000 + bedId
-
     targetBed.allocated_at = now
-
     targetBed.admission_date = now
-
     targetBed.expected_discharge_date = new Date(
       Date.now() + 7 * 86400000,
     ).toISOString()
 
-    targetBed.patient_id = req.patient_id || `P-ER-${req.er_visit_id}`
+    const patientId = req?.patient_id || matchNotif?.patient_id || pending?.patient_id || `P-ER-${erBedRequestId}`
+    const patientName = req?.patient_name || matchNotif?.patient_name || pending?.name || "Emergency Patient"
+    const patientLastName = req?.patient_last_name || matchNotif?.patient_last_name || pending?.last_name || ""
+    const patientAge = matchNotif?.patient_age ?? pending?.age ?? (req as any)?.patient_age ?? null
+    const patientGender = matchNotif?.patient_gender || pending?.gender || (req as any)?.patient_gender || null
+    const patientPhone = matchNotif?.patient_phone || pending?.phone || (req as any)?.patient_phone || null
 
-    targetBed.patient_name = req.patient_name || "Emergency Patient"
-
-    targetBed.patient_last_name = req.patient_last_name || ""
+    targetBed.patient_id = patientId
+    targetBed.patient_name = patientName
+    targetBed.patient_last_name = patientLastName
+    targetBed.patient_age = patientAge
+    targetBed.patient_gender = patientGender
+    targetBed.patient_phone = patientPhone
 
     targetBed.admission_notes =
       notes ||
-      `Admitted from ER (${req.visit_no}) for ${req.requested_level_of_care}`
+      matchNotif?.clinical_reason ||
+      pending?.clinical_notes ||
+      `Admitted from ER (${req?.visit_no || erBedRequestId}) for ${req?.requested_level_of_care || targetBed.bed_type}`
 
     targetBed.room_charges_so_far = targetBed.daily_rate
-
     beds[bedIndex] = targetBed
-
     this.save(beds)
 
+    // Synchronize transfer notification
+    if (matchNotif) {
+      this.updateNotificationStatus(
+        matchNotif.id,
+        "allocated",
+        bedId,
+        `${targetBed.ward} (Room ${targetBed.room_no} / Bed ${targetBed.bed_no})`,
+      )
+    } else {
+      const byPat = notifs.find((n) => n.patient_id === patientId && n.status !== "allocated")
+      if (byPat) {
+        this.updateNotificationStatus(
+          byPat.id,
+          "allocated",
+          bedId,
+          `${targetBed.ward} (Room ${targetBed.room_no} / Bed ${targetBed.bed_no})`,
+        )
+      }
+    }
+
+    this.clearPendingAllocation()
     return targetBed
   }
 
@@ -1347,66 +1393,65 @@ export class BedDatabase {
 
   static assignBed(
     bedId: number,
-
     patient: {
       patient_id: string
       name: string
       last_name?: string
       phone?: string
-      age?: number
-      gender?: string
+      age?: number | null
+      gender?: string | null
     },
-
     notes?: string,
-
     expectedDays?: number,
   ): BedRecord {
     const beds = this.load()
-
     const bedIndex = beds.findIndex((b) => b.id === bedId)
-
     if (bedIndex === -1) throw new Error("Bed not found")
 
     const now = new Date().toISOString()
-
     const target = beds[bedIndex]
-
     const days = expectedDays || 5
 
     target.status = "Occupied"
-
     target.allocation_id = 2000 + bedId
-
     target.admission_id = 6000 + bedId
-
     target.allocated_at = now
-
     target.admission_date = now
-
     target.expected_discharge_date = new Date(
       Date.now() + days * 86400000,
     ).toISOString()
 
     target.patient_id = patient.patient_id
-
     target.patient_name = patient.name
-
     target.patient_last_name = patient.last_name || ""
-
     target.patient_phone = patient.phone || null
-
-    target.patient_age = patient.age || null
-
+    target.patient_age = patient.age ?? null
     target.patient_gender = patient.gender || null
-
     target.admission_notes = notes || "Direct Inpatient Admission"
-
     target.room_charges_so_far = target.daily_rate
 
     beds[bedIndex] = target
-
     this.save(beds)
 
+    // Synchronize any matching pending transfer notification
+    try {
+      const notifs = this.getTransferNotifications()
+      const matchNotif = notifs.find(
+        (n) => n.patient_id === patient.patient_id && n.status !== "allocated",
+      )
+      if (matchNotif) {
+        this.updateNotificationStatus(
+          matchNotif.id,
+          "allocated",
+          bedId,
+          `${target.ward} (Room ${target.room_no} / Bed ${target.bed_no})`,
+        )
+      }
+    } catch {
+      // best-effort
+    }
+
+    this.clearPendingAllocation()
     return target
   }
 
@@ -1892,5 +1937,41 @@ export class BedDatabase {
 
   static clearAllNotifications(): void {
     this.saveTransferNotifications([])
+  }
+
+  // ── Pending Bed Allocation (Inter-department handover) ───────────────
+
+  static getPendingAllocation(): PendingBedAllocation | null {
+    if (typeof window === "undefined") return null
+    try {
+      const raw = window.sessionStorage.getItem(PENDING_ALLOCATION_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }
+
+  static setPendingAllocation(alloc: PendingBedAllocation | null): void {
+    if (typeof window === "undefined") return
+    try {
+      if (alloc) {
+        window.sessionStorage.setItem(
+          PENDING_ALLOCATION_KEY,
+          JSON.stringify(alloc),
+        )
+        window.dispatchEvent(
+          new CustomEvent("bed:initiate_allocation", { detail: alloc }),
+        )
+      } else {
+        window.sessionStorage.removeItem(PENDING_ALLOCATION_KEY)
+        window.dispatchEvent(new CustomEvent("bed:clear_allocation"))
+      }
+    } catch (e) {
+      console.error("Failed to set pending allocation", e)
+    }
+  }
+
+  static clearPendingAllocation(): void {
+    this.setPendingAllocation(null)
   }
 }

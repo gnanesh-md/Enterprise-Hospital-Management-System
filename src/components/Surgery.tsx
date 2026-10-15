@@ -200,7 +200,7 @@ export default function Surgery() {
             General Hospital OT Census · Imperial OT Booklet Suite · {now}
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <Btn variant="outline" size="sm" onClick={() => setBookingOrRoom("OR 2")}>
             + Schedule Surgery Case
           </Btn>
@@ -684,9 +684,9 @@ export default function Surgery() {
             </div>
 
             {/* Main Master-Detail Split Workspace */}
-            <div className="flex-1 flex overflow-hidden bg-[#F1F5F9]">
-              {/* Left Sidebar Directory */}
-              <div className="w-72 bg-[#F8FAFC] border-r border-[#DDE2EC] flex flex-col flex-shrink-0 text-slate-700 overflow-y-auto text-xs select-none">
+            <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden bg-[#F1F5F9]">
+              {/* Left Sidebar Directory (stacks above the page on phones) */}
+              <div className="w-full md:w-72 max-h-[32dvh] md:max-h-none bg-[#F8FAFC] border-b md:border-b-0 md:border-r border-[#DDE2EC] flex flex-col flex-shrink-0 text-slate-700 overflow-y-auto text-xs select-none">
                 <div className="px-3.5 py-2.5 text-[10.5px] font-bold tracking-wider text-[#1E3A6E] uppercase border-b border-[#DDE2EC] bg-[#E2E8F0]/60">
                   OT Booklet Directory
                 </div>
@@ -810,7 +810,7 @@ export default function Surgery() {
               </div>
 
               {/* Right Document Canvas (Digital Sheet Presentation) */}
-              <div className="flex-1 overflow-y-auto p-5 md:p-6 bg-[#F8FAFC]">
+              <div className="flex-1 min-w-0 min-h-0 overflow-y-auto p-5 md:p-6 bg-[#F8FAFC]">
                 {/* Official Letterhead Container */}
                 <div className="bg-white rounded-lg border border-[#DDE2EC] shadow-xs p-6 space-y-5 max-w-3xl mx-auto min-h-[500px]">
                   

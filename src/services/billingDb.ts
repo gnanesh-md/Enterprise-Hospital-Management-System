@@ -91,6 +91,8 @@ export interface ClaimRecord {
 
   phone: string
 
+  email?: string
+
   department: DepartmentType
 
   carePathway?: string // e.g. "ER → ICU → 3N Ward Consolidated Stay" or "OP Consultation & Diagnostics"

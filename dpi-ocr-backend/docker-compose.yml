@@ -16,6 +16,26 @@ services:
       timeout: 5s
       retries: 10
 
+  hrms-postgres:
+    restart: unless-stopped
+    image: postgres:16-alpine
+    container_name: hospai-hrms-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hospai_enterprise
+    ports:
+      - "5434:5432"
+    volumes:
+      - hrms_postgres_data:/var/lib/postgresql/data
+      - ../server/db/schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hospai_enterprise"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
   redis:
     restart: unless-stopped
     image: redis:7-alpine
@@ -59,7 +79,10 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
-      VLLM_BASE_URL: http://host.docker.internal:8000/v1
+      # vLLM is published on host port 8700 (container vllm-qwen3vl8b). 8000
+      # is another app on this machine, so every model call failed with
+      # "Connection error" and summaries came back empty.
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8700/v1}
     volumes:
       - .:/app
       - ./uploads:/app/uploads
@@ -81,7 +104,10 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
-      VLLM_BASE_URL: http://host.docker.internal:8000/v1
+      # vLLM is published on host port 8700 (container vllm-qwen3vl8b). 8000
+      # is another app on this machine, so every model call failed with
+      # "Connection error" and summaries came back empty.
+      VLLM_BASE_URL: ${VLLM_BASE_URL:-http://host.docker.internal:8700/v1}
     volumes:
       - .:/app
       - ./uploads:/app/uploads
@@ -94,3 +120,4 @@ volumes:
   postgres_data:
   redis_data:
   qdrant_data:
+  hrms_postgres_data:

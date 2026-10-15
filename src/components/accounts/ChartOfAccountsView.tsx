@@ -57,19 +57,32 @@ export default function ChartOfAccountsView() {
           </label>
         </div>
         <Loaded state={state}>
-          {(data) => (
-            <ChartTable
-              accounts={data.accounts}
-              query={query}
-              showInactive={showInactive}
-              onEdit={setEditing}
-            />
-          )}
+          {(data) => {
+            const list = Array.isArray((data as any)?.accounts)
+              ? (data as any).accounts
+              : Array.isArray(data)
+                ? (data as any)
+                : []
+            return (
+              <ChartTable
+                accounts={list}
+                query={query}
+                showInactive={showInactive}
+                onEdit={setEditing}
+              />
+            )
+          }}
         </Loaded>
       </div>
       {adding && state.data && (
         <AddAccountModal
-          accounts={state.data.accounts}
+          accounts={
+            Array.isArray((state.data as any)?.accounts)
+              ? (state.data as any).accounts
+              : Array.isArray(state.data)
+                ? (state.data as any)
+                : []
+          }
           onClose={() => setAdding(false)}
           onSaved={(a) => {
             setAdding(false)

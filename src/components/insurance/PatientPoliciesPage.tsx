@@ -372,7 +372,7 @@ startxref
   const currentSummary = selectedPolicy ? getDynamicSummary(selectedPolicy) : null
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50/80 font-sans overflow-hidden">
+    <div className="flex-1 flex flex-col lg:h-full bg-slate-50/80 font-sans lg:overflow-hidden">
       {toastNode}
 
       {/* TOP HEADER */}
@@ -406,10 +406,12 @@ startxref
       <InsuranceSopModal isOpen={sopModalOpen} onClose={() => setSopModalOpen(false)} />
 
       {/* SPLIT VIEW */}
-      <div className="flex-1 flex overflow-hidden p-6 gap-6 max-w-[1700px] w-full mx-auto">
+      {/* Below lg the list stacks above the policy detail (capped height) and
+        the page scrolls as one column. */}
+      <div className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden p-6 gap-6 max-w-[1700px] w-full mx-auto">
         
         {/* LEFT COLUMN: PATIENT POLICIES LIST */}
-        <div className="w-[380px] bg-white border border-slate-200/80 rounded-2xl flex flex-col shrink-0 shadow-sm overflow-hidden">
+        <div className="w-full lg:w-[380px] max-h-[50dvh] lg:max-h-none bg-white border border-slate-200/80 rounded-2xl flex flex-col shrink-0 shadow-sm overflow-hidden">
           
           {/* SEARCH & FILTERS */}
           <div className="p-4 border-b border-slate-100 bg-slate-50/40 space-y-3">
@@ -482,7 +484,7 @@ startxref
         </div>
 
         {/* RIGHT COLUMN: DYNAMIC POLICY AI SUMMARIZATION */}
-        <div className="flex-1 bg-white border border-slate-200/80 rounded-2xl flex flex-col shadow-sm overflow-hidden">
+        <div className="flex-1 min-w-0 bg-white border border-slate-200/80 rounded-2xl flex flex-col shadow-sm overflow-hidden">
           {selectedPolicy && currentSummary ? (
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               
@@ -495,7 +497,7 @@ startxref
                       ✓ Active Policy
                     </span>
                   </div>
-                  <div className="text-xs text-slate-300 font-medium flex items-center gap-3">
+                  <div className="text-xs text-slate-300 font-medium flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className="flex items-center gap-1.5"><Building2 size={14} className="text-indigo-400" /> {selectedPolicy.insurerName}</span>
                     <span>•</span>
                     <span>Policy No: <strong className="font-mono text-white">{selectedPolicy.policyNumber}</strong></span>

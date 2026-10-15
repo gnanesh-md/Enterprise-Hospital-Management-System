@@ -994,7 +994,7 @@ export default function DoctorWorkflow({
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#F0F2F5] overflow-hidden">
+    <div className="flex-1 flex flex-col lg:h-full bg-[#F0F2F5] lg:overflow-hidden">
       {/* ── TOP DOCTOR PORTAL HEADER ── */}
       <div className="bg-white border-b border-[#DDE2EC] px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0 shadow-2xs">
         <div className="flex items-center gap-3">
@@ -1068,10 +1068,12 @@ export default function DoctorWorkflow({
       </div>
 
       {/* ── MAIN WORKSPACE ── */}
-      <div className="flex-1 overflow-hidden p-5 flex gap-5 w-full">
+      {/* Below lg the queue stacks above the consultation (capped height) and
+        the page scrolls as one column. */}
+      <div className="flex-1 lg:overflow-hidden p-5 flex flex-col lg:flex-row gap-5 w-full">
         {/* ── LEFT COLUMN: DOCTOR'S LIVE QUEUE ── */}
-        <div className="w-80 flex flex-col gap-4 flex-shrink-0">
-          <div className="bg-white border border-[#DDE2EC] rounded shadow-xs flex flex-col h-full overflow-hidden">
+        <div className="w-full lg:w-80 max-h-[55dvh] lg:max-h-none flex flex-col gap-4 flex-shrink-0 min-h-0">
+          <div className="bg-white border border-[#DDE2EC] rounded shadow-xs flex flex-col h-full min-h-0 overflow-hidden">
             <div className="px-4 py-3 border-b border-[#DDE2EC] bg-[#F8FAFC] flex justify-between items-center">
               <div>
                 <h2 className="text-[13px] font-bold text-gray-900">
@@ -1168,7 +1170,7 @@ export default function DoctorWorkflow({
         </div>
 
         {/* ── RIGHT COLUMN: PRIMARY CLINICAL CONSULTATION FORM ── */}
-        <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-1">
+        <div className="flex-1 flex flex-col gap-4 lg:overflow-y-auto pr-1 min-w-0">
           {activeEncounter ? (
             <div className="space-y-4">
               {/* Submission Success Alert */}

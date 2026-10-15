@@ -2410,9 +2410,10 @@ export default function Reports({ onNavigate }: ReportsProps) {
       </div>
 
       {/* MAIN CONTAINER: SIDEBAR + CONTENT */}
-      <div className="flex gap-5 items-start">
+      {/* Below md the report menu stacks above the report itself. */}
+      <div className="flex flex-col md:flex-row gap-5 md:items-start">
         {/* LEFT SIDEBAR: Collapsible Categories */}
-        <div className="w-64 shrink-0 bg-white rounded-xl shadow-sm border border-[#E2E8F0] shadow-sm overflow-hidden no-print">
+        <div className="w-full md:w-64 shrink-0 bg-white rounded-xl shadow-sm border border-[#E2E8F0] shadow-sm overflow-hidden no-print">
           {/* Executive Overview Link */}
           <div className="p-2 border-b border-[#F1F5F9]">
             <button
@@ -2429,7 +2430,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
           </div>
 
           {/* Collapsible Categories */}
-          <div className="divide-y divide-[#F1F5F9] max-h-[calc(100vh-280px)] overflow-y-auto">
+          <div className="divide-y divide-[#F1F5F9] max-h-[40dvh] md:max-h-[calc(100vh-280px)] overflow-y-auto">
             {REPORT_CATEGORIES.map((cat) => {
               const isExpanded = expandedCats[cat.id] ?? true
               return (
@@ -2479,7 +2480,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
         </div>
 
         {/* RIGHT MAIN CONTENT AREA */}
-        <div id="reports-print-area" className="flex-1 space-y-6">
+        <div id="reports-print-area" className="flex-1 min-w-0 space-y-6">
           {activeReport === "Overview" ? (
             /* ========================================================== */
             /* 1. OVERVIEW DASHBOARD VIEW                                 */

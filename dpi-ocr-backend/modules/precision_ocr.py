@@ -30,7 +30,7 @@ from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import time
 import pandas as pd
-from core.config import settings
+from core.config import settings, served_model
 from modules.unified_resolver import resolve_entities_in_text
 from modules.layout_detector import DocLayoutDetector
 from modules.reading_order import ReadingOrderEngine
@@ -128,7 +128,7 @@ def _vllm_orientation_confidence(img: Image.Image) -> float:
         b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
         local_client = OpenAI(base_url=settings.VLLM_BASE_URL, api_key="EMPTY", timeout=30.0)
         resp = local_client.chat.completions.create(
-            model="qwen2.5-vl-7b",
+            model=served_model("qwen2.5-vl-7b"),
             messages=[{
                 "role": "user",
                 "content": [

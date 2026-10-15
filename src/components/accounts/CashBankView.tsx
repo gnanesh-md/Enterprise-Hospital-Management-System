@@ -54,8 +54,10 @@ function Tills() {
           </div>
         </Card>
         <Loaded state={state}>
-          {({ sessions, me }) =>
-            sessions.length === 0 ? (
+          {(raw) => {
+            const sessions = Array.isArray(raw?.sessions) ? raw.sessions : Array.isArray(raw) ? raw : []
+            const me = raw?.me || ""
+            return sessions.length === 0 ? (
               <Card><Empty>No till sessions yet.</Empty></Card>
             ) : (
               <Card padded={false}>
@@ -73,7 +75,7 @@ function Tills() {
                 </Table>
               </Card>
             )
-          }
+          }}
         </Loaded>
       </div>
     </div>
@@ -159,7 +161,7 @@ function ReconcileBody({ accountId }: { accountId: number }) {
           <ErrorNote message={action.error} />
           <Card
             padded={false}
-            title={`${r.pending.length} unreconciled line(s)`}
+            title={`${r?.pending?.length || 0} unreconciled line(s)`}
             actions={
               <div className="flex items-end gap-2">
                 <Input type="date" value={statementDate} onChange={(e) => setStatementDate(e.target.value)} />
@@ -176,7 +178,7 @@ function ReconcileBody({ accountId }: { accountId: number }) {
               </div>
             }
           >
-            {r.pending.length === 0 ? (
+            {(!r?.pending || r.pending.length === 0) ? (
               <Empty>Everything on this account is reconciled.</Empty>
             ) : (
               <Table dense>

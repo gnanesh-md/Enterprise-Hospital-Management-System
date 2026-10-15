@@ -405,13 +405,18 @@ INSERT INTO departments (hospital_id, name, code, is_clinical) VALUES
 (1, 'Support Staff', 'SUPP', FALSE)
 ON CONFLICT DO NOTHING;
 
-INSERT INTO shifts (hospital_id, name, code, start_time, end_time) VALUES
+-- shifts has no unique key for ON CONFLICT to hit, so guard each row explicitly;
+-- the server re-applies this file on every start (db/index.mjs ensureSchema).
+INSERT INTO shifts (hospital_id, name, code, start_time, end_time)
+SELECT v.hospital_id, v.name, v.code, v.start_time::time, v.end_time::time
+FROM (VALUES
 (1, 'Morning Shift', 'SHIFT_MORN', '07:00:00', '15:00:00'),
 (1, 'Evening Shift', 'SHIFT_EVE', '15:00:00', '23:00:00'),
 (1, 'Night Shift', 'SHIFT_NIGHT', '23:00:00', '07:00:00'),
 (1, 'General Shift', 'SHIFT_GEN', '09:00:00', '17:30:00'),
 (1, 'On-Call Shift', 'SHIFT_ONCALL', '00:00:00', '23:59:59')
-ON CONFLICT DO NOTHING;
+) AS v(hospital_id, name, code, start_time, end_time)
+WHERE NOT EXISTS (SELECT 1 FROM shifts s WHERE s.hospital_id = v.hospital_id AND s.code = v.code);
 
 INSERT INTO leave_types (hospital_id, code, name, default_quota_days) VALUES
 (1, 'CL', 'Casual Leave', 12),
@@ -441,3 +446,105 @@ ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS revision_number INT DEFAULT 1
 ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS revision_reason TEXT;
 ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(100);
 ALTER TABLE payroll_items ADD COLUMN IF NOT EXISTS approved_by VARCHAR(100);
+
+-- Employee lifecycle (routes/employees.mjs promote/transfer/salary-revision/exit,
+-- payroll.mjs, reports.mjs /alerts). Without these, /api/hr/alerts 500'd on
+-- every HR page load and every lifecycle action failed.
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS resignation_date DATE;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS notice_period_days INT;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS last_working_date DATE;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS exit_reason TEXT;
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS exit_clearance_status VARCHAR(50);
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS final_settlement_status VARCHAR(50);
+
+CREATE TABLE IF NOT EXISTS employee_promotions (
+    id SERIAL PRIMARY KEY,
+    employee_id VARCHAR(50) NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(255) NOT NULL,
+    old_designation VARCHAR(150),
+    new_designation VARCHAR(150) NOT NULL,
+    effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    approved_by VARCHAR(100),
+    remarks TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_employee_promotions_emp ON employee_promotions(employee_id);
+
+CREATE TABLE IF NOT EXISTS employee_transfers (
+    id SERIAL PRIMARY KEY,
+    employee_id VARCHAR(50) NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(255) NOT NULL,
+    old_department VARCHAR(100),
+    new_department VARCHAR(100) NOT NULL,
+    effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    approved_by VARCHAR(100),
+    remarks TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_employee_transfers_emp ON employee_transfers(employee_id);
+
+CREATE TABLE IF NOT EXISTS salary_revisions (
+    id SERIAL PRIMARY KEY,
+    employee_id VARCHAR(50) NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(255) NOT NULL,
+    old_salary NUMERIC(12, 2) DEFAULT 0,
+    new_salary NUMERIC(12, 2) NOT NULL,
+    effective_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    reason TEXT,
+    approved_by VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_salary_revisions_emp ON salary_revisions(employee_id);
+
+CREATE TABLE IF NOT EXISTS employee_exits (
+    id SERIAL PRIMARY KEY,
+    employee_id VARCHAR(50) NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(255) NOT NULL,
+    exit_type VARCHAR(50) NOT NULL,
+    resignation_date DATE NOT NULL,
+    notice_period_days INT DEFAULT 30,
+    last_working_date DATE NOT NULL,
+    exit_reason TEXT,
+    exit_clearance_status VARCHAR(50) DEFAULT 'Pending',
+    final_settlement_status VARCHAR(50) DEFAULT 'Pending',
+    approved_by VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_employee_exits_emp ON employee_exits(employee_id);
+
+-- Versioned: PUT /payroll/policies deactivates the old row and inserts a new one.
+CREATE TABLE IF NOT EXISTS payroll_policies (
+    id SERIAL PRIMARY KEY,
+    hospital_id INT NOT NULL DEFAULT 1,
+    policy_name VARCHAR(255) NOT NULL DEFAULT 'Standard Hospital Payroll Policy',
+    pf_percentage NUMERIC(5, 2) NOT NULL DEFAULT 12.00,
+    tds_percentage NUMERIC(5, 2) NOT NULL DEFAULT 10.00,
+    daily_pay_divisor_type VARCHAR(20) NOT NULL DEFAULT '30_days' CHECK (daily_pay_divisor_type IN ('30_days', 'month_days')),
+    daily_pay_fixed_days NUMERIC(5, 2) NOT NULL DEFAULT 30.00,
+    overtime_multiplier NUMERIC(4, 2) NOT NULL DEFAULT 1.50,
+    standard_work_hours_per_day NUMERIC(4, 2) NOT NULL DEFAULT 8.00,
+    is_active BOOLEAN DEFAULT TRUE,
+    updated_by VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_payroll_policies_hospital ON payroll_policies(hospital_id, is_active);
+
+-- services/audit.mjs writes these on every audited HR action, inside the same
+-- transaction as the action itself -- so while they were missing, every such
+-- write (new employee, leave approval, payroll run ...) rolled back.
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS employee_name VARCHAR(255);
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS module VARCHAR(100) DEFAULT 'HRMS';
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS reason TEXT;
+
+-- Status values the routes write that the original CHECKs rejected:
+-- 'Notice Period' (employee exit before the last working day), 'Revised'
+-- (payroll revision before payment), 'Half Day' (attendance.mjs clock-out
+-- classification) and 'Missed Punch' (attendance filter). Dropped and re-added
+-- so existing databases pick up the wider lists too.
+ALTER TABLE employees DROP CONSTRAINT IF EXISTS employees_status_check;
+ALTER TABLE employees ADD CONSTRAINT employees_status_check CHECK (status IN ('Active', 'Probation', 'On Leave', 'Suspended', 'Notice Period', 'Resigned', 'Terminated', 'Retired', 'Inactive'));
+ALTER TABLE payroll_runs DROP CONSTRAINT IF EXISTS payroll_runs_status_check;
+ALTER TABLE payroll_runs ADD CONSTRAINT payroll_runs_status_check CHECK (status IN ('Draft', 'Calculated', 'Reviewed', 'Revised', 'Approved', 'Paid', 'Locked'));
+ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_attendance_status_check;
+ALTER TABLE attendance ADD CONSTRAINT attendance_attendance_status_check CHECK (attendance_status IN ('Present', 'Late', 'Absent', 'Half-Day', 'Half Day', 'Missed Punch', 'On Leave', 'Weekly Off', 'Holiday'));
