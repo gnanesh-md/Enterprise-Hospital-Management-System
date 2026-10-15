@@ -93,6 +93,102 @@ function numberToWords(num: number): string {
   return str.trim()
 }
 
+// Helper to evaluate medicine expiry status for sale safety
+export function getMedicineExpiryDetails(med: any) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // 1. Check all live batches in database
+  const liveBatches = PharmacyDatabase.getBatches().filter(
+    (b) => b.medicineId === med.id && (b.availableQuantity > 0 || (b.quantity && b.quantity > 0)),
+  )
+
+  let earliestExpDate: Date | null = null
+  let hasValidNonExpiredStock = false
+  let allBatchesExpired = liveBatches.length > 0
+  let earliestDateStr = ""
+
+  if (liveBatches.length > 0) {
+    for (const b of liveBatches) {
+      if (b.expiryDate) {
+        const exp = new Date(b.expiryDate)
+        if (exp.getTime() < today.getTime()) {
+          // expired batch
+        } else {
+          allBatchesExpired = false
+          hasValidNonExpiredStock = true
+          if (!earliestExpDate || exp.getTime() < earliestExpDate.getTime()) {
+            earliestExpDate = exp
+            earliestDateStr = b.expiryDate
+          }
+        }
+      } else {
+        hasValidNonExpiredStock = true
+      }
+    }
+  } else if (med.expiryDate) {
+    const exp = new Date(med.expiryDate)
+    earliestDateStr = med.expiryDate
+    if (exp.getTime() < today.getTime()) {
+      allBatchesExpired = true
+    } else {
+      hasValidNonExpiredStock = true
+      earliestExpDate = exp
+    }
+  }
+
+  // If all batches or medicine itself is expired
+  if (allBatchesExpired && !hasValidNonExpiredStock) {
+    return {
+      isExpired: true,
+      isNearExpiry: false,
+      daysLeft: 0,
+      expiryDate: earliestDateStr || med.expiryDate || "Expired",
+      statusLabel: "EXPIRED",
+      color: "#dc2626",
+      bg: "#fee2e2",
+    }
+  }
+
+  // If there's an upcoming expiry date
+  if (earliestExpDate) {
+    const diffTime = earliestExpDate.getTime() - today.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays <= 0) {
+      return {
+        isExpired: true,
+        isNearExpiry: false,
+        daysLeft: 0,
+        expiryDate: earliestDateStr,
+        statusLabel: "EXPIRED",
+        color: "#dc2626",
+        bg: "#fee2e2",
+      }
+    } else if (diffDays <= 60) {
+      return {
+        isExpired: false,
+        isNearExpiry: true,
+        daysLeft: diffDays,
+        expiryDate: earliestDateStr,
+        statusLabel: `Ready to Expire (${diffDays}d)`,
+        color: "#d97706",
+        bg: "#fef3c7",
+      }
+    }
+  }
+
+  return {
+    isExpired: false,
+    isNearExpiry: false,
+    daysLeft: 999,
+    expiryDate: earliestDateStr || med.expiryDate || "",
+    statusLabel: "Valid",
+    color: "#15803d",
+    bg: "#dcfce7",
+  }
+}
+
 interface DispensingProps {
   onNavigate: (page: string) => void
 }
@@ -293,8 +389,14 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       )
 
       if (splits.length === 0 && batches.some((b) => b.availableQuantity > 0)) {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
         const available = batches
-          .filter((b) => b.availableQuantity > 0)
+          .filter(
+            (b) =>
+              b.availableQuantity > 0 &&
+              (!b.expiryDate || new Date(b.expiryDate).getTime() >= today.getTime()),
+          )
           .sort(
             (a, b) =>
               new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime(),
@@ -424,6 +526,22 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
     setCart((prev) => prev.filter((i) => i.id !== id))
 
   const addMedicine = (med: typeof medicines[0]) => {
+    // 1. SAFETY CHECK: Block adding expired medicines
+    const expInfo = getMedicineExpiryDetails(med)
+    if (expInfo.isExpired) {
+      alert(
+        `⛔ CANNOT SELL "${med.name.toUpperCase()}"!\n\nThis medicine has EXPIRED (${expInfo.expiryDate}).\n\nSelling expired drugs to patients is strictly prohibited by pharmacy safety standards.\nPlease set aside this medicine and initiate a Supplier Return or Medicine Write-Off.`,
+      )
+      return
+    }
+
+    // 2. WARNING CHECK: Alert if ready to expire within 60 days
+    if (expInfo.isNearExpiry) {
+      alert(
+        `⚠️ ATTENTION: READY TO EXPIRE!\n\n"${med.name}" is READY TO EXPIRE in ${expInfo.daysLeft} day(s) on ${expInfo.expiryDate}.\n\nPlease verify that the prescribed course will finish before the expiry date.`,
+      )
+    }
+
     const exists = cart.find((i) => i.medicine === med.name)
     if (exists) {
       const liveBatches = PharmacyDatabase.getBatches()
@@ -438,18 +556,24 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       return
     }
 
-    // Use FEFO (First Expiry First Out) to pick the oldest available batch with stock > 0
+    // Use FEFO (First Expiry First Out) to pick the oldest available batch with stock > 0 that is NOT expired
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const allBatches = PharmacyDatabase.getBatches().filter(
       (b) => b.medicineId === med.id && (b.availableQuantity > 0 || (b.quantity && b.quantity > 0)),
     )
-    const sortedBatches = allBatches.sort(
+    const validBatches = allBatches.filter((b) => {
+      if (!b.expiryDate) return true
+      return new Date(b.expiryDate).getTime() >= today.getTime()
+    })
+    const sortedBatches = validBatches.sort(
       (a, b) =>
         new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime(),
     )
 
     let b = sortedBatches.find((bat) => (bat.availableQuantity ?? bat.quantity ?? 0) > 0)
     if (!b) {
-      if (med.stock > 0) {
+      if (med.stock > 0 && !expInfo.isExpired) {
         // Auto-allocate batch from medicine master stock
         b = {
           id: "BAT_AUTO_" + Date.now(),
@@ -465,9 +589,20 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
         } as any
         PharmacyDatabase.addBatch(b)
       } else {
-        alert(`Cannot add "${med.name}". Out of stock (0 units available)!`)
+        alert(`Cannot add "${med.name}". No non-expired stock available!`)
         return
       }
+    }
+
+    if (!b) {
+      alert(`Cannot add "${med.name}". No valid batch found!`)
+      return
+    }
+
+    // Double-check batch expiry
+    if (b.expiryDate && new Date(b.expiryDate).getTime() < today.getTime()) {
+      alert(`⛔ Cannot sell "${med.name}"! Batch ${b.batchNumber} has expired on ${b.expiryDate}.`)
+      return
     }
 
     const availableStock = b.availableQuantity ?? b.quantity ?? med.stock ?? 0
@@ -824,9 +959,17 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       }
     }
 
-    // Pre-validate stock availability for all cart items before proceeding
+    // Pre-validate stock availability and expiry for all cart items before proceeding
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     const liveBatches = PharmacyDatabase.getBatches()
     for (const c of cart) {
+      if (c.expiry && new Date(c.expiry).getTime() < today.getTime()) {
+        alert(
+          `⛔ Cannot complete sale! "${c.medicine}" (Batch ${c.batch || ""}) has EXPIRED on ${c.expiry}.\nPlease remove this item from the cart before proceeding.`,
+        )
+        return
+      }
       const b = liveBatches.find((bat) => bat.id === c.batchId)
       const available = b ? (b.availableQuantity ?? b.quantity ?? 0) : 0
       if (c.qty > available) {
@@ -1329,47 +1472,84 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                 )}
               </div>
               {filteredMeds.length > 0 && (
-                <div className="absolute z-20 left-0 right-0 mt-2 bg-white rounded-xl border border-[#E2E8F0] shadow-2xl overflow-hidden">
-                  {filteredMeds.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => addMedicine(m)}
-                      className="w-full flex items-center px-4 py-3 hover:bg-[#F5F7FA] transition-colors border-b border-[#F0F2F5] last:border-0"
-                    >
-                      <div className="flex-1 text-left">
-                        <p className="text-[13px] font-semibold text-[#0F1624]">
-                          {m.name}
-                        </p>
-                        <p className="text-[11px] text-[#64748B]">
-                          {(m as any).mnfCode || m.manufacturer} · Pack: {(m as any).packing || "1's"} · HSN: {(m as any).hsnCode || m.sku || "3004 039"}{m.generic ? ` · (${m.generic})` : ""}
-                        </p>
-                      </div>
-                      <div className="text-right ml-4">
-                        <p className="text-[13px] font-bold text-[#0F1624]">
-                          ₹{Number(m.mrp).toFixed(2)}
-                        </p>
-                        <p
-                          className="text-[11px]"
+                <div className="absolute z-20 left-0 right-0 mt-2 bg-white rounded-xl border border-[#E2E8F0] shadow-2xl overflow-hidden max-h-[360px] overflow-y-auto">
+                  {filteredMeds.map((m) => {
+                    const expInfo = getMedicineExpiryDetails(m)
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => addMedicine(m)}
+                        className={`w-full flex items-center px-4 py-3 transition-colors border-b border-[#F0F2F5] last:border-0 ${
+                          expInfo.isExpired
+                            ? "bg-red-50/70 hover:bg-red-100/80 border-l-4 border-l-red-500 cursor-not-allowed"
+                            : expInfo.isNearExpiry
+                              ? "bg-amber-50/60 hover:bg-amber-100/70 border-l-4 border-l-amber-500"
+                              : "hover:bg-[#F5F7FA]"
+                        }`}
+                      >
+                        <div className="flex-1 text-left">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-[13px] font-semibold text-[#0F1624]">
+                              {m.name}
+                            </p>
+                            {expInfo.isExpired && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700 border border-red-300">
+                                ⛔ EXPIRED ({expInfo.expiryDate})
+                              </span>
+                            )}
+                            {expInfo.isNearExpiry && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300">
+                                ⚠️ Ready to Expire ({expInfo.daysLeft}d left)
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#64748B] mt-0.5">
+                            {(m as any).mnfCode || m.manufacturer} · Pack: {(m as any).packing || "1's"} · HSN: {(m as any).hsnCode || m.sku || "3004 039"}{m.generic ? ` · (${m.generic})` : ""}
+                            {expInfo.isExpired ? (
+                              <span className="text-red-600 font-bold ml-1.5">
+                                · DO NOT SELL
+                              </span>
+                            ) : expInfo.isNearExpiry ? (
+                              <span className="text-amber-700 font-semibold ml-1.5">
+                                · Expiry: {expInfo.expiryDate}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-[13px] font-bold text-[#0F1624]">
+                            ₹{Number(m.mrp).toFixed(2)}
+                          </p>
+                          <p
+                            className="text-[11px]"
+                            style={{
+                              color: expInfo.isExpired
+                                ? "#dc2626"
+                                : m.stock > 50
+                                  ? "#15803d"
+                                  : m.stock > 0
+                                    ? "#d97706"
+                                    : "#dc2626",
+                            }}
+                          >
+                            {expInfo.isExpired ? "Expired Stock" : m.stock > 0 ? `Stock: ${m.stock}` : "Out of stock"}
+                          </p>
+                        </div>
+                        <div
+                          className="ml-3 w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
                           style={{
-                            color:
-                              m.stock > 50
-                                ? "#15803d"
-                                : m.stock > 0
-                                  ? "#d97706"
-                                  : "#dc2626",
+                            background: expInfo.isExpired ? "#FEE2E2" : expInfo.isNearExpiry ? "#FEF3C7" : "#E8EDF5",
                           }}
                         >
-                          {m.stock > 0 ? `Stock: ${m.stock}` : "Out of stock"}
-                        </p>
-                      </div>
-                      <div
-                        className="ml-3 w-7 h-7 rounded flex items-center justify-center flex-shrink-0"
-                        style={{ background: "#E8EDF5" }}
-                      >
-                        <Plus size={14} style={{ color: "#0F766E" }} />
-                      </div>
-                    </button>
-                  ))}
+                          {expInfo.isExpired ? (
+                            <span className="text-red-600 font-bold text-xs" title="Expired - Cannot Add">⛔</span>
+                          ) : (
+                            <Plus size={14} style={{ color: expInfo.isNearExpiry ? "#D97706" : "#0F766E" }} />
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -1430,8 +1610,30 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
                         <td className="px-5 py-4 text-[#64748B] font-mono text-[12px]">
                           {item.batch}
                         </td>
-                        <td className="px-5 py-4 text-[#64748B] text-[13px]">
-                          {item.expiry}
+                        <td className="px-5 py-4 text-[13px]">
+                          <span className="text-[#64748B] font-mono">{item.expiry}</span>
+                          {(() => {
+                            if (!item.expiry) return null
+                            const exp = new Date(item.expiry)
+                            const today = new Date()
+                            today.setHours(0, 0, 0, 0)
+                            const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                            if (diffDays <= 0) {
+                              return (
+                                <span className="block mt-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-red-100 text-red-700">
+                                  ⛔ EXPIRED
+                                </span>
+                              )
+                            }
+                            if (diffDays <= 60) {
+                              return (
+                                <span className="block mt-0.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                                  ⚠️ Expiring in {diffDays}d
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex flex-col items-center gap-1">

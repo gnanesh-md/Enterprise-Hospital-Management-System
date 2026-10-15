@@ -2058,8 +2058,8 @@ export class PharmacyDatabase {
     const medicines = this.getMedicines()
     const med = medicines.find((m) => m.id === payload.medicineId)
     if (med) {
-      const updatedStock = Math.max(0, (Number(med.stock) || 0) - payload.quantity)
-      this.updateMedicine(med.id, { stock: updatedStock })
+      const updatedStock = Math.max(0, (Number((med as any).stock) || 0) - payload.quantity)
+      this.updateMedicine(med.id, { stock: updatedStock } as any)
     }
 
     const suppliers = this.getSuppliers()
@@ -2067,12 +2067,12 @@ export class PharmacyDatabase {
     const resolvedSupplierName =
       payload.supplierName ||
       supObj?.supplierName ||
-      supObj?.name ||
+      (supObj as any)?.name ||
       batch.supplierName ||
       med?.supplierName ||
       "Supplier"
     const resolvedMedicineName =
-      payload.medicineName || med?.name || (med as any)?.medicineName || "Medicine"
+      payload.medicineName || (med as any)?.name || (med as any)?.medicineName || "Medicine"
     const resolvedBatchNumber =
       payload.batchNumber || batch.batchNumber || "Batch"
 
