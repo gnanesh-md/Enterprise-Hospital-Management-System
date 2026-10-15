@@ -1105,6 +1105,12 @@ export class LabOrderDatabase {
     }
   ): LabOrder | undefined {
     return this.mutate(orderId, (order) => {
+      // Payment enforcement: results can only be entered if patient bill has been paid
+      if (order.billing?.status !== "Paid") {
+        console.warn(`[LabOrderDatabase] Blocked result entry: Order ${orderId} has unpaid billing status: ${order.billing?.status}`)
+        return order
+      }
+
       const now = new Date().toISOString()
       const tests = order.tests.map((t) => {
         if (t.id !== testId && t.name !== testId) return t

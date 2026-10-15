@@ -43,6 +43,7 @@ import type { Notice } from "./types"
 import { apiFetch } from "./lib/api"
 
 import Laboratory from "./components/Laboratory"
+import LaboratoryManagementSuite from "./components/laboratory/LaboratoryManagementSuite"
 
 import Pharmacy from "./components/Pharmacy"
 import EmergencyUI from "./components/Emergency"
@@ -180,7 +181,7 @@ const insuranceModule = (m: string): string =>
         : m
 
 
-type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "lab_sample_collection" | "lab_processing" | "lab_critical" | "lab_reports" | "lab_catalog" | "lab_inventory" | "lab_analytics" | "lab_tat" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds" | "accounts" | "accounts_dashboard" | "accounts_coa" | "accounts_gl" | "accounts_receipts" | "accounts_payments" | "accounts_ar" | "accounts_ap" | "accounts_cash_bank" | "accounts_pharmacy" | "accounts_insurance" | "accounts_tax" | "accounts_budget" | "accounts_assets" | "accounts_reports" | "accounts_period_close" | "accounts_audit" | "accounts_manager"
+type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "lab_dashboard" | "lab_orders_collection" | "lab_workbench" | "lab_review_reports" | "lab_admin_config" | "lab_orders" | "lab_sample_collection" | "lab_sample_reception" | "lab_worklists" | "lab_analyzers" | "lab_result_entry" | "lab_pathologist_review" | "lab_critical_alerts" | "lab_reports" | "lab_test_master" | "lab_quality_analytics" | "lab_settings" | "lab_processing" | "lab_critical" | "lab_catalog" | "lab_inventory" | "lab_analytics" | "lab_tat" | "radiology" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds" | "accounts" | "accounts_dashboard" | "accounts_coa" | "accounts_gl" | "accounts_receipts" | "accounts_payments" | "accounts_ar" | "accounts_ap" | "accounts_cash_bank" | "accounts_pharmacy" | "accounts_insurance" | "accounts_tax" | "accounts_budget" | "accounts_assets" | "accounts_reports" | "accounts_period_close" | "accounts_audit" | "accounts_manager"
 
 interface NavItem {
   key: Module
@@ -286,9 +287,13 @@ const NAV: NavItem[] = [
     label: "Laboratory",
     Icon: FlaskConical,
     children: [
-      { key: "laboratory", label: "Laboratory Portal" },
+      { key: "lab_dashboard", label: "Lab Dashboard" },
+      { key: "lab_orders_collection", label: "Lab Orders & Sample Collection" },
+      { key: "lab_workbench", label: "Lab Workbench" },
+      { key: "lab_reports", label: "Lab Reports" },
       { key: "lab_inventory", label: "Lab Inventory & Consumables" },
-      { key: "lab_tat", label: "TAT Monitor" },
+      { key: "lab_quality_analytics", label: "Quality & Analytics" },
+      { key: "lab_admin_config", label: "Admin Configuration" },
     ],
   },
 
@@ -1724,6 +1729,12 @@ export default function App() {
           : 0,
 
         laboratory: 0,
+        lab_orders_collection: LabOrderDatabase.getLabWorklist().filter(
+          (o) => o.billing.status === "Paid" && o.status === "Billed",
+        ).length,
+        lab_workbench: LabOrderDatabase.getLabWorklist().filter(
+          (o) => (o.status === "Sample Collected" || o.status === "In Progress"),
+        ).length,
         lab_sample_collection: LabOrderDatabase.getLabWorklist().filter(
           (o) => o.billing.status === "Paid" && o.status === "Billed",
         ).length,
@@ -2759,16 +2770,8 @@ export default function App() {
                 />
               )}
               {module === "nursing" && <NursingPortal />}
-              {(module === "laboratory" ||
-                module === "lab_sample_collection" ||
-                module === "lab_processing" ||
-                module === "lab_critical" ||
-                module === "lab_reports" ||
-                module === "lab_catalog" ||
-                module === "lab_inventory" ||
-                module === "lab_analytics" ||
-                module === "lab_tat") && (
-                <Laboratory
+              {(module === "laboratory" || (module.startsWith("lab_") && module !== "lab_billing")) && (
+                <LaboratoryManagementSuite
                   technician={activeStaff.name}
                   activeSubPage={module}
                   onNavigate={(m) => setModule(m as Module)}
