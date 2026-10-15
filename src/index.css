@@ -460,7 +460,6 @@ textarea:focus-visible {
   #printable-radiology-report,
   #printable-bed-census,
   #printable-prescription,
-  #printable-invoice,
   #printable-area,
   .printable-handover-document {
     visibility: visible !important;
@@ -481,10 +480,14 @@ textarea:focus-visible {
   }
 
   #hospital-printable-receipt,
-  #printable-receipt {
+  #printable-receipt,
+  #printable-invoice {
     border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
     padding: 0 !important;
     max-width: 100% !important;
+    width: 100% !important;
     margin: 0 auto !important;
   }
 

@@ -87,11 +87,12 @@ process.on("SIGINT", () => shutdown(0))
 process.on("SIGTERM", () => shutdown(0))
 
 function run(name, cmd, args, cwd, shell = isWin) {
+  const actualShell = cmd.toLowerCase().endsWith(".exe") ? false : shell
   const child = spawn(cmd, args, {
     cwd,
     stdio: ["ignore", "pipe", "pipe"],
     env: process.env,
-    shell,
+    shell: actualShell,
   })
   owned.push(child)
   const pipe = (stream, out) => {

@@ -72,6 +72,7 @@ const REPORT_CATEGORIES: ReportCategory[] = [
       "Out-of-Stock Report",
       "Fast-Moving Medicines",
       "Slow-Moving Medicines",
+      "Medicine Write-Offs",
     ],
   },
   {
@@ -124,6 +125,8 @@ export default function Reports({ onNavigate }: ReportsProps) {
     grns,
     categories,
     stockTransactions,
+    writeOffs,
+    refresh,
   } = usePharmacyData()
 
   // Navigation State
@@ -136,9 +139,14 @@ export default function Reports({ onNavigate }: ReportsProps) {
     suppliers: true,
   })
 
-  // Date Filter State (Defaults to current month)
-  const [startDate, setStartDate] = useState<string>("2026-09-01")
-  const [endDate, setEndDate] = useState<string>("2026-09-30")
+  // Date Filter State (Defaults dynamically to current month)
+  const [startDate, setStartDate] = useState<string>(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]
+  })
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().split("T")[0]
+  })
   const [activePreset, setActivePreset] = useState<string>("This Month")
 
   // Detailed Report Search State
@@ -188,14 +196,20 @@ export default function Reports({ onNavigate }: ReportsProps) {
     }
   }
 
-  // Reactive listener for returns data
+  // Reactive listener for live updates across all pharmacy modules
   const [returnsRevision, setReturnsRevision] = useState(0)
   useEffect(() => {
-    const handleUpdate = () => setReturnsRevision((v) => v + 1)
+    const handleUpdate = () => {
+      setReturnsRevision((v) => v + 1)
+      refresh()
+    }
     window.addEventListener("hospai_pharmacy_updated", handleUpdate)
-    return () =>
+    window.addEventListener("storage", handleUpdate)
+    return () => {
       window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
-  }, [])
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
 
   const handleResetFilters = () => {
     applyPreset("This Month")
@@ -238,21 +252,23 @@ export default function Reports({ onNavigate }: ReportsProps) {
 
   // 1. Overview KPIs
   // 1. Overview KPIs
-  // Total Revenue = Completed pharmacy sales revenue before refunds
-  const totalRevenue = useMemo(() => {
-    return filteredBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0)
-  }, [filteredBills])
-
-  // Total Transactions = Number of completed pharmacy sales transactions
-  const totalTransactions = filteredBills.length
-
   // Total Refund = Total refund amount issued for returned medicines
   const totalRefund = useMemo(() => {
     return filteredReturns.reduce((sum, r) => sum + (r.refundAmount || 0), 0)
   }, [filteredReturns])
 
-  // Net Revenue = Total Revenue - Total Refund
-  const netRevenue = Math.max(0, totalRevenue - totalRefund)
+  const totalGrossRevenue = useMemo(() => {
+    return filteredBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0)
+  }, [filteredBills])
+
+  // Total Revenue = Completed pharmacy sales revenue minus refunds
+  const totalRevenue = Math.max(0, totalGrossRevenue - totalRefund)
+
+  // Total Transactions = Number of completed pharmacy sales transactions
+  const totalTransactions = filteredBills.length
+
+  // Net Revenue = Total Revenue after returns
+  const netRevenue = totalRevenue
 
   // Average Bill = Average net transaction value
   const averageBill =
@@ -293,6 +309,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
         map[displayDate] = { date: displayDate, revenue: 0, gross: 0, refunds: 0, orders: 0 }
       }
       map[displayDate].refunds += r.refundAmount || 0
+      // Deduct refunds from revenue so trend reflects sales after returns
       map[displayDate].revenue = Math.max(0, map[displayDate].gross - map[displayDate].refunds)
     })
 
@@ -360,8 +377,8 @@ export default function Reports({ onNavigate }: ReportsProps) {
     })
 
     Object.values(map).forEach((m) => {
-      m.quantity = Math.max(0, m.grossQuantity - m.returnedQuantity)
-      m.sales = Math.max(0, m.grossSales - m.refundAmount)
+      m.quantity = m.grossQuantity
+      m.sales = m.grossSales
     })
 
     return Object.values(map)
@@ -857,12 +874,20 @@ export default function Reports({ onNavigate }: ReportsProps) {
         const batch = batches.find(
           (b) => b.id === r.batchId || b.batchNumber === r.batchId,
         )
+        const returnAmount =
+          r.returnAmount ||
+          (r.quantity || 0) * (r.purchaseRate || batch?.purchasePrice || (med as any)?.purchasePrice || 0)
+
         return {
           id: r.id,
-          supplierName: sup?.name || sup?.supplierName || r.supplierId,
-          medicineName: med?.name || (med as any)?.medicineName || r.medicineId,
-          batchNumber: batch?.batchNumber || r.batchId || "N/A",
-          returnedQuantity: r.quantity,
+          debitNoteNumber: r.debitNoteNumber || r.id,
+          supplierName:
+            r.supplierName || sup?.name || sup?.supplierName || r.supplierId,
+          medicineName:
+            r.medicineName || med?.name || (med as any)?.medicineName || r.medicineId,
+          batchNumber: r.batchNumber || batch?.batchNumber || r.batchId || "N/A",
+          returnedQuantity: r.quantity || 0,
+          returnAmount,
           returnReason: r.reason,
           returnDate: r.createdAt
             ? new Date(r.createdAt).toLocaleDateString("en-IN")
@@ -879,12 +904,17 @@ export default function Reports({ onNavigate }: ReportsProps) {
       (sum, r) => sum + r.returnedQuantity,
       0,
     )
+    const totalAmount = supplierReturnsList.reduce(
+      (sum, r) => sum + (r.returnAmount || 0),
+      0,
+    )
     const creditNotes = supplierReturnsList.filter(
       (r) => r.creditNoteId && r.creditNoteId !== "—",
     ).length
     return {
       totalReturns,
       totalUnits,
+      totalAmount,
       creditNotes,
     }
   }, [supplierReturnsList])
@@ -1431,6 +1461,44 @@ export default function Reports({ onNavigate }: ReportsProps) {
       .sort((a, b) => b.returnedQuantity - a.returnedQuantity)
   }, [returnedItemsList, medicines])
 
+  // 18. Medicine Write-Offs Report Data & Summary
+  const filteredWriteOffsList = useMemo(() => {
+    return (writeOffs || []).filter((w) => {
+      const wDate = (w.date || w.createdAt || "").split("T")[0]
+      if (wDate && (wDate < startDate || wDate > endDate)) return false
+      if (!tableSearch) return true
+      const q = tableSearch.toLowerCase()
+      return (
+        w.receiptNumber.toLowerCase().includes(q) ||
+        w.medicineName.toLowerCase().includes(q) ||
+        w.batchNumber.toLowerCase().includes(q) ||
+        w.reason.toLowerCase().includes(q) ||
+        (w.remarks && w.remarks.toLowerCase().includes(q))
+      )
+    })
+  }, [writeOffs, startDate, endDate, tableSearch])
+
+  const writeOffsReportSummary = useMemo(() => {
+    const totalUnits = filteredWriteOffsList.reduce(
+      (sum, w) => sum + (w.quantity || 0),
+      0,
+    )
+    const totalLoss = filteredWriteOffsList.reduce(
+      (sum, w) => sum + (w.totalLossValue || 0),
+      0,
+    )
+    const totalCount = filteredWriteOffsList.length
+    const distinctMedicines = new Set(
+      filteredWriteOffsList.map((w) => w.medicineId),
+    ).size
+    return {
+      totalUnits,
+      totalLoss,
+      totalCount,
+      distinctMedicines,
+    }
+  }, [filteredWriteOffsList])
+
   // 18. Return Trends Aggregation
   const returnTrendsAggregation = useMemo(() => {
     const map: Record<string, {
@@ -1672,6 +1740,55 @@ export default function Reports({ onNavigate }: ReportsProps) {
           m.price.toFixed(2),
           m.valuation.toFixed(2),
           m.status,
+        ]),
+      ]
+    } else if (activeReport === "Medicine Write-Offs") {
+      rows = [
+        ["MEDICINE WRITE-OFF & NON-SALEABLE STOCK REPORT"],
+        ["Date Range", `${startDate} to ${endDate}`],
+        ["Generated Date", new Date().toLocaleString("en-IN")],
+        [],
+        ["SUMMARY METRICS"],
+        ["Total Units Written Off", writeOffsReportSummary.totalUnits],
+        ["Total Loss Valuation (Rs.)", writeOffsReportSummary.totalLoss.toFixed(2)],
+        ["Total Write-Off Records", writeOffsReportSummary.totalCount],
+        ["Distinct Medicines Affected", writeOffsReportSummary.distinctMedicines],
+        [],
+        [
+          "Receipt / Ref ID",
+          "Date & Time",
+          "Medicine Name",
+          "Medicine Code / HSN",
+          "Generic Name",
+          "Batch Number",
+          "Expiry Date",
+          "Quantity Written Off",
+          "Unit",
+          "Previous Stock",
+          "Remaining Stock",
+          "Unit Cost (Rs.)",
+          "Total Loss Value (Rs.)",
+          "Reason",
+          "Remarks",
+          "Written Off By",
+        ],
+        ...filteredWriteOffsList.map((w) => [
+          w.receiptNumber,
+          new Date(w.date || w.createdAt).toLocaleString("en-IN"),
+          w.medicineName,
+          w.medicineCode || "N/A",
+          w.genericName || "",
+          w.batchNumber,
+          w.expiryDate ? new Date(w.expiryDate).toLocaleDateString("en-IN") : "N/A",
+          w.quantity,
+          w.unitOfMeasure,
+          w.previousStock,
+          w.remainingStock,
+          w.unitCost.toFixed(2),
+          w.totalLossValue.toFixed(2),
+          w.reason,
+          w.remarks || "",
+          w.writtenOffBy,
         ]),
       ]
     } else if (activeReport === "Purchase Report") {
@@ -2370,11 +2487,11 @@ export default function Reports({ onNavigate }: ReportsProps) {
             <div className="space-y-6">
               {/* SECTION 4: 4-CARD OVERVIEW KPI SECTION */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 1. Total / Net Revenue */}
+                {/* 1. Total Sales Value */}
                 <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
-                      Net Revenue
+                      Total Sales Value
                     </span>
                     <div className="w-7 h-7 rounded bg-teal-50 text-[#0F766E] flex items-center justify-center">
                       <ShoppingCart size={15} />
@@ -2382,15 +2499,13 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                   <p className="text-[22px] font-extrabold text-[#0F1624] mt-2">
                     ₹
-                    {netRevenue.toLocaleString("en-IN", {
+                    {totalRevenue.toLocaleString("en-IN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}
                   </p>
                   <p className="text-[11px] text-[#64748B] mt-1 line-clamp-2">
-                    {totalRefund > 0
-                      ? `Gross: ₹${totalRevenue.toLocaleString("en-IN")} · Refunds: -₹${totalRefund.toLocaleString("en-IN")}`
-                      : "Total net sales revenue for the selected period."}
+                    Total sales billed across {totalTransactions} completed invoices.
                   </p>
                 </div>
 
@@ -2408,37 +2523,15 @@ export default function Reports({ onNavigate }: ReportsProps) {
                     {totalTransactions}
                   </p>
                   <p className="text-[11px] text-[#64748B] mt-1 line-clamp-2">
-                    Number of completed pharmacy sales transactions.
+                    Completed pharmacy sale bills for the period.
                   </p>
                 </div>
 
-                {/* 3. Average Bill */}
+                {/* 3. Total Patient Returns */}
                 <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
-                      Average Bill
-                    </span>
-                    <div className="w-7 h-7 rounded bg-purple-50 text-[#7c3aed] flex items-center justify-center">
-                      <TrendingUp size={15} />
-                    </div>
-                  </div>
-                  <p className="text-[22px] font-extrabold text-[#0F1624] mt-2">
-                    ₹
-                    {averageBill.toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </p>
-                  <p className="text-[11px] text-[#64748B] mt-1 line-clamp-2">
-                    Average transaction value per invoice.
-                  </p>
-                </div>
-
-                {/* 4. Total Refund */}
-                <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
-                      Total Refund
+                      Total Patient Returns
                     </span>
                     <div className="w-7 h-7 rounded bg-amber-50 text-amber-700 flex items-center justify-center">
                       <RotateCcw size={15} />
@@ -2452,16 +2545,30 @@ export default function Reports({ onNavigate }: ReportsProps) {
                     })}
                   </p>
                   <p className="text-[11px] text-[#64748B] mt-1 line-clamp-2">
-                    Total refund amount issued for returned medicines.
+                    {filteredReturns.length} patient sales refunds disbursed.
                   </p>
-                  {totalRefund > 0 && (
-                    <div className="mt-2 pt-2 border-t border-[#F1F5F9] text-[11px] font-medium text-[#0F766E]">
-                      Net Revenue: ₹
-                      {netRevenue.toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                      })}
+                </div>
+
+                {/* 4. Total Supplier Returns */}
+                <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#64748B] uppercase tracking-wide">
+                      Total Supplier Returns
+                    </span>
+                    <div className="w-7 h-7 rounded bg-blue-50 text-[#0F766E] flex items-center justify-center">
+                      <FileText size={15} />
                     </div>
-                  )}
+                  </div>
+                  <p className="text-[22px] font-extrabold text-[#0F766E] mt-2">
+                    ₹
+                    {supplierReturnsSummary.totalAmount.toLocaleString("en-IN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                  <p className="text-[11px] text-[#64748B] mt-1 line-clamp-2">
+                    {supplierReturnsSummary.totalReturns} debit notes ({supplierReturnsSummary.totalUnits} units returned to vendors).
+                  </p>
                 </div>
               </div>
 
@@ -3790,6 +3897,123 @@ export default function Reports({ onNavigate }: ReportsProps) {
                       )}
                     </tbody>
                   </table>
+                ) : activeReport === "Medicine Write-Offs" ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                        <span className="text-[11px] font-semibold text-[#64748B]">
+                          Total Units Written Off
+                        </span>
+                        <span className="text-[18px] font-bold text-red-600 block mt-1">
+                          {writeOffsReportSummary.totalUnits.toLocaleString("en-IN")} units
+                        </span>
+                      </div>
+                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                        <span className="text-[11px] font-semibold text-[#64748B]">
+                          Total Loss Valuation
+                        </span>
+                        <span className="text-[18px] font-bold text-rose-700 block mt-1">
+                          ₹
+                          {writeOffsReportSummary.totalLoss.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                        <span className="text-[11px] font-semibold text-[#64748B]">
+                          Write-Off Transactions
+                        </span>
+                        <span className="text-[18px] font-bold text-[#0F1624] block mt-1">
+                          {writeOffsReportSummary.totalCount}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded">
+                        <span className="text-[11px] font-semibold text-[#64748B]">
+                          Medicines Affected
+                        </span>
+                        <span className="text-[18px] font-bold text-[#0F766E] block mt-1">
+                          {writeOffsReportSummary.distinctMedicines}
+                        </span>
+                      </div>
+                    </div>
+
+                    <table className="w-full text-left border-collapse text-[13px]">
+                      <thead className="bg-[#ECFDF5] border-y border-[#A7F3D0] text-[#065F46]">
+                        <tr>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px]">Receipt No</th>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px]">Date & Time</th>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px]">Medicine</th>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px]">Batch</th>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px] text-center">Qty</th>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px] text-center">Stock (Prev/Rem)</th>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px] text-right">Loss Value</th>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px]">Reason</th>
+                          <th className="p-3 font-bold uppercase tracking-wider text-[11px]">Staff</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#F1F5F9]">
+                        {filteredWriteOffsList.length > 0 ? (
+                          filteredWriteOffsList.map((w, idx) => (
+                            <tr key={idx} className="hover:bg-[#F0FDFA] transition-colors">
+                              <td className="p-3 font-bold text-[#0F766E] font-mono whitespace-nowrap">
+                                {w.receiptNumber}
+                              </td>
+                              <td className="p-3 text-[#64748B] whitespace-nowrap">
+                                {new Date(w.date || w.createdAt).toLocaleDateString("en-IN")}{" "}
+                                <span className="text-[10px] text-[#94A3B8]">
+                                  {new Date(w.date || w.createdAt).toLocaleTimeString("en-IN", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </span>
+                              </td>
+                              <td className="p-3 font-semibold text-[#0F1624]">
+                                {w.medicineName}
+                                {w.genericName && (
+                                  <span className="block text-[10px] text-[#94A3B8]">
+                                    {w.genericName}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 font-mono text-[#475569]">{w.batchNumber}</td>
+                              <td className="p-3 text-center font-bold text-red-600">
+                                -{w.quantity} {w.unitOfMeasure}
+                              </td>
+                              <td className="p-3 text-center text-[#475569]">
+                                {w.previousStock} →{" "}
+                                <span className="font-semibold text-emerald-700">
+                                  {w.remainingStock}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right font-mono font-bold text-rose-700">
+                                ₹
+                                {(w.totalLossValue || 0).toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </td>
+                              <td className="p-3 text-[#334155] max-w-xs truncate" title={w.reason}>
+                                {w.reason}
+                                {w.remarks && (
+                                  <span className="block text-[10px] text-[#94A3B8] truncate" title={w.remarks}>
+                                    {w.remarks}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="p-3 text-[#64748B] whitespace-nowrap">{w.writtenOffBy}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={9} className="p-8 text-center text-[#94A3B8]">
+                              No medicine write-off records found for the selected period.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : activeReport.includes("GRN") ? (
                   <table className="w-full text-left border-collapse text-[13px]">
                     <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0] text-[#475569]">

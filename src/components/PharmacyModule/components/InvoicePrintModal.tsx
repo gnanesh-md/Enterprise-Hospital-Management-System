@@ -1,31 +1,36 @@
-import { CheckCircle, Printer, RotateCcw } from "lucide-react"
+import { CheckCircle, Printer, RotateCcw, X } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
 import RECEIPT_LOGO_BASE64 from "../../../assets/receiptLogoBase64"
 
-export function numberToWords(num: number): string {
-  const a = [
+function numberToWords(amount: number): string {
+  if (!amount || amount === 0) return "Zero Rupees Only"
+  const total = Math.round(Number(amount) * 100) / 100
+  const rupees = Math.floor(total)
+  const paise = Math.round((total - rupees) * 100)
+
+  const ones = [
     "",
-    "One ",
-    "Two ",
-    "Three ",
-    "Four ",
-    "Five ",
-    "Six ",
-    "Seven ",
-    "Eight ",
-    "Nine ",
-    "Ten ",
-    "Eleven ",
-    "Twelve ",
-    "Thirteen ",
-    "Fourteen ",
-    "Fifteen ",
-    "Sixteen ",
-    "Seventeen ",
-    "Eighteen ",
-    "Nineteen ",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
   ]
-  const b = [
+  const tens = [
     "",
     "",
     "Twenty",
@@ -37,46 +42,133 @@ export function numberToWords(num: number): string {
     "Eighty",
     "Ninety",
   ]
-  if ((num = Math.floor(num)) === 0) return "Zero"
-  if (num < 0) return "Negative " + numberToWords(Math.abs(num))
-  let str = ""
-  if (num >= 10000000) {
-    str += numberToWords(Math.floor(num / 10000000)) + " Crore "
-    num %= 10000000
-  }
-  if (num >= 100000) {
-    str += numberToWords(Math.floor(num / 100000)) + " Lakh "
-    num %= 100000
-  }
-  if (num >= 1000) {
-    str += numberToWords(Math.floor(num / 1000)) + " Thousand "
-    num %= 1000
-  }
-  if (num >= 100) {
-    str += numberToWords(Math.floor(num / 100)) + " Hundred "
-    num %= 100
-  }
-  if (num > 0) {
-    if (str !== "") str += "and "
-    if (num < 20) str += a[num]
-    else {
-      str += b[Math.floor(num / 10)]
-      if (num % 10 > 0) str += "-" + a[num % 10]
+
+  function convertLessThanOneThousand(n: number): string {
+    let current = ""
+    if (n >= 100) {
+      current += ones[Math.floor(n / 100)] + " Hundred "
+      n %= 100
     }
+    if (n > 0) {
+      if (n < 20) {
+        current += ones[n] + " "
+      } else {
+        current += tens[Math.floor(n / 10)] + " "
+        if (n % 10 > 0) {
+          current += ones[n % 10] + " "
+        }
+      }
+    }
+    return current.trim()
   }
-  return str.trim()
+
+  let words = ""
+  let n = rupees
+
+  if (n >= 10000000) {
+    const crore = Math.floor(n / 10000000)
+    words += convertLessThanOneThousand(crore) + " Crore "
+    n %= 10000000
+  }
+  if (n >= 100000) {
+    const lakh = Math.floor(n / 100000)
+    words += convertLessThanOneThousand(lakh) + " Lakh "
+    n %= 100000
+  }
+  if (n >= 1000) {
+    const thousand = Math.floor(n / 1000)
+    words += convertLessThanOneThousand(thousand) + " Thousand "
+    n %= 1000
+  }
+  if (n > 0) {
+    words += convertLessThanOneThousand(n) + " "
+  }
+
+  words = words.trim()
+  let result = words ? `${words} Rupees` : "Zero Rupees"
+
+  if (paise > 0) {
+    const paiseWords = convertLessThanOneThousand(paise)
+    result += ` and ${paiseWords} Paise`
+  }
+
+  return `${result} Only`
 }
 
-export function formatExpDate(exp?: string): string {
+function formatExpDate(exp?: string): string {
   if (!exp) return "Dec-26"
-  const trimmed = exp.trim()
+  const trimmed = String(exp).trim()
   if (/^[A-Za-z]{3}-\d{2}$/.test(trimmed)) return trimmed
   const d = new Date(trimmed)
   if (isNaN(d.getTime())) return trimmed
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ]
   const m = months[d.getMonth()]
   const y = String(d.getFullYear()).slice(-2)
   return `${m}-${y}`
+}
+
+function formatReceiptDate(val?: any): string {
+  if (!val) return "10-Sep-2026"
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return String(val)
+  const day = String(d.getDate()).padStart(2, "0")
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ]
+  const m = months[d.getMonth()]
+  const y = d.getFullYear()
+  return `${day}-${m}-${y}`
+}
+
+function formatReceiptDateTime(val?: any): string {
+  if (!val) return "10-Sep-2026 07:14:38"
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return String(val)
+  const day = String(d.getDate()).padStart(2, "0")
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ]
+  const m = months[d.getMonth()]
+  const y = d.getFullYear()
+  const hours = String(d.getHours()).padStart(2, "0")
+  const mins = String(d.getMinutes()).padStart(2, "0")
+  const secs = String(d.getSeconds()).padStart(2, "0")
+  return `${day}-${m}-${y} ${hours}:${mins}:${secs}`
 }
 
 interface InvoicePrintModalProps {
@@ -99,640 +191,513 @@ export default function InvoicePrintModal({
   const isReturnBill = Boolean(
     activeReturn ||
       effectiveBill.isReturn ||
+      effectiveBill.isModifiedReturnBill ||
       effectiveBill.billNumber?.startsWith("MOD-"),
   )
+
+  // Compute item rows with all hospital fields accurately mapped
+  const rawItems = (
+    isReturnBill && activeReturn?.items && activeReturn.items.length > 0
+      ? activeReturn.items
+      : effectiveBill.items || []
+  ) as any[]
+
+  const processedItems = rawItems.map((c: any) => {
+    let medName = c.medicineName || c.medicine || ""
+    if (!medName && c.medicineId) {
+      const med = PharmacyDatabase.getMedicines().find((m) => m.id === c.medicineId)
+      if (med) medName = med.brandName || med.medicineName
+    }
+    medName = medName || "Unknown Medicine"
+
+    const qty = Number(c.quantity || c.qty || c.returnQuantity || 1)
+    const rate = Number(c.unitPrice || c.mrp || c.rate || 0)
+    const amount = Number(c.grossAmount !== undefined ? c.grossAmount : qty * rate)
+    const discountPercent = Number(c.discount || 0)
+    const discAmt = Number(
+      c.discountAmount !== undefined
+        ? c.discountAmount
+        : amount * (discountPercent / 100),
+    )
+    const taxableAmt = Number(
+      c.taxableAmount !== undefined ? c.taxableAmount : amount - discAmt,
+    )
+    const taxRate = Number(c.tax !== undefined ? c.tax : 5)
+    const cgstRate = Number(c.cgstRate !== undefined ? c.cgstRate : taxRate / 2)
+    const sgstRate = Number(c.sgstRate !== undefined ? c.sgstRate : taxRate / 2)
+    const cgstAmt = Number(
+      c.cgstAmount !== undefined ? c.cgstAmount : taxableAmt * (cgstRate / 100),
+    )
+    const sgstAmt = Number(
+      c.sgstAmount !== undefined ? c.sgstAmount : taxableAmt * (sgstRate / 100),
+    )
+    const billAmt = Number(
+      c.totalPrice !== undefined
+        ? c.totalPrice
+        : taxableAmt + cgstAmt + sgstAmt,
+    )
+
+    // Clean HSN code
+    const hsnCode = c.hsnCode || c.hsn || "3004 039"
+
+    // Short manufacturer code (e.g. MAN, SUN H, COR)
+    let mnf = c.mnf || c.manufacturer || ""
+    if (!mnf || mnf.length > 6) {
+      mnf = medName.replace(/[^A-Za-z]/g, "").slice(0, 4).toUpperCase() || "MAN"
+    }
+
+    // Short shelf code
+    const sh = c.sh || ""
+
+    // Batch and expiry
+    const batchNo = c.batchNumber || c.batch || "-"
+    const expDt = formatExpDate(c.expiryDate || c.expiry)
+
+    // Bin No: avoid printing large department strings like "MAIN PHARMACY"
+    const rawBin = String(c.binNo || c.bin || "").trim()
+    const binNo =
+      rawBin.length <= 5 && !rawBin.toLowerCase().includes("pharmacy")
+        ? rawBin
+        : ""
+
+    return {
+      medName,
+      hsnCode,
+      mnf,
+      sh,
+      batchNo,
+      expDt,
+      binNo,
+      qty,
+      rate,
+      amount,
+      discAmt,
+      taxableAmt,
+      cgstRate,
+      cgstAmt,
+      sgstRate,
+      sgstAmt,
+      billAmt,
+      // For return items
+      origQty: c.originalQuantity || qty,
+      retQty: c.returnQuantity || 0,
+      finQty: c.finalQuantity !== undefined ? c.finalQuantity : qty,
+      refundAmount: c.refundAmount || 0,
+    }
+  })
+
+  // Calculate table totals
+  const totalQty = processedItems.reduce((s, i) => s + (i.qty || 0), 0)
+  const totalGrossAmount = processedItems.reduce((s, i) => s + (i.amount || 0), 0)
+  const totalDiscAmt = processedItems.reduce((s, i) => s + (i.discAmt || 0), 0)
+  const totalTaxableAmt = processedItems.reduce(
+    (s, i) => s + (i.taxableAmt || 0),
+    0,
+  )
+  const totalCgstAmt = processedItems.reduce((s, i) => s + (i.cgstAmt || 0), 0)
+  const totalSgstAmt = processedItems.reduce((s, i) => s + (i.sgstAmt || 0), 0)
+  const totalBillAmt =
+    effectiveBill.totalAmount !== undefined
+      ? Number(effectiveBill.totalAmount)
+      : processedItems.reduce((s, i) => s + (i.billAmt || 0), 0)
 
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm print:absolute print:inset-0 print:p-0 print:bg-white">
       <style>{`
-                @media print { 
-                    body * { visibility: hidden; } 
-                    #printable-invoice, #printable-invoice * { visibility: visible; } 
-                    #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; } 
-                    @page { size: landscape; margin: 10mm; }
-                }
-            `}</style>
+        @media print { 
+          body * { visibility: hidden !important; } 
+          #printable-invoice, #printable-invoice * { visibility: visible !important; } 
+          #printable-invoice { 
+            position: absolute !important; 
+            left: 0 !important; 
+            top: 0 !important; 
+            width: 100% !important; 
+            max-width: 100% !important;
+            margin: 0 !important; 
+            padding: 0 !important; 
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+          } 
+          @page { 
+            size: landscape; 
+            margin: 8mm; 
+          }
+        }
+      `}</style>
+
       <div
         id="printable-invoice"
-        className="bg-white rounded shadow-2xl w-full max-w-4xl max-h-full overflow-y-auto print:max-w-none print:shadow-none print:w-full print:m-0 print:overflow-visible relative"
+        className="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto print:max-w-none print:shadow-none print:w-full print:m-0 print:border-none print:outline-none print:overflow-visible relative"
       >
-        <div className="p-6 print:p-0 border-b border-[#DDE2EC] flex justify-between items-center print:hidden bg-[#F5F7FA] sticky top-0 z-10">
-          <h2 className="text-xl font-bold text-[#0F1624] flex items-center gap-2">
+        {/* Modal Controls (Hidden in Print) */}
+        <div className="p-4 print:p-0 border-b border-[#DDE2EC] flex justify-between items-center print:hidden bg-[#F8FAFC] sticky top-0 z-20">
+          <div className="flex items-center gap-2">
             {isReturnBill ? (
-              <>
-                <RotateCcw className="text-amber-600" />
-                Modified Bill & Credit Note{" "}
-                {activeReturn?.returnNumber
-                  ? `(${activeReturn.returnNumber})`
-                  : effectiveBill.billNumber}
-              </>
+              <RotateCcw className="text-purple-600" size={20} />
             ) : (
-              <>
-                <CheckCircle className="text-green-600" />
-                Invoice {effectiveBill.billNumber}
-              </>
+              <CheckCircle className="text-teal-600" size={20} />
             )}
-          </h2>
+            <h2 className="text-base font-bold text-[#0F1624]">
+              {isReturnBill
+                ? `Pharmacy Receipt — Modified Bill (${effectiveBill.billNumber})`
+                : `Pharmacy Receipt (${effectiveBill.billNumber})`}
+            </h2>
+            <span className="text-[11px] font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold">
+              TAX INVOICE
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="bg-white border border-[#DDE2EC] hover:bg-gray-100 text-[#0F1624] px-4 py-2 text-sm font-semibold transition-colors rounded flex items-center gap-1.5 shadow-sm"
+              className="bg-white border border-[#CBD5E1] hover:bg-slate-100 text-[#334155] px-3.5 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
             >
-              ← Back to Returns
+              <X size={14} /> Close
             </button>
             <button
               onClick={printInvoice}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-semibold flex items-center gap-2 transition-colors rounded shadow-sm"
+              className="bg-teal-700 hover:bg-teal-800 text-white px-4 py-1.5 text-xs font-bold flex items-center gap-2 rounded-lg shadow-sm transition-colors cursor-pointer"
             >
-              <Printer size={16} /> Print{" "}
-              {isReturnBill ? "Modified Bill" : "Receipt"}
+              <Printer size={15} /> Print Receipt
             </button>
           </div>
         </div>
 
-        {/* Detailed A4 Print Layout */}
-        <div className="p-8 print:p-0 font-sans text-sm print:text-[9px] text-black w-full max-w-5xl print:max-w-full mx-auto bg-white relative">
-          {/* Background Watermark Logo */}
-          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center overflow-hidden z-0 opacity-[0.22] print:opacity-[0.25] select-none">
+        {/* Printable Receipt Body */}
+        <div className="p-8 print:p-4 font-sans text-xs print:text-[9px] text-black w-full mx-auto bg-white relative leading-normal">
+          {/* Subtle Full-Page Background Watermark */}
+          <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center overflow-hidden z-0 select-none">
             <img
               src={RECEIPT_LOGO_BASE64}
               alt="Hospital Logo Watermark"
-              className="w-[400px] max-w-full object-contain filter brightness-110 contrast-105"
+              className="w-[480px] max-w-full object-contain opacity-[0.06] print:opacity-[0.06] grayscale contrast-50 brightness-125"
             />
-            <div className="text-[34px] font-extrabold tracking-wider text-gray-800 uppercase -mt-4 font-sans tracking-tight opacity-95">
-              Imperial Hospitals
+            <div className="text-[34px] font-black tracking-widest text-slate-500 uppercase -mt-4 font-sans opacity-[0.05] print:opacity-[0.05]">
+              IMPERIAL HOSPITALS
             </div>
           </div>
 
           <div className="relative z-10">
-            <div className="flex justify-between border-b-2 border-black pb-4 mb-4">
-            <div className="flex-1">
-              <h1 className="text-2xl print:text-lg font-bold tracking-wider mb-2">
-                VH PHARMACY
-              </h1>
-              <p className="print:text-[9px]">
-                27-1-7/3/1, Premises Of Imperial Hospital,
-              </p>
-              <p className="print:text-[9px]">
-                J P Road, Bhimavaram, West Godavari,
-              </p>
-              <p className="print:text-[9px]">Andhra Pradesh-534202</p>
-              <p className="font-bold print:text-[9px] mt-1">
-                GST No : 37AASFV7563M1Z1
-              </p>
-              <h2 className="text-lg print:text-sm font-bold uppercase mt-2">
-                {isReturnBill
-                  ? "MEDICINE RETURN CREDIT NOTE / MODIFIED INVOICE"
-                  : "Pharmacy Receipt — TAX INVOICE"}
-              </h2>
+            {/* Header: Left Pharmacy info + Right Invoice meta table */}
+            <div className="flex justify-between items-start border-b-2 border-black pb-3 mb-3 gap-6">
+              {/* Left Details */}
+              <div className="flex-1">
+                <h1 className="text-xl font-black tracking-wider text-black font-sans leading-tight">
+                  VH PHARMACY
+                </h1>
+                <div className="text-[10px] print:text-[8.5px] text-gray-800 leading-tight mt-1 space-y-0.5">
+                  <p>27-1-7/3/1, Premises Of Imperial Hospital,</p>
+                  <p>J P Road, Bhimavaram, West Godavari,</p>
+                  <p>Andhra Pradesh-534202</p>
+                  <p className="font-bold text-black pt-0.5">
+                    GST No : 37AASFV7563M1Z1
+                  </p>
+                </div>
+                <div className="mt-2">
+                  <h2 className="text-[12px] print:text-[9.5px] font-black uppercase text-black tracking-wide">
+                    {isReturnBill
+                      ? "Pharmacy Receipt — Modified Bill"
+                      : "Pharmacy Receipt"}
+                  </h2>
+                  <h3 className="text-[11px] print:text-[8.5px] font-black uppercase text-black tracking-wider">
+                    TAX INVOICE
+                  </h3>
+                </div>
+              </div>
+
+              {/* Right Metadata Table (Exact layout as photo) */}
+              <div className="shrink-0 text-[10px] print:text-[8.5px]">
+                <table className="text-left border-collapse leading-snug">
+                  <tbody>
+                    <tr>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        Bill No
+                      </td>
+                      <td className="py-0.5 pr-5 font-mono font-bold text-black whitespace-nowrap">
+                        : {effectiveBill.billNumber}
+                      </td>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        Bill Date
+                      </td>
+                      <td className="py-0.5 font-mono text-black whitespace-nowrap">
+                        : {formatReceiptDate(effectiveBill.createdAt || effectiveBill.date)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        UMR No
+                      </td>
+                      <td className="py-0.5 pr-5 font-mono font-bold text-black whitespace-nowrap">
+                        : {effectiveBill.uhid || "UMR112320"}
+                      </td>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        Dt of Supply
+                      </td>
+                      <td className="py-0.5 font-mono text-black whitespace-nowrap">
+                        : {formatReceiptDateTime(effectiveBill.createdAt || effectiveBill.date)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        Patient Name
+                      </td>
+                      <td colSpan={3} className="py-0.5 font-bold uppercase text-black">
+                        : {effectiveBill.patientName || "Mr . G KUMAR"}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        Doctor Name
+                      </td>
+                      <td className="py-0.5 pr-5 font-bold text-black whitespace-nowrap">
+                        : {effectiveBill.doctorName || "Dr. CHAITANYA BANDARU"}
+                      </td>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        D.L.No.
+                      </td>
+                      <td className="py-0.5 font-mono text-black whitespace-nowrap">
+                        : AP/05/02/2017-13965
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        RCM Invoice
+                      </td>
+                      <td className="py-0.5 pr-5 text-black">
+                        : NO
+                      </td>
+                      <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                        Payment Mode
+                      </td>
+                      <td className="py-0.5 font-mono font-bold uppercase text-black whitespace-nowrap">
+                        : {effectiveBill.paymentMode || "Cash"}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="flex-1">
-              <table className="w-full text-left print:text-[9px] border-collapse">
-                <tbody>
-                  {isReturnBill ? (
-                    <>
-                      <tr>
-                        <td className="py-0.5 font-semibold">
-                          Original Bill No
-                        </td>
-                        <td>
-                          :{" "}
-                          <span className="font-bold">
-                            {activeReturn?.originalBillNumber ||
-                              effectiveBill.originalBillNumber ||
-                              effectiveBill.billNumber}
-                          </span>
-                        </td>
-                        <td className="font-semibold w-24">Return ID</td>
-                        <td>
-                          :{" "}
-                          <span className="font-bold text-amber-700">
-                            {activeReturn?.returnNumber || "RET-2026-0001"}
-                          </span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 font-semibold">
-                          Modified Bill No
-                        </td>
-                        <td>
-                          :{" "}
-                          <span className="font-bold text-indigo-700">
-                            {activeReturn?.modifiedBillNumber ||
-                              effectiveBill.billNumber}
-                          </span>
-                        </td>
-                        <td className="font-semibold w-24">Return Date</td>
-                        <td>
-                          :{" "}
-                          {new Date(
-                            activeReturn?.createdAt ||
-                              effectiveBill.createdAt ||
-                              Date.now(),
-                          ).toLocaleDateString()}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 font-semibold">Patient Name</td>
-                        <td>
-                          :{" "}
-                          {activeReturn?.patientName ||
-                            effectiveBill.patientName ||
-                            "Walk-in Patient"}
-                        </td>
-                        <td className="font-semibold w-24">UMR / UHID</td>
-                        <td>
-                          :{" "}
-                          {activeReturn?.patientUhid ||
-                            effectiveBill.uhid ||
-                            "UMR10050"}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 font-semibold">Doctor Name</td>
-                        <td>
-                          :{" "}
-                          {activeReturn?.doctorName ||
-                            effectiveBill.doctorName ||
-                            "Self"}
-                        </td>
-                        <td className="font-semibold w-24">Reason</td>
-                        <td>
-                          : {activeReturn?.returnReason || "Patient Return"}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 font-semibold">Status</td>
-                        <td>
-                          :{" "}
-                          <span className="font-bold uppercase text-green-700">
-                            {activeReturn?.status || "Completed"}
-                          </span>
-                        </td>
-                        <td className="font-semibold w-24">D.L.No.</td>
-                        <td>: AP/05/02/2017-13965</td>
-                      </tr>
-                    </>
-                  ) : (
-                    <>
-                      <tr>
-                        <td className="py-0.5 font-semibold">Bill No</td>
-                        <td>: {effectiveBill.billNumber}</td>
-                        <td className="font-semibold w-24">Bill Date</td>
-                        <td>
-                          :{" "}
-                          {
-                            new Date(
-                              effectiveBill.createdAt || effectiveBill.date,
-                            )
-                              .toLocaleString()
-                              .split(",")[0]
-                          }
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 font-semibold">UMR No</td>
-                        <td>: {effectiveBill.uhid || "UMR10050"}</td>
-                        <td className="font-semibold w-24">Dt of Supply</td>
-                        <td>
-                          :{" "}
-                          {new Date(
-                            effectiveBill.createdAt || effectiveBill.date,
-                          ).toLocaleString()}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 font-semibold">Patient Name</td>
-                        <td colSpan={3}>
-                          : {effectiveBill.patientName || "Walk-in Patient"}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 font-semibold">Doctor Name</td>
-                        <td colSpan={3}>
-                          : {effectiveBill.doctorName || "Self"}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="py-0.5 font-semibold">RCM Invoice</td>
-                        <td>: NO</td>
-                        <td className="font-semibold w-24">D.L.No.</td>
-                        <td>: AP/05/02/2017-13965</td>
-                      </tr>
-                    </>
-                  )}
+
+            {/* Main Medicines Table (Exact column alignment as Image 2) */}
+            <div className="w-full my-2">
+              <table className="w-full text-[9.5px] print:text-[8px] border-collapse leading-tight table-auto">
+                <thead>
+                  <tr className="border-t-2 border-b border-black text-black font-bold uppercase text-[9px] print:text-[7.5px]">
+                    <th rowSpan={2} className="text-left py-1.5 pr-2 font-bold">
+                      Item Desc
+                    </th>
+                    <th rowSpan={2} className="text-left py-1.5 px-1.5 font-bold whitespace-nowrap">
+                      HSN Code
+                    </th>
+                    <th rowSpan={2} className="text-left py-1.5 px-1.5 font-bold">
+                      Mnf
+                    </th>
+                    <th rowSpan={2} className="text-center py-1.5 px-1 font-bold">
+                      Sh
+                    </th>
+                    <th rowSpan={2} className="text-left py-1.5 px-2 font-bold whitespace-nowrap">
+                      Batch No
+                    </th>
+                    <th rowSpan={2} className="text-left py-1.5 px-1.5 font-bold whitespace-nowrap">
+                      Exp Dt
+                    </th>
+                    <th rowSpan={2} className="text-center py-1.5 px-1 font-bold whitespace-nowrap">
+                      Bin No
+                    </th>
+                    <th rowSpan={2} className="text-right py-1.5 px-1.5 font-bold">
+                      Qty
+                    </th>
+                    <th rowSpan={2} className="text-right py-1.5 px-1.5 font-bold">
+                      Rate
+                    </th>
+                    <th rowSpan={2} className="text-right py-1.5 px-2 font-bold">
+                      Amount
+                    </th>
+                    <th rowSpan={2} className="text-right py-1.5 px-1.5 font-bold whitespace-nowrap">
+                      Disc Amt
+                    </th>
+                    <th rowSpan={2} className="text-right py-1.5 px-2 font-bold whitespace-nowrap">
+                      Taxable Amt
+                    </th>
+                    <th colSpan={2} className="text-center py-0.5 px-1 font-bold border-b border-black">
+                      CGST
+                    </th>
+                    <th colSpan={2} className="text-center py-0.5 px-1 font-bold border-b border-black">
+                      SGST
+                    </th>
+                    <th rowSpan={2} className="text-right py-1.5 pl-2 font-bold whitespace-nowrap">
+                      Bill Amt
+                    </th>
+                  </tr>
+                  <tr className="border-b-2 border-black text-black font-bold text-[8px] print:text-[7px] uppercase">
+                    <th className="text-right py-0.5 px-1 font-bold">%</th>
+                    <th className="text-right py-0.5 px-1 font-bold">Amt</th>
+                    <th className="text-right py-0.5 px-1 font-bold">%</th>
+                    <th className="text-right py-0.5 px-1 font-bold">Amt</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-gray-200">
+                  {processedItems.map((c, i) => (
+                    <tr key={i} className="align-top hover:bg-slate-50/50">
+                      <td className="text-left py-1.5 pr-2 font-medium max-w-[200px] break-words">
+                        {c.medName}
+                      </td>
+                      <td className="text-left py-1.5 px-1.5 font-mono whitespace-nowrap">
+                        {c.hsnCode}
+                      </td>
+                      <td className="text-left py-1.5 px-1.5 font-mono uppercase">
+                        {c.mnf}
+                      </td>
+                      <td className="text-center py-1.5 px-1">
+                        {c.sh}
+                      </td>
+                      <td className="text-left py-1.5 px-2 font-mono whitespace-nowrap font-medium">
+                        {c.batchNo}
+                      </td>
+                      <td className="text-left py-1.5 px-1.5 whitespace-nowrap">
+                        {c.expDt}
+                      </td>
+                      <td className="text-center py-1.5 px-1 whitespace-nowrap">
+                        {c.binNo}
+                      </td>
+                      <td className="text-right py-1.5 px-1.5 font-semibold">
+                        {c.qty}
+                      </td>
+                      <td className="text-right py-1.5 px-1.5 font-mono">
+                        {c.rate.toFixed(2)}
+                      </td>
+                      <td className="text-right py-1.5 px-2 font-mono">
+                        {c.amount.toFixed(2)}
+                      </td>
+                      <td className="text-right py-1.5 px-1.5 font-mono">
+                        {c.discAmt > 0 ? `-${c.discAmt.toFixed(2)}` : "0.00"}
+                      </td>
+                      <td className="text-right py-1.5 px-2 font-mono">
+                        {c.taxableAmt.toFixed(2)}
+                      </td>
+                      <td className="text-right py-1.5 px-1 font-mono">
+                        {c.cgstRate}
+                      </td>
+                      <td className="text-right py-1.5 px-1 font-mono">
+                        {c.cgstAmt.toFixed(2)}
+                      </td>
+                      <td className="text-right py-1.5 px-1 font-mono">
+                        {c.sgstRate}
+                      </td>
+                      <td className="text-right py-1.5 px-1 font-mono">
+                        {c.sgstAmt.toFixed(2)}
+                      </td>
+                      <td className="text-right py-1.5 pl-2 font-bold font-mono">
+                        {c.billAmt.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
+
+                <tfoot className="border-t-2 border-b-2 border-black text-[9.5px] print:text-[8px] font-bold">
+                  <tr>
+                    <td colSpan={7} className="py-1.5 px-1 text-right font-bold uppercase">
+                      Total:
+                    </td>
+                    <td className="py-1.5 px-1.5 text-right font-bold">
+                      {totalQty}
+                    </td>
+                    <td className="py-1.5 px-1.5 text-right"></td>
+                    <td className="py-1.5 px-2 text-right font-mono font-bold">
+                      {totalGrossAmount.toFixed(2)}
+                    </td>
+                    <td className="py-1.5 px-1.5 text-right font-mono font-bold">
+                      {totalDiscAmt > 0 ? `-${totalDiscAmt.toFixed(2)}` : "0.00"}
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-mono font-bold">
+                      {totalTaxableAmt.toFixed(2)}
+                    </td>
+                    <td className="py-1.5 px-1"></td>
+                    <td className="py-1.5 px-1 text-right font-mono font-bold">
+                      {totalCgstAmt.toFixed(2)}
+                    </td>
+                    <td className="py-1.5 px-1"></td>
+                    <td className="py-1.5 px-1 text-right font-mono font-bold">
+                      {totalSgstAmt.toFixed(2)}
+                    </td>
+                    <td className="py-1.5 pl-2 text-right font-mono font-black text-[10.5px] print:text-[9px]">
+                      {totalBillAmt.toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
-          </div>
 
-          {/* Return Specific Items Table */}
-          {isReturnBill && activeReturn?.items ? (
-            <table
-              className="w-full mb-4 print:text-[8px] table-fixed uppercase"
-              style={{ borderCollapse: "collapse" }}
-            >
-              <thead className="border-y-2 border-black">
-                <tr>
-                  <th className="w-[26%] p-1 text-left font-semibold align-bottom">
-                    ITEM DESCRIPTION
-                  </th>
-                  <th className="w-[12%] p-1 text-left font-semibold align-bottom">
-                    BATCH NO
-                  </th>
-                  <th className="w-[9%] p-1 text-left font-semibold align-bottom">
-                    EXP DT
-                  </th>
-                  <th className="w-[7%] p-1 text-right font-semibold align-bottom">
-                    ORIG QTY
-                  </th>
-                  <th className="w-[7%] p-1 text-right font-semibold align-bottom text-amber-700">
-                    RET QTY
-                  </th>
-                  <th className="w-[7%] p-1 text-right font-semibold align-bottom text-indigo-700">
-                    FINAL QTY
-                  </th>
-                  <th className="w-[8%] p-1 text-right font-semibold align-bottom">
-                    RATE (₹)
-                  </th>
-                  <th className="w-[12%] p-1 text-right font-semibold align-bottom text-amber-700">
-                    REFUND (₹)
-                  </th>
-                  <th className="w-[12%] p-1 text-right font-semibold align-bottom">
-                    FINAL (₹)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeReturn.items.map((item: any, i: number) => {
-                  const origQty = item.originalQuantity || 0
-                  const retQty = item.returnQuantity || 0
-                  const finQty =
-                    item.finalQuantity !== undefined
-                      ? item.finalQuantity
-                      : origQty - retQty
-                  const rate = item.unitPrice || 0
-                  const refund =
-                    item.refundAmount !== undefined
-                      ? item.refundAmount
-                      : retQty * rate
-                  const finalAmt =
-                    item.finalAmount !== undefined
-                      ? item.finalAmount
-                      : finQty * rate
+            {/* Bottom Section: Amount in words, Payment mode breakdown, and Signatures */}
+            <div className="mt-4 flex justify-between items-start text-[10px] print:text-[8.5px] leading-relaxed">
+              <div className="space-y-2 max-w-xl">
+                <p className="font-semibold text-black">
+                  Received sum of{" "}
+                  <span className="font-bold uppercase">
+                    {numberToWords(effectiveBill.totalPaid || effectiveBill.totalAmount || totalBillAmt)}
+                  </span>{" "}
+                  towards Above Bill
+                </p>
 
-                  return (
-                    <tr key={i} className="align-top border-b border-gray-200">
-                      <td className="p-1 text-left font-medium break-words">
-                        {item.medicineName || "Medicine"}
-                      </td>
-                      <td className="p-1 text-left font-mono">
-                        {item.batchNumber || "-"}
-                      </td>
-                      <td className="p-1 text-left font-medium">
-                        {formatExpDate(item.expiryDate)}
-                      </td>
-                      <td className="p-1 text-right">{origQty}</td>
-                      <td className="p-1 text-right font-bold text-amber-700">
-                        -{retQty}
-                      </td>
-                      <td className="p-1 text-right font-bold text-indigo-700">
-                        {finQty}
-                      </td>
-                      <td className="p-1 text-right">{rate.toFixed(2)}</td>
-                      <td className="p-1 text-right font-bold text-amber-700">
-                        ₹{refund.toFixed(2)}
-                      </td>
-                      <td className="p-1 text-right font-semibold">
-                        ₹{finalAmt.toFixed(2)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot className="border-y-2 border-black font-bold text-[9px]">
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="p-1 text-left font-bold text-[10px]"
-                  >
-                    TOTAL RETURN & MODIFIED SUMMARY
-                  </td>
-                  <td className="p-1 text-right font-normal">Original:</td>
-                  <td className="p-1 text-right font-bold text-amber-700">
-                    Refund: ₹{(activeReturn.refundAmount || 0).toFixed(2)}
-                  </td>
-                  <td className="p-1 text-right font-bold text-indigo-700">
-                    Net: ₹
-                    {(
-                      activeReturn.modifiedTotalAmount ||
-                      effectiveBill.totalAmount ||
-                      0
-                    ).toFixed(2)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          ) : (
-            /* Standard Sales Items Table */
-            <table
-              className="w-full mb-4 print:text-[8px] table-fixed uppercase"
-              style={{ borderCollapse: "collapse" }}
-            >
-              <thead className="border-y-2 border-black">
-                <tr>
-                  <th className="w-[18%] p-1 text-left font-semibold align-bottom">
-                    ITEM DESC
-                  </th>
-                  <th className="w-[6%] p-1 text-left font-semibold align-bottom">
-                    HSN
-                    <br />
-                    CODE
-                  </th>
-                  <th className="w-[4%] p-1 text-left font-semibold align-bottom">
-                    MNF
-                  </th>
-                  <th className="w-[3%] p-1 text-left font-semibold align-bottom">
-                    SH
-                  </th>
-                  <th className="w-[10%] p-1 text-left font-semibold align-bottom">
-                    BATCH NO
-                  </th>
-                  <th className="w-[5%] p-1 text-left font-semibold align-bottom">
-                    EXP DT
-                  </th>
-                  <th className="w-[3%] p-1 text-left font-semibold align-bottom">
-                    BIN
-                    <br />
-                    NO
-                  </th>
-                  <th className="w-[4%] p-1 text-right font-semibold align-bottom">
-                    QTY
-                  </th>
-                  <th className="w-[5%] p-1 text-right font-semibold align-bottom">
-                    RATE
-                  </th>
-                  <th className="w-[6%] p-1 text-right font-semibold align-bottom">
-                    AMOUNT
-                  </th>
-                  <th className="w-[5%] p-1 text-right font-semibold align-bottom">
-                    DISC
-                    <br />
-                    AMT
-                  </th>
-                  <th className="w-[7%] p-1 text-right font-semibold align-bottom">
-                    TAXABLE
-                    <br />
-                    AMT
-                  </th>
-                  <th className="w-[8%] p-1 align-bottom font-semibold">
-                    <div className="text-center">CGST</div>
-                    <div className="flex justify-between text-[7px] mt-1 px-1">
-                      <span>%</span>
-                      <span>AMT</span>
-                    </div>
-                  </th>
-                  <th className="w-[8%] p-1 align-bottom font-semibold">
-                    <div className="text-center">SGST</div>
-                    <div className="flex justify-between text-[7px] mt-1 px-1">
-                      <span>%</span>
-                      <span>AMT</span>
-                    </div>
-                  </th>
-                  <th className="w-[8%] p-1 text-right font-semibold align-bottom">
-                    BILL
-                    <br />
-                    AMT
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(effectiveBill.items || []).map((c: any, i: number) => {
-                  let medName = c.medicineName || c.medicine
-                  if (!medName && c.medicineId) {
-                    const med = PharmacyDatabase.getMedicines().find(
-                      (m) => m.id === c.medicineId,
-                    )
-                    if (med) medName = med.brandName || med.medicineName
-                  }
-                  medName = medName || "Unknown Medicine"
-
-                  const mrp = c.unitPrice || c.mrp || 0
-                  const qty = c.quantity || c.qty || 0
-                  const discount = c.discount || 0
-                  const tax = c.tax || 12
-
-                  const amount = qty * mrp
-                  const discAmt = amount * (discount / 100)
-                  const taxable = amount - discAmt
-                  const cgstRate = tax / 2
-                  const sgstRate = tax / 2
-                  const cgstAmt = taxable * (cgstRate / 100)
-                  const sgstAmt = taxable * (sgstRate / 100)
-                  const billAmt = taxable + cgstAmt + sgstAmt
-
-                  return (
-                    <tr key={i} className="align-top">
-                      <td className="p-1 text-left break-words pr-2 font-medium">
-                        {medName}
-                      </td>
-                      <td className="p-1 text-left font-mono">{c.hsnCode || "3004 039"}</td>
-                      <td className="p-1 text-left font-mono uppercase">
-                        {c.mnf || (medName ? medName.substring(0, 3).toUpperCase() : "MAN")}
-                      </td>
-                      <td className="p-1 text-left font-semibold">
-                        {c.sh || "H"}
-                      </td>
-                      <td className="p-1 text-left break-all font-mono">
-                        {c.batchNumber || c.batch || "-"}
-                      </td>
-                      <td className="p-1 text-left font-medium">
-                        {formatExpDate(c.expiryDate || c.expiry)}
-                      </td>
-                      <td className="p-1 text-left">{c.binNo || ""}</td>
-                      <td className="p-1 text-right">{qty}</td>
-                      <td className="p-1 text-right">{mrp.toFixed(2)}</td>
-                      <td className="p-1 text-right">{amount.toFixed(2)}</td>
-                      <td className="p-1 text-right">{discAmt.toFixed(2)}</td>
-                      <td className="p-1 text-right">{taxable.toFixed(2)}</td>
-                      <td className="p-1">
-                        <div className="flex justify-between px-1">
-                          <span>{cgstRate}</span>
-                          <span>{cgstAmt.toFixed(2)}</span>
-                        </div>
-                      </td>
-                      <td className="p-1">
-                        <div className="flex justify-between px-1">
-                          <span>{sgstRate}</span>
-                          <span>{sgstAmt.toFixed(2)}</span>
-                        </div>
-                      </td>
-                      <td className="p-1 text-right font-bold">
-                        {billAmt.toFixed(2)}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot className="border-y-2 border-black font-bold text-[9px]">
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="p-1 text-right font-normal text-[8px] italic"
-                  ></td>
-                  <td className="p-1 text-right"></td>
-                  <td className="p-1 text-right"></td>
-                  <td className="p-1 text-right">
-                    {(effectiveBill.subTotal || 0).toFixed(2)}
-                  </td>
-                  <td className="p-1 text-right">
-                    {(effectiveBill.discount || 0).toFixed(2)}
-                  </td>
-                  <td className="p-1 text-right">
-                    {(
-                      effectiveBill.taxableTotal ||
-                      effectiveBill.subTotal - effectiveBill.discount ||
-                      0
-                    ).toFixed(2)}
-                  </td>
-                  <td className="p-1">
-                    <div className="flex justify-end px-1">
-                      <span>
-                        {(
-                          effectiveBill.cgstTotal ||
-                          (effectiveBill.tax || 0) / 2 ||
-                          0
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-1">
-                    <div className="flex justify-end px-1">
-                      <span>
-                        {(
-                          effectiveBill.sgstTotal ||
-                          (effectiveBill.tax || 0) / 2 ||
-                          0
-                        ).toFixed(2)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="p-1 text-right">
-                    {(effectiveBill.totalAmount || 0).toFixed(2)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          )}
-
-          {/* Financial Summary & Footers */}
-          <div className="flex justify-between items-end mt-4 print:text-[9px]">
-            <div>
-              {isReturnBill ? (
-                <div className="space-y-1">
-                  <p className="text-[12px] print:text-[9px]">
-                    Previous Bill Total:{" "}
-                    <span className="font-bold">
-                      ₹
-                      {(
-                        activeReturn?.originalTotalAmount ||
-                        effectiveBill.totalAmount ||
-                        0
-                      ).toFixed(2)}
+                <div className="pt-2 border-t border-dashed border-gray-400 space-y-1 font-mono text-[9.5px] print:text-[8.5px]">
+                  <div className="flex items-center gap-6">
+                    <span className="w-28 font-bold text-gray-900">
+                      {effectiveBill.paymentMode?.toLowerCase().includes("card")
+                        ? "Card Amount"
+                        : effectiveBill.paymentMode?.toLowerCase().includes("upi")
+                        ? "UPI Amount"
+                        : "Cash Amount"}{" "}
+                      :
                     </span>
-                  </p>
-                  <p className="text-[12px] print:text-[9px] text-amber-700 font-bold">
-                    Less: Refund / Credit Amount: -₹
-                    {(activeReturn?.refundAmount || 0).toFixed(2)}
-                  </p>
-                  <p className="text-[14px] print:text-[10px] text-indigo-900 font-bold">
-                    Modified Net Payable Total: ₹
-                    {(
-                      activeReturn?.modifiedTotalAmount ??
-                      effectiveBill.totalAmount ??
-                      0
-                    ).toFixed(2)}
-                  </p>
-                  <p className="mt-2 text-[11px] print:text-[8px] italic text-gray-700">
-                    Refund sum of{" "}
-                    <span className="font-bold uppercase">
-                      {numberToWords(activeReturn?.refundAmount || 0)} Rupees
-                      Only
-                    </span>{" "}
-                    approved towards medicine return.
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <p>
-                    Received sum of{" "}
-                    <span className="font-bold uppercase">
-                      {numberToWords(effectiveBill.totalPaid || effectiveBill.totalAmount || 0)} Rupees
-                      Only
-                    </span>{" "}
-                    towards Above Bill
-                  </p>
-                  <div className="mt-4 border-t border-dashed border-black pt-2">
-                    <p className="font-bold mb-1 text-[10px]">Payment Mode & Breakdown:</p>
-                    <div className="space-y-1 w-64 text-[9px] uppercase font-mono">
-                      {Object.entries(
-                        effectiveBill.paymentsData?.amounts || {
-                          Cash: effectiveBill.totalAmount,
-                        },
-                      ).map(([method, amount]) => (
-                        <div
-                          key={method}
-                          className="flex justify-between"
-                        >
-                          <span>
-                            {method === "upi" ? "UPI (8790689532@ibl)" : method}{" "}
-                            {(effectiveBill.paymentsData?.refs as any)?.[method]
-                              ? `[${(effectiveBill.paymentsData?.refs as any)[method]}]`
-                              : ""}
-                            :
-                          </span>
-                          <span className="font-bold">
-                            ₹{(Number(amount) || 0).toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                      {(effectiveBill.balanceDue > 0) && (
-                        <div className="flex justify-between font-bold text-red-700 border-t border-gray-400 pt-0.5">
-                          <span>Balance Due:</span>
-                          <span>₹{(Number(effectiveBill.balanceDue) || 0).toFixed(2)}</span>
-                        </div>
-                      )}
-                      {(effectiveBill.balanceDue <= 0 || !effectiveBill.balanceDue) && (
-                        <div className="flex justify-between font-bold text-emerald-800 border-t border-gray-400 pt-0.5">
-                          <span>Balance:</span>
-                          <span>PAID IN FULL (₹0.00)</span>
-                        </div>
-                      )}
-                    </div>
+                    <span className="font-bold text-black">
+                      ₹{(effectiveBill.totalAmount || totalBillAmt).toFixed(2)}
+                    </span>
                   </div>
+                  <div className="flex items-center gap-6">
+                    <span className="w-28 font-bold text-gray-900">
+                      Receipt Amount :
+                    </span>
+                    <span className="font-bold text-black">
+                      ₹{(effectiveBill.totalPaid || effectiveBill.totalAmount || totalBillAmt).toFixed(2)}
+                    </span>
+                  </div>
+
+                  {effectiveBill.paymentsData?.refs &&
+                    Object.keys(effectiveBill.paymentsData.refs).length > 0 && (
+                      <div className="text-[8.5px] print:text-[7.5px] text-gray-600 font-sans">
+                        POS Slip No / Auth Code:{" "}
+                        {Object.entries(effectiveBill.paymentsData.refs)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(", ")}
+                      </div>
+                    )}
                 </div>
-              )}
+              </div>
+
+              <div className="text-right pt-6 pr-4 shrink-0">
+                <div className="w-48 border-b border-black mb-1.5 ml-auto"></div>
+                <p className="font-bold text-[9px] print:text-[8px] uppercase tracking-wider text-black">
+                  Authorized Signatory / Pharmacist
+                </p>
+              </div>
             </div>
-            <div className="text-right pb-4">
-              <p className="mt-1">Authorized Pharmacist / Signatory</p>
-            </div>
-          </div>
           </div>
 
-          {/* Bottom action controls - hidden on print */}
+          {/* Bottom Dialog Action Controls (Hidden on Print) */}
           <div className="mt-8 pt-4 border-t border-[#DDE2EC] flex justify-between items-center print:hidden">
             <button
               onClick={onClose}
-              className="bg-white border border-[#DDE2EC] hover:bg-gray-100 text-[#0F1624] px-4 py-2 text-sm font-semibold transition-colors rounded flex items-center gap-1.5 shadow-sm"
+              className="bg-white border border-[#CBD5E1] hover:bg-slate-100 text-[#334155] px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
             >
-              ← Back to Returns
+              ← Back
             </button>
             <button
               onClick={printInvoice}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2 text-sm font-semibold flex items-center gap-2 transition-colors rounded shadow-sm"
+              className="bg-teal-700 hover:bg-teal-800 text-white px-5 py-2 text-sm font-bold flex items-center gap-2 rounded-lg shadow-sm transition-colors cursor-pointer"
             >
-              <Printer size={16} /> Print{" "}
-              {isReturnBill ? "Modified Bill" : "Receipt"}
+              <Printer size={16} /> Print Receipt
             </button>
           </div>
         </div>
