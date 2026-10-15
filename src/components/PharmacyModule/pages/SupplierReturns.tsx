@@ -89,6 +89,16 @@ export default function SupplierReturns({
   const [selectedReturnForInvoice, setSelectedReturnForInvoice] = useState<AppSupplierReturn | null>(null)
   const [invoiceModalData, setInvoiceModalData] = useState<any | null>(null)
 
+  // Credit Note Popup Modal State (replacing window.prompt)
+  const [creditNoteModalData, setCreditNoteModalData] = useState<{
+    returnId: string
+    returnRecord?: any
+  } | null>(null)
+  const [creditNoteNumberInput, setCreditNoteNumberInput] = useState("")
+  const [creditNoteDateInput, setCreditNoteDateInput] = useState("")
+  const [creditNoteAmountInput, setCreditNoteAmountInput] = useState<number | string>("")
+  const [creditNoteRemarksInput, setCreditNoteRemarksInput] = useState("")
+
   // Close supplier dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -450,17 +460,21 @@ export default function SupplierReturns({
     if (currentIndex >= STATUS_ORDER.length - 1) return
 
     const nextStatus = STATUS_ORDER[currentIndex + 1] as any
-    let creditNoteNo: string | null = null
 
+    // If next status is Credit Received, open the popup modal instead of window.prompt
     if (nextStatus === "Credit Received") {
-      const entered = window.prompt(
-        "Enter Supplier Credit Note Number (e.g. CN-2026-0042) to confirm credit received:",
+      const targetReturn = supplierReturns.find((r) => r.id === returnId)
+      setCreditNoteNumberInput("")
+      setCreditNoteDateInput(new Date().toISOString().split("T")[0])
+      setCreditNoteAmountInput(
+        targetReturn ? Number(targetReturn.returnAmount || (targetReturn as any).totalAmount || 0) : ""
       )
-      if (!entered || !entered.trim()) {
-        toast.error("Credit Note number is required to confirm credit received from supplier.")
-        return
-      }
-      creditNoteNo = entered.trim()
+      setCreditNoteRemarksInput("")
+      setCreditNoteModalData({
+        returnId,
+        returnRecord: targetReturn,
+      })
+      return
     }
 
     try {
@@ -469,20 +483,47 @@ export default function SupplierReturns({
         nextStatus,
         "Pharmacy Manager",
       )
-      if (creditNoteNo) {
-        const returns = PharmacyDatabase.getSupplierReturns()
-        const target = returns.find((r) => r.id === returnId)
-        if (target) {
-          target.creditNoteId = creditNoteNo
-          PharmacyDatabase.saveSupplierReturns(returns)
-        }
-      }
-      toast.success(
-        `Status updated to: ${nextStatus}${creditNoteNo ? ` (Credit Note: ${creditNoteNo})` : ""}`,
-      )
+      toast.success(`Status updated to: ${nextStatus}`)
       refresh()
     } catch (err: any) {
       toast.error(err.message || "Failed to advance status")
+    }
+  }
+
+  // Handle Credit Note confirmation from the popup modal
+  const handleConfirmCreditNote = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!creditNoteModalData) return
+    const cnNo = creditNoteNumberInput.trim()
+    if (!cnNo) {
+      toast.error("Credit Note number is required to confirm credit received from supplier.")
+      return
+    }
+
+    try {
+      PharmacyDatabase.updateSupplierReturnStatus(
+        creditNoteModalData.returnId,
+        "Credit Received",
+        "Pharmacy Manager",
+      )
+      const returns = PharmacyDatabase.getSupplierReturns()
+      const target = returns.find((r) => r.id === creditNoteModalData.returnId) as any
+      if (target) {
+        target.creditNoteId = cnNo
+        target.creditReceivedDate = creditNoteDateInput || new Date().toISOString().split("T")[0]
+        if (creditNoteAmountInput !== "") {
+          target.creditAmount = Number(creditNoteAmountInput)
+        }
+        if (creditNoteRemarksInput.trim()) {
+          target.creditRemarks = creditNoteRemarksInput.trim()
+        }
+        PharmacyDatabase.saveSupplierReturns(returns)
+      }
+      toast.success(`Credit Note "${cnNo}" recorded! Status updated to Credit Received.`)
+      setCreditNoteModalData(null)
+      refresh()
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update credit note")
     }
   }
 
@@ -1404,6 +1445,138 @@ export default function SupplierReturns({
           }
           onClose={() => setInvoiceModalData(null)}
         />
+      )}
+
+      {/* Supplier Credit Note Entry Popup Modal (No more window.prompt) */}
+      {creditNoteModalData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setCreditNoteModalData(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden text-[#0F1624] animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-5 bg-gradient-to-r from-emerald-700 via-teal-700 to-[#0F1624] text-white flex items-start justify-between">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/20 text-white">
+                  Supplier Credit Note Confirmation
+                </span>
+                <h2 className="text-xl font-bold tracking-tight text-white mt-1">
+                  Record Credit Received
+                </h2>
+                <p className="text-xs text-emerald-100/90 mt-0.5">
+                  Return ID: <strong className="text-white font-mono">{creditNoteModalData.returnId}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setCreditNoteModalData(null)}
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Return Summary Box */}
+            {creditNoteModalData.returnRecord && (
+              <div className="mx-6 mt-5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-500 block">Supplier:</span>
+                  <span className="font-bold text-slate-800">
+                    {creditNoteModalData.returnRecord.supplierName || "Supplier"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Medicine & Qty:</span>
+                  <span className="font-bold text-slate-800">
+                    {creditNoteModalData.returnRecord.medicineName || "Medicine"} ({creditNoteModalData.returnRecord.quantity || 1} units)
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Credit Note Form */}
+            <form onSubmit={handleConfirmCreditNote} className="p-6 space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Supplier Credit Note Number *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  value={creditNoteNumberInput}
+                  onChange={(e) => setCreditNoteNumberInput(e.target.value.toUpperCase())}
+                  placeholder="e.g. CN-2026-0042"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-sm font-mono font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600 uppercase"
+                />
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  Reference number from supplier's physical credit note document
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Credit Note Date
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={creditNoteDateInput}
+                    onChange={(e) => setCreditNoteDateInput(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Credit Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={creditNoteAmountInput}
+                    onChange={(e) => setCreditNoteAmountInput(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Accounting Remarks (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={creditNoteRemarksInput}
+                  onChange={(e) => setCreditNoteRemarksInput(e.target.value)}
+                  placeholder="e.g. Adjusted in next purchase invoice"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setCreditNoteModalData(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  Confirm Credit Received
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )
