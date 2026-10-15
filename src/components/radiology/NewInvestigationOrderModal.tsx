@@ -110,8 +110,8 @@ export default function NewInvestigationOrderModal({
       RadiologyWorkflowDb.doctorOrdersInvestigation({
         patientName: selectedPatient.name,
         umr: selectedPatient.umr,
-        mrn: selectedPatient.mrn || selectedPatient.umr.replace(/\D/g, "") || "100201",
-        opNumber: matchingEnc?.opNumber || `OP-${selectedPatient.mrn || "1002"}`,
+        mrn: (selectedPatient as any).mrn || selectedPatient.umr.replace(/\D/g, "") || "100201",
+        opNumber: matchingEnc?.opNumber || `OP-${(selectedPatient as any).mrn || selectedPatient.umr.replace(/\D/g, "") || "1002"}`,
         ipNumber: undefined,
         encounterId: matchingEnc?.id,
         studyName: selectedCatalogItem.study,
@@ -219,7 +219,7 @@ export default function NewInvestigationOrderModal({
                     </div>
                     <div className="text-[11px] text-slate-500 flex items-center justify-between mt-0.5 font-mono">
                       <span>UMR: {p.umr}</span>
-                      <span>{p.gender}, {p.age}y</span>
+                      <span>{p.sex || (p as any).gender}, {p.age}y</span>
                     </div>
                   </button>
                 )
