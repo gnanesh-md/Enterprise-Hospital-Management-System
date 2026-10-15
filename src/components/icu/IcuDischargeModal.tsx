@@ -18,6 +18,8 @@ export type IcuDischargeRecord = {
   ventStatus: string
   infusionClearance: string
   dischargedAt: string
+  admissionDate?: string
+  lengthOfStayDays?: number
   receptionStatus: "Awaiting Reception Settlement" | "Acknowledged at Reception" | "Bed Allocated at Reception"
   clinicalSummaryNotes: string
 }
@@ -31,12 +33,54 @@ interface IcuDischargeModalProps {
 
 const RECEPTION_DISCHARGES_KEY = "hms_icu_reception_discharges_v1"
 
+export const INITIAL_ICU_DISCHARGES: IcuDischargeRecord[] = [
+  {
+    id: "ICU-DISC-10088",
+    patientName: "Appanna Chinnapati",
+    mrn: "100888",
+    bed: "SICU-3",
+    unit: "Surgical ICU (SICU)",
+    dischargeType: "Ward Stepdown",
+    destinationWard: "3N Medical/Surgical",
+    dischargeCondition: "Stable",
+    dischargeDiagnosis:
+      "Post-op Day 10 s/p Exploratory Laparotomy, Splenectomy, and Jejunal Repair for Hemoperitoneum & Grade IV Splenic Rupture — Cleared for Ward Stepdown",
+    attendingDoctor: "Dr. Vance (Surgery & Critical Care)",
+    nurseInCharge: "RN Murphy",
+    ventStatus: "Successfully Extubated Day 5, Weaned to Room Air (SpO2 98%)",
+    infusionClearance:
+      "All vasopressors (Norepinephrine) stopped on Day 4. Maintenance IV fluids stopped. Peripheral cannula patent.",
+    dischargedAt: "2026-10-14T11:30:00.000Z",
+    admissionDate: "2026-10-04T07:45:00.000Z",
+    lengthOfStayDays: 10,
+    receptionStatus: "Bed Allocated at Reception",
+    clinicalSummaryNotes:
+      "Patient Appanna Chinnapati completed 10 full days in Surgical ICU following emergency laparotomy and splenectomy for polytrauma/hemoperitoneum. Mechanical ventilation successfully weaned and extubated on Day 5. Abdominal drains removed on Day 8. Afebrile, hemodynamically stable without inotropes, surgical wound healthy without soakage. Tolerating soft diet with active bowel sounds. Transferred to 3N Medical/Surgical Ward for final convalescence and discharge planning.",
+  },
+]
+
 export function getDischargedIcuPatients(): IcuDischargeRecord[] {
   try {
     const raw = localStorage.getItem(RECEPTION_DISCHARGES_KEY)
-    return raw ? JSON.parse(raw) : []
+    if (!raw) {
+      try {
+        localStorage.setItem(RECEPTION_DISCHARGES_KEY, JSON.stringify(INITIAL_ICU_DISCHARGES))
+      } catch {}
+      return INITIAL_ICU_DISCHARGES
+    }
+    const parsed: IcuDischargeRecord[] = JSON.parse(raw)
+    const currentIds = new Set(parsed.map((r) => r.id))
+    const missing = INITIAL_ICU_DISCHARGES.filter((r) => !currentIds.has(r.id))
+    if (missing.length > 0) {
+      const merged = [...parsed, ...missing]
+      try {
+        localStorage.setItem(RECEPTION_DISCHARGES_KEY, JSON.stringify(merged))
+      } catch {}
+      return merged
+    }
+    return parsed
   } catch {
-    return []
+    return INITIAL_ICU_DISCHARGES
   }
 }
 

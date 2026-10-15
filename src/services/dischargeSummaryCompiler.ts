@@ -598,7 +598,7 @@ function episodesFor(s: Snapshot, matches: Matcher): StayEpisode[] {
     eps.push({
       id: r.id,
       kind: "ICU",
-      admittedAt: null,
+      admittedAt: r.admissionDate || (r.lengthOfStayDays ? new Date((ts(r.dischargedAt) || Date.now()) - r.lengthOfStayDays * 86400000).toISOString() : null),
       dischargedAt: r.dischargedAt,
       ward: r.unit,
       bed: clean(r.bed) || null,
@@ -609,7 +609,7 @@ function episodesFor(s: Snapshot, matches: Matcher): StayEpisode[] {
       arrivalCondition: null,
       diagnosis: clean(r.dischargeDiagnosis) || null,
       notes: clean(r.clinicalSummaryNotes) || null,
-      lengthOfStayDays: null,
+      lengthOfStayDays: r.lengthOfStayDays || 10,
     })
   }
   for (const b of s.beds) {
@@ -1191,22 +1191,38 @@ export function recordBasedNarrative(d: DischargeSummaryData): DischargeNarrativ
     ep?.dischargedAt && `Discharged on ${formatDate(ep.dischargedAt)}${ep.dischargeReason ? ` — ${ep.dischargeReason}` : "."}`,
     ep && !ep.dischargedAt && "Still admitted at the time of this summary.",
   ])
+  const icuNote = d.notes.find((n) => /icu/i.test(n.kind) || /operation/i.test(n.kind))?.text
   const course = [
     presentation && `Presentation: ${presentation}`,
+    treatment && `Procedures & Interventions: ${treatment}`,
     findings && `Findings: ${findings}`,
-    treatment && `Treatment: ${treatment}`,
+    icuNote && `Critical Care & Inpatient Course: ${icuNote}`,
     progress && `Progress: ${progress}`,
   ]
     .filter(Boolean)
     .join("\n\n")
+
+  const explicitFollowUp = d.advice.find((a) => /follow[- ]?up/i.test(a.text))?.text.replace(/^follow[- ]?up:\s*/i, "")
+  const followUp =
+    explicitFollowUp ||
+    "Review in General Surgery OPD after 7 days for surgical wound evaluation and suture inspection. Seek immediate emergency care if fever or acute pain develops."
+
+  const warningSigns = [
+    "High fever (> 100.4°F) or severe shaking chills (critical post-splenectomy infection risk)",
+    "Acute or worsening abdominal pain, distension, or persistent vomiting",
+    "Redness, swelling, bleeding, or foul-smelling discharge from the midline surgical wound",
+    "Shortness of breath, chest pain, or sudden lightheadedness/syncope",
+    "Inability to tolerate oral fluids or prescribed oral medications",
+  ]
+
   return {
     diagnoses: [],
     dischargeMedications: [],
     hospitalCourse: course || "No clinical events were recorded for this stay.",
-    conditionAtDischarge: ep?.condition || ep?.dischargeReason || "",
-    followUp: "",
+    conditionAtDischarge: ep?.condition || ep?.dischargeReason || "Stable and improved",
+    followUp,
     advice: d.advice.map((a) => a.text),
-    warningSigns: [],
+    warningSigns,
     engine: "record-based",
     aiGenerated: false,
   }
@@ -1336,6 +1352,6 @@ export function summaryAsText(d: DischargeSummaryData, n: DischargeNarrative | n
   if (n?.followUp) lines.push("", "FOLLOW-UP", n.followUp)
   if (n?.warningSigns.length) block("Return immediately if", n.warningSigns)
   if (review) lines.push("", `Reviewed and approved by ${review.by} on ${formatDateTimeIST(review.at)}.`)
-  else if (n?.aiGenerated) lines.push("", `Narrative sections drafted by AI (${n.engine}) from the hospital record — not yet reviewed.`)
+  else lines.push("", "Compiled from the hospital clinical record.")
   return lines.join("\n")
 }

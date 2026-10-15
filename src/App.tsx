@@ -117,6 +117,7 @@ import QueueManagement from "./components/QueueManagement"
 import OPManagement from "./components/OPManagement"
 import OPDProcedures from "./components/OPDProcedures"
 import DoctorPortal from "./components/doctor/DoctorPortal"
+import DoctorsOverview from "./components/doctor/DoctorsOverview"
 
 import DoctorScheduling from "./components/DoctorScheduling"
 
@@ -468,7 +469,7 @@ const NAV: NavItem[] = [
 
       { key: "bulk_ai", label: "Bulk Patient AI" },
 
-      { key: "nl_filtering", label: "NL Patient Filtering" },
+      { key: "nl_filtering", label: "PatientReach AI" },
     ],
   },
 
@@ -1237,10 +1238,28 @@ export default function App() {
   const isNarrowLaptop = useMediaQuery("(max-width: 1279px)")
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(isNarrowLaptop)
+  const [sidebarHovered, setSidebarHovered] = useState(false)
+  const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setSidebarCollapsed(isNarrowLaptop)
   }, [isNarrowLaptop])
+
+  useEffect(() => {
+    if (!sidebarCollapsed) {
+      if (hoverLeaveTimerRef.current) {
+        clearTimeout(hoverLeaveTimerRef.current)
+        hoverLeaveTimerRef.current = null
+      }
+      setSidebarHovered(false)
+    }
+  }, [sidebarCollapsed])
+
+  useEffect(() => {
+    return () => {
+      if (hoverLeaveTimerRef.current) clearTimeout(hoverLeaveTimerRef.current)
+    }
+  }, [])
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
@@ -1258,7 +1277,31 @@ export default function App() {
   }, [mobileNavOpen])
 
   // The drawer shows full labels; the icon rail only exists on wide screens.
-  const railCollapsed = sidebarCollapsed && !isCompactViewport
+  // When closed, moving cursor to the sidebar opens it completely; removing cursor closes it.
+  const isHoverExpanded = sidebarCollapsed && sidebarHovered && !isCompactViewport
+  const railCollapsed = sidebarCollapsed && !sidebarHovered && !isCompactViewport
+  const isSidebarOpen = isCompactViewport ? mobileNavOpen : !railCollapsed
+
+  const handleSidebarMouseEnter = () => {
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current)
+      hoverLeaveTimerRef.current = null
+    }
+    if (sidebarCollapsed && !isCompactViewport) {
+      setSidebarHovered(true)
+    }
+  }
+
+  const handleSidebarMouseLeave = () => {
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current)
+    }
+    // Smooth grace window (200ms) before slow, smooth collapse
+    hoverLeaveTimerRef.current = setTimeout(() => {
+      setSidebarHovered(false)
+      hoverLeaveTimerRef.current = null
+    }, 200)
+  }
 
   // Picking a page from the drawer should reveal the page, not leave the menu
   // covering it. Expanding a parent group does not close it.
@@ -1827,32 +1870,65 @@ export default function App() {
             {/* Sidebar toggle */}
             <button
               data-sidebar-toggle
-              onClick={() =>
-                isCompactViewport
-                  ? setMobileNavOpen((o) => !o)
-                  : setSidebarCollapsed((c) => !c)
-              }
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center text-[#94A3B8] hover:text-white transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
+              onClick={() => {
+                if (hoverLeaveTimerRef.current) {
+                  clearTimeout(hoverLeaveTimerRef.current)
+                  hoverLeaveTimerRef.current = null
+                }
+                setSidebarHovered(false)
+                if (isCompactViewport) {
+                  setMobileNavOpen((o) => !o)
+                } else {
+                  setSidebarCollapsed((c) => !c)
+                }
+              }}
+              className="group w-8 h-8 flex-shrink-0 flex items-center justify-center text-[#94A3B8] hover:text-white transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
               title={
                 isCompactViewport
                   ? mobileNavOpen
                     ? "Close menu"
                     : "Open menu"
-                  : sidebarCollapsed
-                    ? "Expand sidebar"
-                    : "Collapse sidebar"
+                  : !railCollapsed
+                    ? "Collapse sidebar"
+                    : "Expand sidebar"
               }
               aria-label="Toggle navigation menu"
-              aria-expanded={isCompactViewport ? mobileNavOpen : !sidebarCollapsed}
+              aria-expanded={isSidebarOpen}
             >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path
-                  d="M3 4.5h12M3 9h12M3 13.5h12"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
+              {/* Smooth animated hamburger icon morphing between 3-bar menu and left arrow */}
+              <div className="w-[18px] h-[18px] relative flex flex-col justify-center items-center pointer-events-none group-hover:scale-105 transition-transform duration-200">
+                {/* Top bar */}
+                <span
+                  className="absolute h-[1.6px] bg-current rounded-full transition-all duration-500 ease-in-out"
+                  style={{
+                    width: isSidebarOpen ? "9px" : "14px",
+                    left: "2px",
+                    top: isSidebarOpen ? "8.2px" : "4px",
+                    transformOrigin: "2px 50%",
+                    transform: isSidebarOpen ? "rotate(-45deg)" : "none",
+                  }}
                 />
-              </svg>
+                {/* Middle bar */}
+                <span
+                  className="absolute h-[1.6px] bg-current rounded-full transition-all duration-500 ease-in-out"
+                  style={{
+                    width: "14px",
+                    left: "2px",
+                    top: "8.2px",
+                  }}
+                />
+                {/* Bottom bar */}
+                <span
+                  className="absolute h-[1.6px] bg-current rounded-full transition-all duration-500 ease-in-out"
+                  style={{
+                    width: isSidebarOpen ? "9px" : "14px",
+                    left: "2px",
+                    top: isSidebarOpen ? "8.2px" : "12.4px",
+                    transformOrigin: "2px 50%",
+                    transform: isSidebarOpen ? "rotate(45deg)" : "none",
+                  }}
+                />
+              </div>
             </button>
 
             {/* Top Middle: Search bar + New button */}
@@ -2223,9 +2299,11 @@ export default function App() {
             )}
             <aside
               aria-label="Main navigation"
-              className={`bg-[#0C1524] border-r border-[#1E2D42] flex-shrink-0 flex flex-col overflow-y-auto overscroll-contain ${isCompactViewport
-                ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] shadow-2xl transition-[transform,visibility] duration-200 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full invisible"}`
-                : `transition-all duration-200 ${railCollapsed ? "w-14" : "w-72"}`
+              onMouseEnter={handleSidebarMouseEnter}
+              onMouseLeave={handleSidebarMouseLeave}
+              className={`bg-[#0C1524] border-r border-[#1E2D42] flex-shrink-0 flex flex-col overflow-y-auto overscroll-contain transition-[width,box-shadow] duration-500 ease-in-out ${isCompactViewport
+                ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] shadow-2xl transition-[transform,visibility] duration-300 ease-in-out ${mobileNavOpen ? "translate-x-0" : "-translate-x-full invisible"}`
+                : `overflow-x-hidden ${railCollapsed ? "w-14" : "w-72"} ${isHoverExpanded ? "shadow-2xl shadow-black/50 z-20" : ""}`
                 }`}
             >
               {/* Top Logo Section */}
@@ -2358,7 +2436,7 @@ export default function App() {
                         )}
 
                         {/* Collapsed Hover Tooltip */}
-                        {railCollapsed && (
+                        {railCollapsed && !sidebarHovered && (
                           <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#0F172A] text-white text-[12px] font-semibold rounded-lg shadow-2xl border border-white/10 whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 flex items-center gap-2">
                             <span>{item.label}</span>
                             {navBadge && (
@@ -2370,32 +2448,32 @@ export default function App() {
                         )}
 
                         {!railCollapsed && (
-                          <>
+                          <div className="flex-1 min-w-0 flex items-center justify-between sidebar-fade-in">
                             <span className="flex-1 truncate">
                               {item.label}
                             </span>
                             {navBadge && !isActive && (
-                              <span className="badge bg-[#DC2626] text-white">
+                              <span className="badge bg-[#DC2626] text-white ml-1">
                                 {navBadge}
                               </span>
                             )}
                             {filteredChildren &&
                               filteredChildren.length > 0 && (
                                 <span
-                                  className={`transition-transform ${isExpanded ? "rotate-90" : ""
+                                  className={`transition-transform duration-200 ml-1 ${isExpanded ? "rotate-90" : ""
                                     }`}
                                 >
                                   <Icon.ChevronRight />
                                 </span>
                               )}
-                          </>
+                          </div>
                         )}
                       </div>
                       {!railCollapsed &&
                         filteredChildren &&
                         filteredChildren.length > 0 &&
                         isExpanded && (
-                          <div className="space-y-0.5 my-1">
+                          <div className="space-y-0.5 my-1 sidebar-fade-in">
                             {/* Ungrouped children (a module's own Dashboard) sit directly under the parent. */}
                             {filteredChildren
                               .filter((c) => !c.group)
@@ -2587,31 +2665,33 @@ export default function App() {
                 })}
               </div>
 
-              {railCollapsed ? (
-                <div className="p-2 border-t border-[#1E2D42]/60 flex justify-center">
-                  <button
-                    onClick={() => setCmdOpen(true)}
-                    title="Command Palette (Ctrl+K)"
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  >
-                    <Icon.Cmd size={18} className="w-8 h-8 p-1.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="p-3 border-t border-[#1E2D42]">
-                  <button
-                    onClick={() => {
-                      closeMobileNav()
-                      setCmdOpen(true)
-                    }}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded border border-white/10 text-[#64748B] hover:text-white hover:border-white/20 transition-colors text-[11.5px] cursor-pointer"
-                  >
-                    <Icon.Cmd />
-                    <span>Command Palette</span>
-                    <kbd className="ml-auto font-mono text-[10px]">Ctrl+K</kbd>
-                  </button>
-                </div>
-              )}
+              <div className="border-t border-[#1E2D42]/80 flex-shrink-0 overflow-hidden">
+                {railCollapsed ? (
+                  <div className="p-2 flex justify-center">
+                    <button
+                      onClick={() => setCmdOpen(true)}
+                      title="Command Palette (Ctrl+K)"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      <Icon.Cmd size={18} className="w-8 h-8 p-1.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 sidebar-fade-in">
+                    <button
+                      onClick={() => {
+                        closeMobileNav()
+                        setCmdOpen(true)
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded border border-white/10 text-[#64748B] hover:text-white hover:border-white/20 transition-colors text-[11.5px] cursor-pointer whitespace-nowrap"
+                    >
+                      <Icon.Cmd />
+                      <span>Command Palette</span>
+                      <kbd className="ml-auto font-mono text-[10px]">Ctrl+K</kbd>
+                    </button>
+                  </div>
+                )}
+              </div>
             </aside>
 
             {/* ── Main Workspace ───────────────────────────────────────── */}
@@ -3083,19 +3163,22 @@ export default function App() {
               )}
               {module === "patient_exp" && <PatientExperience />}
               {module === "patient_messages" && <PatientMessages />}
-              {(module === "doctor_workflow" || module === "doctor_portal") && (
-                <DoctorPortal
-                  doctor={
-                    activeDoctor ||
-                    resolveDoctorAccount({ name: activeStaff.name })
-                  }
-                  onOpenErVisit={(visitId) => {
-                    setSelectedTriageVisitId(visitId)
-
-                    setModule("triage")
-                  }}
-                />
-              )}
+              {(module === "doctor_workflow" || module === "doctor_portal") &&
+                // A physician gets their own workspace. Anyone else (admin,
+                // superadmin, etc.) gets the Doctors overview and cannot open
+                // individual doctor workspaces.
+                (activeDoctor ? (
+                  <DoctorPortal
+                    key={activeDoctor.id}
+                    doctor={activeDoctor}
+                    onOpenErVisit={(visitId) => {
+                      setSelectedTriageVisitId(visitId)
+                      setModule("triage")
+                    }}
+                  />
+                ) : (
+                  <DoctorsOverview />
+                ))}
               {module === "admissions" && (
                 <Admissions setNotice={setNotice} navigate={navigate} />
               )}

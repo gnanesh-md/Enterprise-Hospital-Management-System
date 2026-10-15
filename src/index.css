@@ -229,6 +229,21 @@ body {
   height: 20px;
 }
 
+@keyframes sidebarFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sidebar-fade-in {
+  animation: sidebarFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Squared cards
    Cards, panels, dialogs and tiles are square app-wide. Tailwind's card-sized
    radii are neutralised here instead of being edited out of ~84 class strings,
