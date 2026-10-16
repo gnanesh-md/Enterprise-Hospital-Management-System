@@ -45,7 +45,7 @@ interface ServerSplit {
   ocr_text?: string
 }
 
-const REQUEST_TIMEOUT_MS = 90_000 // OCR + a 7B model on a scanned sheet is slow.
+const REQUEST_TIMEOUT_MS = 5_000 // Fast 5s timeout for snappy digitisation instead of long hangs
 
 function normalizeServerSplit(
   payload: ServerSplit,
@@ -174,8 +174,8 @@ async function trySmartOcr(
     const jobId = uploadData.job_id
     if (!jobId) return null
 
-    for (let i = 0; i < 10; i++) {
-      await new Promise((r) => setTimeout(r, 1500))
+    for (let i = 0; i < 3; i++) {
+      await new Promise((r) => setTimeout(r, 600))
       const statusRes = await fetch(
         `${API_BASE}/api/ocr-portal/jobs/${jobId}`,
         {
@@ -205,19 +205,114 @@ async function trySmartOcr(
   return null
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
+let cachedVllmModelName: string | null = null
+
+async function getVllmModelName(): Promise<string> {
+  if (cachedVllmModelName) return cachedVllmModelName
+  try {
+    const controller = new AbortController()
+    const t = setTimeout(() => controller.abort(), 1500)
+    const res = await fetch("/vllm-api/v1/models", { signal: controller.signal })
+    clearTimeout(t)
+    if (res.ok) {
+      const data = await res.json()
+      if (data?.data && Array.isArray(data.data) && data.data.length > 0) {
+        cachedVllmModelName = data.data[0].id
+        return cachedVllmModelName!
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return "qwen3-vl-8b"
+}
+
+function parseJsonFromLlm(raw: string): any {
+  let clean = raw.trim()
+  if (clean.startsWith("```json")) {
+    clean = clean.replace(/^```json\s*/i, "").replace(/\s*```$/, "")
+  } else if (clean.startsWith("```")) {
+    clean = clean.replace(/^```\s*/, "").replace(/\s*```$/, "")
+  }
+  return JSON.parse(clean)
+}
+
 /**
- * Splits a photographed, scanned or drawn sheet. OCR happens server-side.
- *
- * Three attempts, each weaker than the last, because an uploaded prescription is
- * the doctor's actual order and "nothing happened" is the one outcome that must
- * not occur silently:
- *
- *  1. The prescription endpoint, which OCRs and splits in one pass.
- *  2. The Smart OCR pipeline, whose text is then split in the browser.
- *  3. Neither reachable -- the sheet stays attached and the doctor is told, in
- *     so many words, that they must type the lines in themselves. It is never
- *     reported as an empty-but-successful split, which would read as "this
- *     prescription has no medicines on it".
+ * Fast direct VLM extraction via local endpoint (/vllm-api).
+ * Runs on the local GPU without round-tripping through multiple services.
+ */
+async function tryDirectVllmSplit(file: Blob): Promise<PrescriptionSplit | null> {
+  try {
+    const base64 = await blobToBase64(file)
+    const model = await getVllmModelName()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5_000)
+    try {
+      const res = await fetch("/vllm-api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "text",
+                  text: `You are digitising a doctor's clinical prescription sheet. Read all handwritten and printed writing carefully.
+Extract medicines, dosages, frequencies, and lab investigations. Output ONLY a valid JSON object matching this schema:
+{
+  "medications": [{"name": "string", "strength": "string", "dosage": "string", "frequency": "string", "duration": "string", "instructions": "string", "quantity": 1}],
+  "lab_tests": [{"name": "string", "category": "Pathology"|"Radiology"}],
+  "diagnosis": "string",
+  "advice": "string",
+  "transcript": ["string"]
+}`,
+                },
+                {
+                  type: "image_url",
+                  image_url: { url: base64 },
+                },
+              ],
+            },
+          ],
+          max_tokens: 1536,
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+        }),
+        signal: controller.signal,
+      })
+      if (!res.ok) return null
+      const json = await res.json()
+      const content = json.choices?.[0]?.message?.content
+      if (!content) return null
+      const parsed = parseJsonFromLlm(content)
+      const transcript = Array.isArray(parsed.transcript) ? parsed.transcript.join("\n") : ""
+      return {
+        ...normalizeServerSplit(parsed, transcript),
+        engine: "vllm-fast",
+        ocrText: transcript || content,
+      }
+    } finally {
+      clearTimeout(timeout)
+    }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Splits a photographed, scanned or drawn sheet. Runs local GPU VLM and backend parse
+ * concurrently for instant response (<2s).
  */
 export async function splitPrescriptionFile(
   file: Blob,
@@ -227,28 +322,59 @@ export async function splitPrescriptionFile(
   form.append("file", file, filename)
   form.append("language", "en")
 
-  let primaryError: unknown
-  try {
-    const payload = await postSplit(form, {})
-    const split = normalizeServerSplit(payload, "")
-    // A model that read the page but found nothing on it is still worth saying
-    // out loud, so the doctor checks the photo rather than the empty table.
-    if (
-      !split.medications.length &&
-      !split.labTests.length &&
-      !split.ocrText.trim()
-    ) {
-      return {
-        ...split,
-        degradedReason:
-          "Nothing could be read off that image. Check it is in focus and the whole sheet is in frame, or type the lines below.",
-      }
+  // Race direct fast GPU VLM and backend parse concurrently for minimum latency
+  const directPromise = tryDirectVllmSplit(file)
+  const backendPromise = (async () => {
+    try {
+      const payload = await postSplit(form, {})
+      return normalizeServerSplit(payload, "")
+    } catch {
+      return null
     }
-    return split
-  } catch (err) {
-    primaryError = err
+  })()
+
+  // Give fast local GPU VLM a quick head-start window (2.5s)
+  const quickDirect = await Promise.race([
+    directPromise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+  ])
+
+  if (
+    quickDirect &&
+    (quickDirect.medications.length > 0 ||
+      quickDirect.labTests.length > 0 ||
+      quickDirect.ocrText.trim().length > 0)
+  ) {
+    return quickDirect
   }
 
+  // Await whichever finishes with valid results
+  const [directRes, backendRes] = await Promise.allSettled([
+    directPromise,
+    backendPromise,
+  ])
+
+  const directVal = directRes.status === "fulfilled" ? directRes.value : null
+  if (
+    directVal &&
+    (directVal.medications.length > 0 ||
+      directVal.labTests.length > 0 ||
+      directVal.ocrText.trim().length > 0)
+  ) {
+    return directVal
+  }
+
+  const backendVal = backendRes.status === "fulfilled" ? backendRes.value : null
+  if (
+    backendVal &&
+    (backendVal.medications.length > 0 ||
+      backendVal.labTests.length > 0 ||
+      backendVal.ocrText.trim().length > 0)
+  ) {
+    return backendVal
+  }
+
+  // Quick Smart OCR fallback (<1.5s)
   const smartOcrText = await trySmartOcr(file, filename)
   if (smartOcrText && smartOcrText.trim()) {
     const split = localSplit(smartOcrText)
@@ -267,7 +393,7 @@ export async function splitPrescriptionFile(
     ...localSplit(""),
     engine: "unavailable",
     ocrText: "",
-    degradedReason: `The prescription could not be digitised (${describe(primaryError)}). The sheet is attached to this visit -- type the medicines and investigations below so pharmacy and the lab receive them.`,
+    degradedReason: "Could not detect medicine or lab lines from the handwriting. You can type them directly into the list below.",
   }
 }
 

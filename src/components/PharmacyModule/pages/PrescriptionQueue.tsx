@@ -15,6 +15,7 @@ import {
   PlusCircle,
 } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
+import { toast } from "react-hot-toast"
 
 import PageHeader from "../components/PageHeader"
 import StatusBadge from "../components/StatusBadge"
@@ -95,6 +96,7 @@ export default function PrescriptionQueue({
                 onClick={() => {
                   PharmacyDatabase.seedTestPrescriptionForSelling()
                   refresh()
+                  toast.success("Added prescription for Mr. G. Kumar with batch stock ready!")
                 }}
                 className="flex items-center gap-1.5 px-3 py-2 bg-[#0F766E] text-white text-[12px] font-semibold rounded hover:bg-[#0c5e58] transition-colors shadow-sm"
                 title="Seed Mr. G KUMAR prescription with ready batch stock"

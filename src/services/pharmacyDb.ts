@@ -1,4 +1,9 @@
-import { seedPharmacyHospitalData, seedTestPrescriptionForSelling } from "./pharmacySeedData"
+import {
+  seedPharmacyHospitalData,
+  seedTestPrescriptionForSelling,
+  ensurePharmacyDataSeeded,
+  SEED_PRESCRIPTIONS,
+} from "./pharmacySeedData"
 
 export interface AppUser {
   id: string
@@ -1002,217 +1007,21 @@ if (typeof window !== "undefined") {
   try {
     ;(window as any).clearAllPharmacyData = clearAllPharmacyData
     ;(window as any).purgeSamplePharmacyData = purgeSampleData
+    ;(window as any).seedPharmacyHospitalData = seedPharmacyHospitalData
+    ;(window as any).ensurePharmacyDataSeeded = ensurePharmacyDataSeeded
   } catch (e) {
     console.error("Failed to bind pharmacy window utilities:", e)
   }
 }
 
-export const INITIAL_SEED_PRESCRIPTIONS: AppPrescription[] = [
-  {
-    id: "RX-2026-0088",
-    patientId: "P-100888",
-    patientName: "Appanna Chinnapati",
-    uhid: "UMR10088",
-    age: 54,
-    gender: "Male",
-    doctorId: "DOC-VANCE",
-    doctorName: "Dr. Vance",
-    department: "General Surgery / Trauma",
-    diagnosis:
-      "Grade IV Splenic Rupture, Massive Hemoperitoneum s/p Emergency Laparotomy & Splenectomy",
-    date: "2026-10-04T08:00:00.000Z",
-    createdAt: "2026-10-04T08:00:00.000Z",
-    sourceType: "DIGITAL",
-    priority: "Emergency",
-    status: "Dispensed",
-    dispensingStatus: "Dispensed",
-    items: [
-      {
-        id: "RXI-88-1",
-        medicineName: "Inj. Meropenem",
-        strength: "1g",
-        dosage: "1 vial",
-        frequency: "Q8H",
-        duration: "7 days",
-        route: "IV",
-        instructions: "IV infusion over 30 mins",
-        quantity: 21,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-88-2",
-        medicineName: "Inj. Metronidazole",
-        strength: "500mg",
-        dosage: "100 mL",
-        frequency: "Q8H",
-        duration: "5 days",
-        route: "IV",
-        instructions: "Slow IV infusion",
-        quantity: 15,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-88-3",
-        medicineName: "Inj. Pantoprazole",
-        strength: "40mg",
-        dosage: "1 vial",
-        frequency: "OD",
-        duration: "10 days",
-        route: "IV",
-        instructions: "IV push before morning feeds",
-        quantity: 10,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-88-4",
-        medicineName: "Inj. Paracetamol",
-        strength: "1000mg",
-        dosage: "100 mL",
-        frequency: "Q8H",
-        duration: "5 days",
-        route: "IV",
-        instructions: "IV piggyback for pain/temperature",
-        quantity: 15,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-88-5",
-        medicineName: "Inj. Tramadol",
-        strength: "50mg",
-        dosage: "1 amp",
-        frequency: "BD",
-        duration: "3 days",
-        route: "IV",
-        instructions: "Slow IV push SOS severe pain",
-        quantity: 6,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-88-6",
-        medicineName: "0.9% Normal Saline",
-        strength: "1000mL",
-        dosage: "1000 mL",
-        frequency: "Continuous",
-        duration: "5 days",
-        route: "IV",
-        instructions: "75 mL/hr maintenance fluid",
-        quantity: 10,
-        substitutionAllowed: false,
-      },
-    ],
-  },
-  {
-    id: "RX-2026-0099",
-    patientId: "P-100888",
-    patientName: "Appanna Chinnapati",
-    uhid: "UMR10088",
-    age: 54,
-    gender: "Male",
-    doctorId: "DOC-VANCE",
-    doctorName: "Dr. Vance",
-    department: "General Surgery / Trauma",
-    diagnosis:
-      "Post-op Day 11 Discharge post Exploratory Laparotomy & Splenectomy (10-day ICU critical care stay)",
-    date: "2026-10-15T10:30:00.000Z",
-    createdAt: "2026-10-15T10:30:00.000Z",
-    sourceType: "DIGITAL",
-    priority: "Normal",
-    status: "Dispensed",
-    dispensingStatus: "Dispensed",
-    items: [
-      {
-        id: "RXI-99-1",
-        medicineName: "Tab. Cefuroxime Axetil",
-        strength: "500mg",
-        dosage: "1 tab",
-        frequency: "BD",
-        duration: "7 days",
-        route: "Oral",
-        instructions: "Take 1 tablet twice daily after food",
-        quantity: 14,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-99-2",
-        medicineName: "Tab. Pantoprazole",
-        strength: "40mg",
-        dosage: "1 tab",
-        frequency: "OD",
-        duration: "14 days",
-        route: "Oral",
-        instructions: "Take 1 tablet once daily before breakfast",
-        quantity: 14,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-99-3",
-        medicineName: "Tab. Paracetamol",
-        strength: "650mg",
-        dosage: "1 tab",
-        frequency: "TDS",
-        duration: "5 days",
-        route: "Oral",
-        instructions: "Take 1 tablet as needed for surgical wound ache",
-        quantity: 15,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-99-4",
-        medicineName: "Tab. Autrin (Iron + Folic Acid)",
-        strength: "100mg",
-        dosage: "1 capsule",
-        frequency: "OD",
-        duration: "30 days",
-        route: "Oral",
-        instructions: "Take 1 capsule daily after lunch",
-        quantity: 30,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-99-5",
-        medicineName: "Tab. Limcee (Vitamin C 500mg + Zinc)",
-        strength: "500mg",
-        dosage: "1 tab",
-        frequency: "OD",
-        duration: "15 days",
-        route: "Oral",
-        instructions: "Chew 1 tablet daily for wound healing",
-        quantity: 15,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-99-6",
-        medicineName: "Inj. Pneumococcal Conjugate Vaccine (PCV20)",
-        strength: "0.5mL",
-        dosage: "0.5 mL",
-        frequency: "Single Dose",
-        duration: "1 day",
-        route: "IM",
-        instructions: "Administered prior to discharge (post-splenectomy immunization)",
-        quantity: 1,
-        substitutionAllowed: false,
-      },
-      {
-        id: "RXI-99-7",
-        medicineName: "Inj. Meningococcal Conjugate Vaccine (MenACWY)",
-        strength: "0.5mL",
-        dosage: "0.5 mL",
-        frequency: "Single Dose",
-        duration: "1 day",
-        route: "IM",
-        instructions: "Administered prior to discharge (post-splenectomy immunization)",
-        quantity: 1,
-        substitutionAllowed: false,
-      },
-    ],
-  },
-]
+export const INITIAL_SEED_PRESCRIPTIONS: AppPrescription[] = SEED_PRESCRIPTIONS
 
 export class PharmacyDatabase {
   static purgeSampleData = purgeSampleData
   static clearAllPharmacyData = clearAllPharmacyData
   static seedHospitalTestData = seedPharmacyHospitalData
   static seedTestPrescriptionForSelling = seedTestPrescriptionForSelling
+  static ensureDataSeeded = ensurePharmacyDataSeeded
   // Categories
 
   static getUsers(): AppUser[] {
@@ -1412,6 +1221,7 @@ export class PharmacyDatabase {
   static getAuditLogs(): AppAuditLog[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(AUDIT_LOGS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
@@ -1429,6 +1239,7 @@ export class PharmacyDatabase {
   static getCategories(): AppCategory[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(CATEGORIES_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
@@ -1466,6 +1277,7 @@ export class PharmacyDatabase {
   static getSuppliers(): AppSupplier[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(SUPPLIERS_KEY)
       let list: AppSupplier[] = stored ? JSON.parse(stored) : []
       if (!Array.isArray(list)) list = []
@@ -1523,6 +1335,7 @@ export class PharmacyDatabase {
   static getMedicines(): AppMedicine[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(MEDICINES_KEY)
       const list: AppMedicine[] = stored ? JSON.parse(stored) : []
       if (Array.isArray(list)) {
@@ -1582,6 +1395,7 @@ export class PharmacyDatabase {
   static getBatches(): AppBatch[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(BATCHES_KEY)
       const list: AppBatch[] = stored ? JSON.parse(stored) : []
       if (Array.isArray(list)) {
@@ -1661,6 +1475,7 @@ export class PharmacyDatabase {
   static getPurchaseOrders(): AppPurchaseOrder[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(POS_KEY)
       const list: AppPurchaseOrder[] = stored ? JSON.parse(stored) : []
       return Array.isArray(list) ? list : []
@@ -1695,6 +1510,7 @@ export class PharmacyDatabase {
   static getGRNs(): AppGRN[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(GRNS_KEY)
       if (!stored) return []
       const list: AppGRN[] = JSON.parse(stored)
@@ -1745,12 +1561,13 @@ export class PharmacyDatabase {
   static getPrescriptions(): AppPrescription[] {
     if (typeof window === "undefined") return INITIAL_SEED_PRESCRIPTIONS
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(PRESCRIPTIONS_KEY)
       const prescriptions: AppPrescription[] = stored ? JSON.parse(stored) : []
       const currentIds = new Set(prescriptions.map((p) => p.id))
       const missing = INITIAL_SEED_PRESCRIPTIONS.filter((p) => !currentIds.has(p.id))
       if (missing.length > 0) {
-        const merged = [...prescriptions, ...missing]
+        const merged = [...missing, ...prescriptions]
         this.savePrescriptions(merged)
         return merged
       }
@@ -1771,6 +1588,7 @@ export class PharmacyDatabase {
   static getBills(): AppPharmacyBill[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(BILLS_KEY)
       let bills: AppPharmacyBill[] = stored ? JSON.parse(stored) : []
       if (!Array.isArray(bills)) return []
@@ -1835,6 +1653,7 @@ export class PharmacyDatabase {
   static getReturns(): AppPharmacyReturn[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = window.localStorage.getItem(RETURNS_KEY)
       let list: AppPharmacyReturn[] = stored ? JSON.parse(stored) : []
       if (!Array.isArray(list)) return []

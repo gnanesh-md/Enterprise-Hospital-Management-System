@@ -77,8 +77,13 @@ export default function PathologistReviewView({ initialOrderId }: PathologistRev
     if (!selectedOrder) return
 
     LabLisService.verifyAndSignReport(selectedOrder.id, pathologistName, interpretiveComments)
-    showToast(`Order ${selectedOrder.id} authorized & signed by ${pathologistName}!`)
+    showToast(`Order ${selectedOrder.id} authorized & signed by ${pathologistName}! Opening diagnostic report...`)
     setInterpretiveComments("")
+
+    setTimeout(() => {
+      const refreshed = LabOrderDatabase.getOrder(selectedOrder.id)
+      if (refreshed) setActiveReportOrder(refreshed)
+    }, 400)
   }
 
   return (
@@ -315,8 +320,18 @@ export default function PathologistReviewView({ initialOrderId }: PathologistRev
                     Signing as: <strong className="text-purple-900">{pathologistName}</strong>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      onClick={() => setActiveReportOrder(selectedOrder)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>Preview / Print Report</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={handleAuthorizeReport}
                       className="px-5 py-2 bg-[#0D9488] hover:bg-[#0f766e] text-white text-xs font-bold rounded-xl transition shadow-2xs flex items-center gap-1.5 cursor-pointer"
                     >

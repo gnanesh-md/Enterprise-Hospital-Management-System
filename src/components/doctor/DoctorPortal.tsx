@@ -571,6 +571,7 @@ export default function DoctorPortal({
     options: {
       source?: SheetMode
       attachment?: UploadedRx | null
+      whiteboardDataUrl?: string | null
       goToReview?: boolean
     } = {},
   ) => {
@@ -578,9 +579,16 @@ export default function DoctorPortal({
     const source = options.source || sheetMode
     const attachment =
       options.attachment !== undefined ? options.attachment : uploadedRx
+    const wbData = options.whiteboardDataUrl || whiteboardImage
 
     setError(null)
     setSplitting(true)
+
+    // Watchdog safety timeout: never let splitting hang beyond 10 seconds
+    const watchdog = setTimeout(() => {
+      setSplitting(false)
+    }, 10_000)
+
     try {
       let result: PrescriptionSplit
       if (source === "upload" && attachment) {
@@ -588,10 +596,10 @@ export default function DoctorPortal({
           dataUrlToBlob(attachment.dataUrl),
           attachment.name,
         )
-      } else if (source === "write" && whiteboardImage) {
+      } else if (source === "write" && wbData) {
         result = await splitPrescriptionFile(
-          dataUrlToBlob(whiteboardImage),
-          "whiteboard-prescription.png",
+          dataUrlToBlob(wbData),
+          "whiteboard-prescription.jpg",
         )
       } else if (sheetText.trim()) {
         result = await splitPrescriptionText(sheetText)
@@ -636,11 +644,17 @@ export default function DoctorPortal({
           : "The prescription could not be digitised.",
       )
     } finally {
+      clearTimeout(watchdog)
       setSplitting(false)
     }
   }
 
-  const runSplit = () => runSplitOn()
+  const runSplit = (options?: { whiteboardDataUrl?: string; source?: SheetMode }) =>
+    runSplitOn({
+      source: options?.source || sheetMode,
+      whiteboardDataUrl: options?.whiteboardDataUrl,
+      goToReview: false,
+    })
 
   /**
    * What is still waiting to go out, judged from the edited tables on screen
@@ -3171,7 +3185,7 @@ function PrescriptionSheetStep({
   split: PrescriptionSplit | null
   medications: ParsedMedication[]
   labTests: ParsedLabTest[]
-  onRunSplit: () => void
+  onRunSplit: (options?: { whiteboardDataUrl?: string; source?: SheetMode }) => void
   onDigitiseAndSend: () => void
   onBackToVoice: () => void
   onStartFresh: () => void
@@ -3431,6 +3445,11 @@ function PrescriptionSheetStep({
                   date: new Date().toLocaleDateString(),
                 }}
                 onCommit={onWhiteboardCommit}
+                onDigitise={(dataUrl) => {
+                  onWhiteboardCommit(dataUrl)
+                  onRunSplit({ whiteboardDataUrl: dataUrl, source: "write" })
+                }}
+                isDigitising={splitting}
               />
             )}
 
@@ -3475,7 +3494,7 @@ function PrescriptionSheetStep({
                       <div className="flex gap-3">
                         <button
                           type="button"
-                          onClick={onRunSplit}
+                          onClick={() => onRunSplit()}
                           disabled={splitting}
                           className="text-[#1B4FD8] font-semibold hover:underline disabled:opacity-50 cursor-pointer"
                         >
@@ -3718,7 +3737,7 @@ function PrescriptionSheetStep({
               <Btn
                 variant="outline"
                 size="sm"
-                onClick={onRunSplit}
+                onClick={() => onRunSplit()}
                 disabled={!ready || splitting}
               >
                 {splitting
