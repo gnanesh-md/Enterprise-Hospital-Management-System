@@ -1418,29 +1418,34 @@ export default function App() {
   }, [module, loggedIn, userPermissions])
 
   const handleLogout = () => {
-    let curUsername = activeStaff.name
     try {
-      const curData = localStorage.getItem("hospai_current_user")
-      if (curData) {
-        const u = JSON.parse(curData)
-        if (u && u.user) curUsername = u.user
-      }
-    } catch { }
+      let curUsername = activeStaff.name
+      try {
+        const curData = localStorage.getItem("hospai_current_user")
+        if (curData) {
+          const u = JSON.parse(curData)
+          if (u && u.user) curUsername = u.user
+        }
+      } catch { }
 
-    AuditDatabase.logEvent(
-      "Logout",
-      "Authentication",
-      `User ${activeStaff.name} logged out.`,
-      "Success",
-      activeStaff.id,
-      curUsername,
-    )
+      try {
+        AuditDatabase.logEvent(
+          "Logout",
+          "Authentication",
+          `User ${activeStaff.name} logged out.`,
+          "Success",
+          activeStaff.id,
+          curUsername,
+        )
+      } catch { }
 
-    try {
-      localStorage.removeItem("hospai_current_user")
-    } catch { }
-
-    setLoggedIn(false)
+      try {
+        localStorage.removeItem("hospai_current_user")
+      } catch { }
+    } finally {
+      setRoleMenuOpen(false)
+      setLoggedIn(false)
+    }
   }
 
   const switchRole = (

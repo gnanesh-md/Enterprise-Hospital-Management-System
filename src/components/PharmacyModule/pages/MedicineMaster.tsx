@@ -1,6 +1,6 @@
 import { usePharmacyData } from "../data/usePharmacyData"
-import { PharmacyDatabase } from "../../../services/pharmacyDb"
-import { useState } from "react"
+import { PharmacyDatabase, cleanupStorageQuota } from "../../../services/pharmacyDb"
+import { useState, useEffect } from "react"
 import {
   Search,
   Plus,
@@ -22,6 +22,29 @@ interface MedicineMasterProps {
   onNavigate: (page: string) => void
 }
 
+function toDateInputValue(val?: string): string {
+  if (!val) return "2028-03-31"
+  const trimmed = String(val).trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
+  if (/^\d{4}-\d{2}$/.test(trimmed)) return `${trimmed}-01`
+  const mMatch = trimmed.match(/^([A-Za-z]{3})-(\d{2,4})$/)
+  if (mMatch) {
+    const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+    const monthIdx = monthNames.indexOf(mMatch[1].toLowerCase())
+    if (monthIdx >= 0) {
+      let yr = Number(mMatch[2])
+      if (yr < 100) yr += 2000
+      const mm = String(monthIdx + 1).padStart(2, "0")
+      return `${yr}-${mm}-28`
+    }
+  }
+  const d = new Date(trimmed)
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split("T")[0]
+  }
+  return "2028-03-31"
+}
+
 export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
   const { medicines, suppliers, refresh } = usePharmacyData()
   const [search, setSearch] = useState("")
@@ -31,21 +54,32 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
   const [selected, setSelected] = useState<typeof medicines[0] | null>(null)
   const [editingMedicine, setEditingMedicine] = useState<any>(null)
 
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
+
   const handleEdit = (m: any) => {
     const totalGst = m.gst ?? 5
     const half = +(totalGst / 2).toFixed(2)
+    const formattedExp = toDateInputValue(m.expiryDate)
     setEditingMedicine({
       ...m,
       name: m.name || m.medicineName || "",
-      supplierName: m.supplierName || (m as any).supplier || "VH MEDICALS AND CHEMICALS",
+      supplierName: m.supplierName || (m as any).supplier || "",
       form: m.dosageForm || m.form || "TABLET",
-      packing: m.packing || m.pack || "",
+      packing: m.packing || m.pack || "10's",
       mnfCode: m.mnfCode || (m.manufacturer ? m.manufacturer.substring(0, 4).toUpperCase() : "MANK"),
       hsnCode: m.hsnCode || m.sku || "3004 039",
-      stock: m.stock || "",
+      stock: m.stock !== undefined && m.stock !== null ? m.stock : "",
       batchNumber: m.batchNumber || "",
-      expiryDate: m.expiryDate || "",
-      mrp: m.mrp || "",
+      expiryDate: formattedExp,
+      mrp: m.mrp !== undefined && m.mrp !== null ? m.mrp : "",
       purchasePrice: m.purchasePrice ?? m.price ?? "",
       purchaseDiscount: m.discount ?? m.purchaseDiscount ?? 0,
       sgst: half,
@@ -65,9 +99,9 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
   const openAddModal = () => {
     setEditingMedicine({
       name: "",
-      supplierName: "VH MEDICALS AND CHEMICALS",
+      supplierName: suppliers[0]?.supplierName || "",
       form: "TABLET",
-      packing: "",
+      packing: "10's",
       mnfCode: "",
       hsnCode: "",
       stock: "",
@@ -84,128 +118,143 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
   }
 
   const handleSave = () => {
-    if (!editingMedicine.name?.trim()) return alert("Product Name is required")
-    if (!editingMedicine.packing?.trim()) return alert("Pack (e.g. 2 ML) is required")
+    const prodName = (editingMedicine?.name || editingMedicine?.medicineName || "").trim()
+    if (!prodName) {
+      alert("Product Name is required")
+      return
+    }
 
-    const sgstVal = parseFloat(editingMedicine.sgst) || 0
-    const cgstVal = parseFloat(editingMedicine.cgst) || 0
-    const taxVal = editingMedicine.gst !== undefined ? Number(editingMedicine.gst) : +(sgstVal + cgstVal).toFixed(2)
-    const mnfShort = (editingMedicine.mnfCode || "MANK").toUpperCase()
-    const selectedForm = (editingMedicine.form || "TABLET").toUpperCase()
-    const supplierVal = (editingMedicine.supplierName || "VH MEDICALS AND CHEMICALS").trim()
+    const packVal = (editingMedicine?.packing || editingMedicine?.pack || "1's").trim() || "1's"
+    const sgstVal = parseFloat(editingMedicine?.sgst) || 0
+    const cgstVal = parseFloat(editingMedicine?.cgst) || 0
+    const taxVal = editingMedicine?.gst !== undefined ? Number(editingMedicine.gst) : +(sgstVal + cgstVal).toFixed(2)
+    const mnfShort = (editingMedicine?.mnfCode || "").toUpperCase()
+    const selectedForm = (editingMedicine?.form || "TABLET").toUpperCase()
+    const supplierVal = (editingMedicine?.supplierName || suppliers[0]?.supplierName || "").trim()
 
-    if (editingMedicine.id) {
-      const updatedStock = Number(editingMedicine.stock) || 0
-      const updatedMrp = Number(editingMedicine.mrp) || 0
-      const updatedPurchasePrice = Number(editingMedicine.purchasePrice) || (updatedMrp > 0 ? +(updatedMrp * 0.7).toFixed(2) : 0)
-      const updatedBatchNum = editingMedicine.batchNumber?.trim() || "B" + Math.floor(100000 + Math.random() * 900000)
-      const updatedExpDate = editingMedicine.expiryDate?.trim() || "2028-03-31"
+    try {
+      if (editingMedicine.id) {
+        const updatedStock = editingMedicine.stock !== undefined && editingMedicine.stock !== "" ? Math.max(0, Number(editingMedicine.stock)) : 0
+        const updatedMrp = editingMedicine.mrp !== undefined && editingMedicine.mrp !== "" ? Number(editingMedicine.mrp) : 0
+        const updatedPurchasePrice = editingMedicine.purchasePrice !== undefined && editingMedicine.purchasePrice !== "" ? Number(editingMedicine.purchasePrice) : (updatedMrp > 0 ? +(updatedMrp * 0.7).toFixed(2) : 0)
+        const updatedBatchNum = editingMedicine.batchNumber?.trim() || "B" + Math.floor(100000 + Math.random() * 900000)
+        const updatedExpDate = toDateInputValue(editingMedicine.expiryDate)
 
-      PharmacyDatabase.updateMedicine(editingMedicine.id, {
-        brandName: editingMedicine.name,
-        medicineName: editingMedicine.name,
-        genericName: editingMedicine.generic || editingMedicine.name,
-        supplierName: supplierVal,
-        strength: editingMedicine.packing || "",
-        packing: editingMedicine.packing || "",
-        dosageForm: selectedForm,
-        manufacturer: mnfShort,
-        mnfCode: mnfShort,
-        taxPercentage: taxVal,
-        hsnCode: editingMedicine.hsnCode || "3004 039",
-        binNo: editingMedicine.binNo || "",
-        barcode: editingMedicine.barcode || "",
-        scheduleType: editingMedicine.schedule || "H",
-        controlledSubstanceFlag: editingMedicine.prescription || false,
-        categoryId: editingMedicine.category || selectedForm,
-        reorderLevel: Number(editingMedicine.reorderLevel) || 10,
-        mrp: updatedMrp,
-        purchasePrice: updatedPurchasePrice,
-        stock: updatedStock,
-        batchNumber: updatedBatchNum,
-        expiryDate: updatedExpDate,
-      } as any)
-
-      // Also synchronize the batch record for this medicine
-      const allBatches = PharmacyDatabase.getBatches()
-      const medBatches = allBatches.filter((b) => b.medicineId === editingMedicine.id)
-
-      if (medBatches.length > 0) {
-        const latestBatch = medBatches[medBatches.length - 1]
-        PharmacyDatabase.updateBatch(latestBatch.id, {
-          batchNumber: updatedBatchNum,
-          expiryDate: updatedExpDate,
-          mrp: updatedMrp || latestBatch.mrp,
-          purchasePrice: updatedPurchasePrice || latestBatch.purchasePrice,
+        PharmacyDatabase.updateMedicine(editingMedicine.id, {
+          brandName: prodName,
+          medicineName: prodName,
+          name: prodName,
+          genericName: editingMedicine.generic || prodName,
           supplierName: supplierVal,
-          quantity: updatedStock > 0 ? updatedStock : latestBatch.quantity,
-          availableQuantity: updatedStock > 0 ? updatedStock : latestBatch.availableQuantity,
-          discount: Number(editingMedicine.purchaseDiscount) || latestBatch.discount || 0,
-        })
-      } else if (updatedStock > 0 || editingMedicine.batchNumber) {
-        const batchId = "BAT" + Date.now()
-        PharmacyDatabase.addBatch({
-          id: batchId,
-          medicineId: editingMedicine.id,
-          batchNumber: updatedBatchNum,
-          expiryDate: updatedExpDate,
-          manufacturingDate: new Date().toISOString().split("T")[0],
-          quantity: updatedStock,
-          availableQuantity: updatedStock,
+          strength: packVal,
+          packing: packVal,
+          dosageForm: selectedForm,
+          form: selectedForm,
+          manufacturer: mnfShort,
+          mnfCode: mnfShort,
+          taxPercentage: taxVal,
+          hsnCode: editingMedicine.hsnCode || "3004 039",
+          binNo: editingMedicine.binNo || "",
+          barcode: editingMedicine.barcode || "",
+          scheduleType: editingMedicine.schedule || "H",
+          controlledSubstanceFlag: editingMedicine.prescription || false,
+          categoryId: editingMedicine.category || selectedForm,
+          reorderLevel: Number(editingMedicine.reorderLevel) || 10,
           mrp: updatedMrp,
           purchasePrice: updatedPurchasePrice,
-          discount: Number(editingMedicine.purchaseDiscount) || 0,
+          stock: updatedStock,
+          batchNumber: updatedBatchNum,
+          expiryDate: updatedExpDate,
+        } as any)
+
+        // Also synchronize the batch record for this medicine
+        const allBatches = PharmacyDatabase.getBatches()
+        const medBatches = allBatches.filter((b) => b.medicineId === editingMedicine.id || b.medicineId?.toLowerCase() === editingMedicine.id?.toLowerCase())
+
+        if (medBatches.length > 0) {
+          const latestBatch = medBatches[medBatches.length - 1]
+          // Zero out any older batch quantities so total medicine stock matches the user's input
+          for (let i = 0; i < medBatches.length - 1; i++) {
+            PharmacyDatabase.updateBatch(medBatches[i].id, {
+              availableQuantity: 0,
+              quantity: 0,
+            })
+          }
+          PharmacyDatabase.updateBatch(latestBatch.id, {
+            batchNumber: updatedBatchNum,
+            expiryDate: updatedExpDate,
+            mrp: updatedMrp || latestBatch.mrp,
+            purchasePrice: updatedPurchasePrice || latestBatch.purchasePrice,
+            supplierName: supplierVal,
+            quantity: updatedStock,
+            availableQuantity: updatedStock,
+            discount: Number(editingMedicine.purchaseDiscount) || latestBatch.discount || 0,
+          })
+        } else {
+          const batchId = "BAT" + Date.now()
+          PharmacyDatabase.addBatch({
+            id: batchId,
+            medicineId: editingMedicine.id,
+            batchNumber: updatedBatchNum,
+            expiryDate: updatedExpDate,
+            manufacturingDate: new Date().toISOString().split("T")[0],
+            quantity: updatedStock,
+            availableQuantity: updatedStock,
+            mrp: updatedMrp,
+            purchasePrice: updatedPurchasePrice,
+            discount: Number(editingMedicine.purchaseDiscount) || 0,
+            supplierName: supplierVal,
+            location: editingMedicine.binNo || "Main Pharmacy",
+            grnId: "EDIT_SYNC",
+            createdAt: new Date().toISOString(),
+          })
+        }
+
+        PharmacyDatabase.logAudit(
+          "Pharmacist",
+          "Update",
+          "Medicine Master",
+          editingMedicine.id,
+          `Updated medicine "${prodName}" (${selectedForm}), Batch: ${updatedBatchNum}, Exp: ${updatedExpDate}, Stock: ${updatedStock}`,
+        )
+      } else {
+        const stockQty = editingMedicine.stock !== undefined && editingMedicine.stock !== "" ? Math.max(0, Number(editingMedicine.stock)) : 0
+        const mrpVal = editingMedicine.mrp !== undefined && editingMedicine.mrp !== "" ? Number(editingMedicine.mrp) : 0
+        const purchaseRate = editingMedicine.purchasePrice !== undefined && editingMedicine.purchasePrice !== "" ? Number(editingMedicine.purchasePrice) : (mrpVal > 0 ? +(mrpVal * 0.7).toFixed(2) : 0)
+        const batchNum = editingMedicine.batchNumber?.trim() || "B" + Math.floor(100000 + Math.random() * 900000)
+        const expDate = toDateInputValue(editingMedicine.expiryDate)
+
+        const newMed = {
+          id: "MED" + Date.now(),
+          brandName: prodName,
+          medicineName: prodName,
+          name: prodName,
+          genericName: editingMedicine.generic || prodName,
           supplierName: supplierVal,
-          location: editingMedicine.binNo || "Main Pharmacy",
-          grnId: "EDIT_SYNC",
+          strength: packVal,
+          packing: packVal,
+          dosageForm: selectedForm,
+          form: selectedForm,
+          manufacturer: mnfShort,
+          mnfCode: mnfShort,
+          taxPercentage: taxVal,
+          activeStatus: "Active" as const,
+          hsnCode: editingMedicine.hsnCode || "3004 039",
+          binNo: editingMedicine.binNo || "",
+          barcode: editingMedicine.barcode || "890" + Math.floor(1000000000 + Math.random() * 9000000000),
+          scheduleType: editingMedicine.schedule || "H",
+          controlledSubstanceFlag: editingMedicine.prescription || false,
+          categoryId: selectedForm,
+          reorderLevel: Number(editingMedicine.reorderLevel) || 10,
+          stock: stockQty,
+          mrp: mrpVal,
+          purchasePrice: purchaseRate,
+          batchNumber: batchNum,
+          expiryDate: expDate,
           createdAt: new Date().toISOString(),
-        })
-      }
+        }
+        PharmacyDatabase.addMedicine(newMed as any)
 
-      PharmacyDatabase.logAudit(
-        "Pharmacist",
-        "Update",
-        "Medicine Master",
-        editingMedicine.id,
-        `Updated medicine "${editingMedicine.name}" (${selectedForm}), Batch: ${updatedBatchNum}, Exp: ${updatedExpDate}, Stock: ${updatedStock}`,
-      )
-    } else {
-      const stockQty = Number(editingMedicine.stock) || 0
-      const mrpVal = Number(editingMedicine.mrp) || 0
-      const purchaseRate = Number(editingMedicine.purchasePrice) || (mrpVal > 0 ? +(mrpVal * 0.7).toFixed(2) : 0)
-      const batchNum = editingMedicine.batchNumber?.trim() || "B" + Math.floor(100000 + Math.random() * 900000)
-      const expDate = editingMedicine.expiryDate?.trim() || "2028-03-31"
-
-      const newMed = {
-        id: "MED" + Date.now(),
-        brandName: editingMedicine.name,
-        medicineName: editingMedicine.name,
-        genericName: editingMedicine.generic || editingMedicine.name,
-        supplierName: supplierVal,
-        strength: editingMedicine.packing || "",
-        packing: editingMedicine.packing || "",
-        dosageForm: selectedForm,
-        manufacturer: mnfShort,
-        mnfCode: mnfShort,
-        taxPercentage: taxVal,
-        activeStatus: "Active" as const,
-        hsnCode: editingMedicine.hsnCode || "3004 039",
-        binNo: editingMedicine.binNo || "",
-        barcode: editingMedicine.barcode || "890" + Math.floor(1000000000 + Math.random() * 9000000000),
-        scheduleType: editingMedicine.schedule || "H",
-        controlledSubstanceFlag: editingMedicine.prescription || false,
-        categoryId: selectedForm,
-        reorderLevel: Number(editingMedicine.reorderLevel) || 10,
-        stock: stockQty,
-        mrp: mrpVal,
-        purchasePrice: purchaseRate,
-        batchNumber: batchNum,
-        expiryDate: expDate,
-        createdAt: new Date().toISOString(),
-      }
-      PharmacyDatabase.addMedicine(newMed as any)
-
-      if (stockQty > 0) {
         const batchId = "BAT" + Date.now()
         PharmacyDatabase.addBatch({
           id: batchId,
@@ -224,32 +273,41 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
           createdAt: new Date().toISOString(),
         })
 
-        PharmacyDatabase.addTransaction({
-          id: "TXN" + Math.floor(100000 + Math.random() * 900000),
-          date: new Date().toISOString(),
-          medicineId: newMed.id,
-          batchId: batchId,
-          quantity: stockQty,
-          transactionType: "PURCHASE_RECEIVED",
-          userId: "Pharmacist",
-          reason: `Initial Stock Entry: ${supplierVal} (${stockQty} units)`,
-        })
+        if (stockQty > 0) {
+          PharmacyDatabase.addTransaction({
+            id: "TXN" + Math.floor(100000 + Math.random() * 900000),
+            date: new Date().toISOString(),
+            medicineId: newMed.id,
+            batchId: batchId,
+            quantity: stockQty,
+            transactionType: "PURCHASE_RECEIVED",
+            userId: "Pharmacist",
+            reason: `Initial Stock Entry: ${supplierVal} (${stockQty} units)`,
+          })
+        }
+
+        PharmacyDatabase.logAudit(
+          "Pharmacist",
+          "Create",
+          "Medicine Master",
+          newMed.id,
+          `Added medicine "${newMed.medicineName}" (${newMed.dosageForm}) with ${stockQty} units stock`,
+        )
+
+        PharmacyDatabase.addNotification(
+          "Medicine Added to Catalog",
+          `Added "${newMed.medicineName}" (${newMed.packing}) with ${stockQty} units stock into inventory.`,
+          "success",
+          "Medicine Master",
+        )
       }
-
-      PharmacyDatabase.logAudit(
-        "Pharmacist",
-        "Create",
-        "Medicine Master",
-        newMed.id,
-        `Added medicine "${newMed.medicineName}" (${newMed.dosageForm}) with ${stockQty} units stock`,
-      )
-
-      PharmacyDatabase.addNotification(
-        "Medicine Added to Catalog",
-        `Added "${newMed.medicineName}" (${newMed.packing}) with ${stockQty} units stock into inventory.`,
-        "success",
-        "Medicine Master",
-      )
+    } catch (err: any) {
+      console.error("Error saving medicine:", err)
+      if (String(err?.message || err).toLowerCase().includes("quota")) {
+        cleanupStorageQuota()
+      }
+      alert("Failed to save medicine: " + (err.message || String(err)))
+      return
     }
 
     setShowModal(false)
@@ -259,11 +317,12 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
     window.dispatchEvent(
       new CustomEvent("hospai_pharmacy_toast", {
         detail: {
-          message: `Medicine "${editingMedicine.name}" saved permanently!`,
+          message: `Medicine "${prodName}" saved permanently!`,
           type: "success",
         },
       }),
     )
+    alert(`Medicine "${prodName}" saved successfully in catalog!`)
     refresh()
   }
 
@@ -290,8 +349,8 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
       const half = +(g / 2).toFixed(2)
       return [
         m.stock || 0,
-        `"${(m.supplierName || "VH MEDICALS AND CHEMICALS").replace(/"/g, '""')}"`,
-        `"${(m.mnfCode || (m.manufacturer ? m.manufacturer.substring(0, 4).toUpperCase() : "MANK")).replace(/"/g, '""')}"`,
+        `"${(m.supplierName || "").replace(/"/g, '""')}"`,
+        `"${(m.mnfCode || (m.manufacturer ? m.manufacturer.substring(0, 4).toUpperCase() : "")).replace(/"/g, '""')}"`,
         `"${(m.form || m.dosageForm || "TABLET").replace(/"/g, '""')}"`,
         `"${(m.packing || m.pack || "").replace(/"/g, '""')}"`,
         `"${(m.name || "").replace(/"/g, '""')}"`,
@@ -335,12 +394,12 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
     const q = search.toLowerCase()
     const matchSearch =
       !search ||
-      m.name.toLowerCase().includes(q) ||
+      (m.name || "").toLowerCase().includes(q) ||
       ((m as any).supplierName && (m as any).supplierName.toLowerCase().includes(q)) ||
       (m.mnfCode && m.mnfCode.toLowerCase().includes(q)) ||
       (m.hsnCode && m.hsnCode.toLowerCase().includes(q)) ||
       (m.packing && m.packing.toLowerCase().includes(q)) ||
-      m.generic.toLowerCase().includes(q)
+      (m.generic || "").toLowerCase().includes(q)
 
     const formVal = (m.form || "").toLowerCase()
     const packVal = (m.packing || "").toLowerCase()
@@ -481,14 +540,15 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                     {m.packing || "1's"}
                   </span>
                 </td>
-                <td>
-                  <p className="font-semibold text-[13px] text-[#0F1624]">
+                <td className="cursor-pointer group" onClick={() => handleEdit(m)} title="Click to edit medicine">
+                  <p className="font-semibold text-[13px] text-[#0F1624] group-hover:text-[#0F766E] group-hover:underline flex items-center gap-1.5">
                     {m.name}
+                    <Edit2 size={11} className="opacity-0 group-hover:opacity-100 text-[#0F766E] transition-opacity" />
                   </p>
                 </td>
                 <td className="text-[12px] whitespace-nowrap">
                   <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-[11px]">
-                    {(m as any).supplierName || "VH MEDICALS AND CHEMICALS"}
+                    {(m as any).supplierName || "—"}
                   </span>
                 </td>
                 <td className="text-[12px] font-mono text-[#64748B]">
@@ -506,22 +566,22 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                 <td>
                   <div className="flex items-center gap-1">
                     <button
+                      onClick={() => handleEdit(m)}
+                      className="px-2.5 py-1 rounded bg-teal-50 border border-teal-200 text-[#0F766E] hover:bg-teal-100 flex items-center gap-1 text-[11px] font-bold transition-colors cursor-pointer"
+                      title="Edit medicine"
+                    >
+                      <Edit2 size={12} /> Edit
+                    </button>
+                    <button
                       onClick={() => setSelected(m)}
-                      className="p-1.5 rounded hover:bg-[#F0F2F5] text-[#64748B] transition-colors"
-                      title="View"
+                      className="p-1.5 rounded hover:bg-[#F0F2F5] text-[#64748B] transition-colors cursor-pointer"
+                      title="View Details"
                     >
                       <Eye size={13} />
                     </button>
                     <button
-                      onClick={() => handleEdit(m)}
-                      className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#0F766E] transition-colors"
-                      title="Edit"
-                    >
-                      <Edit2 size={13} />
-                    </button>
-                    <button
                       onClick={() => handleDelete(m.id)}
-                      className="p-1.5 rounded hover:bg-[#FEE2E2] text-[#dc2626] transition-colors"
+                      className="p-1.5 rounded hover:bg-[#FEE2E2] text-[#dc2626] transition-colors cursor-pointer"
                       title="Delete"
                     >
                       <Trash2 size={13} />
@@ -561,19 +621,32 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                   {selected.generic} · SKU: {selected.sku}
                 </p>
               </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="p-2 rounded hover:bg-[#F0F2F5] text-[#94A3B8] transition-colors"
-              >
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const toEdit = selected
+                    setSelected(null)
+                    handleEdit(toEdit)
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-200 text-[#0F766E] text-[12px] font-bold hover:bg-teal-100 transition-colors cursor-pointer"
+                  title="Edit this medicine"
+                >
+                  <Edit2 size={13} /> Edit Medicine
+                </button>
+                <button
+                  onClick={() => setSelected(null)}
+                  className="p-2 rounded hover:bg-[#F0F2F5] text-[#94A3B8] transition-colors cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
             <div className="overflow-y-auto p-6 space-y-5">
               <Grid
                 title="Product Details (Supplier Invoice Aligned)"
                 rows={[
                   ["Product Name", selected.name],
-                  ["Supplier Name", (selected as any).supplierName || "VH MEDICALS AND CHEMICALS"],
+                  ["Supplier Name", (selected as any).supplierName || "—"],
                   ["Type / Formulation", (selected as any).dosageForm || selected.form || "TABLET"],
                   ["Pack", (selected as any).packing || (selected as any).pack || "-"],
                   ["Mfr (Manufacturer)", (selected as any).mnfCode || selected.manufacturer || "-"],
@@ -739,7 +812,7 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                     </label>
                     <input
                       list="supplier-options"
-                      placeholder="e.g. VH MEDICALS AND CHEMICALS"
+                      placeholder="e.g. Apollo / Sun / Cipla"
                       value={editingMedicine?.supplierName || ""}
                       onChange={(e) =>
                         setEditingMedicine({
@@ -750,7 +823,6 @@ export default function MedicineMaster({ onNavigate }: MedicineMasterProps) {
                       className="w-full px-3 py-2 bg-white border border-teal-300 rounded-lg text-[13px] font-semibold text-[#0F172A] focus:outline-[#0F766E]"
                     />
                     <datalist id="supplier-options">
-                      <option value="VH MEDICALS AND CHEMICALS" />
                       {suppliers.map((s: any) => (
                         <option key={s.id} value={s.supplierName} />
                       ))}

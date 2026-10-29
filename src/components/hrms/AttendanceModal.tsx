@@ -36,7 +36,7 @@ function AttendanceModalBody({
 
   // Form State
   const [selectedStaffId, setSelectedStaffId] = useState(recordToEdit?.staffId || (staffList[0]?.id || ""))
-  const [date, setDate] = useState(recordToEdit?.date || new Date().toISOString().split("T")[0])
+  const [date, setDate] = useState(recordToEdit?.date ? recordToEdit.date.split("T")[0] : new Date().toISOString().split("T")[0])
   const [status, setStatus] = useState<AttendanceStatusType>(recordToEdit?.status || "Present")
   const [clockIn, setClockIn] = useState(recordToEdit?.checkIn || "07:00 AM")
   const [clockOut, setClockOut] = useState(recordToEdit?.checkOut || "03:00 PM")
@@ -48,7 +48,7 @@ function AttendanceModalBody({
   useEffect(() => {
     if (recordToEdit) {
       setSelectedStaffId(recordToEdit.staffId)
-      setDate(recordToEdit.date)
+      setDate(recordToEdit.date ? recordToEdit.date.split("T")[0] : "")
       setStatus(recordToEdit.status)
       setClockIn(recordToEdit.checkIn || "")
       setClockOut(recordToEdit.checkOut || "")

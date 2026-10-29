@@ -1,5 +1,5 @@
 import { usePharmacyData } from "../data/usePharmacyData"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Plus, Edit2, ToggleRight, ToggleLeft, Shield, X } from "lucide-react"
 
 import PageHeader from "../components/PageHeader"
@@ -66,6 +66,17 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
   const { users, refresh } = usePharmacyData()
   const [tab, setTab] = useState<"users" | "permissions">("users")
   const [showAdd, setShowAdd] = useState(false)
+  const [editingUser, setEditingUser] = useState<any | null>(null)
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -74,26 +85,70 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
     branch: "Main Pharmacy",
   })
 
-  const handleAddUser = () => {
-    if (!form.name || !form.email) return alert("Name and Email are required.")
-    PharmacyDatabase.addUser({
-      id: "USR" + Date.now(),
-      name: form.name,
-      email: form.email,
-      phone: form.phone || "N/A",
-      role: form.role,
-      department: form.branch,
-      status: "Active",
-      lastLogin: new Date().toISOString(),
+  const openAddUser = () => {
+    setEditingUser(null)
+    setForm({
+      name: "",
+      email: "",
+      phone: "",
+      role: "Pharmacist",
+      branch: "Main Pharmacy",
     })
-    PharmacyDatabase.logAudit(
-      "System",
-      "Created",
-      "User",
-      `Created user ${form.name}`,
-      `Assigned role ${form.role}`,
-    )
+    setShowAdd(true)
+  }
+
+  const openEditUser = (user: any) => {
+    setEditingUser(user)
+    setForm({
+      name: user.name || "",
+      email: user.email || "",
+      phone: user.phone && user.phone !== "N/A" ? user.phone : "",
+      role: user.role || "Pharmacist",
+      branch: user.branch || user.department || "Main Pharmacy",
+    })
+    setShowAdd(true)
+  }
+
+  const handleSaveUser = () => {
+    if (!form.name || !form.email) return alert("Name and Email are required.")
+
+    if (editingUser) {
+      PharmacyDatabase.updateUser(editingUser.id, {
+        name: form.name,
+        email: form.email,
+        phone: form.phone || "N/A",
+        role: form.role,
+        department: form.branch,
+      })
+      PharmacyDatabase.logAudit(
+        "System",
+        "Updated",
+        "User",
+        `Updated user ${form.name}`,
+        `Role: ${form.role}, Branch: ${form.branch}`,
+      )
+    } else {
+      PharmacyDatabase.addUser({
+        id: "USR" + Date.now(),
+        name: form.name,
+        email: form.email,
+        phone: form.phone || "N/A",
+        role: form.role,
+        department: form.branch,
+        status: "Active",
+        lastLogin: new Date().toISOString(),
+      })
+      PharmacyDatabase.logAudit(
+        "System",
+        "Created",
+        "User",
+        `Created user ${form.name}`,
+        `Assigned role ${form.role}`,
+      )
+    }
+
     setShowAdd(false)
+    setEditingUser(null)
     setForm({
       name: "",
       email: "",
@@ -105,7 +160,8 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
   }
 
   const handleToggleStatus = (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === "active" ? "Inactive" : "Active"
+    const isCurrentlyActive = (currentStatus || "").toLowerCase() === "active"
+    const newStatus = isCurrentlyActive ? "Inactive" : "Active"
     PharmacyDatabase.updateUser(id, { status: newStatus })
     PharmacyDatabase.logAudit(
       "System",
@@ -129,8 +185,8 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
         description={`${users.length} users · ${users.filter((u) => u.status === "active").length} active`}
         actions={
           <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded text-white text-[13px] font-medium"
+            onClick={openAddUser}
+            className="flex items-center gap-1.5 px-4 py-2 rounded text-white text-[13px] font-medium cursor-pointer"
             style={{ background: "#0F766E" }}
           >
             <Plus size={14} /> Add User
@@ -228,29 +284,23 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
                     <td>
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() =>
-                            alert("Edit User feature is currently a mockup.")
-                          }
-                          className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#0F766E] transition-colors"
-                          title="Edit"
+                          onClick={() => openEditUser(u)}
+                          className="p-1.5 rounded hover:bg-[#E8EDF5] text-[#0F766E] transition-colors cursor-pointer"
+                          title="Edit User"
                         >
                           <Edit2 size={13} />
                         </button>
                         <button
-                          onClick={() =>
-                            alert(
-                              "Detailed Permissions grid is currently a mockup.",
-                            )
-                          }
-                          className="p-1.5 rounded hover:bg-[#faf5ff] text-[#7c3aed] transition-colors"
-                          title="Permissions"
+                          onClick={() => setTab("permissions")}
+                          className="p-1.5 rounded hover:bg-[#faf5ff] text-[#7c3aed] transition-colors cursor-pointer"
+                          title="View Permission Matrix"
                         >
                           <Shield size={13} />
                         </button>
                         <button
                           onClick={() => handleToggleStatus(u.id, u.status)}
-                          className="p-1.5 rounded hover:bg-[#F0F2F5] text-[#64748B] transition-colors"
-                          title="Toggle"
+                          className="p-1.5 rounded hover:bg-[#F0F2F5] text-[#64748B] transition-colors cursor-pointer"
+                          title="Toggle Active Status"
                         >
                           {u.status === "active" ? (
                             <ToggleRight
@@ -333,7 +383,7 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
           <div className="bg-white rounded shadow-2xl w-full max-w-md mx-4">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#F0F2F5]">
               <p className="font-bold text-[16px] text-[#0F1624]">
-                Add New User
+                {editingUser ? "Edit User Details" : "Add New User"}
               </p>
               <button
                 onClick={() => setShowAdd(false)}
@@ -408,11 +458,11 @@ export default function UserManagement({ onNavigate }: UserManagementProps) {
               </div>
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={handleAddUser}
-                  className="flex-1 py-2.5 rounded text-white font-semibold text-[13px]"
+                  onClick={handleSaveUser}
+                  className="flex-1 py-2.5 rounded text-white font-semibold text-[13px] cursor-pointer"
                   style={{ background: "#0F766E" }}
                 >
-                  Create User
+                  {editingUser ? "Save Changes" : "Create User"}
                 </button>
                 <button
                   onClick={() => setShowAdd(false)}

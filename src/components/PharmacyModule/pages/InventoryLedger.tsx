@@ -544,17 +544,17 @@ export default function InventoryLedger({ onNavigate }: InventoryLedgerProps) {
                       </td>
 
                       <td className="py-3 px-3 text-[12px] text-[#334155] whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-[11px]">
-                          {m.supplierName || "VH MEDICALS AND CHEMICALS"}
+                        <span className="px-2 py-0.5 rounded bg-slate-50 text-slate-700 border border-slate-200 font-semibold text-[11px]">
+                          {m.supplierName || "—"}
                         </span>
                       </td>
 
                       <td className="py-3 px-3 text-center whitespace-nowrap">
                         <div className="font-mono text-[11px] font-bold text-[#0F1624]">
-                          {m.batchNumber || "B" + Math.floor(100000 + Math.random() * 900000)}
+                          {m.batchNumber || "—"}
                         </div>
                         <div className="text-[10px] text-[#64748B]">
-                          Exp: {m.expiryDate || "2028-03-31"}
+                          {m.expiryDate ? `Exp: ${m.expiryDate}` : "—"}
                         </div>
                       </td>
 

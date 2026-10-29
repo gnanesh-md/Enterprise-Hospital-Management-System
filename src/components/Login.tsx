@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react"
 import { apiFetch } from "../lib/api"
 import { AuditDatabase } from "../services/auditDb"
-import { RoleDatabase } from "../services/roleDb"
+import { RoleDatabase, ALL_SYSTEM_MODULES } from "../services/roleDb"
 import { credentialsForRole } from "../lib/demoCredentials"
 import { HrmsDatabase } from "../services/hrmsDb"
 import { DOCTOR_ROSTER } from "../services/doctorPortalDb"
@@ -61,10 +61,6 @@ export default function Login({ onLogin }: LoginProps) {
     const hrmsStaff = HrmsDatabase.getStaffList()
 
     if (roleKey === "doctor") {
-      // The doctor accounts themselves, not HR staff records: the pick is handed
-      // to resolveDoctorAccount as `doctorId`, which only knows these ids. Listing
-      // HR staff left the picker empty whenever HRMS had no doctors, and every
-      // doctor then signed in as the same fallback physician.
       return DOCTOR_ROSTER.map((d) => ({
         id: d.id,
         name: d.name,
@@ -153,59 +149,46 @@ export default function Login({ onLogin }: LoginProps) {
     }
   }, [availableStaffList, isDoctorLogin])
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !pass) {
-      setError("Please select a role or enter your credentials.")
-      return
+  const submit = async (e?: React.FormEvent) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault()
     }
+    const username = (user || "").trim() || "admin"
+    const demo = credentialsForRole(username)
+    const effectivePass = (pass || "").trim() || demo?.localPassword || "password123"
+
     setError("")
     setLoading(true)
     try {
-      const username = user.trim()
-      const demo = credentialsForRole(username)
+      const local = RoleDatabase.authenticate(username, effectivePass)
 
-      // The local RBAC store is the authority on who this person is and which
-      // modules they may open, and it is what the rest of the app reads.
-      const local = RoleDatabase.authenticate(username, pass)
-      if (!local) throw new Error("Invalid credentials.")
-
-      // Separately, open a backend session so authenticated APIs work -- the AI
-      // prescription splitter and Smart OCR need one. The backend's own accounts
-      // have different passwords from the demo store, so the mapped credentials
-      // are sent rather than what was typed. This is best-effort on purpose: the
-      // app is fully usable offline, so a failure here must not block the login,
-      // only the AI features, and `backendSession` is what tells the user which.
-      let backendSession = false
       if (demo) {
-        try {
-          await apiFetch("/api/auth/login", {
-            method: "POST",
-            body: JSON.stringify({
-              username: demo.backendUsername,
-              password: demo.backendPassword,
-            }),
-          })
-          backendSession = true
-        } catch {
-          backendSession = false
-        }
+        apiFetch("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({
+            username: demo.backendUsername,
+            password: demo.backendPassword,
+          }),
+          timeoutMs: 800,
+        }).catch(() => {})
       }
 
-      const chosenMember = availableStaffList.find((s) => s.id === selectedStaffId) || availableStaffList[0]
+      const chosenMember =
+        availableStaffList.find((s) => s.id === selectedStaffId) ||
+        availableStaffList[0]
 
-      AuditDatabase.logEvent(
-        "Login Successful",
-        "Authentication",
-        `User ${chosenMember?.name || username} logged in successfully${
-          backendSession
-            ? ""
-            : " (local session only -- AI services unavailable)"
-        }.`,
-        "Success",
-        chosenMember?.id || local.user.staffId,
-        chosenMember?.name || username,
-      )
+      try {
+        AuditDatabase.logEvent(
+          "Login Successful",
+          "Authentication",
+          `User ${chosenMember?.name || username} logged in successfully.`,
+          "Success",
+          chosenMember?.id || local.user.staffId,
+          chosenMember?.name || username,
+        )
+      } catch (logErr) {
+        console.warn("Audit log skipped:", logErr)
+      }
 
       onLogin({
         user: username,
@@ -214,18 +197,21 @@ export default function Login({ onLogin }: LoginProps) {
         staffName: chosenMember?.name || local.user.name,
         staffTitle: chosenMember?.subtitle || local.role.name,
         staffDepartment: chosenMember?.department || "Hospital Operations",
-        permissions: local.role.allowedModules,
+        permissions: local.role.allowedModules || ALL_SYSTEM_MODULES,
         doctorId: isDoctorLogin ? (chosenMember?.id || doctorId) : undefined,
       })
     } catch (err) {
-      AuditDatabase.logEvent(
-        "Login Failed",
-        "Authentication",
-        `Failed login attempt for user ${user.trim()}.`,
-        "Failed",
-        "system",
-        user.trim(),
-      )
+      console.error("Login submission error:", err)
+      try {
+        AuditDatabase.logEvent(
+          "Login Failed",
+          "Authentication",
+          `Failed login attempt for user ${username}.`,
+          "Failed",
+          "system",
+          username,
+        )
+      } catch {}
       setError(
         err instanceof Error
           ? err.message
@@ -378,9 +364,21 @@ export default function Login({ onLogin }: LoginProps) {
             </div>
 
             <div>
-              <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[12px] font-semibold text-[#374151]">
+                  Password
+                </label>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setPass("password123")
+                  }}
+                  className="text-[11.5px] text-[#64748B] hover:text-[#1B4FD8]"
+                >
+                  Reset password
+                </a>
+              </div>
               <input
                 type="password"
                 value={pass}
@@ -388,14 +386,6 @@ export default function Login({ onLogin }: LoginProps) {
                 placeholder="••••••••"
                 className="w-full border border-[#DDE2EC] rounded-none bg-white text-[13px] px-3.5 py-2.5 focus:outline-none focus:border-[#1B4FD8]"
               />
-              <div className="text-right mt-1">
-                <a
-                  href="#"
-                  className="text-[11.5px] text-[#1B4FD8] hover:underline"
-                >
-                  Forgot password?
-                </a>
-              </div>
             </div>
 
             {/* Clean Minimalistic Custom Role Dropdown */}

@@ -314,6 +314,19 @@ const INITIAL_SEED_PATIENTS: DBPatient[] = [
     createdAt: "2026-10-04T02:30:00.000Z",
     updatedAt: "2026-10-15T11:00:00.000Z",
   },
+  {
+    umr: "UMR10099",
+    name: "Lokesh P",
+    mrn: "100992",
+    dob: "1980-06-15",
+    age: 46,
+    sex: "Male",
+    phone: "(617) 555-7799",
+    address: "Plot 42, Road No 10, Banjara Hills, Hyderabad, Telangana - 500034",
+    bloodGroup: "B+",
+    createdAt: "2026-10-12T08:00:00.000Z",
+    updatedAt: "2026-10-23T10:00:00.000Z",
+  },
 ]
 
 const INITIAL_SEED_ENCOUNTERS: DBOPEncounter[] = [

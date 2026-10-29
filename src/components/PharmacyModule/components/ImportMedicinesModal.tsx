@@ -391,7 +391,7 @@ export default function ImportMedicinesModal({
 
     setAlignedMapping([
       { field: "Qty", source: formatCol(qtyIdx, isPositional ? "Col 1" : "Default (50)") },
-      { field: "Supplier Name", source: formatCol(supplierIdx, "VH MEDICALS AND CHEMICALS (Default)") },
+      { field: "Supplier Name", source: formatCol(supplierIdx, "General Supplier (Default)") },
       { field: "Mfr", source: formatCol(mnfCodeIdx, isPositional ? "Col 2" : "Default (MANK)") },
       { field: "Type", source: formatCol(formIdx, "Auto-Inferred") },
       { field: "Pack", source: formatCol(packIdx, isPositional ? "Col 3" : "Default (1's)") },
@@ -417,7 +417,7 @@ export default function ImportMedicinesModal({
 
       const supplierName = (supplierIdx !== -1 && row[supplierIdx]
         ? row[supplierIdx]
-        : "VH MEDICALS AND CHEMICALS").trim()
+        : "General Supplier").trim()
 
       const rawStock = qtyIdx !== -1 ? parseIntNum(row[qtyIdx]) : (isPositional ? parseIntNum(row[0]) : 50)
       const stock = isNaN(rawStock) ? 50 : Math.max(0, rawStock)
@@ -694,118 +694,11 @@ export default function ImportMedicinesModal({
     setIsProcessing(true)
 
     try {
-      let addedCount = 0
-      let updatedCount = 0
-      let batchesCreated = 0
-
-      validRows.forEach((row) => {
-        // Check if medicine exists
-        const existing = existingMedicines.find(
-          (m) => m.name?.trim().toLowerCase() === row.name.trim().toLowerCase()
-        )
-
-        let targetMedId = existing?.id
-
-        if (existing && updateExisting) {
-          const curStock = Number((existing as any).stock) || 0
-          PharmacyDatabase.updateMedicine(existing.id, {
-            medicineName: row.name,
-            genericName: row.generic,
-            supplierName: row.supplierName || "VH MEDICALS AND CHEMICALS",
-            dosageForm: row.form,
-            strength: row.strength,
-            packing: row.pack,
-            manufacturer: row.manufacturer,
-            mnfCode: row.mnfCode,
-            hsnCode: row.hsnCode,
-            scheduleType: row.schedule,
-            taxPercentage: row.gst,
-            binNo: row.binNo,
-            stock: curStock + row.stock,
-            currentStock: curStock + row.stock,
-            mrp: row.mrp,
-            purchasePrice: row.purchasePrice,
-            batchNumber: row.batchNumber,
-            expiryDate: row.expiryDate,
-          })
-          updatedCount++
-        } else if (!existing) {
-          targetMedId = "MED" + Date.now() + Math.floor(Math.random() * 10000)
-          const newMedRecord = {
-            id: targetMedId,
-            brandName: row.name,
-            medicineName: row.name,
-            genericName: row.generic,
-            supplierName: row.supplierName || "VH MEDICALS AND CHEMICALS",
-            strength: row.strength,
-            packing: row.pack,
-            dosageForm: row.form,
-            manufacturer: row.manufacturer,
-            mnfCode: row.mnfCode,
-            taxPercentage: row.gst,
-            activeStatus: "Active" as const,
-            hsnCode: row.hsnCode,
-            binNo: row.binNo,
-            barcode: "890" + Math.floor(1000000000 + Math.random() * 9000000000),
-            scheduleType: row.schedule,
-            controlledSubstanceFlag: row.schedule === "X" || row.schedule === "H1",
-            categoryId: row.category || "General",
-            reorderLevel: 15,
-            stock: row.stock,
-            currentStock: row.stock,
-            mrp: row.mrp,
-            purchasePrice: row.purchasePrice,
-            batchNumber: row.batchNumber,
-            expiryDate: row.expiryDate,
-            createdAt: new Date().toISOString(),
-          }
-          PharmacyDatabase.addMedicine(newMedRecord as any)
-          addedCount++
-        }
-
-        // Add Batch & Inventory Ledger if stock > 0
-        if (createOpeningBatches && row.stock > 0 && targetMedId) {
-          const batchId = "BAT" + Date.now() + Math.floor(Math.random() * 10000)
-          PharmacyDatabase.addBatch({
-            id: batchId,
-            medicineId: targetMedId,
-            batchNumber: row.batchNumber,
-            expiryDate: row.expiryDate,
-            manufacturingDate: new Date().toISOString().split("T")[0],
-            quantity: row.stock,
-            availableQuantity: row.stock,
-            mrp: row.mrp,
-            purchasePrice: row.purchasePrice,
-            discount: row.discount,
-            supplierName: row.supplierName || "VH MEDICALS AND CHEMICALS",
-            location: row.binNo,
-            grnId: "IMPORT_OPENING",
-            createdAt: new Date().toISOString(),
-          })
-          batchesCreated++
-
-          PharmacyDatabase.addTransaction({
-            id: "TXN" + Math.floor(100000 + Math.random() * 900000),
-            date: new Date().toISOString(),
-            medicineId: targetMedId,
-            batchId: batchId,
-            quantity: row.stock,
-            transactionType: "PURCHASE_RECEIVED",
-            userId: "Hospital Inventory Manager",
-            reason: "Bulk Import Opening Stock",
-          })
-        }
+      const result = PharmacyDatabase.bulkImportMedicines({
+        rows: validRows,
+        updateExisting,
+        createOpeningBatches,
       })
-
-      // Add Notification
-      PharmacyDatabase.addNotification(
-        "Medicines Imported to Medicine Master",
-        `Successfully imported ${validRows.length} medicines (${addedCount} new added, ${updatedCount} updated, ${batchesCreated} batches created).`,
-        "info",
-        "Medicine Master",
-        "View Inventory",
-        "stock"
-      )
 
       // Audio chime
       try {
@@ -828,18 +721,16 @@ export default function ImportMedicinesModal({
       window.dispatchEvent(
         new CustomEvent("hospai_pharmacy_toast", {
           detail: {
-            message: `Import Success! Added ${addedCount} medicines, updated ${updatedCount}, with ${batchesCreated} active batches.`,
+            message: `Import Success! Added ${result.addedCount} medicines, updated ${result.updatedCount}, with ${result.batchesCreated} active batches in inventory.`,
           },
         })
       )
-
-      window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
 
       setIsProcessing(false)
       onSuccess()
       onClose()
     } catch (err: any) {
-      console.error(err)
+      console.error("Bulk Import Exception:", err)
       alert("Error importing medicines: " + (err.message || "Unknown error"))
       setIsProcessing(false)
     }
@@ -1198,7 +1089,7 @@ export default function ImportMedicinesModal({
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 size={15} /> Confirm & Import {parsedRows.filter((r) => r.isValid).length} Medicines
+                    <CheckCircle2 size={15} /> Save to Inventory ({parsedRows.filter((r) => r.isValid).length} Medicines)
                   </>
                 )}
               </button>

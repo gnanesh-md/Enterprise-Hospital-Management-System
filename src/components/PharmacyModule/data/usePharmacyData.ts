@@ -194,7 +194,7 @@ export function usePharmacyData() {
       hsnCode: m.hsnCode || "3004 039",
       mnfCode: (m as any).mnfCode || (m.manufacturer ? m.manufacturer.substring(0, 4).toUpperCase() : "MANK"),
       binNo: (latestBatch as any)?.location || (m as any).binNo || "",
-      supplierName: (m as any).supplierName || latestBatch?.supplierName || "VH MEDICALS AND CHEMICALS",
+      supplierName: (m as any).supplierName || latestBatch?.supplierName || "",
       barcode: m.barcode || "89000000000",
       schedule: m.scheduleType || "H",
       prescription: m.controlledSubstanceFlag || false,
@@ -542,13 +542,13 @@ export function usePharmacyData() {
 
       gender: p.gender || "Male",
 
-      contact: p.patientId || "+91 9999999999",
+      contact: (p as any).contact || (p as any).phone || p.patientId || "",
 
       doctor: p.doctorName,
 
       department: p.department,
 
-      regNo: "MCI/123",
+      regNo: (p as any).regNo || "",
 
       date: p.date,
 
@@ -562,7 +562,7 @@ export function usePharmacyData() {
 
       pharmacist: p.verifiedBy || null,
 
-      time: "10:00 AM",
+      time: (p as any).time || (p.createdAt ? new Date(p.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""),
 
       rawItems: p.items || [],
     })),
@@ -584,7 +584,7 @@ export function usePharmacyData() {
 
       outstanding: 0,
 
-      lastPurchase: "2026-09-12",
+      lastPurchase: (s as any).lastPurchase || "",
 
       totalPurchase: 0,
     })),

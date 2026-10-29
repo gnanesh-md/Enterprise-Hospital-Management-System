@@ -18,6 +18,7 @@ import AuditLog from "./pages/AuditLog"
 
 import SupplierReturns from "./pages/SupplierReturns"
 import MedicineWriteOff from "./pages/MedicineWriteOff"
+import UserManagement from "./pages/UserManagement"
 
 const pages: Record<string, React.ComponentType<{
   onNavigate: (page: string) => void
@@ -26,6 +27,7 @@ const pages: Record<string, React.ComponentType<{
   dispensing: Dispensing,
   prescriptions: PrescriptionQueue,
   medicines: MedicineMaster,
+  categories: MedicineMaster,
   suppliers: Suppliers,
   "purchase-orders": InvoiceOCR, // PO removed; redirects to Inward Stock Entry
   grn: InvoiceOCR,
@@ -38,6 +40,8 @@ const pages: Record<string, React.ComponentType<{
   reports: Reports,
   notifications: Notifications,
   "audit-log": AuditLog,
+  users: UserManagement,
+  settings: UserManagement,
 }
 
 interface PharmacyAppProps {

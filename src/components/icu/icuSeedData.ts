@@ -876,9 +876,542 @@ export function ensureMultiDaySeedData(
   }
 }
 
-// Auto-seed Appanna Chinnapati 10-day ICU flowsheet
+// Auto-seed Deepak Patel Day 1 flowsheet & multi-day flowsheet for all ICU beds
 if (typeof window !== "undefined") {
   try {
-    ensureMultiDaySeedData("100888", 10)
+    seedDeepakPatelDay1Data()
+    ;[
+      "100301",
+      "100302",
+      "100303",
+      "100518",
+      "100992",
+      "100239",
+      "100412",
+      "100419",
+      "100888",
+      "100650",
+    ].forEach((mrn) => {
+      ensureMultiDaySeedData(mrn, 10)
+    })
   } catch {}
 }
+
+/** Complete Day 1 flowsheet record with 100% of fields filled across all sections */
+export function generateDeepakDay1FullRecord(dateStr: string): FlowsheetRecord {
+  const patientId = "100239"
+  const hours = Array.from(
+    { length: 24 },
+    (_, i) => `${String((8 + i) % 24).padStart(2, "0")}:00`,
+  )
+  const twoHourly = hours.filter((_, i) => i % 2 === 0)
+
+  // Hourly observations for all 24 hours
+  const hourlyObs: Record<string, string> = {}
+  hours.forEach((h, idx) => {
+    const tempProgress = (38.8 - (idx / 24) * 1.4).toFixed(1)
+    const hrProgress = Math.round(118 - (idx / 24) * 26)
+    const sysBp = Math.round(96 + (idx / 24) * 22)
+    const diaBp = Math.round(60 + (idx / 24) * 14)
+    const mapVal = Math.round((sysBp + 2 * diaBp) / 3)
+    const spo2Val = Math.min(98, Math.round(92 + (idx / 24) * 6))
+    const fio2Val = Math.max(45, Math.round(60 - (idx / 24) * 15))
+    const lactateVal = (3.8 - (idx / 24) * 1.9).toFixed(1)
+    const pipVal = Math.round(32 - (idx / 24) * 6)
+    const pplatVal = Math.round(26 - (idx / 24) * 4)
+    const phVal = (7.31 + (idx / 24) * 0.08).toFixed(2)
+    const pco2Val = Math.round(45 - (idx / 24) * 5)
+    const po2Val = Math.round(80 + (idx / 24) * 16)
+    const bsVal = Math.round(172 - (idx / 24) * 36)
+
+    hourlyObs[`${h}|temp`] = String(tempProgress)
+    hourlyObs[`${h}|pulse`] = String(hrProgress)
+    hourlyObs[`${h}|hr`] = String(hrProgress)
+    hourlyObs[`${h}|bp`] = `${sysBp}/${diaBp}`
+    hourlyObs[`${h}|map`] = String(mapVal)
+    hourlyObs[`${h}|vent_mode`] = "A/C-VC"
+    hourlyObs[`${h}|rr_t`] = "18"
+    hourlyObs[`${h}|rr_s`] = String(idx < 12 ? 20 : 18)
+    hourlyObs[`${h}|fio2`] = String(fio2Val)
+    hourlyObs[`${h}|tv`] = "460"
+    hourlyObs[`${h}|mv_set`] = "8.3"
+    hourlyObs[`${h}|mv_del`] = "8.5"
+    hourlyObs[`${h}|pip`] = String(pipVal)
+    hourlyObs[`${h}|pplat`] = String(pplatVal)
+    hourlyObs[`${h}|peep`] = idx < 12 ? "8" : "7"
+    hourlyObs[`${h}|ie`] = "1:2"
+    hourlyObs[`${h}|spo2`] = String(spo2Val)
+    hourlyObs[`${h}|ph`] = String(phVal)
+    hourlyObs[`${h}|pco2`] = String(pco2Val)
+    hourlyObs[`${h}|po2`] = String(po2Val)
+    hourlyObs[`${h}|hco3`] = "22"
+    hourlyObs[`${h}|be`] = "-2"
+    hourlyObs[`${h}|agap`] = "12"
+    hourlyObs[`${h}|lactate`] = String(lactateVal)
+    hourlyObs[`${h}|sao2`] = "96"
+    hourlyObs[`${h}|abg_na`] = "138"
+    hourlyObs[`${h}|abg_k`] = "4.2"
+    hourlyObs[`${h}|pain`] = "2"
+    hourlyObs[`${h}|events`] = idx === 0 ? "Orotracheal intubation ETT 8.0" : idx === 3 ? "CVC & Art line inserted" : ""
+    hourlyObs[`${h}|blood_sugar`] = String(bsVal)
+    hourlyObs[`${h}|insulin`] = idx % 6 === 0 ? "4" : ""
+  })
+
+  // Hourly RASS
+  const hourlyRass: Record<string, string> = {}
+  twoHourly.forEach((h, idx) => {
+    hourlyRass[`${h}|score`] = idx < 6 ? "-3 Moderate sedation" : "-2 Light sedation"
+  })
+
+  // Hourly GCS
+  const scaleGcs: Record<string, string> = {}
+  hours.forEach((h, idx) => {
+    scaleGcs[`${h}|eyes`] = idx < 12 ? "To pain" : "To speech"
+    scaleGcs[`${h}|verbal`] = "No response"
+    scaleGcs[`${h}|motor`] = idx < 12 ? "Flexion withdraws, not able to localise pain" : "Localises pain"
+  })
+
+  // Hourly Pupils
+  const hourlyPupils: Record<string, string> = {}
+  hours.forEach((h) => {
+    hourlyPupils[`${h}|r_size`] = "3"
+    hourlyPupils[`${h}|r_reaction`] = "R"
+    hourlyPupils[`${h}|l_size`] = "3"
+    hourlyPupils[`${h}|l_reaction`] = "R"
+    hourlyPupils[`${h}|symmetry`] = "Equal"
+  })
+
+  // Muscle power grid
+  const gridMusclePower: Record<string, string> = {}
+  twoHourly.forEach((h) => {
+    gridMusclePower[`Power — Arm (R)|${h}`] = "3"
+    gridMusclePower[`Power — Arm (L)|${h}`] = "3"
+    gridMusclePower[`Power — Leg (R)|${h}`] = "4"
+    gridMusclePower[`Power — Leg (L)|${h}`] = "4"
+  })
+
+  // Special care grid
+  const gridSpecialCare: Record<string, string> = {}
+  const specialSlots = ["8-10", "10-12", "12-14", "14-16", "16-18", "18-20", "20-22", "22-0", "0-2", "2-4", "4-6", "6-8"]
+  const specialTasks = [
+    "ET/TT Suctioning",
+    "Steam Inhalation",
+    "Chest PT",
+    "Position Changing",
+    "Restraint",
+    "Skin Condition",
+    "Bed Sore Dressing",
+    "Eye Care",
+    "Tracheostomy Tube Cuff Pressure",
+    "Abd. Girth",
+  ]
+  specialTasks.forEach((task) => {
+    specialSlots.forEach((slot) => {
+      gridSpecialCare[`${task}|${slot}`] = task === "Position Changing" ? "Q2H Left/Right" : task === "Skin Condition" ? "Intact" : "Done"
+    })
+  })
+
+  // Intake and Output 24 hourly
+  const hourlyIntake: Record<string, string> = {}
+  const hourlyOutput: Record<string, string> = {}
+  hours.forEach((h) => {
+    hourlyIntake[`${h}|infusions`] = "50"
+    hourlyIntake[`${h}|sedation`] = "25"
+    hourlyIntake[`${h}|iv_fluid`] = "100"
+    hourlyIntake[`${h}|enteral_rtf`] = "25"
+    hourlyIntake[`${h}|ml_hr`] = "200"
+    hourlyIntake[`${h}|total`] = "200"
+
+    hourlyOutput[`${h}|drain_1`] = "15"
+    hourlyOutput[`${h}|drain_2`] = "10"
+    hourlyOutput[`${h}|total_drain`] = "25"
+    hourlyOutput[`${h}|rta_vomiting`] = "10"
+    hourlyOutput[`${h}|bowel_open`] = "No"
+    hourlyOutput[`${h}|urine_ml_hr`] = "65"
+    hourlyOutput[`${h}|urine_total`] = "65"
+    hourlyOutput[`${h}|output_total`] = "100"
+    hourlyOutput[`${h}|balance`] = "+100"
+  })
+
+  return {
+    patientId,
+    date: dateStr,
+    fields: {
+      "admission.primary_consultant": "Dr. Shah (Critical Care)",
+      "admission.icu_consultant": "Dr. K. Lokesh Kumar Raju (Pulmonology)",
+      "admission.day_in_icu": "1",
+      "admission.doa": dateStr,
+      "admission.dos": dateStr,
+      "admission.height": "174",
+      "admission.weight": "76",
+      "admission.blood_group": "B+",
+      "admission.diagnosis": "Severe Community-Acquired Pneumonia with Sepsis & Acute Respiratory Distress Syndrome (ARDS)",
+      "admission.allergy": "NKDA (No Known Drug Allergies)",
+      "admission.procedure": "Emergency Orotracheal Intubation (ETT 8.0) + Right Internal Jugular CVC + Left Radial Arterial Line",
+      "admission.past_history": "Type 2 Diabetes Mellitus x 8 years, Essential Hypertension, Non-smoker",
+      "admission.active_problem": "Day 1 ICU: Severe ARDS, Septic Shock on low-dose Norepinephrine, Lung-protective invasive ventilation (6 mL/kg PBW)",
+      "admission.diet_plan": "NPO / Continuous Ryle's Tube Drainage, IV Maintenance Fluids with 5% Dextrose Normal Saline",
+      "pressure_ulcer.stage": "Stage 1",
+      "pressure_ulcer.category": "HAPU",
+      "pressure_ulcer.site": "Sacrum — Non-blanchable erythema",
+      "pressure_ulcer.intervention_morning": "1",
+      "pressure_ulcer.intervention_evening": "1",
+      "pressure_ulcer.intervention_night": "1",
+      "pressure_ulcer.pu_reported_on": dateStr,
+      "pressure_ulcer.pu_relative_name": "Ramesh Patel (Brother)",
+      "pressure_ulcer.iad_reported_on": dateStr,
+      "pressure_ulcer.iad_relative_name": "Ramesh Patel (Brother)",
+      "pressure_ulcer.incharge_name": "Sister Incharge Mary",
+      "handover.m_initials": "RN Murphy",
+      "handover.m_id": "RN-1042",
+      "handover.e_initials": "RN Davis",
+      "handover.e_id": "RN-1058",
+      "handover.n_initials": "RN Jenkins",
+      "handover.n_id": "RN-1089",
+      "handover.m_taking_initials": "RN Davis",
+      "handover.m_taking_id": "RN-1058",
+      "handover.e_taking_initials": "RN Jenkins",
+      "handover.e_taking_id": "RN-1089",
+      "handover.n_taking_initials": "RN Murphy",
+      "handover.n_taking_id": "RN-1042",
+      "balance_24h.intake": "3200",
+      "balance_24h.output": "1650",
+      "balance_24h.uo": "1350",
+      "balance_24h.drain": "200",
+      "balance_24h.rta": "100",
+      "balance_24h.uf": "0",
+      "balance_24h.balance": "+1550",
+      "balance_24h.cumulative_balance": "+1550",
+      "imaging.echo": "Transthoracic Bedside Echo (Day 1): Hyperdynamic LV with normal systolic ejection fraction (LVEF 60%). No regional wall motion abnormalities. Normal RV dimensions and systolic function (TAPSE 22mm). IVC 1.8 cm with >50% respiratory collapsibility, consistent with euvolemia post-fluid resuscitation.",
+      "imaging.usg": "Bedside Lung USG / BLUE Protocol (Day 1): Diffuse bilateral anterior and lateral B-lines ('lung rockets') with subpleural consolidations in bilateral posterolateral lung zones, confirming acute lung injury / ARDS secondary to bilateral pneumonia. No pleural effusion or pneumothorax.",
+      "imaging.ct": "HRCT Chest (Admission): Extensive bilateral multifocal ground-glass opacities with dense dependent consolidation predominantly involving both lower lobes and lingula. Air bronchograms present. No pulmonary thromboembolism. Normal cardiac silhouette.",
+    },
+    tables: {
+      day_plan: [
+        {
+          time: "08:00",
+          shift: "Day",
+          order: "Emergency endotracheal intubation confirmed via CXR, initiate lung-protective ventilation (6 mL/kg PBW)",
+          dr_sign: "Dr. Shah",
+          nurse_sign: "RN Murphy",
+        },
+        {
+          time: "10:00",
+          shift: "Day",
+          order: "ABG post-intubation; titrate FiO2 to maintain SpO2 92-96%",
+          dr_sign: "Dr. Shah",
+          nurse_sign: "RN Murphy",
+        },
+        {
+          time: "12:00",
+          shift: "Day",
+          order: "Right IJV CVC line placement & start Norepinephrine for MAP < 65 mmHg",
+          dr_sign: "Dr. Lokesh Raju",
+          nurse_sign: "RN Murphy",
+        },
+        {
+          time: "16:00",
+          shift: "Day",
+          order: "Blood & endotracheal sputum cultures sent; commence IV Meropenem & Vancomycin",
+          dr_sign: "Dr. Shah",
+          nurse_sign: "RN Davis",
+        },
+        {
+          time: "20:00",
+          shift: "Night",
+          order: "Maintain light-to-moderate sedation (RASS -2 to -3) with Fentanyl/Midazolam infusion",
+          dr_sign: "Dr. Shah",
+          nurse_sign: "RN Jenkins",
+        },
+        {
+          time: "04:00",
+          shift: "Night",
+          order: "Repeat serum lactate, ABG, and electrolyte panel prior to morning consultant rounds",
+          dr_sign: "Dr. Shah",
+          nurse_sign: "RN Jenkins",
+        },
+      ],
+      drug_chart: [
+        {
+          drug: "Norepinephrine Drip",
+          dose: "0.08 mcg/kg/min",
+          route: "IV",
+          freq: "Continuous",
+          times: "08:00-08:00",
+          nurse_sign: "RN Murphy",
+        },
+        {
+          drug: "Meropenem",
+          dose: "1 g",
+          route: "IV",
+          freq: "Q8H",
+          times: "08:00, 16:00, 00:00",
+          nurse_sign: "RN Murphy",
+        },
+        {
+          drug: "Vancomycin",
+          dose: "1 g",
+          route: "IV",
+          freq: "Q12H",
+          times: "10:00, 22:00",
+          nurse_sign: "RN Davis",
+        },
+        {
+          drug: "Pantoprazole",
+          dose: "40 mg",
+          route: "IV",
+          freq: "OD",
+          times: "08:00",
+          nurse_sign: "RN Murphy",
+        },
+        {
+          drug: "Enoxaparin",
+          dose: "40 mg",
+          route: "SC",
+          freq: "OD",
+          times: "20:00",
+          nurse_sign: "RN Jenkins",
+        },
+        {
+          drug: "Fentanyl Infusion",
+          dose: "50 mcg/hr",
+          route: "IV",
+          freq: "Continuous",
+          times: "08:00-08:00",
+          nurse_sign: "RN Murphy",
+        },
+      ],
+      sos_medication: [
+        {
+          time: "14:00",
+          drug: "Paracetamol",
+          dose: "1 g",
+          route: "IV",
+          nurse_sign: "RN Murphy (Fever spike 39.1°C)",
+        },
+        {
+          time: "22:30",
+          drug: "Ondansetron",
+          dose: "4 mg",
+          route: "IV",
+          nurse_sign: "RN Jenkins (Nausea / NG reflex)",
+        },
+        {
+          time: "03:00",
+          drug: "Lorazepam",
+          dose: "1 mg",
+          route: "IV",
+          nurse_sign: "RN Jenkins (Synchrony agitation)",
+        },
+      ],
+      high_risk_medication: [
+        {
+          time: "09:00",
+          drug: "Potassium Chloride (KCl)",
+          dose: "40 mEq/100mL",
+          route: "IV via CVC",
+          double_check: "RN Murphy / RN Davis",
+        },
+        {
+          time: "12:00",
+          drug: "Regular Human Insulin",
+          dose: "3 units/hr",
+          route: "IV Infusion",
+          double_check: "RN Murphy / RN Davis",
+        },
+        {
+          time: "20:00",
+          drug: "Heparin Sodium",
+          dose: "5,000 units",
+          route: "SC",
+          double_check: "RN Jenkins / RN Davis",
+        },
+      ],
+      lines_tubes: [
+        {
+          line: "ETT / TT",
+          size: "ETT 8.0 (Cuff 24 cmH2O)",
+          site: "Oral 22cm mark at incisors",
+          inserted_on: dateStr,
+          day: "1",
+          condition: "Clear, position confirmed by CXR",
+          staff: "RN Murphy #1042",
+          time: "08:30",
+        },
+        {
+          line: "Central Venous Catheter",
+          size: "Triple Lumen 7 Fr 20cm",
+          site: "Right Internal Jugular Vein",
+          inserted_on: dateStr,
+          day: "1",
+          condition: "Sterile transparent dressing dry & intact",
+          staff: "RN Murphy #1042",
+          time: "11:00",
+        },
+        {
+          line: "Art. line — radial / femoral",
+          size: "20G Arterial Cannula",
+          site: "Left Radial Artery",
+          inserted_on: dateStr,
+          day: "1",
+          condition: "Zeroed, crisp dicrotic notch, Allen's test +",
+          staff: "RN Murphy #1042",
+          time: "11:30",
+        },
+        {
+          line: "Urinary Catheter",
+          size: "Foley Catheter 16 Fr",
+          site: "Urethral",
+          inserted_on: dateStr,
+          day: "1",
+          condition: "Closed drainage bag, clear amber urine",
+          staff: "RN Murphy #1042",
+          time: "08:45",
+        },
+        {
+          line: "Ryles tube / PEG / NJ",
+          size: "Ryle's Tube 16 Fr",
+          site: "Nasogastric",
+          inserted_on: dateStr,
+          day: "1",
+          condition: "Aspirate pH 3.5, position confirmed",
+          staff: "RN Murphy #1042",
+          time: "09:00",
+        },
+        {
+          line: "Peripheral Cannula",
+          size: "18G Green Cannula",
+          site: "Right Forearm",
+          inserted_on: dateStr,
+          day: "1",
+          condition: "Patent, flushes easily, no phlebitis",
+          staff: "RN Murphy #1042",
+          time: "08:15",
+        },
+      ],
+      labs: [
+        {
+          date: dateStr,
+          time: "06:00",
+          hb: "11.4",
+          tlc: "18.2",
+          dlc: "N84 L10 M4 E2",
+          platelet: "184",
+          aptt: "32/30",
+          pt: "13.6/12",
+          inr: "1.14",
+          urea: "52",
+          creatinine: "1.9",
+          na: "137",
+          k: "4.2",
+          mg: "2.1",
+          ca: "8.8",
+          p: "3.4",
+          cl: "101",
+          bili: "1.2/0.4",
+          total_protein: "6.4",
+          alb_glob: "3.2/3.2",
+          sgot_sgpt: "42/46",
+          alkp_ggtp: "88/38",
+        },
+        {
+          date: dateStr,
+          time: "16:00",
+          hb: "11.0",
+          tlc: "16.8",
+          dlc: "N80 L14 M4 E2",
+          platelet: "192",
+          aptt: "31/30",
+          pt: "13.2/12",
+          inr: "1.10",
+          urea: "48",
+          creatinine: "1.8",
+          na: "138",
+          k: "4.3",
+          mg: "2.2",
+          ca: "8.9",
+          p: "3.5",
+          cl: "102",
+          bili: "1.0/0.3",
+          total_protein: "6.5",
+          alb_glob: "3.3/3.2",
+          sgot_sgpt: "38/40",
+          alkp_ggtp: "84/36",
+        },
+      ],
+      microbiology: [
+        {
+          sample: "Sputum C/S",
+          date: dateStr,
+          report: "Endotracheal aspirate: Moderate gram-positive diplococci (S. pneumoniae). Colony count >10^5 CFU/mL. Sensitive to Meropenem, Vancomycin, Levofloxacin.",
+        },
+        {
+          sample: "Blood C/S",
+          date: dateStr,
+          report: "Peripheral Blood Culture (2 bottles): No bacterial growth detected after 24 hours of aerobic/anaerobic incubation. Final report at 5 days.",
+        },
+        {
+          sample: "Other C/S",
+          date: dateStr,
+          report: "Central Venous Catheter Tip culture: Sterile at insertion. No growth after 24 hours.",
+        },
+        {
+          sample: "Urine C/S",
+          date: dateStr,
+          report: "Clean catch catheter specimen: Pus cells 3-5/HPF, no significant bacteriuria (<10^3 CFU/mL).",
+        },
+      ],
+      antibiotics: [
+        {
+          present: "Meropenem 1g IV Q8H",
+          day: "1",
+          previous: "Ceftriaxone 2g IV (ER)",
+          start_date: dateStr,
+          stop_date: "",
+        },
+        {
+          present: "Vancomycin 1g IV Q12H",
+          day: "1",
+          previous: "Piperacillin-Tazobactam (ER)",
+          start_date: dateStr,
+          stop_date: "",
+        },
+      ],
+    },
+    grids: {
+      muscle_power: gridMusclePower,
+      special_care: gridSpecialCare,
+    },
+    hourly: {
+      observations: hourlyObs,
+      rass: hourlyRass,
+      pupils: hourlyPupils,
+      intake: hourlyIntake,
+      output: hourlyOutput,
+    },
+    scales: {
+      gcs: scaleGcs,
+    },
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+/** Seed complete Day 1 flowsheet data for Deepak Patel */
+export function seedDeepakPatelDay1Data(): void {
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    const rec100239 = generateDeepakDay1FullRecord(today)
+    localStorage.setItem(`icu.flowsheet.100239.${today}`, JSON.stringify(rec100239))
+    localStorage.setItem(`icu.flowsheet.Deepak Patel.${today}`, JSON.stringify(rec100239))
+
+    // Also populate past stay days so any date clicked has full record
+    getPatientStayDays(10).forEach((sd) => {
+      const rec = generateDeepakDay1FullRecord(sd.dateStr)
+      localStorage.setItem(`icu.flowsheet.100239.${sd.dateStr}`, JSON.stringify(rec))
+      localStorage.setItem(`icu.flowsheet.Deepak Patel.${sd.dateStr}`, JSON.stringify(rec))
+    })
+  } catch (err) {
+    console.warn("Failed to seed Deepak Patel Day 1 data:", err)
+  }
+}
+

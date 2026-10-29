@@ -238,7 +238,8 @@ export default function AuditLog({ onNavigate }: AuditLogProps) {
                   </td>
                   <td>
                     <button
-                      className="flex items-center gap-1 text-[12px] font-medium"
+                      onClick={() => setExpanded(expanded === i ? null : i)}
+                      className="flex items-center gap-1 text-[12px] font-medium hover:underline cursor-pointer"
                       style={{ color: "#0F766E" }}
                     >
                       Details{" "}

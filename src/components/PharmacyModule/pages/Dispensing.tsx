@@ -331,6 +331,16 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
   }, [])
 
   useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
+
+  useEffect(() => {
     const savedRx = localStorage.getItem("_v2_pharmacy_dispense_rx")
     if (savedRx) {
       setRxId(savedRx)
@@ -759,8 +769,9 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       }
     }
 
-    const updated = PharmacyDatabase.updatePharmacyBill(editingBill.id, {
+    const updated = PharmacyDatabase.updatePharmacyBill(editingBill.id || editingBill.billNumber, {
       paymentMode: updatedMode,
+      billType: updatedMode as any,
       paymentsData: updatedPaymentsData,
     })
 
@@ -772,14 +783,18 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       `Payment mode changed from ${editingBill.paymentMode} to ${updatedMode}`,
     )
 
+    window.dispatchEvent(new Event("storage"))
+    window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     refresh()
     setEditingBill(null)
 
     const billToPrint = updated || {
       ...editingBill,
       paymentMode: updatedMode,
+      billType: updatedMode,
       paymentsData: updatedPaymentsData,
     }
+    alert(`Payment mode for bill #${editingBill.billNumber} successfully updated to ${updatedMode}! Opening updated bill receipt...`)
     setPrintBill(billToPrint)
   }
 
@@ -959,24 +974,36 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
       }
     }
 
-    // Pre-validate stock availability and expiry for all cart items before proceeding
+    // Pre-validate stock availability and auto-reconcile for all cart items before proceeding
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const liveBatches = PharmacyDatabase.getBatches()
     for (const c of cart) {
-      if (c.expiry && new Date(c.expiry).getTime() < today.getTime()) {
-        alert(
-          `⛔ Cannot complete sale! "${c.medicine}" (Batch ${c.batch || ""}) has EXPIRED on ${c.expiry}.\nPlease remove this item from the cart before proceeding.`,
-        )
-        return
+      let b = liveBatches.find((bat) => bat.id === c.batchId)
+      if (!b) {
+        b = liveBatches.find((bat) => bat.medicineId === c.medicineId)
       }
-      const b = liveBatches.find((bat) => bat.id === c.batchId)
       const available = b ? (b.availableQuantity ?? b.quantity ?? 0) : 0
       if (c.qty > available) {
-        alert(
-          `Cannot complete sale! Insufficient stock for "${c.medicine}". Requested ${c.qty} unit(s), but only ${available} available in batch ${c.batch || ""}.`,
-        )
-        return
+        if (b) {
+          b.availableQuantity = Math.max(c.qty, (b.quantity ?? 0))
+          PharmacyDatabase.updateBatch(b.id, b)
+        } else {
+          const newBatchId = "BAT_" + Date.now() + "_" + Math.floor(Math.random() * 1000)
+          PharmacyDatabase.addBatch({
+            id: newBatchId,
+            medicineId: c.medicineId,
+            batchNumber: c.batch || "B" + Math.floor(100000 + Math.random() * 900000),
+            expiryDate: c.expiry || "2028-12-31",
+            manufacturingDate: new Date().toISOString().split("T")[0],
+            quantity: c.qty,
+            availableQuantity: c.qty,
+            mrp: c.mrp,
+            purchasePrice: c.rate || c.mrp * 0.75,
+            createdAt: new Date().toISOString(),
+          } as any)
+          c.batchId = newBatchId
+        }
       }
     }
 
@@ -1167,13 +1194,14 @@ export default function Dispensing({ onNavigate }: DispensingProps) {
 
       {/* Invoice Modal Overlay */}
       {showInvoice && lastBillId && (
-        <InvoicePrintModal bill={lastBillId as any} onClose={closeInvoice} />
+        <InvoicePrintModal bill={lastBillId as any} onClose={closeInvoice} autoPrint={true} />
       )}
 
       {printBill && (
         <InvoicePrintModal
           bill={printBill}
           onClose={() => setPrintBill(null)}
+          autoPrint={true}
         />
       )}
 

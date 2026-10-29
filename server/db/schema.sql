@@ -548,3 +548,126 @@ ALTER TABLE payroll_runs DROP CONSTRAINT IF EXISTS payroll_runs_status_check;
 ALTER TABLE payroll_runs ADD CONSTRAINT payroll_runs_status_check CHECK (status IN ('Draft', 'Calculated', 'Reviewed', 'Revised', 'Approved', 'Paid', 'Locked'));
 ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_attendance_status_check;
 ALTER TABLE attendance ADD CONSTRAINT attendance_attendance_status_check CHECK (attendance_status IN ('Present', 'Late', 'Absent', 'Half-Day', 'Half Day', 'Missed Punch', 'On Leave', 'Weekly Off', 'Holiday'));
+
+-- ── 23. Biometric Hardware Devices (eSSL, ZKTeco, Face/Fingerprint/RFID) ─────
+CREATE TABLE IF NOT EXISTS biometric_devices (
+    id VARCHAR(50) PRIMARY KEY, -- e.g. BIO-01
+    hospital_id INT NOT NULL DEFAULT 1,
+    device_name VARCHAR(100) NOT NULL,
+    device_full_name VARCHAR(255),
+    serial_number VARCHAR(100) UNIQUE NOT NULL,
+    ip_address VARCHAR(50),
+    port INT DEFAULT 4370,
+    location VARCHAR(100) NOT NULL,
+    device_type VARCHAR(50) DEFAULT 'eSSL/ZKTeco',
+    firmware_version VARCHAR(100),
+    status VARCHAR(20) DEFAULT 'offline' CHECK (status IN ('online', 'offline', 'disabled')),
+    last_heartbeat TIMESTAMP WITH TIME ZONE,
+    secret_token VARCHAR(255),
+    registered_users_count INT DEFAULT 0,
+    total_logs_count INT DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_biometric_devices_serial ON biometric_devices(serial_number);
+CREATE INDEX IF NOT EXISTS idx_biometric_devices_status ON biometric_devices(status);
+
+-- ── 24. Biometric Raw Punch Logs (Immutable Audit Trail & Idempotency) ────────
+CREATE TABLE IF NOT EXISTS biometric_punches (
+    id SERIAL PRIMARY KEY,
+    hospital_id INT NOT NULL DEFAULT 1,
+    device_sn VARCHAR(100) NOT NULL,
+    device_id VARCHAR(50) REFERENCES biometric_devices(id) ON DELETE SET NULL,
+    device_user_id VARCHAR(50) NOT NULL, -- Machine user enroll PIN (e.g. '101')
+    employee_id VARCHAR(50) REFERENCES employees(id) ON DELETE SET NULL,
+    employee_name VARCHAR(255),
+    punch_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    punch_date DATE NOT NULL,
+    direction VARCHAR(10) NOT NULL CHECK (direction IN ('IN', 'OUT')),
+    verify_mode VARCHAR(50) DEFAULT 'Fingerprint', -- 'Fingerprint' | 'Face ID' | 'RFID Card' | 'Password'
+    raw_payload TEXT,
+    status VARCHAR(50) DEFAULT 'PROCESSED' CHECK (status IN ('PROCESSED', 'UNMAPPED_EMPLOYEE', 'DUPLICATE', 'RAPID_REPEAT', 'ERROR')),
+    error_reason TEXT,
+    attendance_id VARCHAR(100) REFERENCES attendance(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (device_sn, device_user_id, punch_time)
+);
+CREATE INDEX IF NOT EXISTS idx_biometric_punches_date ON biometric_punches(punch_date);
+CREATE INDEX IF NOT EXISTS idx_biometric_punches_emp ON biometric_punches(employee_id);
+CREATE INDEX IF NOT EXISTS idx_biometric_punches_sn ON biometric_punches(device_sn);
+
+-- Add biometric_pin mapping column to employees
+ALTER TABLE employees ADD COLUMN IF NOT EXISTS biometric_pin VARCHAR(50);
+CREATE INDEX IF NOT EXISTS idx_employees_biometric_pin ON employees(biometric_pin);
+
+-- Seed standard hospital biometric terminals if missing
+INSERT INTO biometric_devices (id, hospital_id, device_name, device_full_name, serial_number, ip_address, port, location, device_type, firmware_version, status)
+VALUES 
+    ('BIO-01', 1, 'Biometric-1', 'OT Complex Main Gate', 'QJT3252700812', '192.168.168.201', 4370, 'OT COMPLEX', 'eSSL SilkBio-101', 'Ver 6.60', 'offline'),
+    ('BIO-02', 1, 'Biometric-2', 'Front Office Reception Reader', 'QJT3252700643', '192.168.168.85', 4370, 'FRONT OFFICE', 'eSSL SilkBio-101', 'Ver 6.60', 'offline'),
+    ('BIO-03', 1, 'Biometric-3', 'ICU High-Security Terminal', 'ESSL9842109211', '192.168.168.203', 4370, 'ICU DOOR', 'eSSL uFace800', 'Ver 6.54', 'offline'),
+    ('BIO-04', 1, 'Biometric-4', 'Casualty Emergency Gate', 'ESSL9842109244', '192.168.168.204', 4370, 'CASUALTY', 'eSSL MB20', 'Ver 6.54', 'offline'),
+    ('BIO-05', 1, 'Biometric-5', 'Pharmacy & Drug Store', 'QJT3252700988', '192.168.168.205', 4370, 'CLINICAL PHARMACY', 'eSSL SilkBio-101', 'Ver 6.60', 'offline')
+ON CONFLICT (id) DO NOTHING;
+
+-- ── 25. Overtime Approvals (Strict Validation for Payable Overtime) ───────────
+CREATE TABLE IF NOT EXISTS overtime_records (
+    id VARCHAR(50) PRIMARY KEY,
+    hospital_id INT NOT NULL DEFAULT 1,
+    employee_id VARCHAR(50) REFERENCES employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(255) NOT NULL,
+    department VARCHAR(100) NOT NULL,
+    overtime_date DATE NOT NULL,
+    regular_shift VARCHAR(100) DEFAULT 'Morning (07:00 - 15:00)',
+    extra_hours NUMERIC(4, 2) NOT NULL,
+    hourly_rate NUMERIC(8, 2) DEFAULT 250.00,
+    total_amount NUMERIC(10, 2) NOT NULL,
+    reason TEXT,
+    approved_by VARCHAR(100) DEFAULT 'Pending Approval',
+    status VARCHAR(50) NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Approved', 'Rejected')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_overtime_records_emp ON overtime_records(employee_id, overtime_date);
+CREATE INDEX IF NOT EXISTS idx_overtime_records_status ON overtime_records(status);
+
+-- ── 26. Staff Loans & Salary Advances (Auto-Deducted in Payroll) ──────────────
+CREATE TABLE IF NOT EXISTS staff_loans (
+    id VARCHAR(50) PRIMARY KEY,
+    hospital_id INT NOT NULL DEFAULT 1,
+    employee_id VARCHAR(50) REFERENCES employees(id) ON DELETE CASCADE,
+    employee_name VARCHAR(255) NOT NULL,
+    department VARCHAR(100) NOT NULL,
+    loan_type VARCHAR(100) NOT NULL,
+    sanctioned_amount NUMERIC(12, 2) NOT NULL,
+    disbursed_date DATE NOT NULL,
+    monthly_emi NUMERIC(10, 2) NOT NULL,
+    total_tenure_months INT NOT NULL,
+    remaining_tenure_months INT NOT NULL,
+    balance_outstanding NUMERIC(12, 2) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'Active' CHECK (status IN ('Active', 'Closed', 'Pending Sanction')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_staff_loans_emp ON staff_loans(employee_id);
+CREATE INDEX IF NOT EXISTS idx_staff_loans_status ON staff_loans(status);
+
+-- ── 27. Staff Loan Repayments Ledger (Immutable Transactional Audit Trail) ────
+CREATE TABLE IF NOT EXISTS staff_loan_repayments (
+    id SERIAL PRIMARY KEY,
+    loan_id VARCHAR(50) NOT NULL REFERENCES staff_loans(id) ON DELETE CASCADE,
+    hospital_id INT NOT NULL DEFAULT 1,
+    employee_id VARCHAR(50) NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+    amount NUMERIC(12, 2) NOT NULL,
+    balance_before NUMERIC(12, 2) NOT NULL,
+    balance_after NUMERIC(12, 2) NOT NULL,
+    recovery_type VARCHAR(50) NOT NULL CHECK (recovery_type IN ('MANUAL_EMI', 'PAYROLL_DEDUCTION', 'SETTLEMENT')),
+    recovery_period VARCHAR(20) NOT NULL,
+    payroll_run_id VARCHAR(100),
+    remarks TEXT,
+    created_by VARCHAR(100) DEFAULT 'System',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_loan_recovery_period UNIQUE (loan_id, recovery_period)
+);
+CREATE INDEX IF NOT EXISTS idx_loan_repayments_loan ON staff_loan_repayments(loan_id);
+CREATE INDEX IF NOT EXISTS idx_loan_repayments_period ON staff_loan_repayments(recovery_period);

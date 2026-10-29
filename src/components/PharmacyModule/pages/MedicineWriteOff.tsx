@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import {
   AlertTriangle,
   Search,
@@ -27,6 +27,16 @@ interface MedicineWriteOffProps {
 
 export default function MedicineWriteOff({ onNavigate }: MedicineWriteOffProps) {
   const { medicines, batches, writeOffs, refresh } = usePharmacyData()
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
 
   // Active Tab: "form" | "history"
   const [activeTab, setActiveTab] = useState<"form" | "history">("form")

@@ -169,8 +169,8 @@ export default function DoctorScheduling({
     setFormError(null)
   }
 
-  const handleReviewLeave = (leaveId: string, status: "Approved" | "Rejected") => {
-    HrmsDatabase.reviewLeave(leaveId, status, "HR Administrator", `Timetable Review: ${status}`)
+  const handleReviewLeave = async (leaveId: string, status: "Approved" | "Rejected") => {
+    await HrmsDatabase.reviewLeave(leaveId, status, "HR Administrator", `Timetable Review: ${status}`)
     setAllLeaves(HrmsDatabase.getLeaves())
   }
 

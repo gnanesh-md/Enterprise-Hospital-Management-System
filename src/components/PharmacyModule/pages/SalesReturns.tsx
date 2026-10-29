@@ -448,12 +448,13 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
   };
 
   // Re-print any past return bill
-  const handlePrintPastReturn = (ret: AppPharmacyReturn) => {
+  const handlePrintPastReturn = (ret: AppPharmacyReturn, view: "bill" | "return_voucher" = "bill") => {
     const allBills = PharmacyDatabase.getBills();
     let modBill = allBills.find(b => b.billNumber === ret.modifiedBillNumber);
     if (!modBill) {
       modBill = {
         id: ret.id,
+        isModifiedReturnBill: true,
         billNumber: ret.modifiedBillNumber || ("MOD-" + ret.originalBillNumber),
         patientId: ret.patientId || "",
         patientName: ret.patientName || "Patient",
@@ -487,8 +488,13 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
         createdBy: "Pharmacist",
         createdAt: ret.createdAt
       };
+    } else {
+      modBill = {
+        ...modBill,
+        isModifiedReturnBill: true,
+      };
     }
-    setPrintReturnModal({ bill: modBill, returnRecord: ret });
+    setPrintReturnModal({ bill: modBill, returnRecord: ret, initialView: view } as any);
   };
 
   // Delete return from history
@@ -526,12 +532,14 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
 
   return (
     <div className="space-y-6 font-sans text-[#0F1624]">
-      {printInv && <InvoicePrintModal bill={printInv} onClose={() => setPrintInv(null)} />}
+      {printInv && <InvoicePrintModal bill={printInv} onClose={() => setPrintInv(null)} autoPrint={true} />}
       {printReturnModal && (
         <InvoicePrintModal 
           bill={printReturnModal.bill} 
           returnRecord={printReturnModal.returnRecord} 
+          initialView={(printReturnModal as any).initialView}
           onClose={() => setPrintReturnModal(null)} 
+          autoPrint={true}
         />
       )}
 
@@ -897,12 +905,22 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                     ← Back to Returns
                   </button>
                   {processedReturn && processedModifiedBill && (
-                    <button 
-                      onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn })}
-                      className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-[12px] rounded-lg flex items-center gap-1.5 shadow-sm transition-colors"
-                    >
-                      <Printer size={13} /> Print Modified Bill
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn, initialView: "bill" } as any)}
+                        className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-[12px] rounded-lg flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        title="Print updated invoice with remaining active medicines"
+                      >
+                        <Printer size={13} /> Print Modified Bill
+                      </button>
+                      <button 
+                        onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn, initialView: "return_voucher" } as any)}
+                        className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-semibold text-[12px] rounded-lg flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        title="Print credit note refund voucher for returned medicines"
+                      >
+                        <RotateCcw size={13} /> Print Return Voucher
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1191,13 +1209,22 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                     </button>
 
                     {processedModifiedBill && processedReturn && (
-                      <button 
-                        onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn })}
-                        className="px-5 py-2.5 rounded text-white text-[13px] font-bold flex items-center gap-2 shadow-sm transition-colors hover:bg-green-700"
-                        style={{ background: "#16a34a" }}
-                      >
-                        <Printer size={15} /> Print Modified Bill
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn, initialView: "bill" } as any)}
+                          className="px-4 py-2.5 rounded text-white text-[13px] font-bold flex items-center gap-2 shadow-sm transition-colors hover:bg-emerald-800 cursor-pointer"
+                          style={{ background: "#059669" }}
+                        >
+                          <Printer size={15} /> Print Modified Bill
+                        </button>
+                        <button 
+                          onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn, initialView: "return_voucher" } as any)}
+                          className="px-4 py-2.5 rounded text-white text-[13px] font-bold flex items-center gap-2 shadow-sm transition-colors hover:bg-purple-800 cursor-pointer"
+                          style={{ background: "#7c3aed" }}
+                        >
+                          <RotateCcw size={15} /> Print Return Voucher
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1260,16 +1287,23 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <button 
-                              onClick={() => handlePrintPastReturn(ret)}
-                              title="Print Return Bill"
-                              className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-[#DDE2EC] text-[#334155] rounded hover:bg-gray-50 flex items-center gap-1 transition-colors"
+                              onClick={() => handlePrintPastReturn(ret, "bill")}
+                              title="Print Modified Bill"
+                              className="px-2 py-1 text-[11px] font-bold bg-teal-50 border border-teal-200 text-teal-800 rounded hover:bg-teal-100 flex items-center gap-1 transition-colors cursor-pointer"
                             >
-                              <Printer size={12} /> Print
+                              <Printer size={12} /> Modified Bill
+                            </button>
+                            <button 
+                              onClick={() => handlePrintPastReturn(ret, "return_voucher")}
+                              title="Print Return Refund Voucher"
+                              className="px-2 py-1 text-[11px] font-bold bg-purple-50 border border-purple-200 text-purple-800 rounded hover:bg-purple-100 flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <RotateCcw size={12} /> Voucher
                             </button>
                             <button 
                               onClick={() => handleDeleteReturn(ret)}
                               title="Remove from Returns History"
-                              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
                             >
                               <Trash2 size={13} />
                             </button>

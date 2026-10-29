@@ -12,7 +12,6 @@ import {
   XCircle,
   MessageSquare,
   ChevronRight,
-  PlusCircle,
 } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
 
@@ -39,6 +38,16 @@ export default function PrescriptionQueue({
   const [activeFilter, setActiveFilter] = useState("All")
   const [selected, setSelected] = useState<typeof prescriptions[0] | null>(null)
   const [search, setSearch] = useState("")
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
 
   const filtered = prescriptions.filter((rx) => {
     const matchStatus =
@@ -90,17 +99,6 @@ export default function PrescriptionQueue({
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-2 ml-auto">
-              <button
-                type="button"
-                onClick={() => {
-                  PharmacyDatabase.seedTestPrescriptionForSelling()
-                  refresh()
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-[#0F766E] text-white text-[12px] font-semibold rounded hover:bg-[#0c5e58] transition-colors shadow-sm"
-                title="Seed Mr. G KUMAR prescription with ready batch stock"
-              >
-                <PlusCircle size={14} /> Add Test Prescription (Mr. G KUMAR)
-              </button>
               <div className="flex items-center gap-2 bg-white border border-[#E2E8F0] rounded px-3 py-2">
                 <Search size={14} className="text-[#94A3B8]" />
                 <input

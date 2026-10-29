@@ -11,6 +11,13 @@ const MONTH_NUMBERS = {
   september: '09', october: '10', november: '11', december: '12',
 };
 
+// Tested decimal-safe rounding to 2 decimal places using MDN exponential notation
+export function round2(num) {
+  if (num === null || num === undefined || isNaN(Number(num))) return 0;
+  return Number(Math.round(Number(Number(num) + 'e+2')) + 'e-2');
+}
+
+
 // ── GET /api/hr/payroll ──────────────────────────────────────────────────────
 router.get('/payroll', async (req, res) => {
   try {
@@ -37,6 +44,7 @@ router.get('/payroll', async (req, res) => {
         pi.allowances,
         pi.gross,
         pi.pf,
+        COALESCE(pi.professional_tax, 0) as "professionalTax",
         pi.tax,
         pi.other_deductions as "otherDeductions",
         pi.total_deductions as "totalDeductions",
@@ -114,6 +122,227 @@ router.get('/payroll/policies', async (req, res) => {
   } catch (err) {
     console.error('Error fetching payroll policy:', err);
     return res.status(500).json({ error: 'Failed to fetch payroll policy' });
+  }
+});
+
+// ── GET /api/hr/payroll/preview (Unsaved Dynamic Calendar Proration Preview) ─
+router.get('/payroll/preview', async (req, res) => {
+  try {
+    const hospitalId = (req.user && req.user.hospitalId) || 1;
+    const employeeId = req.query.employeeId || 'EMP-101';
+    const month = req.query.month || 'October';
+    const year = parseInt(req.query.year || '2026', 10);
+    const includeLoan = req.query.includeLoan === 'true' || req.query.includeLoan === true;
+
+    const monthNum = MONTH_NUMBERS[month.toLowerCase()] || '10';
+    const startDate = `${year}-${monthNum}-01`;
+    const lastDayOfMonth = new Date(year, parseInt(monthNum, 10), 0).getDate();
+    const endDate = `${year}-${monthNum}-${String(lastDayOfMonth).padStart(2, '0')}`;
+
+    // 1. Fetch dynamic policy
+    const policyRes = await query(`
+      SELECT * FROM payroll_policies WHERE hospital_id = $1 AND is_active = TRUE ORDER BY updated_at DESC LIMIT 1;
+    `, [hospitalId]);
+    const policy = policyRes.rows[0] || {
+      pf_percentage: 12.0,
+      tds_percentage: 10.0,
+      daily_pay_divisor_type: 'month_days',
+      daily_pay_fixed_days: 30.0,
+      overtime_multiplier: 1.50,
+      standard_work_hours_per_day: 8.0,
+    };
+
+    const dailyDivisor = policy.daily_pay_divisor_type === 'month_days'
+      ? lastDayOfMonth
+      : (parseFloat(policy.daily_pay_fixed_days) || 30.0);
+    const otMultiplier = parseFloat(policy.overtime_multiplier) || 1.50;
+    const stdWorkHours = parseFloat(policy.standard_work_hours_per_day) || 8.0;
+    const pfPct = parseFloat(policy.pf_percentage) || 12.0;
+    const tdsPct = parseFloat(policy.tds_percentage) || 10.0;
+
+    // 2. Fetch employee details
+    const empRes = await query(`
+      SELECT 
+        e.id, e.name, e.department, e.designation, e.joining_date, e.status, e.last_working_date,
+        b.account_number, b.ifsc_code, b.bank_name, b.pan_number,
+        s.basic, s.hra, s.allowances, s.pf, s.tax,
+        COALESCE(s.professional_tax, 0) as professional_tax
+      FROM employees e
+      JOIN salary_structures s ON s.employee_id = e.id AND s.is_active = TRUE
+      LEFT JOIN employee_bank_details b ON b.employee_id = e.id
+      WHERE e.id = $1 AND e.hospital_id = $2;
+    `, [employeeId, hospitalId]);
+
+    if (empRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Employee not found or salary structure not active' });
+    }
+
+    const emp = empRes.rows[0];
+    const empJoinDateStr = emp.joining_date
+      ? (typeof emp.joining_date === 'string' ? emp.joining_date.split('T')[0] : emp.joining_date.toISOString().split('T')[0])
+      : startDate;
+    const cycleStartDate = empJoinDateStr > startDate ? empJoinDateStr : startDate;
+
+    // Check if joined after period
+    if (empJoinDateStr > endDate) {
+      return res.json({
+        isUnsavedPreview: true,
+        previewType: 'UNSAVED_CALCULATION',
+        employeeId,
+        staffName: emp.name,
+        month,
+        year,
+        paidDays: 0,
+        activeDays: 0,
+        daysInMonth: lastDayOfMonth,
+        basic: 0, hra: 0, allowances: 0, gross: 0,
+        pf: 0, tax: 0, professionalTax: 0, otherDeductions: 0,
+        totalDeductions: 0, netPay: 0,
+        note: 'Employee joined after payroll month end. Zero eligible earnings.'
+      });
+    }
+
+    let activeDaysInMonth = lastDayOfMonth;
+    let preJoiningUnworkedDays = 0;
+    if (empJoinDateStr > startDate) {
+      const joinDay = parseInt(empJoinDateStr.split('-')[2], 10);
+      activeDaysInMonth = Math.max(0, lastDayOfMonth - joinDay + 1);
+      preJoiningUnworkedDays = Math.max(0, joinDay - 1);
+    }
+
+    // Attendance
+    const attRes = await query(`
+      SELECT 
+        COUNT(*) FILTER (WHERE attendance_status IN ('Present', 'Late')) as present_days,
+        COUNT(*) FILTER (WHERE attendance_status = 'Absent') as absent_days,
+        COUNT(*) FILTER (WHERE attendance_status IN ('Half Day', 'Half-Day')) as half_days,
+        COALESCE(SUM(overtime_hours), 0) as total_overtime_hours
+      FROM attendance
+      WHERE employee_id = $1 AND attendance_date BETWEEN $2 AND $3;
+    `, [emp.id, cycleStartDate, endDate]);
+    const att = attRes.rows[0] || {};
+
+    // Leaves
+    const leaveRes = await query(`
+      SELECT 
+        leave_type,
+        SUM(
+          LEAST(end_date, $3::date) - GREATEST(start_date, $2::date) + 1
+        ) as total_days
+      FROM leave_requests
+      WHERE employee_id = $1 AND status = 'Approved' 
+        AND (start_date <= $3::date AND end_date >= $2::date)
+      GROUP BY leave_type;
+    `, [emp.id, cycleStartDate, endDate]);
+
+    let paidLeaveDays = 0;
+    let unpaidLeaveDays = 0;
+    for (const l of leaveRes.rows) {
+      const lDays = parseFloat(l.total_days || 0);
+      if (l.leave_type.toLowerCase().includes('unpaid') || l.leave_type.toLowerCase().includes('without pay')) {
+        unpaidLeaveDays += lDays;
+      } else {
+        paidLeaveDays += lDays;
+      }
+    }
+
+    const absentDays = parseFloat(att.absent_days || 0);
+    const halfDays = parseFloat(att.half_days || 0);
+    const overtimeHours = parseFloat(att.total_overtime_hours || 0);
+    const unworkedUnpaidDays = unpaidLeaveDays + absentDays + (halfDays * 0.5);
+    const paidDays = Math.max(0, activeDaysInMonth - unworkedUnpaidDays);
+
+    const baseBasic = parseFloat(emp.basic || 0);
+    const baseHra = parseFloat(emp.hra || 0);
+    const baseAllowances = parseFloat(emp.allowances || 0);
+    const baseProfessionalTax = parseFloat(emp.professional_tax || 0);
+    const baseMonthlyGross = round2(baseBasic + baseHra + baseAllowances);
+
+    // Actual calendar-day proration (days in month = actual calendar days in month)
+    const paidRatio = lastDayOfMonth > 0 ? (paidDays / lastDayOfMonth) : 0;
+    const earnedGross = round2(baseMonthlyGross * paidRatio);
+    const earnedBasic = round2(baseBasic * paidRatio);
+    const earnedHra = round2(baseHra * paidRatio);
+    const earnedAllowances = round2(earnedGross - earnedBasic - earnedHra);
+
+    const hourlyOvertimeRate = ((baseBasic / dailyDivisor) / stdWorkHours) * otMultiplier;
+    const overtimeAmount = round2(overtimeHours * hourlyOvertimeRate);
+    const totalEarnings = round2(earnedGross + overtimeAmount);
+
+    const pf = round2(earnedBasic * (pfPct / 100));
+    const tax = round2(earnedGross * (tdsPct / 100));
+    const professionalTax = round2(baseProfessionalTax * paidRatio);
+    const statutoryDeductions = round2(pf + tax + professionalTax);
+
+    const netBeforeLoan = round2(totalEarnings - statutoryDeductions);
+
+    // Loan query
+    let scheduledEmi = 0;
+    let actualLoanDeduct = 0;
+    let unpaidEmiAmount = 0;
+    if (includeLoan) {
+      const loanRes = await query(`
+        SELECT monthly_emi, balance_outstanding, remaining_tenure_months
+        FROM staff_loans
+        WHERE employee_id = $1 AND status = 'Active' AND balance_outstanding > 0
+        LIMIT 1;
+      `, [emp.id]);
+      if (loanRes.rows.length > 0) {
+        const l = loanRes.rows[0];
+        const bal = parseFloat(l.balance_outstanding);
+        const emi = parseFloat(l.monthly_emi);
+        const tenure = parseInt(l.remaining_tenure_months, 10);
+        scheduledEmi = (emi >= bal || tenure <= 1) ? bal : emi;
+        actualLoanDeduct = Math.min(scheduledEmi, Math.max(0, netBeforeLoan));
+        unpaidEmiAmount = round2(scheduledEmi - actualLoanDeduct);
+      }
+    }
+
+    const totalDeductions = round2(statutoryDeductions + actualLoanDeduct);
+    const netPay = round2(totalEarnings - totalDeductions);
+    const leaveDeductions = round2(Math.max(0, baseMonthlyGross - earnedGross));
+
+    return res.json({
+      isUnsavedPreview: true,
+      previewType: 'UNSAVED_CALCULATION',
+      employeeId: emp.id,
+      staffName: emp.name,
+      department: emp.department,
+      designation: emp.designation,
+      joiningDate: empJoinDateStr,
+      month,
+      year,
+      daysInMonth: lastDayOfMonth,
+      activeDays: activeDaysInMonth,
+      paidDays,
+      preJoiningDays: preJoiningUnworkedDays,
+      workingDaysDisplay: `${paidDays} / ${lastDayOfMonth} Days`,
+      basic: earnedBasic,
+      hra: earnedHra,
+      allowances: earnedAllowances,
+      gross: earnedGross,
+      overtimeHours,
+      overtimeAmount,
+      totalEarnings,
+      pf,
+      tax,
+      professionalTax,
+      statutoryDeductions,
+      netBeforeLoan,
+      scheduledEmi,
+      otherDeductions: actualLoanDeduct,
+      unpaidEmiAmount,
+      totalDeductions,
+      netPay,
+      leaveDeductions,
+      invariants: {
+        componentsSumToGross: round2(earnedBasic + earnedHra + earnedAllowances) === earnedGross,
+        accountingEquation: round2(totalEarnings - totalDeductions) === netPay
+      }
+    });
+  } catch (err) {
+    console.error('Error generating payroll preview:', err);
+    return res.status(500).json({ error: 'Failed to generate payroll preview' });
   }
 });
 
@@ -254,21 +483,24 @@ router.post('/payroll/run', requireHrAdmin, async (req, res) => {
       const pfPct = parseFloat(policy.pf_percentage) || 12.0;
       const tdsPct = parseFloat(policy.tds_percentage) || 10.0;
 
-      // 2. Fetch all active employees (excluding Inactive, Resigned, Terminated)
+      // 2. Fetch all active employees eligible in this period (excluding Inactive, Resigned, Terminated or joined after period ends)
       const empSql = `
         SELECT 
           e.id, e.name, e.department, e.designation, e.joining_date, e.status, e.last_working_date,
           b.account_number, b.ifsc_code, b.bank_name, b.pan_number,
-          s.basic, s.hra, s.allowances, s.pf, s.tax
+          s.basic, s.hra, s.allowances, s.pf, s.tax,
+          COALESCE(s.professional_tax, 0) as professional_tax
         FROM employees e
         JOIN salary_structures s ON s.employee_id = e.id AND s.is_active = TRUE
         LEFT JOIN employee_bank_details b ON b.employee_id = e.id
         WHERE e.hospital_id = $1 
           AND e.is_active = TRUE 
           AND e.status NOT IN ('Inactive', 'Resigned', 'Terminated')
+          AND e.joining_date <= $2
+          AND (e.last_working_date IS NULL OR e.last_working_date >= $3)
         ORDER BY e.name ASC;
       `;
-      const empRes = await client.query(empSql, [hospitalId]);
+      const empRes = await client.query(empSql, [hospitalId, endDate, startDate]);
 
       // Remove existing unlocked items for this run if recalculating
       if (existingRunRes.rows.length > 0) {
@@ -281,7 +513,21 @@ router.post('/payroll/run', requireHrAdmin, async (req, res) => {
       const preparedItems = [];
 
       for (const emp of empRes.rows) {
-        // Query Attendance for this employee in this month
+        const empJoinDateStr = emp.joining_date 
+          ? (typeof emp.joining_date === 'string' ? emp.joining_date.split('T')[0] : emp.joining_date.toISOString().split('T')[0]) 
+          : startDate;
+        const cycleStartDate = empJoinDateStr > startDate ? empJoinDateStr : startDate;
+
+        // Mid-period joining and active calendar days in month
+        let activeDaysInMonth = lastDayOfMonth;
+        let preJoiningUnworkedDays = 0;
+        if (empJoinDateStr > startDate) {
+          const joinDay = parseInt(empJoinDateStr.split('-')[2], 10);
+          activeDaysInMonth = Math.max(0, lastDayOfMonth - joinDay + 1);
+          preJoiningUnworkedDays = Math.max(0, joinDay - 1);
+        }
+
+        // Query Attendance strictly between cycleStartDate and endDate to prevent double deductions
         const attSql = `
           SELECT 
             COUNT(*) FILTER (WHERE attendance_status IN ('Present', 'Late')) as present_days,
@@ -294,20 +540,22 @@ router.post('/payroll/run', requireHrAdmin, async (req, res) => {
           FROM attendance
           WHERE employee_id = $1 AND attendance_date BETWEEN $2 AND $3;
         `;
-        const attRes = await client.query(attSql, [emp.id, startDate, endDate]);
+        const attRes = await client.query(attSql, [emp.id, cycleStartDate, endDate]);
         const att = attRes.rows[0] || {};
 
-        // Query Leaves for this employee in this month
+        // Query Leaves strictly between cycleStartDate and endDate (attributing only days overlapping this period)
         const leaveSql = `
           SELECT 
             leave_type,
-            SUM(days) as total_days
+            SUM(
+              LEAST(end_date, $3::date) - GREATEST(start_date, $2::date) + 1
+            ) as total_days
           FROM leave_requests
           WHERE employee_id = $1 AND status = 'Approved' 
-            AND (start_date <= $3 AND end_date >= $2)
+            AND (start_date <= $3::date AND end_date >= $2::date)
           GROUP BY leave_type;
         `;
-        const leaveRes = await client.query(leaveSql, [emp.id, startDate, endDate]);
+        const leaveRes = await client.query(leaveSql, [emp.id, cycleStartDate, endDate]);
 
         let paidLeaveDays = 0;
         let unpaidLeaveDays = 0;
@@ -323,33 +571,87 @@ router.post('/payroll/run', requireHrAdmin, async (req, res) => {
         const absentDays = parseFloat(att.absent_days || 0);
         const halfDays = parseFloat(att.half_days || 0);
         const overtimeHours = parseFloat(att.total_overtime_hours || 0);
-        const effectiveUnpaidDeductionDays = unpaidLeaveDays + absentDays + (halfDays * 0.5);
+        const unworkedUnpaidDays = unpaidLeaveDays + absentDays + (halfDays * 0.5);
+
+        // Paid days strictly within eligible active days
+        const paidDays = Math.max(0, activeDaysInMonth - unworkedUnpaidDays);
 
         // Salary components from active salary structure
-        const basic = parseFloat(emp.basic || 0);
-        const hra = parseFloat(emp.hra || 0);
-        const allowances = parseFloat(emp.allowances || 0);
-        const baseMonthlyGross = basic + hra + allowances;
+        const baseBasic = parseFloat(emp.basic || 0);
+        const baseHra = parseFloat(emp.hra || 0);
+        const baseAllowances = parseFloat(emp.allowances || 0);
+        const baseProfessionalTax = parseFloat(emp.professional_tax || 0);
+        const baseMonthlyGross = round2(baseBasic + baseHra + baseAllowances);
 
-        // Daily rate and hourly overtime rate calculated using configurable policy rules
-        const dailyRate = baseMonthlyGross / dailyDivisor;
-        const leaveDeductions = parseFloat((effectiveUnpaidDeductionDays * dailyRate).toFixed(2));
+        // Actual calendar-day proration: employed days divided by total calendar days in month
+        const paidRatio = lastDayOfMonth > 0 ? (paidDays / lastDayOfMonth) : 0;
 
-        const hourlyOvertimeRate = ((basic / dailyDivisor) / stdWorkHours) * otMultiplier;
-        const overtimeAmount = parseFloat((overtimeHours * hourlyOvertimeRate).toFixed(2));
+        const earnedGross = round2(baseMonthlyGross * paidRatio);
+        const earnedBasic = round2(baseBasic * paidRatio);
+        const earnedHra = round2(baseHra * paidRatio);
+        // Balancing component ensures: earnedBasic + earnedHra + earnedAllowances === earnedGross exactly!
+        const earnedAllowances = round2(earnedGross - earnedBasic - earnedHra);
 
-        // Adjusted Gross Earnings
-        const adjustedGross = Math.max(0, parseFloat((baseMonthlyGross + overtimeAmount - leaveDeductions).toFixed(2)));
+        // Overtime rate based on base hourly basic
+        const hourlyOvertimeRate = ((baseBasic / dailyDivisor) / stdWorkHours) * otMultiplier;
+        const overtimeAmount = round2(overtimeHours * hourlyOvertimeRate);
 
-        // Statutory Deductions calculated using configurable policy percentages
-        const pf = parseFloat(emp.pf || ((basic * pfPct) / 100).toFixed(2));
-        const tax = parseFloat(emp.tax || ((adjustedGross * tdsPct) / 100).toFixed(2));
-        const totalDeductionsItem = parseFloat((pf + tax + leaveDeductions).toFixed(2));
-        const netPay = Math.max(0, parseFloat((baseMonthlyGross + overtimeAmount - totalDeductionsItem).toFixed(2)));
+        // Total earnings
+        const totalEarnings = round2(earnedGross + overtimeAmount);
 
-        totalGross += adjustedGross;
-        totalDeductions += totalDeductionsItem;
-        totalDisbursed += netPay;
+        // Statutory deductions calculated using policy percentages on earned values
+        const pf = round2(earnedBasic * (pfPct / 100));
+        const tax = round2(earnedGross * (tdsPct / 100));
+        const professionalTax = round2(baseProfessionalTax * paidRatio);
+        const statutoryDeductions = round2(pf + tax + professionalTax);
+
+        // Disposable net before loan recovery (ensures take-home cannot become negative)
+        const netBeforeLoan = round2(totalEarnings - statutoryDeductions);
+
+        // Active staff loan EMI deduction from staff_loans table
+        const cyclePeriod = `${year}-${monthNum}`;
+        const loanRes = await client.query(
+          `SELECT sl.id, sl.monthly_emi, sl.balance_outstanding, sl.remaining_tenure_months
+           FROM staff_loans sl
+           WHERE sl.employee_id = $1 AND sl.status = 'Active' AND sl.balance_outstanding > 0
+             AND NOT EXISTS (
+               SELECT 1 FROM staff_loan_repayments slr 
+               WHERE slr.loan_id = sl.id AND slr.recovery_period = $2
+             )`,
+          [emp.id, cyclePeriod]
+        );
+
+        let actualLoanDeduct = 0;
+        let scheduledEmiTotal = 0;
+        let availableForLoan = Math.max(0, netBeforeLoan);
+
+        for (const l of loanRes.rows) {
+          const bal = parseFloat(l.balance_outstanding);
+          const emi = parseFloat(l.monthly_emi);
+          const tenure = parseInt(l.remaining_tenure_months, 10);
+          const scheduledEmi = (emi >= bal || tenure <= 1) ? bal : emi;
+          scheduledEmiTotal += scheduledEmi;
+
+          const loanRecovery = Math.min(scheduledEmi, availableForLoan);
+          actualLoanDeduct += loanRecovery;
+          availableForLoan = Math.max(0, round2(availableForLoan - loanRecovery));
+        }
+        actualLoanDeduct = round2(actualLoanDeduct);
+        const unpaidEmiAmount = round2(scheduledEmiTotal - actualLoanDeduct);
+
+        // Total Deductions = Statutory Deductions + Actual Loan Recovery Withheld
+        // (Note: Unpaid leave / LOP is already reflected in earned gross, NOT double-deducted here)
+        const totalDeductionsItem = round2(statutoryDeductions + actualLoanDeduct);
+
+        // Net Pay: Guaranteed accounting invariant
+        const netPay = round2(totalEarnings - totalDeductionsItem);
+
+        // Informational leave deductions (full base minus earned gross)
+        const leaveDeductions = round2(Math.max(0, baseMonthlyGross - earnedGross));
+
+        totalGross = round2(totalGross + earnedGross);
+        totalDeductions = round2(totalDeductions + totalDeductionsItem);
+        totalDisbursed = round2(totalDisbursed + netPay);
 
         const maskedAcc = emp.account_number ? `••••••••${emp.account_number.slice(-4)}` : '••••••••1001';
         const maskedPan = emp.pan_number ? `•••••${emp.pan_number.slice(-4)}` : '•••••1234';
@@ -360,9 +662,14 @@ router.post('/payroll/run', requireHrAdmin, async (req, res) => {
           halfDays,
           paidLeaveDays,
           unpaidLeaveDays,
+          preJoiningDays: preJoiningUnworkedDays,
+          eligibleDays: activeDaysInMonth,
           overtimeHours,
           totalWorkHours: parseFloat(att.total_work_hours || 0),
           totalLateMinutes: parseInt(att.total_late_minutes || 0, 10),
+          scheduledEmi: scheduledEmiTotal,
+          actualLoanDeduct,
+          unpaidEmiAmount,
         };
 
         preparedItems.push({
@@ -370,9 +677,14 @@ router.post('/payroll/run', requireHrAdmin, async (req, res) => {
           name: emp.name,
           department: emp.department,
           designation: emp.designation,
-          basic, hra, allowances,
-          gross: adjustedGross,
-          pf, tax,
+          basic: earnedBasic,
+          hra: earnedHra,
+          allowances: earnedAllowances,
+          gross: earnedGross,
+          pf,
+          tax,
+          professionalTax,
+          otherDeductions: actualLoanDeduct,
           totalDeductions: totalDeductionsItem,
           netPay,
           paidLeaveDays,
@@ -413,20 +725,20 @@ router.post('/payroll/run', requireHrAdmin, async (req, res) => {
         await client.query(`
           INSERT INTO payroll_items (
             payroll_run_id, employee_id, staff_name, department, designation,
-            basic, hra, allowances, gross, pf, tax, total_deductions, net_pay,
+            basic, hra, allowances, gross, pf, professional_tax, tax, other_deductions, total_deductions, net_pay,
             paid_leave_days, unpaid_leave_days, absent_days, overtime_hours,
             overtime_amount, leave_deductions, attendance_summary,
             bank_account_masked, pan_masked, bank_name, ifsc_code, status
           ) VALUES (
             $1, $2, $3, $4, $5,
-            $6, $7, $8, $9, $10, $11, $12, $13,
-            $14, $15, $16, $17,
-            $18, $19, $20,
-            $21, $22, $23, $24, 'Pending'
+            $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+            $16, $17, $18, $19,
+            $20, $21, $22,
+            $23, $24, $25, $26, 'Pending'
           );
         `, [
           runId, item.empId, item.name, item.department, item.designation,
-          item.basic, item.hra, item.allowances, item.gross, item.pf, item.tax, item.totalDeductions, item.netPay,
+          item.basic, item.hra, item.allowances, item.gross, item.pf, item.professionalTax, item.tax, item.otherDeductions, item.totalDeductions, item.netPay,
           item.paidLeaveDays, item.unpaidLeaveDays, item.absentDays, item.overtimeHours,
           item.overtimeAmount, item.leaveDeductions, JSON.stringify(item.attSummary),
           item.maskedAcc, item.maskedPan, item.bankName, item.ifsc
@@ -668,6 +980,97 @@ router.post('/payroll/:id/pay', requireHrAdmin, async (req, res) => {
           transaction_ref = $2
         WHERE payroll_run_id = $3;
       `, [today, txnPrefix, id]);
+
+      // Deduct monthly installment from active loans for employees in this payroll run,
+      // strictly skipping loans whose installment for this recovery period was already recovered (manual or prior)
+      const runMonth = runRes.rows[0].month;
+      const runYear = runRes.rows[0].year;
+      const runMonthNum = MONTH_NUMBERS[runMonth.toLowerCase()] || '09';
+      const recoveryPeriod = `${runYear}-${runMonthNum}`;
+
+      const eligibleLoans = await client.query(`
+        SELECT sl.id, sl.employee_id, sl.employee_name, sl.monthly_emi, sl.balance_outstanding, sl.remaining_tenure_months, sl.status
+        FROM staff_loans sl
+        WHERE sl.status = 'Active' AND sl.balance_outstanding > 0
+          AND sl.employee_id IN (SELECT employee_id FROM payroll_items WHERE payroll_run_id = $1)
+          AND NOT EXISTS (
+            SELECT 1 FROM staff_loan_repayments slr
+            WHERE slr.loan_id = sl.id AND slr.recovery_period = $2
+          )
+        FOR UPDATE OF sl;
+      `, [id, recoveryPeriod]);
+
+      for (const loan of eligibleLoans.rows) {
+        const bal = parseFloat(loan.balance_outstanding);
+        const tenure = parseInt(loan.remaining_tenure_months, 10);
+        const scheduledEmi = parseFloat(loan.monthly_emi);
+
+        // Fetch actual loan deduction recorded on payroll_items for this employee in this run
+        const itemRes = await client.query(
+          `SELECT other_deductions FROM payroll_items WHERE payroll_run_id = $1 AND employee_id = $2;`,
+          [id, loan.employee_id]
+        );
+        const actualDeduction = itemRes.rows.length > 0 ? parseFloat(itemRes.rows[0].other_deductions || 0) : 0;
+
+        if (actualDeduction > 0) {
+          const repaymentAmount = Math.min(bal, actualDeduction);
+          const newBalance = Math.max(0, round2(bal - repaymentAmount));
+          // If repayment covers at least the full scheduled EMI or closes the loan, decrement tenure
+          const newTenure = (repaymentAmount >= scheduledEmi || newBalance <= 0) ? Math.max(0, tenure - 1) : tenure;
+          const newStatus = (newBalance <= 0 || newTenure <= 0) ? 'Closed' : 'Active';
+
+          // 1. Record repayment in ledger
+          await client.query(`
+            INSERT INTO staff_loan_repayments (
+              loan_id, hospital_id, employee_id, amount,
+              balance_before, balance_after, recovery_type,
+              recovery_period, payroll_run_id, remarks, created_by
+            ) VALUES ($1, $2, $3, $4, $5, $6, 'PAYROLL_DEDUCTION', $7, $8, $9, $10)
+            ON CONFLICT (loan_id, recovery_period) DO NOTHING;
+          `, [
+            loan.id, hospitalId, loan.employee_id, repaymentAmount,
+            bal, newBalance, recoveryPeriod, id,
+            `Automated deduction via payroll cycle ${runMonth} ${runYear} (${id})`,
+            req.user.username
+          ]);
+
+          // 2. Update loan master row
+          await client.query(`
+            UPDATE staff_loans
+            SET balance_outstanding = $1, remaining_tenure_months = $2, status = $3, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $4;
+          `, [newBalance, newTenure, newStatus, loan.id]);
+
+          // 3. Log audit entry for loan recovery
+          await logAudit({
+            client,
+            hospitalId,
+            userId: req.user.userId,
+            actorUsername: req.user.username,
+            employeeId: loan.employee_id,
+            employeeName: loan.employee_name,
+            module: 'Payroll',
+            action: 'LOAN_EMI_REPAYMENT',
+            entityType: 'STAFF_LOAN',
+            entityId: loan.id,
+            oldValue: {
+              balanceOutstanding: bal,
+              remainingTenureMonths: tenure,
+              status: loan.status,
+            },
+            newValue: {
+              repaymentAmount,
+              balanceOutstanding: newBalance,
+              remainingTenureMonths: newTenure,
+              status: newStatus,
+              recoveryPeriod,
+              payrollRunId: id,
+            },
+            reason: `Payroll deduction for cycle ${runMonth} ${runYear} (${id})`,
+            ipAddress: req.ip || '127.0.0.1',
+          });
+        }
+      }
 
       await logAudit({
         client,

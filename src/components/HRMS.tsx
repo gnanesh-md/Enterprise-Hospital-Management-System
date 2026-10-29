@@ -21,6 +21,16 @@ import AttendanceModal from "./hrms/AttendanceModal"
 import PayrollRevisionModal from "./hrms/PayrollRevisionModal"
 import PayrollPolicyModal from "./hrms/PayrollPolicyModal"
 import DoctorScheduling from "./DoctorScheduling"
+import BiometricDeviceDashboard from "./hrms/BiometricDeviceDashboard"
+import MonthlyDutyRoster from "./hrms/MonthlyDutyRoster"
+import OutdoorDutyModal from "./hrms/OutdoorDutyModal"
+import OvertimeRegisterModal from "./hrms/OvertimeRegisterModal"
+import StaffLoanModal from "./hrms/StaffLoanModal"
+import DisciplinaryMemoModal from "./hrms/DisciplinaryMemoModal"
+import AttendanceRecalculateModal from "./hrms/AttendanceRecalculateModal"
+import ManualPunchModal from "./hrms/ManualPunchModal"
+import MusterRollView from "./hrms/MusterRollView"
+import BatchDataUtilityModal from "./hrms/BatchDataUtilityModal"
 import {
   Users,
   Calendar,
@@ -53,17 +63,31 @@ import {
   CheckSquare,
   ChevronRight,
   Settings2,
+  Cpu,
+  FileSpreadsheet,
 } from "lucide-react"
 
 interface HRMSProps {
   onNavigate?: (module: string) => void
 }
 
-type TabType = "directory" | "shifts" | "timetables" | "leaves" | "payroll" | "compliance" | "audit"
+type TabType =
+  | "biometric"
+  | "monthly_roster"
+  | "directory"
+  | "shifts"
+  | "timetables"
+  | "muster_roll"
+  | "leaves"
+  | "payroll"
+  | "compliance"
+  | "audit"
 
 export default function HRMS({ onNavigate }: HRMSProps) {
   const [activeTab, setActiveTab] = useState<TabType>("directory")
+  const [showDeviceDiagnostics, setShowDeviceDiagnostics] = useState<boolean>(false)
   const [selectedDoctorForSchedule, setSelectedDoctorForSchedule] = useState<string>("")
+  const [selectedCompany, setSelectedCompany] = useState<string>("All")
 
   // Reactive DB State
   const [staffList, setStaffList] = useState<StaffMember[]>([])
@@ -86,12 +110,22 @@ export default function HRMS({ onNavigate }: HRMSProps) {
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null)
   const [viewingStaff, setViewingStaff] = useState<StaffMember | null>(null)
   const [payslipStaff, setPayslipStaff] = useState<StaffMember | null>(null)
+  const [payslipItem, setPayslipItem] = useState<PayrollEntry | null>(null)
   const [renewingCredential, setRenewingCredential] = useState<StaffCredential | null>(null)
   const [lifecycleStaff, setLifecycleStaff] = useState<StaffMember | null>(null)
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false)
   const [attendanceRecordToEdit, setAttendanceRecordToEdit] = useState<AttendanceRecord | null>(null)
   const [payrollRevisionItem, setPayrollRevisionItem] = useState<PayrollEntry | null>(null)
   const [isPayrollPolicyOpen, setIsPayrollPolicyOpen] = useState(false)
+
+  // Biometric & Operations Modals
+  const [isOutdoorOpen, setIsOutdoorOpen] = useState(false)
+  const [isOvertimeOpen, setIsOvertimeOpen] = useState(false)
+  const [isStaffLoanOpen, setIsStaffLoanOpen] = useState(false)
+  const [isDisciplinaryOpen, setIsDisciplinaryOpen] = useState(false)
+  const [isRecalculateOpen, setIsRecalculateOpen] = useState(false)
+  const [isManualPunchOpen, setIsManualPunchOpen] = useState(false)
+  const [isBatchUtilityOpen, setIsBatchUtilityOpen] = useState(false)
 
   // Filter & Search Controls
   const [search, setSearch] = useState("")
@@ -105,9 +139,13 @@ export default function HRMS({ onNavigate }: HRMSProps) {
   // Attendance Filters
   const [attendanceDateFilter, setAttendanceDateFilter] = useState<string>("")
   const [attendanceQuickFilter, setAttendanceQuickFilter] = useState<"All" | "Late" | "Absent" | "Overtime" | "Missed Punch" | "On Leave">("All")
+  const [isAttendanceLoading, setIsAttendanceLoading] = useState<boolean>(false)
+  const [attendanceError, setAttendanceError] = useState<string | null>(null)
+  const attendanceRequestIdRef = React.useRef<number>(0)
+  const attendanceAbortControllerRef = React.useRef<AbortController | null>(null)
 
   // Payroll Workflow state
-  const [payrollMonth] = useState("September")
+  const [payrollMonth, setPayrollMonth] = useState("September")
   const [payrollYear] = useState(2026)
   const [isProcessingPayroll, setIsProcessingPayroll] = useState(false)
 
@@ -120,9 +158,45 @@ export default function HRMS({ onNavigate }: HRMSProps) {
     setTimeout(() => setNotice(null), 3500)
   }
 
+  const fetchAttendanceData = async (dateFilter?: string) => {
+    if (attendanceAbortControllerRef.current) {
+      attendanceAbortControllerRef.current.abort()
+    }
+    const abortController = new AbortController()
+    attendanceAbortControllerRef.current = abortController
+
+    const requestId = ++attendanceRequestIdRef.current
+    setIsAttendanceLoading(true)
+    setAttendanceError(null)
+
+    try {
+      const params: Record<string, string> = {}
+      if (dateFilter && dateFilter.trim()) {
+        params.date = dateFilter.trim()
+      }
+      const records = await HrmsDatabase.fetchAttendanceFiltered(params, abortController.signal)
+      if (requestId === attendanceRequestIdRef.current) {
+        setAttendanceList(records)
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        return
+      }
+      if (requestId === attendanceRequestIdRef.current) {
+        const errorMsg = err.message || "Failed to load attendance records"
+        setAttendanceError(errorMsg)
+        showToast(`Attendance Error: ${errorMsg}`)
+      }
+    } finally {
+      if (requestId === attendanceRequestIdRef.current) {
+        setIsAttendanceLoading(false)
+      }
+    }
+  }
+
   const loadData = async () => {
     setStaffList(HrmsDatabase.getStaffList())
-    setAttendanceList(HrmsDatabase.getAttendanceList())
+    fetchAttendanceData(attendanceDateFilter)
     setLeavesList(HrmsDatabase.getLeaves())
     setPayrollList(HrmsDatabase.getPayroll(payrollMonth, payrollYear))
     setCredentialsList(HrmsDatabase.getCredentials())
@@ -152,12 +226,6 @@ export default function HRMS({ onNavigate }: HRMSProps) {
   }
 
   useEffect(() => {
-    // Automatically purge legacy demo cache once on mount for clean state
-    const CLEAN_KEY = "imperial_hrms_clean_slate_executed_v6"
-    if (typeof window !== "undefined" && !sessionStorage.getItem(CLEAN_KEY)) {
-      sessionStorage.setItem(CLEAN_KEY, "true")
-      HrmsDatabase.clearAllData()
-    }
     loadData()
     const unsubscribe = HrmsDatabase.subscribe(() => {
       loadData()
@@ -168,6 +236,16 @@ export default function HRMS({ onNavigate }: HRMSProps) {
       clearInterval(timer)
     }
   }, [])
+
+  useEffect(() => {
+    setPayrollList(HrmsDatabase.getPayroll(payrollMonth, payrollYear))
+  }, [payrollMonth, payrollYear])
+
+  useEffect(() => {
+    if (activeTab === "shifts") {
+      fetchAttendanceData(attendanceDateFilter)
+    }
+  }, [attendanceDateFilter, activeTab])
 
   useEffect(() => {
     if (activeTab === "audit") {
@@ -192,7 +270,7 @@ export default function HRMS({ onNavigate }: HRMSProps) {
 
   // Filtered attendance list
   const filteredAttendance = attendanceList.filter((rec) => {
-    const matchesDate = !attendanceDateFilter || rec.date === attendanceDateFilter
+    const matchesDate = !attendanceDateFilter || Boolean(rec.date && rec.date.startsWith(attendanceDateFilter))
     let matchesQuick = true
     if (attendanceQuickFilter === "Late") {
       matchesQuick = rec.status === "Late" || (rec.lateMinutes || 0) > 0
@@ -238,9 +316,14 @@ export default function HRMS({ onNavigate }: HRMSProps) {
     }
   }
 
-  const handleReviewLeave = (id: string, status: "Approved" | "Rejected") => {
-    HrmsDatabase.reviewLeave(id, status, "HR Administrator", `Decision: ${status}`)
-    showToast(`Leave request ${status.toLowerCase()} successfully`)
+  const handleReviewLeave = async (id: string, status: "Approved" | "Rejected") => {
+    const res = await HrmsDatabase.reviewLeave(id, status, "HR Administrator", `Decision: ${status}`)
+    if (res && res.status === "success") {
+      showToast(`Leave request ${status.toLowerCase()} successfully`)
+      await loadData()
+    } else {
+      showToast(`Error: ${res?.message || `Failed to ${status.toLowerCase()} leave request`}`)
+    }
   }
 
   // Payroll Workflow Actions
@@ -322,8 +405,10 @@ export default function HRMS({ onNavigate }: HRMSProps) {
   const handleExportAttendanceCsv = () => {
     const headers = ["Date,Staff ID,Staff Name,Department,Shift,Start Time,End Time,Check-In,Check-Out,Hours Worked,Late Mins,Early Exit Mins,Overtime Hrs,Status\n"]
     const rows = filteredAttendance.map(
-      (a) =>
-        `"${a.date}","${a.staffId}","${a.staffName}","${a.department}","${a.shift}","${a.shiftStartTime || ''}","${a.shiftEndTime || ''}","${a.checkIn || ''}","${a.checkOut || ''}","${a.workHours || 0}","${a.lateMinutes || 0}","${a.earlyExitMinutes || 0}","${a.overtimeHours || 0}","${a.status}"`
+      (a) => {
+        const cleanDate = a.date ? a.date.split("T")[0] : ""
+        return `"${cleanDate}","${a.staffId}","${a.staffName}","${a.department}","${a.shift}","${a.shiftStartTime || ''}","${a.shiftEndTime || ''}","${a.checkIn || ''}","${a.checkOut || ''}","${a.workHours || 0}","${a.lateMinutes || 0}","${a.earlyExitMinutes || 0}","${a.overtimeHours || 0}","${a.status}"`
+      }
     )
     const blob = new Blob([headers.join("") + rows.join("\n")], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
@@ -382,130 +467,59 @@ export default function HRMS({ onNavigate }: HRMSProps) {
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2.5">
-          {/* Shift Indicator */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[#F8FAFC] border border-[#DDE2EC] rounded-lg text-xs">
-            <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse"></span>
-            <span className="font-mono font-bold text-[#0F172A]">{currentTime.toLocaleTimeString()}</span>
-            <span className="text-slate-300">|</span>
-            <span className="text-[#475569] font-medium">{currentShift.name}</span>
+        <div className="flex items-center gap-3">
+          {/* Real-time Biometric Terminal Connection Status */}
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-1.5 text-xs shadow-2xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Biometric Machine Connected</span>
+            <span className="text-[10px] text-emerald-700 bg-white/80 border border-emerald-200 px-1.5 py-0.2 rounded font-mono">TCP 4370</span>
           </div>
-
-          <button
-            onClick={handleExportStaffCsv}
-            className="px-3 py-1.5 text-xs font-semibold text-[#475569] bg-white hover:bg-[#F8FAFC] border border-[#DDE2EC] rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="w-3.5 h-3.5 text-[#64748B]" /> Export CSV
-          </button>
 
           <button
             onClick={() => {
               setEditingStaff(null)
               setIsAddOpen(true)
             }}
-            className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#1B4FD8] hover:bg-[#1541B8] rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Add Employee
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" /> Register Staff
           </button>
         </div>
       </header>
 
-      {/* ── Active Real-Time Alerts Notification Banner ──────────────────────── */}
-      {activeAlerts.length > 0 && (
-        <div className="bg-[#FFFBEB] border-b border-[#FDE68A] px-6 py-2.5 flex items-center justify-between flex-shrink-0 text-xs">
-          <div className="flex items-center gap-2.5 overflow-x-auto">
-            <div className="flex items-center gap-1.5 font-bold text-[#B45309] flex-shrink-0">
-              <AlertTriangle className="w-4 h-4 text-[#D97706]" />
-              <span>Workforce Alerts ({activeAlerts.length}):</span>
-            </div>
-            <div className="flex items-center gap-2 overflow-x-auto">
-              {activeAlerts.slice(0, 3).map((alert) => (
-                <span
-                  key={alert.id}
-                  className="bg-white/80 border border-[#FDE68A] px-2 py-0.5 rounded-md text-[#78350F] flex items-center gap-1 flex-shrink-0 font-medium"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#D97706]"></span>
-                  {alert.title}: {alert.message}
-                </span>
-              ))}
-              {activeAlerts.length > 3 && (
-                <span className="text-[#B45309] font-medium text-[11px] flex-shrink-0">
-                  +{activeAlerts.length - 3} more
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {pendingLeaves.length > 0 && (
-              <button
-                onClick={() => setActiveTab("leaves")}
-                className="px-2 py-0.5 text-[11px] font-bold text-[#1B4FD8] bg-white border border-[#BFDBFE] rounded hover:bg-[#EFF6FF] cursor-pointer"
-              >
-                Review Leaves ({pendingLeaves.length})
-              </button>
-            )}
-            {expiringCreds.length > 0 && (
-              <button
-                onClick={() => setActiveTab("compliance")}
-                className="px-2 py-0.5 text-[11px] font-bold text-[#B45309] bg-white border border-[#FDE68A] rounded hover:bg-[#FEF3C7] cursor-pointer"
-              >
-                Licenses ({expiringCreds.length})
-              </button>
-            )}
-            <button
-              onClick={() => setDismissedAlerts(activeAlerts.map((a) => a.id))}
-              className="text-[#92400E] hover:text-[#451A03] p-1 cursor-pointer"
-              title="Dismiss alerts bar"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modern Navigation Bar ────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-[#DDE2EC] px-6 py-2 flex items-center justify-between flex-shrink-0">
-        <nav className="flex items-center gap-1.5 overflow-x-auto">
+      {/* ── Modern Streamlined 5-Pillar Navigation Bar ────────────────────────── */}
+      <div className="bg-white border-b border-slate-200 px-6 py-2.5 flex items-center justify-between flex-shrink-0">
+        <nav className="flex items-center gap-2">
           {[
-            { id: "directory", label: "Staff Directory", badge: `${staffList.length}`, icon: Users },
+            {
+              id: "directory",
+              label: "Staff Directory",
+              badge: `${staffList.length}`,
+              icon: Users,
+            },
             {
               id: "shifts",
-              label: "Duty Shifts & Roster",
-              badge: `${staffList.filter((s) => s.dutyStatus === "On Duty").length} Active`,
+              label: "Daily Attendance",
+              badge: `${attendanceList.filter((a) => a.status === "Present" || a.status === "Late").length} Present`,
               icon: Clock,
             },
             {
-              id: "timetables",
-              label: "Doctor Timetables",
-              badge: `${staffList.filter((s) => s.category === "Doctor").length} Doctors`,
+              id: "monthly_roster",
+              label: "Duty Roster (1–31 Days)",
+              badge: "Active",
               icon: Calendar,
             },
             {
               id: "leaves",
               label: "Leave Approvals",
-              badge: pendingLeaves.length > 0 ? `${pendingLeaves.length} Due` : null,
-              alert: pendingLeaves.length > 0,
-              icon: Calendar,
+              badge: pendingLeaves.length > 0 ? `${pendingLeaves.length} Pending` : undefined,
+              icon: UserCheck,
             },
             {
               id: "payroll",
-              label: "Monthly Payroll",
-              badge: `₹${(kpiStats.totalPayrollGross / 100000).toFixed(1)}L`,
+              label: "Payroll & Staff Loans",
+              badge: `₹${(Number(kpiStats.totalPayrollGross || 0) / 100000).toFixed(1)}L`,
               icon: DollarSign,
-            },
-            {
-              id: "compliance",
-              label: "Licenses & Compliance",
-              badge: expiringCreds.length > 0 ? `${expiringCreds.length} Due` : null,
-              alert: expiringCreds.length > 0,
-              icon: ShieldCheck,
-            },
-            {
-              id: "audit",
-              label: "Audit Trail",
-              badge: "Live",
-              icon: History,
             },
           ].map((tab) => {
             const active = activeTab === tab.id
@@ -514,22 +528,20 @@ export default function HRMS({ onNavigate }: HRMSProps) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
-                className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 cursor-pointer ${
+                className={`px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 cursor-pointer ${
                   active
-                    ? "bg-[#1B4FD8] text-white shadow-xs font-bold"
-                    : "text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9]"
+                    ? "bg-blue-600 text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
               >
-                <IconComp className={`w-3.5 h-3.5 ${active ? "text-white" : "text-[#94A3B8]"}`} />
+                <IconComp className={`w-4 h-4 ${active ? "text-white" : "text-slate-500"}`} />
                 <span>{tab.label}</span>
                 {tab.badge && (
                   <span
-                    className={`text-[10.5px] font-bold px-1.5 py-0.2 rounded-full ${
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       active
                         ? "bg-white/20 text-white"
-                        : tab.alert
-                          ? "bg-[#FEF3C7] text-[#B45309] border border-[#FDE68A]"
-                          : "bg-[#F1F5F9] text-[#64748B]"
+                        : "bg-slate-100 text-slate-600 border border-slate-200"
                     }`}
                   >
                     {tab.badge}
@@ -540,10 +552,10 @@ export default function HRMS({ onNavigate }: HRMSProps) {
           })}
         </nav>
 
-        <div className="hidden lg:flex items-center gap-2 text-xs text-[#64748B]">
-          <span>Shift Handover:</span>
-          <span className="font-mono font-bold text-[#1B4FD8] bg-[#EFF6FF] px-2 py-0.5 rounded border border-[#BFDBFE]">
-            {currentShift.remainingMinutes}m left
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-slate-400 font-medium">Shift Handover:</span>
+          <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">
+            {currentShift.remainingMinutes}m remaining
           </span>
         </div>
       </div>
@@ -551,6 +563,42 @@ export default function HRMS({ onNavigate }: HRMSProps) {
       {/* ── Main Tab Workspace Area ─────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto p-6 space-y-5">
         
+        {/* ==================================================================== */}
+        {/* TAB 0: LIVE BIOMETRIC & DEVICE HARDWARE HUB (eSSL System Match)       */}
+        {/* ==================================================================== */}
+        {activeTab === "biometric" && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <BiometricDeviceDashboard
+              onOpenManualPunch={() => setIsManualPunchOpen(true)}
+              onOpenRecalculate={() => setIsRecalculateOpen(true)}
+            />
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* TAB: MONTHLY 1-31 DUTY ROSTER MATRIX                                */}
+        {/* ==================================================================== */}
+        {activeTab === "monthly_roster" && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <MonthlyDutyRoster
+              onOpenOutdoorDuty={() => setIsOutdoorOpen(true)}
+              onOpenOvertime={() => setIsOvertimeOpen(true)}
+            />
+          </div>
+        )}
+
+        {/* ==================================================================== */}
+        {/* TAB: STATUTORY MUSTER ROLL (FORM J / FORM T)                         */}
+        {/* ==================================================================== */}
+        {activeTab === "muster_roll" && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            <MusterRollView
+              onOpenMemos={() => setIsDisciplinaryOpen(true)}
+              onOpenDataSync={() => setIsBatchUtilityOpen(true)}
+            />
+          </div>
+        )}
+
         {/* ==================================================================== */}
         {/* TAB 1: STAFF DIRECTORY & LIFECYCLE */}
         {/* ==================================================================== */}
@@ -867,7 +915,11 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                                 )}
 
                                 <button
-                                  onClick={() => setPayslipStaff(staff)}
+                                  onClick={() => {
+                                    setPayslipStaff(staff)
+                                    const pay = payrollList.find((p) => p.staffId === staff.id)
+                                    setPayslipItem(pay || null)
+                                  }}
                                   className="px-2 py-1 text-xs font-medium text-[#475569] hover:text-[#1B4FD8] hover:bg-[#EFF6FF] rounded transition-colors cursor-pointer"
                                 >
                                   Payslip
@@ -983,6 +1035,92 @@ export default function HRMS({ onNavigate }: HRMSProps) {
         {/* ==================================================================== */}
         {activeTab === "shifts" && (
           <div className="space-y-4 animate-in fade-in duration-150">
+            {/* ── Enterprise Biometric Sync & Machine Status Hub ── */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
+                  <div className="text-xs">
+                    <span className="font-bold text-slate-900">Biometric Attendance Network:</span>
+                    <span className="text-slate-500 ml-1">eSSL eTimeTrackLite Live (TCP Port 4370)</span>
+                  </div>
+                </div>
+
+                <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
+
+                {/* Device Badges */}
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Front Office (Online)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> OT Complex (Online)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 font-semibold flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Pharmacy (Online)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-700 font-medium flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span> ICU Door (Offline)
+                  </span>
+                  <span className="px-2.5 py-1 rounded-md bg-rose-50 border border-rose-200 text-rose-700 font-medium flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span> Casualty (Offline)
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsManualPunchOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Supervisor override for unreadable print or forgotten badge"
+                >
+                  <Plus className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Manual Punch Entry</span>
+                </button>
+
+                <button
+                  onClick={() => setIsRecalculateOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Recalculate attendance with 15-minute grace period"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Recalculate (15m Grace)</span>
+                </button>
+
+                <button
+                  onClick={() => setShowDeviceDiagnostics(!showDeviceDiagnostics)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Show/hide hardware device scanner details"
+                >
+                  <Cpu className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{showDeviceDiagnostics ? "Hide Reader Monitor" : "Reader Hardware Monitor"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Conditionally Expanded Hardware Diagnostics Panel */}
+            {showDeviceDiagnostics && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-slate-800">Biometric Hardware Readers & Live Punch Stream</div>
+                  <button
+                    onClick={() => setShowDeviceDiagnostics(false)}
+                    className="text-xs text-slate-500 hover:text-slate-800 cursor-pointer font-semibold"
+                  >
+                    Close ✕
+                  </button>
+                </div>
+                <BiometricDeviceDashboard
+                  onOpenManualPunch={() => setIsManualPunchOpen(true)}
+                  onOpenRecalculate={() => setIsRecalculateOpen(true)}
+                />
+              </div>
+            )}
+
             {/* Shift Metrics */}
             <div className="grid grid-cols-4 gap-4">
               <div className="bg-white border border-[#DDE2EC] rounded-xl p-4 shadow-2xs">
@@ -1019,7 +1157,7 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                   </div>
                 </div>
                 <div className="text-2xl font-bold text-[#1B4FD8] mt-1.5">
-                  {attendanceList.reduce((acc, a) => acc + (a.overtimeHours || 0), 0).toFixed(1)} hrs
+                  {attendanceList.reduce((acc, a) => acc + Number(a.overtimeHours || 0), 0).toFixed(1)} hrs
                 </div>
                 <div className="text-[11px] text-[#1B4FD8] font-medium mt-0.5">Calculated for payroll</div>
               </div>
@@ -1104,7 +1242,7 @@ export default function HRMS({ onNavigate }: HRMSProps) {
             <div className="bg-white border border-[#DDE2EC] rounded-xl shadow-2xs overflow-hidden">
               <div className="px-5 py-3 bg-[#F8FAFC] border-b border-[#DDE2EC] flex items-center justify-between text-xs font-semibold text-[#475569]">
                 <span>Hospital Shift Attendance & Biometric Logs</span>
-                <span>{filteredAttendance.length} Records</span>
+                <span>{isAttendanceLoading ? "Loading..." : `${filteredAttendance.length} Records`}</span>
               </div>
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#F8FAFC] border-b border-[#DDE2EC] text-[#475569] font-bold text-[11px] uppercase tracking-wider">
@@ -1120,7 +1258,28 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F5F9]">
-                  {filteredAttendance.length === 0 ? (
+                  {isAttendanceLoading ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-[#94A3B8]">
+                        <RefreshCw className="w-7 h-7 mx-auto mb-2 text-[#1B4FD8] animate-spin" />
+                        <p className="font-semibold text-sm text-[#334155]">Loading Shift Attendance Records...</p>
+                      </td>
+                    </tr>
+                  ) : attendanceError ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-[#DC2626]">
+                        <AlertCircle className="w-7 h-7 mx-auto mb-2 text-[#DC2626]" />
+                        <p className="font-bold text-sm text-[#DC2626]">Failed to Load Attendance Records</p>
+                        <p className="text-xs text-[#64748B] mt-1">{attendanceError}</p>
+                        <button
+                          onClick={() => fetchAttendanceData(attendanceDateFilter)}
+                          className="mt-3 px-3.5 py-1.5 bg-[#1B4FD8] text-white text-xs font-semibold rounded-lg hover:bg-[#1541B8] transition-colors cursor-pointer"
+                        >
+                          Retry
+                        </button>
+                      </td>
+                    </tr>
+                  ) : filteredAttendance.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-12 text-center text-[#94A3B8]">
                         <Clock className="w-8 h-8 mx-auto mb-2 text-[#CBD5E1]" />
@@ -1135,7 +1294,7 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                       <tr key={rec.id} className="hover:bg-[#F8FAFC] transition-colors">
                         <td className="py-3 px-4">
                           <div className="font-semibold text-[#0F172A]">{rec.staffName}</div>
-                          <div className="text-[11px] font-mono text-[#64748B]">{rec.staffId} · {rec.date}</div>
+                          <div className="text-[11px] font-mono text-[#64748B]">{rec.staffId} · {rec.date ? rec.date.split("T")[0] : ""}</div>
                         </td>
                         <td className="py-3 px-4 text-[#64748B]">{rec.department}</td>
                         <td className="py-3 px-4">
@@ -1149,25 +1308,27 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                           <div className="font-mono text-[11px] text-[#64748B]">Out: {rec.checkOut || "--"}</div>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="font-medium text-[#0F172A]">{rec.workHours ? `${rec.workHours.toFixed(1)} hrs` : "--"}</div>
-                          {(rec.overtimeHours || 0) > 0 && (
+                          <div className="font-medium text-[#0F172A]">
+                            {Number(rec.workHours || 0) > 0 ? `${Number(rec.workHours).toFixed(1)} hrs` : "--"}
+                          </div>
+                          {Number(rec.overtimeHours || 0) > 0 && (
                             <span className="text-[10px] font-bold text-[#1B4FD8] bg-[#EFF6FF] px-1.5 py-0.2 rounded border border-[#BFDBFE]">
-                              +{rec.overtimeHours}h OT
+                              +{Number(rec.overtimeHours).toFixed(1)}h OT
                             </span>
                           )}
                         </td>
                         <td className="py-3 px-4">
-                          {(rec.lateMinutes || 0) > 0 && (
+                          {Number(rec.lateMinutes || 0) > 0 && (
                             <div className="text-[10.5px] font-bold text-[#B45309] bg-[#FEF3C7] px-1.5 py-0.2 rounded border border-[#FDE68A] inline-block">
-                              Late: {rec.lateMinutes}m
+                              Late: {Number(rec.lateMinutes)}m
                             </div>
                           )}
-                          {(rec.earlyExitMinutes || 0) > 0 && (
+                          {Number(rec.earlyExitMinutes || 0) > 0 && (
                             <div className="text-[10.5px] font-medium text-[#DC2626] bg-[#FEE2E2] px-1.5 py-0.2 rounded border border-[#FECACA] inline-block mt-0.5">
-                              Early: {rec.earlyExitMinutes}m
+                              Early: {Number(rec.earlyExitMinutes)}m
                             </div>
                           )}
-                          {(!rec.lateMinutes || rec.lateMinutes === 0) && (!rec.earlyExitMinutes || rec.earlyExitMinutes === 0) && (
+                          {(!rec.lateMinutes || Number(rec.lateMinutes) === 0) && (!rec.earlyExitMinutes || Number(rec.earlyExitMinutes) === 0) && (
                             <span className="text-[11px] text-[#64748B]">On Time</span>
                           )}
                         </td>
@@ -1339,13 +1500,30 @@ export default function HRMS({ onNavigate }: HRMSProps) {
             {/* Workflow Progress Stepper */}
             <div className="bg-white border border-[#DDE2EC] rounded-xl p-4 shadow-2xs">
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-[#F1F5F9]">
-                <div>
-                  <h3 className="font-bold text-xs text-[#0F172A] uppercase tracking-wider">
-                    {payrollMonth} {payrollYear} Hospital Payroll Cycle
-                  </h3>
-                  <p className="text-[11px] text-[#64748B] mt-0.5">
-                    Calculated strictly against actual attendance days, approved paid leaves, unpaid absences, and overtime hours.
-                  </p>
+                <div className="flex items-center gap-4">
+                  <div>
+                    <h3 className="font-bold text-xs text-[#0F172A] uppercase tracking-wider">
+                      {payrollMonth} {payrollYear} Hospital Payroll Cycle
+                    </h3>
+                    <p className="text-[11px] text-[#64748B] mt-0.5">
+                      Calculated strictly against actual attendance days, approved paid leaves, unpaid absences, overtime hours & staff loan EMIs.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 bg-[#F1F5F9] p-1 rounded-lg border border-[#E2E8F0]">
+                    {(["September", "October"] as const).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setPayrollMonth(m)}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                          payrollMonth === m
+                            ? "bg-white text-[#1B4FD8] shadow-2xs font-bold"
+                            : "text-[#64748B] hover:text-[#0F172A]"
+                        }`}
+                      >
+                        {m} 2026 {m === "September" ? "✓ Paid" : "• Active"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-[#64748B]">Current Stage:</span>
@@ -1414,6 +1592,15 @@ export default function HRMS({ onNavigate }: HRMSProps) {
 
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => setIsStaffLoanOpen(true)}
+                    className="px-3 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors"
+                    title="Staff Salary Advances, Festival Loans & Monthly EMI Recovery"
+                  >
+                    <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                    Staff Loans & EMI
+                  </button>
+
+                  <button
                     onClick={() => setIsPayrollPolicyOpen(true)}
                     className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors"
                     title="Configure PF, TDS, Overtime & Daily Pay rules"
@@ -1474,7 +1661,7 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                   Total Gross Pay
                 </div>
                 <div className="text-2xl font-bold text-[#0F172A] mt-1">
-                  ₹{payrollList.reduce((acc, p) => acc + p.gross, 0).toLocaleString()}
+                  ₹{payrollList.reduce((acc, p) => acc + Number(p.gross || 0), 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-[#94A3B8] mt-0.5">Base + HRA + Allowances</div>
               </div>
@@ -1484,10 +1671,10 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                   Overtime Pay Batched
                 </div>
                 <div className="text-2xl font-bold text-[#1B4FD8] mt-1">
-                  ₹{payrollList.reduce((acc, p) => acc + (p.overtimeAmount || 0), 0).toLocaleString()}
+                  ₹{payrollList.reduce((acc, p) => acc + Number(p.overtimeAmount || 0), 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-[#94A3B8] mt-0.5">
-                  {payrollList.reduce((acc, p) => acc + (p.overtimeHours || 0), 0).toFixed(1)} Total OT Hours
+                  {payrollList.reduce((acc, p) => acc + Number(p.overtimeHours || 0), 0).toFixed(1)} Total OT Hours
                 </div>
               </div>
 
@@ -1496,9 +1683,9 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                   Total Deductions
                 </div>
                 <div className="text-2xl font-bold text-[#DC2626] mt-1">
-                  ₹{payrollList.reduce((acc, p) => acc + p.totalDeductions, 0).toLocaleString()}
+                  ₹{payrollList.reduce((acc, p) => acc + Number(p.totalDeductions || 0), 0).toLocaleString()}
                 </div>
-                <div className="text-xs text-[#94A3B8] mt-0.5">PF, TDS & Unpaid Leave Cuts</div>
+                <div className="text-xs text-[#94A3B8] mt-0.5">PF, Tax & Loan EMI Deductions</div>
               </div>
 
               <div className="bg-[#1B4FD8] text-white rounded-xl p-4 shadow-xs flex items-center justify-between">
@@ -1507,7 +1694,7 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                     Net Payout
                   </div>
                   <div className="text-2xl font-bold text-white mt-1">
-                    ₹{payrollList.reduce((acc, p) => acc + p.netPay, 0).toLocaleString()}
+                    ₹{payrollList.reduce((acc, p) => acc + Number(p.netPay || 0), 0).toLocaleString()}
                   </div>
                   <div className="text-xs text-blue-200 mt-0.5">Direct Bank Transfer</div>
                 </div>
@@ -1575,21 +1762,21 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-right">
-                          {(pay.overtimeHours || 0) > 0 ? (
+                          {Number(pay.overtimeHours || 0) > 0 ? (
                             <div>
-                              <div className="font-semibold text-[#1B4FD8]">₹{(pay.overtimeAmount || 0).toLocaleString()}</div>
-                              <div className="text-[10px] text-[#64748B]">{pay.overtimeHours} hrs</div>
+                              <div className="font-semibold text-[#1B4FD8]">₹{Number(pay.overtimeAmount || 0).toLocaleString()}</div>
+                              <div className="text-[10px] text-[#64748B]">{Number(pay.overtimeHours || 0)} hrs</div>
                             </div>
                           ) : (
                             <span className="text-[#94A3B8]">--</span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-medium">₹{pay.gross.toLocaleString()}</td>
+                        <td className="py-3 px-4 text-right font-mono font-medium">₹{Number(pay.gross || 0).toLocaleString()}</td>
                         <td className="py-3 px-4 text-right font-mono text-[#DC2626]">
-                          ₹{pay.totalDeductions.toLocaleString()}
+                          ₹{Number(pay.totalDeductions || 0).toLocaleString()}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-[#0F172A]">
-                          ₹{pay.netPay.toLocaleString()}
+                          ₹{Number(pay.netPay || 0).toLocaleString()}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span
@@ -1621,7 +1808,10 @@ export default function HRMS({ onNavigate }: HRMSProps) {
                             <button
                               onClick={() => {
                                 const staff = staffList.find((s) => s.id === pay.staffId)
-                                if (staff) setPayslipStaff(staff)
+                                if (staff) {
+                                  setPayslipStaff(staff)
+                                  setPayslipItem(pay)
+                                }
                               }}
                               className="px-2.5 py-1 text-xs font-semibold text-[#1B4FD8] bg-[#EFF6FF] hover:bg-[#DBEAFE] rounded border border-[#BFDBFE] cursor-pointer"
                             >
@@ -1896,13 +2086,21 @@ export default function HRMS({ onNavigate }: HRMSProps) {
         onViewPayslip={(staff) => {
           setViewingStaff(null)
           setPayslipStaff(staff)
+          const pay = payrollList.find((p) => p.staffId === staff.id)
+          setPayslipItem(pay || null)
         }}
       />
 
       <PayslipModal
         isOpen={!!payslipStaff}
         staff={payslipStaff}
-        onClose={() => setPayslipStaff(null)}
+        payrollItem={payslipItem}
+        month={payrollMonth}
+        year={payrollYear}
+        onClose={() => {
+          setPayslipStaff(null)
+          setPayslipItem(null)
+        }}
       />
 
       <RenewCredentialModal
@@ -1960,6 +2158,50 @@ export default function HRMS({ onNavigate }: HRMSProps) {
           showToast(msg)
           loadData()
         }}
+      />
+
+      {/* ── eSSL Hospital Operations Modals ─────────────────────────────────── */}
+      <OutdoorDutyModal
+        isOpen={isOutdoorOpen}
+        onClose={() => setIsOutdoorOpen(false)}
+      />
+
+      <OvertimeRegisterModal
+        isOpen={isOvertimeOpen}
+        onClose={() => setIsOvertimeOpen(false)}
+      />
+
+      <StaffLoanModal
+        isOpen={isStaffLoanOpen}
+        onClose={() => setIsStaffLoanOpen(false)}
+      />
+
+      <DisciplinaryMemoModal
+        isOpen={isDisciplinaryOpen}
+        onClose={() => setIsDisciplinaryOpen(false)}
+      />
+
+      <AttendanceRecalculateModal
+        isOpen={isRecalculateOpen}
+        onClose={() => setIsRecalculateOpen(false)}
+        onRecalculateComplete={() => {
+          showToast("Attendance recalculation completed")
+          loadData()
+        }}
+      />
+
+      <ManualPunchModal
+        isOpen={isManualPunchOpen}
+        onClose={() => setIsManualPunchOpen(false)}
+        onPunchAdded={() => {
+          showToast("Manual biometric punch recorded")
+          loadData()
+        }}
+      />
+
+      <BatchDataUtilityModal
+        isOpen={isBatchUtilityOpen}
+        onClose={() => setIsBatchUtilityOpen(false)}
       />
     </div>
   )

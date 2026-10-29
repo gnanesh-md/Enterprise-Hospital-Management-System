@@ -44,7 +44,12 @@ export function seedPharmacyHospitalData(_force: boolean = false) {
       toRemove.push(k)
     }
   }
-  toRemove.forEach((k) => window.localStorage.removeItem(k))
+  toRemove.forEach((k) => {
+    window.localStorage.removeItem(k)
+    try {
+      window.sessionStorage.removeItem(k)
+    } catch {}
+  })
 
   // Set all collections to clean empty arrays []
   keys.forEach((key) => {
@@ -56,6 +61,7 @@ export function seedPharmacyHospitalData(_force: boolean = false) {
   window.localStorage.removeItem("hospai_pharm_read_notifs_v4")
   window.localStorage.removeItem("hospai_pharm_notifications_v4")
   window.localStorage.removeItem("_v2_pharmacy_dispense_rx")
+  window.localStorage.setItem("hospai_pharm_scratch_clean_slate_v3_applied", "true")
 
   // Dispatch live update events across the whole app
   window.dispatchEvent(new Event("storage"))

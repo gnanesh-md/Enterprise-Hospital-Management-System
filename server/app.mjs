@@ -9,6 +9,7 @@ import payrollRouter from './routes/payroll.mjs';
 import credentialsRouter from './routes/credentials.mjs';
 import reportsRouter from './routes/reports.mjs';
 import eventsRouter from './routes/events.mjs';
+import biometricRouter from './routes/biometric.mjs';
 import { testConnection, ensureSchema } from './db/index.mjs';
 
 const app = express();
@@ -22,6 +23,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.text({ type: ['text/*', 'application/octet-stream'] }));
 app.use(extractUserContext);
 
 // Health check endpoint
@@ -40,6 +43,9 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// ADMS / iClock Protocol Root Mounts (eSSL & ZKTeco Cloud Server direct hardware push)
+app.use('/iclock', biometricRouter);
+
 // HRMS Module Routes
 app.use('/api/hr', employeesRouter);
 app.use('/api/hr', shiftsRouter);
@@ -49,6 +55,7 @@ app.use('/api/hr', payrollRouter);
 app.use('/api/hr', credentialsRouter);
 app.use('/api/hr', reportsRouter);
 app.use('/api/hr', eventsRouter);
+app.use('/api/hr', biometricRouter);
 
 // Fallback 404 for unrecognized HR routes
 app.use((req, res, next) => {

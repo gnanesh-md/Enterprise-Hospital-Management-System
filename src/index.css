@@ -837,3 +837,24 @@ textarea:focus-visible {
 }
 .ds-fade-in { animation: ds-fade-in 0.22s ease-out; }
 @media (prefers-reduced-motion: reduce) { .ds-fade-in { animation: none; } }
+
+/* Global Print Layout Rules: Prevent h-screen and overflow:hidden containers from clipping invoices/bills */
+@media print {
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  #root, .app, .app-main, .pharmacy-module, main {
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important;
+  }
+  aside, nav, header, .app-sidebar, .print-hidden, .print\\:hidden {
+    display: none !important;
+  }
+}
