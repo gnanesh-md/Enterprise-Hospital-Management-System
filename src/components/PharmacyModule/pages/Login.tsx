@@ -130,7 +130,8 @@ export default function Login({ onLogin }: LoginProps) {
               </label>
               <button
                 type="button"
-                className="text-[12px] font-medium"
+                onClick={() => alert("Please contact the IT System Administrator to reset your pharmacy terminal password.")}
+                className="text-[12px] font-medium hover:underline cursor-pointer"
                 style={{ color: "#1B4FD8" }}
               >
                 Forgot password?

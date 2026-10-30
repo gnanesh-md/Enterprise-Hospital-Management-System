@@ -96,14 +96,15 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
     }
   }, [refresh])
 
-  // Dynamically generate chart data ending on selectedDate
-  const last7Days = Array.from({ length: 7 }).map((_, i) => {
+  // Dynamically generate chart data ending on selectedDate (7 days for weekly, 30 days for monthly)
+  const numDays = chartView === "monthly" ? 30 : 7
+  const chartDays = Array.from({ length: numDays }).map((_, i) => {
     const d = new Date(selectedDate)
-    d.setDate(d.getDate() - (6 - i))
+    d.setDate(d.getDate() - (numDays - 1 - i))
     return d.toISOString().split("T")[0]
   })
 
-  const chartData = last7Days.map((dateStr) => {
+  const chartData = chartDays.map((dateStr) => {
     const dayBills = bills.filter(
       (b) =>
         (b.billDate || "").startsWith(dateStr) &&
@@ -127,8 +128,16 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
       return (b.totalAmount || 0) > bRefund
     }).length
 
+    const dateLabel =
+      chartView === "monthly"
+        ? new Date(dateStr).toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "short",
+          })
+        : new Date(dateStr).toLocaleDateString("en-US", { weekday: "short" })
+
     return {
-      date: new Date(dateStr).toLocaleDateString("en-US", { weekday: "short" }),
+      date: dateLabel,
       revenue: dayNet, // Actual net sales after deducting returns
       gross: dayGross,
       refunds: dayRefunds,
@@ -516,7 +525,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           <h2 className="text-[16px] font-bold text-[#0F1624] mb-1">
             Stock Summary
           </h2>
-          <p className="text-[12px] text-[#64748B] mb-4">Total: 0 medicines</p>
+          <p className="text-[12px] text-[#64748B] mb-4">Total: {medicines.length} medicines</p>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie

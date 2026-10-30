@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   AlertTriangle,
   CheckCircle,
@@ -22,6 +22,16 @@ export default function GRN({ onNavigate }: GRNProps) {
   const [items, setItems] = useState<any[]>([])
   const [search, setSearch] = useState("")
   const [selectedPoId, setSelectedPoId] = useState<string>("")
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
 
   const approvedPOs = purchaseOrders.filter((po) => po.status === "Approved")
 
@@ -195,7 +205,10 @@ export default function GRN({ onNavigate }: GRNProps) {
         onNavigate={onNavigate}
         actions={
           <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#E2E8F0] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded border border-[#E2E8F0] bg-white text-[13px] text-[#334155] hover:bg-[#F5F7FA] transition-colors cursor-pointer"
+            >
               <Printer size={13} /> Print GRN
             </button>
             <button

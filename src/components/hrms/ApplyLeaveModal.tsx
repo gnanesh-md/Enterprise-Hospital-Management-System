@@ -55,9 +55,13 @@ function ApplyLeaveModalBody({
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0])
   const [reason, setReason] = useState("")
 
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   useEffect(() => {
     setSelectedStaffId(resolvedInitialStaff())
-  }, [loggedInStaffId, loggedInStaffName, isSelfService])
+    setErrorMessage(null)
+  }, [loggedInStaffId, loggedInStaffName, isSelfService, modalTab])
 
   const fallbackStaff = {
     id: loggedInStaffId || "EMP-DOC",
@@ -90,27 +94,39 @@ function ApplyLeaveModalBody({
 
   const days = calculateDays()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedStaff) return
+    if (!selectedStaff || isSubmitting) return
     if (!reason.trim()) {
-      alert("Please enter a reason or clinical handover note for the leave application.")
+      setErrorMessage("Please enter a reason or clinical handover note for the leave application.")
       return
     }
 
-    HrmsDatabase.applyLeave({
-      staffId: selectedStaff.id,
-      staffName: selectedStaff.name,
-      department: selectedStaff.department,
-      leaveType,
-      startDate,
-      endDate,
-      days,
-      reason: reason.trim(),
-    })
+    setErrorMessage(null)
+    setIsSubmitting(true)
+    try {
+      const res = await HrmsDatabase.applyLeave({
+        staffId: selectedStaff.id,
+        staffName: selectedStaff.name,
+        department: selectedStaff.department,
+        leaveType,
+        startDate,
+        endDate,
+        days,
+        reason: reason.trim(),
+      })
 
-    if (onSuccess) onSuccess()
-    onClose()
+      if (res && res.status === "success") {
+        if (onSuccess) onSuccess()
+        onClose()
+      } else {
+        setErrorMessage(res?.message || "Failed to submit leave application.")
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "An unexpected error occurred.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -351,6 +367,12 @@ function ApplyLeaveModalBody({
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4 bg-white">
+          {errorMessage && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-3.5 py-2.5 rounded-xl flex items-center gap-2 font-medium animate-in fade-in">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-500" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
           {/* Employee Identification: Strictly Locked for Self-Service, Selectable only for HR Admin */}
           {isSelfService && selectedStaff ? (
             <div className="bg-[#F8FAFC] border border-[#DDE2EC] rounded-xl p-3.5 flex items-center justify-between">
@@ -502,10 +524,13 @@ function ApplyLeaveModalBody({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-[#1B4FD8] hover:bg-[#1541B8] rounded-lg shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer"
+              disabled={isSubmitting}
+              className={`px-5 py-2 text-xs font-bold text-white bg-[#1B4FD8] hover:bg-[#1541B8] rounded-lg shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                isSubmitting ? "opacity-60 cursor-not-allowed" : ""
+              }`}
             >
               <Send className="w-3.5 h-3.5" />
-              {isSelfService ? "Submit Application to HR" : "Save Leave Application"}
+              {isSubmitting ? "Submitting Application..." : isSelfService ? "Submit Application to HR" : "Save Leave Application"}
             </button>
           </div>
         </form>

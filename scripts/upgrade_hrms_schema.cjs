@@ -128,6 +128,29 @@ async function migrate() {
     `);
     console.log('✅ Notifications table verified');
 
+    // 6. Create staff_loan_repayments ledger table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS staff_loan_repayments (
+        id SERIAL PRIMARY KEY,
+        loan_id VARCHAR(50) NOT NULL REFERENCES staff_loans(id) ON DELETE CASCADE,
+        hospital_id INT NOT NULL DEFAULT 1,
+        employee_id VARCHAR(50) NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        amount NUMERIC(12, 2) NOT NULL,
+        balance_before NUMERIC(12, 2) NOT NULL,
+        balance_after NUMERIC(12, 2) NOT NULL,
+        recovery_type VARCHAR(50) NOT NULL CHECK (recovery_type IN ('MANUAL_EMI', 'PAYROLL_DEDUCTION', 'SETTLEMENT')),
+        recovery_period VARCHAR(20) NOT NULL,
+        payroll_run_id VARCHAR(100),
+        remarks TEXT,
+        created_by VARCHAR(100) DEFAULT 'System',
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT uq_loan_recovery_period UNIQUE (loan_id, recovery_period)
+      );
+      CREATE INDEX IF NOT EXISTS idx_loan_repayments_loan ON staff_loan_repayments(loan_id);
+      CREATE INDEX IF NOT EXISTS idx_loan_repayments_period ON staff_loan_repayments(recovery_period);
+    `);
+    console.log('✅ Staff loan repayments ledger table verified');
+
     await client.query('COMMIT');
     console.log('🎉 ALL DATABASE MIGRATIONS COMPLETED SUCCESSFULLY');
   } catch (err) {

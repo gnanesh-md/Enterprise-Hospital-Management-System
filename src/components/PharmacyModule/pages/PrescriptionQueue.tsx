@@ -41,6 +41,16 @@ export default function PrescriptionQueue({
   const [selected, setSelected] = useState<typeof prescriptions[0] | null>(null)
   const [search, setSearch] = useState("")
 
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
+
   const filtered = prescriptions.filter((rx) => {
     const matchStatus =
       activeFilter === "All" || rx.status === activeFilter.toLowerCase()

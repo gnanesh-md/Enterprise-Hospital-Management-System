@@ -353,7 +353,11 @@ export class AuditDatabase {
     }
 
     if (updated) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(logs))
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(logs))
+      } catch (err) {
+        console.warn("AuditDatabase: Unable to update logout in localStorage", err)
+      }
     }
   }
 
@@ -408,12 +412,14 @@ export class AuditDatabase {
       duration: isLoginRelated ? (status === "Success" ? "0s" : "—") : "5m 00s",
     }
 
-    logs.unshift(entry)
-
-    if (logs.length > 1000) {
-      logs.pop()
+    try {
+      logs.unshift(entry)
+      if (logs.length > 500) {
+        logs.pop()
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(logs))
+    } catch (e) {
+      console.warn("AuditDatabase: Unable to persist log to localStorage", e)
     }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs))
   }
 }

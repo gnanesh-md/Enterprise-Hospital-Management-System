@@ -255,11 +255,80 @@ function hmsApiMockMiddleware() {
         return sendJson({ credentials: memoryStore.CREDENTIALS })
       }
       if (pathname === "/api/hr/payroll") {
+        const urlObj = new URL(req.url, "http://127.0.0.1")
+        const month = urlObj.searchParams.get("month") || "September"
+        const year = parseInt(urlObj.searchParams.get("year") || "2026", 10)
         return sendJson({
-          month: "September",
-          year: 2026,
-          run: memoryStore.PAYROLL_RUNS[0],
-          payroll: memoryStore.PAYROLL_ITEMS,
+          month,
+          year,
+          run: {
+            id: `PR-${year}-${month.slice(0, 3).toUpperCase()}`,
+            month,
+            year,
+            status: month === "September" ? "Paid" : "Calculated",
+            total_employees: memoryStore.EMPLOYEES.length,
+            total_gross: memoryStore.EMPLOYEES.reduce((acc: number, e: any) => acc + (e.basic + e.hra + e.allowances), 0),
+            total_deductions: memoryStore.EMPLOYEES.reduce((acc: number, e: any) => acc + (e.pf + e.tax), 0),
+            total_net: memoryStore.EMPLOYEES.reduce((acc: number, e: any) => acc + e.net_pay, 0),
+          },
+          payroll: memoryStore.PAYROLL_ITEMS.map((item: any) => ({
+            ...item,
+            basic: Number(item.basic || 0),
+            hra: Number(item.hra || 0),
+            allowances: Number(item.allowances || 0),
+            gross: Number(item.gross || 0),
+            pf: Number(item.pf || 0),
+            tax: Number(item.tax || 0),
+            otherDeductions: Number(item.otherDeductions || 0),
+            totalDeductions: Number(item.totalDeductions || 0),
+            netPay: Number(item.netPay || 0),
+            overtimeHours: Number(item.overtimeHours || 0),
+            overtimeAmount: Number(item.overtimeAmount || 0),
+            month,
+            year,
+            status: month === "September" ? "Paid" : "Calculated",
+            runStatus: month === "September" ? "Paid" : "Calculated",
+          })),
+        })
+      }
+      if (pathname === "/api/hr/payroll/run") {
+        return sendJson({ status: "success", message: "Payroll calculated successfully" })
+      }
+      if (pathname.includes("/api/hr/payroll/") && (pathname.endsWith("/review") || pathname.endsWith("/approve") || pathname.endsWith("/pay") || pathname.endsWith("/revise"))) {
+        return sendJson({ status: "success", message: "Payroll workflow action executed successfully" })
+      }
+      if (pathname === "/api/hr/biometric/staff-loans") {
+        return sendJson({
+          staffLoans: [
+            {
+              id: "LOAN-801",
+              staffId: "EMP-104",
+              staffName: "K. Venkatesh",
+              department: "Cleaning",
+              loanType: "Festival Advance",
+              sanctionedAmount: 15000,
+              disbursedDate: "2026-09-15",
+              monthlyEmi: 2500,
+              totalTenureMonths: 6,
+              remainingTenureMonths: 4,
+              balanceOutstanding: 10000,
+              status: "Active",
+            },
+            {
+              id: "LOAN-802",
+              staffId: "EMP-105",
+              staffName: "Sunita Reddy",
+              department: "Clinical Pharmacy",
+              loanType: "Medical Emergency Loan",
+              sanctionedAmount: 50000,
+              disbursedDate: "2026-06-01",
+              monthlyEmi: 5000,
+              totalTenureMonths: 10,
+              remainingTenureMonths: 5,
+              balanceOutstanding: 25000,
+              status: "Active",
+            },
+          ],
         })
       }
       if (pathname === "/api/hr/shifts") {
@@ -340,6 +409,10 @@ const proxy = {
         )
       })
     },
+  },
+  "/iclock": {
+    target: "http://localhost:8011",
+    changeOrigin: true,
   },
   // HR is served by the Node HRMS server (server/app.mjs), not the gateway's
   // Flask hr-service, which has none of the credentials/payroll/KPI routes

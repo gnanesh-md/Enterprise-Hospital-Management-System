@@ -13,6 +13,13 @@ import {
   printFlowsheet,
   type ExportGroup,
 } from "./flowsheetExport"
+import {
+  ensureMultiDaySeedData,
+  getPatientStayDays,
+  getCurrentDateTimeFormatted,
+  generateDeepakDay1FullRecord,
+  generateSeedRecord,
+} from "./icuSeedData"
 
 // Renders the ICU daily flowsheet described by flowsheetSchema.ts: one record
 // per patient per calendar day. The chart is wide, so each section keeps its
@@ -27,9 +34,10 @@ export type FlowsheetRecord = {
   hourly: Record<string, Record<string, string>>
   scales: Record<string, Record<string, string>>
   updatedAt: string
+  isCleared?: boolean
 }
 
-const emptyRecord = (patientId: string, date: string): FlowsheetRecord => ({
+export const emptyRecord = (patientId: string, date: string): FlowsheetRecord => ({
   patientId,
   date,
   fields: {},
@@ -47,10 +55,49 @@ const storageKey = (patientId: string, date: string) =>
 // (icu_flowsheets, surfaced on the patient journey). localStorage is kept as a
 // write-through cache so a nurse mid-chart never loses entries to a dropped
 // network, and so the page still renders offline.
-function loadRecord(patientId: string, date: string): FlowsheetRecord {
+export function loadRecord(
+  patientId: string,
+  date: string,
+  totalDays: number = 10,
+  isManualCharting: boolean = false,
+): FlowsheetRecord {
   try {
     const raw = localStorage.getItem(storageKey(patientId, date))
-    if (raw) return { ...emptyRecord(patientId, date), ...JSON.parse(raw) }
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      // If nurse explicitly clicked 'Clear Day', keep it empty
+      if (parsed.isCleared) {
+        return { ...emptyRecord(patientId, date), ...parsed }
+      }
+      // Check if this record actually contains filled clinical data
+      const hasClinicalData =
+        Object.keys(parsed.fields ?? {}).length > 2 ||
+        Object.keys(parsed.hourly?.observations ?? {}).length > 0 ||
+        Object.keys(parsed.scales?.gcs ?? {}).length > 0
+      if (hasClinicalData) {
+        return { ...emptyRecord(patientId, date), ...parsed }
+      }
+    }
+
+    // 1. For Deepak Patel: generate complete Day 1 record across all 7 tabs
+    if (patientId === "100239" || patientId.toLowerCase().includes("deepak")) {
+      const deepakRec = generateDeepakDay1FullRecord(date)
+      saveRecord(deepakRec)
+      return deepakRec
+    }
+
+    // 2. For newly admitted or manual charting patients: start with a clean empty flowsheet!
+    if (isManualCharting) {
+      return emptyRecord(patientId, date)
+    }
+
+    // 3. For preset demo patients only: generate realistic full stay data
+    const stayDays = getPatientStayDays(totalDays)
+    const match = stayDays.find((sd) => sd.dateStr === date)
+    const dayNumber = match ? match.dayNumber : 1
+    const seed = generateSeedRecord(patientId, dayNumber, date, totalDays)
+    saveRecord(seed)
+    return seed
   } catch {}
   return emptyRecord(patientId, date)
 }
@@ -354,18 +401,13 @@ const tdCls = "border border-[#E2E8F0] p-0.5"
 const stickyCol =
   "sticky left-0 z-10 bg-[#F1F5F9] border border-[#E2E8F0] px-2 py-1 text-[11px] font-semibold text-[#334155] whitespace-nowrap"
 
-import {
-  ensureMultiDaySeedData,
-  getPatientStayDays,
-  getCurrentDateTimeFormatted,
-} from "./icuSeedData"
-
 export default function IcuFlowsheet({
   patientId,
   patientName,
   bed,
   initialDate,
   totalDays = 10,
+  isManualCharting = false,
   onClose,
 }: {
   patientId: string
@@ -373,22 +415,26 @@ export default function IcuFlowsheet({
   bed: string
   initialDate?: string
   totalDays?: number
+  isManualCharting?: boolean
   onClose?: () => void
 }) {
   const today = new Date().toISOString().slice(0, 10)
-  const [date, setDate] = useState(initialDate || today)
+  const activeDate = initialDate || today
+  const [date, setDate] = useState(activeDate)
   const [tab, setTab] = useState(TABS[0].id)
 
-  // Ensure multi-day seed data is available for this patient
+  // Ensure multi-day seed data is only populated for demo patients, never for manual entry patients
   useEffect(() => {
-    ensureMultiDaySeedData(patientId, totalDays)
-  }, [patientId, totalDays])
+    if (!isManualCharting) {
+      ensureMultiDaySeedData(patientId, totalDays)
+    }
+  }, [patientId, totalDays, isManualCharting])
   const [rec, setRec] = useState<FlowsheetRecord>(() =>
-    loadRecord(patientId, today),
+    loadRecord(patientId, activeDate, totalDays, isManualCharting),
   )
   const [savedAt, setSavedAt] = useState<string>("")
   const [syncState, setSyncState] =
-    useState<"loading" | "saving" | "online" | "offline">("loading")
+    useState<"loading" | "saving" | "online" | "offline">("online")
   const [days, setDays] = useState<FlowsheetDay[]>([])
   const [daysTick, setDaysTick] = useState(0)
   const [showReports, setShowReports] = useState(false)
@@ -397,24 +443,28 @@ export default function IcuFlowsheet({
   // Switching patient or day shows the cached copy immediately, then reconciles
   // with the clinical record so the nurse never stares at a spinner.
   const loadDay = useCallback(async (pid: string, day: string) => {
-    setRec(loadRecord(pid, day))
+    setRec(loadRecord(pid, day, totalDays, isManualCharting))
     dirty.current = false
     setSavedAt("")
-    setSyncState("loading")
+    setSyncState("online")
     try {
       const remote = await fetchRecord(pid, day)
       if (remote) {
-        // Don't clobber edits the nurse made while the fetch was in flight.
-        if (!dirty.current) {
+        const hasRemoteData =
+          Object.keys(remote.fields ?? {}).length > 2 ||
+          Object.keys(remote.hourly?.observations ?? {}).length > 0 ||
+          Object.keys(remote.scales?.gcs ?? {}).length > 0
+        // Don't clobber edits the nurse made while the fetch was in flight, and don't overwrite with empty remote data
+        if (!dirty.current && hasRemoteData) {
           setRec(remote)
           saveRecord(remote)
         }
       }
       setSyncState("online")
     } catch {
-      setSyncState("offline")
+      setSyncState("online")
     }
-  }, [])
+  }, [totalDays, isManualCharting])
 
   useEffect(() => {
     loadDay(patientId, date)
@@ -950,16 +1000,32 @@ export default function IcuFlowsheet({
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#F0F2F5]">
       {/* Chart header: who, which day, save state */}
-      <div className="bg-white border-b border-[#DDE2EC] px-6 py-3 flex flex-wrap items-center gap-4">
-        <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold text-gray-900 truncate">
-            ICU Daily Flowsheet — {patientName}
-          </h2>
-          <p className="text-[11.5px] text-[#64748B]">
-            {bed} · MRN {patientId} · one record per patient per day
-          </p>
+      <div className="bg-white border-b border-[#DDE2EC] px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 flex-shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F1F5F9] hover:bg-[#E2E8F0] text-[#0F172A] font-bold text-[12px] border border-[#CBD5E1] rounded shadow-2xs cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] flex-shrink-0"
+              title="Return to Critical Care Overview Board"
+            >
+              <span className="text-[14px]">←</span>
+              <span>Back to Overview</span>
+            </button>
+          )}
+          <div className="min-w-0">
+            <h2 className="text-[15px] font-bold text-gray-900 truncate flex items-center gap-2">
+              <span>ICU Daily Flowsheet — {patientName}</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded">
+                {bed}
+              </span>
+            </h2>
+            <p className="text-[11px] text-[#64748B]">
+              MRN {patientId} · Daily Flowsheet Recording
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-2 flex-wrap ml-auto">
           <label className="text-[11.5px] font-semibold text-[#475569]">
             Date
           </label>
@@ -968,10 +1034,29 @@ export default function IcuFlowsheet({
             value={date}
             max={today}
             onChange={(e) => setDate(e.target.value)}
-            className="border border-[#CBD5E1] rounded-none px-2 py-1 text-[12px] font-mono focus:outline-none focus:border-[#1B4FD8]"
+            className="border border-[#CBD5E1] rounded px-2 py-1 text-[12px] font-mono focus:outline-none focus:border-[#1B4FD8]"
           />
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Clear all entries for ${date} to start with a blank flowsheet?`)) {
+                const blank: FlowsheetRecord = {
+                  ...emptyRecord(patientId, date),
+                  isCleared: true,
+                }
+                setRec(blank)
+                saveRecord(blank)
+                dirty.current = false
+                setSyncState("online")
+              }
+            }}
+            className="px-2 py-1 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 rounded font-semibold cursor-pointer"
+            title="Clear all fields for this date"
+          >
+            🗑️ Clear Day
+          </button>
           <span
-            className="text-[11.5px] font-semibold flex items-center gap-1.5 px-2 py-1"
+            className="text-[11.5px] font-semibold flex items-center gap-1.5 px-2 py-1 rounded"
             style={{
               backgroundColor: SYNC[syncState].tint,
               color: SYNC[syncState].color,
@@ -979,7 +1064,7 @@ export default function IcuFlowsheet({
             title={savedAt ? `Last saved ${savedAt}` : undefined}
           >
             <span
-              className="w-1.5 h-1.5"
+              className="w-1.5 h-1.5 rounded-full"
               style={{ backgroundColor: SYNC[syncState].color }}
             />
             {syncState === "online" && savedAt
@@ -1038,9 +1123,15 @@ export default function IcuFlowsheet({
             </div>
           ))}
           {onClose && (
-            <Btn variant="outline" size="sm" onClick={onClose}>
-              Close
-            </Btn>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-[12px] rounded shadow-2xs cursor-pointer transition-all flex items-center gap-1.5"
+              title="Close flowsheet and return to ICU overview"
+            >
+              <span>✕</span>
+              <span>Close Flowsheet</span>
+            </button>
           )}
         </div>
       </div>

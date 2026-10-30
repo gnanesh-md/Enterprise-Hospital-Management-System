@@ -62,6 +62,16 @@ export default function SupplierReturns({
 }) {
   const { supplierReturns, suppliers, batches, medicines, refresh } =
     usePharmacyData()
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
   const [viewState, setViewState] = useState<"list" | "create" | "print">(
     "list",
   )

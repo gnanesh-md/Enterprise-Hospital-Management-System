@@ -7,6 +7,7 @@ import IcuFlowsheet, {
   fetchDays,
   onFlowsheetSync,
   broadcastSave,
+  emptyRecord,
   type FlowsheetDay,
   type FlowsheetRecord,
 } from "./icu/IcuFlowsheet"
@@ -14,6 +15,7 @@ import {
   ensureMultiDaySeedData,
   getPatientStayDays,
   generateSeedRecord,
+  generateDeepakDay1FullRecord,
   getCurrentDateTimeFormatted,
   getPatientSuggestedMedications,
   SAMPLE_HANDWRITTEN_PRESCRIPTIONS,
@@ -26,6 +28,7 @@ import IcuDischargeModal, {
   getDischargedIcuPatients,
   type IcuDischargeRecord,
 } from "./icu/IcuDischargeModal"
+import IcuAdmissionModal from "./icu/IcuAdmissionModal"
 import { LabOrderDatabase, type LabOrder } from "../services/labOrdersDb"
 import {
   Area,
@@ -74,6 +77,7 @@ export type IcuPatient = {
   score: { sofa: number ;apache: number ;rass: number }
   hrTrend: { t: string ;v: number }[]
   bpTrend: { t: string ;v: number }[]
+  isManualCharting?: boolean
 }
 
 const ALL_BEDS_DATASET: IcuPatient[] = [
@@ -310,43 +314,90 @@ const ALL_BEDS_DATASET: IcuPatient[] = [
     bed: "MICU-5",
     unit: "Medical ICU",
     unitType: "MICU",
-    name: null,
-    mrn: "",
-    age: null,
-    sex: null,
-    dx: null,
-    provider: "",
-    nurse: "",
-    los: "",
-    totalDays: 0,
-    code: "",
-    vitals: null,
-    vent: null,
-    infusions: [],
-    alerts: [],
-    score: { sofa: 0, apache: 0, rass: 0 },
-    hrTrend: [],
-    bpTrend: [],
+    name: "Lokesh P",
+    mrn: "100992",
+    age: 46,
+    sex: "M",
+    dx: "Severe ARDS & Bilateral Bronchopneumonia — Type 1 Respiratory Failure",
+    provider: "Dr. K. Lokesh Kumar Raju (Critical Care)",
+    nurse: "RN Murphy",
+    los: "7d 6h",
+    totalDays: 7,
+    code: "Full Code",
+    vitals: {
+      bp: "114/72",
+      hr: "88",
+      rr: "20",
+      temp: "37.4°C",
+      spo2: "96%",
+      cvp: "10",
+    },
+    vent: {
+      mode: "SIMV+PS",
+      fio2: "40%",
+      peep: "6",
+      tv: "460mL",
+      rr: "16",
+      pip: "26",
+    },
+    infusions: [
+      {
+        drug: "Norepinephrine",
+        rate: "0.04 mcg/kg/min",
+        concentration: "8mg/250mL",
+      },
+      { drug: "Meropenem", rate: "1g Q8H", concentration: "1g/100mL" },
+      { drug: "Midazolam", rate: "2 mg/hr", concentration: "50mg/50mL" },
+    ],
+    alerts: [
+      "✅ Ventilator weaning in progress — CPAP trial scheduled",
+      "🧪 ABG: pH 7.39, PaO2 84, PaCO2 41, HCO3 24",
+    ],
+    score: { sofa: 5, apache: 14, rass: -1 },
+    hrTrend: [
+      { t: "07", v: 92 },
+      { t: "08", v: 90 },
+      { t: "09", v: 88 },
+      { t: "10", v: 86 },
+      { t: "11", v: 88 },
+    ],
+    bpTrend: [
+      { t: "07", v: 110 },
+      { t: "08", v: 112 },
+      { t: "09", v: 116 },
+      { t: "10", v: 114 },
+      { t: "11", v: 114 },
+    ],
   },
   {
     bed: "MICU-6",
     unit: "Medical ICU",
     unitType: "MICU",
-    name: null,
-    mrn: "",
-    age: null,
-    sex: null,
-    dx: null,
-    provider: "",
-    nurse: "",
-    los: "",
-    totalDays: 0,
-    code: "",
-    vitals: null,
+    name: "Deepak Patel",
+    mrn: "100239",
+    age: 50,
+    sex: "M",
+    dx: "Acute Sepsis & Bilateral Pneumonia — Day-wise manual charting test",
+    provider: "Dr. Shah (Critical Care)",
+    nurse: "RN Davis",
+    los: "1d 2h",
+    totalDays: 1,
+    code: "Full Code",
+    isManualCharting: true,
+    vitals: {
+      bp: "110/70",
+      hr: "84",
+      rr: "18",
+      temp: "37.0°C",
+      spo2: "98%",
+      cvp: "8",
+    },
     vent: null,
     infusions: [],
-    alerts: [],
-    score: { sofa: 0, apache: 0, rass: 0 },
+    alerts: [
+      "📝 Fresh Admission: Ready for manual day-wise clinical flowsheet charting",
+    ],
+    score: { sofa: 2, apache: 8, rass: 0 },
     hrTrend: [],
     bpTrend: [],
   },
@@ -1729,12 +1780,14 @@ function acuityOf(p: {
 function MultiDayFlowchartMatrix({
   patientId,
   patientName,
-  totalDays = 10,
+  totalDays = 1,
+  isManualCharting = false,
   onSelectDate,
 }: {
   patientId: string
   patientName: string
   totalDays?: number
+  isManualCharting?: boolean
   onSelectDate: (dateStr: string) => void
 }) {
   const stayDays = useMemo(() => getPatientStayDays(totalDays), [totalDays])
@@ -1746,21 +1799,27 @@ function MultiDayFlowchartMatrix({
         const raw = localStorage.getItem(
           `icu.flowsheet.${patientId}.${sd.dateStr}`,
         )
-        if (raw) rec = JSON.parse(raw)
-        else
+        if (raw) {
+          rec = JSON.parse(raw)
+        } else if (patientId === "100239") {
+          rec = generateDeepakDay1FullRecord(sd.dateStr)
+        } else if (isManualCharting) {
+          rec = emptyRecord(patientId, sd.dateStr)
+        } else {
           rec = generateSeedRecord(
             patientId,
             sd.dayNumber,
             sd.dateStr,
             totalDays,
           )
+        }
       } catch {
-        rec = generateSeedRecord(patientId, sd.dayNumber, sd.dateStr, totalDays)
+        rec = emptyRecord(patientId, sd.dateStr)
       }
       const summary = flowsheetSummary(patientId, sd.dateStr)
       return { sd, rec, summary }
     })
-  }, [patientId, stayDays, totalDays])
+  }, [patientId, stayDays, totalDays, isManualCharting])
 
   return (
     <Panel
@@ -1814,27 +1873,21 @@ function MultiDayFlowchartMatrix({
           </thead>
           <tbody>
             {records.map(({ sd, rec, summary }) => {
-              const hr = rec.hourly.observations?.[`12:00|hr`] || "104"
-              const bp = rec.hourly.observations?.[`12:00|bp`] || "110/70"
-              const temp = rec.hourly.observations?.[`12:00|temp`] || "37.5"
-              const ventMode =
-                rec.hourly.observations?.[`12:00|vent_mode`] || "A/C-VC"
-              const fio2 = rec.hourly.observations?.[`12:00|fio2`] || "45"
-              const peep = rec.hourly.observations?.[`12:00|peep`] || "6"
-              const rass =
-                rec.hourly.rass?.[`12:00|score`] || "0 Alert and calm"
-              const gcsTotal = rec.scales.gcs?.[`12:00|eyes`] ? "14" : "12"
-              const intake = rec.fields["balance_24h.intake"] || "2800"
-              const output = rec.fields["balance_24h.output"] || "1850"
-              const netBal = Number(
-                rec.fields["balance_24h.balance"] ||
-                  Number(intake) - Number(output),
-              )
-              const cumBal = Number(
-                rec.fields["balance_24h.cumulative_balance"] || netBal,
-              )
-              const creat = rec.tables.labs?.[0]?.creatinine || "1.8"
-              const hb = rec.tables.labs?.[0]?.hb || "9.6"
+              const isChartEmpty = summary.total === 0
+              const hr = rec.hourly.observations?.[`12:00|hr`]
+              const bp = rec.hourly.observations?.[`12:00|bp`]
+              const temp = rec.hourly.observations?.[`12:00|temp`]
+              const ventMode = rec.hourly.observations?.[`12:00|vent_mode`]
+              const fio2 = rec.hourly.observations?.[`12:00|fio2`]
+              const peep = rec.hourly.observations?.[`12:00|peep`]
+              const rass = rec.hourly.rass?.[`12:00|score`]
+              const gcsTotal = rec.scales.gcs?.[`12:00|eyes`] ? "14" : ""
+              const intake = rec.fields["balance_24h.intake"]
+              const output = rec.fields["balance_24h.output"]
+              const netBal = rec.fields["balance_24h.balance"]
+              const cumBal = rec.fields["balance_24h.cumulative_balance"]
+              const creat = rec.tables.labs?.[0]?.creatinine
+              const hb = rec.tables.labs?.[0]?.hb
 
               return (
                 <tr
@@ -1857,60 +1910,92 @@ function MultiDayFlowchartMatrix({
                     </div>
                   </td>
                   <td className="border border-[#E2E8F0] px-2.5 py-2 font-mono">
-                    <div className="font-semibold text-[#0F172A]">
-                      HR {hr} bpm · {bp}
-                    </div>
-                    <div className="text-[10.5px] text-[#64748B]">
-                      Temp {temp}°C
-                    </div>
+                    {hr ? (
+                      <>
+                        <div className="font-semibold text-[#0F172A]">
+                          HR {hr} bpm · {bp}
+                        </div>
+                        <div className="text-[10.5px] text-[#64748B]">
+                          Temp {temp}°C
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-[#94A3B8] italic text-[11px]">Awaiting chart</span>
+                    )}
                   </td>
                   <td className="border border-[#E2E8F0] px-2.5 py-2 font-mono">
-                    <div className="font-semibold text-[#0369A1]">
-                      {ventMode}
-                    </div>
-                    <div className="text-[10.5px] text-[#64748B]">
-                      FiO₂ {fio2}% · PEEP {peep}
-                    </div>
+                    {ventMode ? (
+                      <>
+                        <div className="font-semibold text-[#0369A1]">
+                          {ventMode}
+                        </div>
+                        <div className="text-[10.5px] text-[#64748B]">
+                          FiO₂ {fio2}% · PEEP {peep}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-[#94A3B8] italic text-[11px]">Awaiting chart</span>
+                    )}
                   </td>
                   <td className="border border-[#E2E8F0] px-2.5 py-2 font-mono">
-                    <div className="font-semibold text-[#7C3AED]">
-                      GCS {gcsTotal}
-                    </div>
-                    <div className="text-[10.5px] text-[#64748B] truncate max-w-[130px]">
-                      {rass}
-                    </div>
+                    {gcsTotal ? (
+                      <>
+                        <div className="font-semibold text-[#7C3AED]">
+                          GCS {gcsTotal}
+                        </div>
+                        <div className="text-[10.5px] text-[#64748B] truncate max-w-[130px]">
+                          {rass}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-[#94A3B8] italic text-[11px]">Not assessed</span>
+                    )}
                   </td>
                   <td className="border border-[#E2E8F0] px-2.5 py-2 font-mono">
-                    <div className="text-[#64748B]">
-                      In {intake}ml · Out {output}ml
-                    </div>
-                    <div
-                      className={`font-bold ${
-                        netBal >= 0 ? "text-[#059669]" : "text-[#DC2626]"
-                      }`}
-                    >
-                      Net {netBal >= 0 ? `+${netBal}` : netBal} ml
-                    </div>
+                    {intake ? (
+                      <>
+                        <div className="text-[#64748B]">
+                          In {intake}ml · Out {output}ml
+                        </div>
+                        <div
+                          className={`font-bold ${
+                            Number(netBal) >= 0 ? "text-[#059669]" : "text-[#DC2626]"
+                          }`}
+                        >
+                          Net {Number(netBal) >= 0 ? `+${netBal}` : netBal} ml
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-[#94A3B8] italic text-[11px]">—</span>
+                    )}
                   </td>
                   <td className="border border-[#E2E8F0] px-2.5 py-2 font-mono font-bold text-[#0F172A]">
-                    {cumBal >= 0 ? `+${cumBal}` : cumBal} ml
+                    {cumBal !== undefined ? `${cumBal} ml` : <span className="text-[#94A3B8] font-normal italic text-[11px]">—</span>}
                   </td>
                   <td className="border border-[#E2E8F0] px-2.5 py-2 font-mono">
-                    <div>Hb {hb} g/dL</div>
-                    <div className="text-[#64748B]">Cr {creat} mg/dL</div>
+                    {hb ? (
+                      <>
+                        <div>Hb {hb} g/dL</div>
+                        <div className="text-[#64748B]">Cr {creat} mg/dL</div>
+                      </>
+                    ) : (
+                      <span className="text-[#94A3B8] italic text-[11px]">—</span>
+                    )}
                   </td>
                   <td className="border border-[#E2E8F0] px-2.5 py-2 whitespace-nowrap">
                     <div className="font-mono font-bold text-[#1B4FD8]">
                       {summary.total} entries
                     </div>
-                    <div className="w-16 h-1.5 bg-[#EDF1F7] mt-1 overflow-hidden">
-                      <div
-                        className="h-full bg-[#1B4FD8]"
-                        style={{
-                          width: `${Math.min(100, Math.max(10, (summary.total / 120) * 100))}%`,
-                        }}
-                      />
-                    </div>
+                    {summary.total > 0 && (
+                      <div className="w-16 h-1.5 bg-[#EDF1F7] mt-1 overflow-hidden">
+                        <div
+                          className="h-full bg-[#1B4FD8]"
+                          style={{
+                            width: `${Math.min(100, Math.max(10, (summary.total / 120) * 100))}%`,
+                          }}
+                        />
+                      </div>
+                    )}
                   </td>
                   <td className="border border-[#E2E8F0] px-2.5 py-2 text-center whitespace-nowrap">
                     <Btn
@@ -1918,7 +2003,7 @@ function MultiDayFlowchartMatrix({
                       size="xs"
                       onClick={() => onSelectDate(sd.dateStr)}
                     >
-                      Edit / View Chart
+                      {isChartEmpty ? "+ Start Charting" : "Edit / View Chart"}
                     </Btn>
                   </td>
                 </tr>
@@ -1940,13 +2025,53 @@ const UNIT_LABEL: Record<string, string> = {
   PICU: "Pediatric ICU",
 }
 
+const ICU_BEDS_STORAGE_KEY = "hms_icu_beds_dataset_v5"
+
+function getInitialIcuBeds(): IcuPatient[] {
+  try {
+    const raw = localStorage.getItem(ICU_BEDS_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((p) => {
+          // If a manually admitted patient was saved with stale demo totalDays (e.g. 7), sanitize to Day 1
+          if (
+            p.name === "Ravi Kumar" ||
+            (p.isManualCharting && p.name !== "Deepak Patel" && (p.totalDays || 0) > 1)
+          ) {
+            if (p.mrn) {
+              try {
+                const prefix = `icu.flowsheet.${p.mrn}.`
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                  const k = localStorage.key(i)
+                  if (k?.startsWith(prefix)) localStorage.removeItem(k)
+                }
+              } catch {}
+            }
+            return {
+              ...p,
+              totalDays: 1,
+              los: "1d (Fresh Admission)",
+              isManualCharting: true,
+            }
+          }
+          return p
+        })
+      }
+    }
+  } catch {}
+  return ALL_BEDS_DATASET
+}
+
 /** `unit` comes from the Critical Care sub-nav: "All" or an ICU unit type. */
 export default function ICU({ unit = "All" }: { unit?: string }) {
-  const [bedsDataset, setBedsDataset] = useState<IcuPatient[]>(ALL_BEDS_DATASET)
+  const [bedsDataset, setBedsDataset] = useState<IcuPatient[]>(() => getInitialIcuBeds())
   const [dischargedPatients, setDischargedPatients] = useState<IcuDischargeRecord[]>(() =>
     getDischargedIcuPatients(),
   )
   const [showDischargeModal, setShowDischargeModal] = useState(false)
+  const [showAdmissionModal, setShowAdmissionModal] = useState(false)
+  const [selectedBedForAdmission, setSelectedBedForAdmission] = useState("")
   const [summarySlipRecord, setSummarySlipRecord] = useState<IcuDischargeRecord | null>(null)
 
   const [selectedBedIndex, setSelectedBedIndex] = useState(0)
@@ -1960,6 +2085,42 @@ export default function ICU({ unit = "All" }: { unit?: string }) {
   const [showLabModal, setShowLabModal] = useState(false)
   const [labTick, setLabTick] = useState(0)
   useEffect(() => LabOrderDatabase.subscribe(() => setLabTick((n) => n + 1)), [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ICU_BEDS_STORAGE_KEY, JSON.stringify(bedsDataset))
+    } catch {}
+  }, [bedsDataset])
+
+  const handleAdmitPatient = (newPatient: IcuPatient) => {
+    setBedsDataset((prev) => {
+      const exists = prev.some((b) => b.bed === newPatient.bed)
+      if (exists) {
+        return prev.map((b) => (b.bed === newPatient.bed ? newPatient : b))
+      }
+      return [newPatient, ...prev]
+    })
+    const idx = bedsDataset.findIndex((b) => b.bed === newPatient.bed)
+    // Newly admitted manual patients start completely clean with 0 fake records
+    if (newPatient.mrn) {
+      // Clear any auto-generated demo keys so newly admitted patient has a blank chart
+      try {
+        const prefix = `icu.flowsheet.${newPatient.mrn}.`
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i)
+          if (k?.startsWith(prefix)) localStorage.removeItem(k)
+        }
+      } catch {}
+    }
+    setNotification(
+      `✓ Patient ${newPatient.name} successfully admitted to ICU Bed ${newPatient.bed}!`,
+    )
+  }
+
+  const availableBeds = useMemo(
+    () => bedsDataset.filter((b) => !b.name).map((b) => b.bed),
+    [bedsDataset],
+  )
 
   const filteredBeds = useMemo(() => {
     return bedsDataset.filter((b) => {
@@ -1975,6 +2136,13 @@ export default function ICU({ unit = "All" }: { unit?: string }) {
   }, [bedsDataset, selectedUnit, selectedStatus])
 
   const pt = bedsDataset[selectedBedIndex] || bedsDataset[0]
+
+  useEffect(() => {
+    if (pt && pt.name && pt.mrn && !pt.isManualCharting) {
+      ensureMultiDaySeedData(pt.mrn, pt.totalDays || 7)
+      if (pt.name) ensureMultiDaySeedData(pt.name, pt.totalDays || 7)
+    }
+  }, [pt?.mrn, pt?.name, pt?.totalDays, pt?.isManualCharting])
 
   // Switching unit in the sub-nav moves the selection into that unit, so the
   // workspace never shows a patient the bed list is not listing.
@@ -2206,6 +2374,15 @@ export default function ICU({ unit = "All" }: { unit?: string }) {
         onClose={() => setSummarySlipRecord(null)}
       />
 
+      {/* ICU Admission Modal */}
+      <IcuAdmissionModal
+        isOpen={showAdmissionModal}
+        onClose={() => setShowAdmissionModal(false)}
+        availableBeds={availableBeds}
+        initialBed={selectedBedForAdmission || pt.bed}
+        onAdmit={handleAdmitPatient}
+      />
+
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 bg-white border-b border-[#E2E8F0] px-6 py-3 flex flex-wrap items-center gap-4">
         <div>
@@ -2266,6 +2443,18 @@ export default function ICU({ unit = "All" }: { unit?: string }) {
               <span>📋 Discharge to Reception</span>
             </button>
           )}
+
+          <Btn
+            variant="outline"
+            size="sm"
+            className="text-emerald-700 border-emerald-400 hover:bg-emerald-50 font-bold"
+            onClick={() => {
+              setSelectedBedForAdmission(availableBeds[0] || pt.bed)
+              setShowAdmissionModal(true)
+            }}
+          >
+            + Admit Patient
+          </Btn>
 
           <Btn
             variant="primary"
@@ -2409,18 +2598,51 @@ export default function ICU({ unit = "All" }: { unit?: string }) {
       </div>
 
       {view === "flowsheet" ? (
-        <IcuFlowsheet
-          key={`${pt.mrn}-${selectedFlowsheetDate}`}
-          patientId={pt.mrn}
-          patientName={pt.name || "Patient"}
-          bed={pt.bed}
-          initialDate={selectedFlowsheetDate || today}
-          totalDays={pt.totalDays || 10}
-          onClose={() => {
-            setChartTick((t) => t + 1)
-            setView("overview")
-          }}
-        />
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="bg-[#0F172A] text-white px-6 py-2 flex items-center justify-between text-xs flex-shrink-0 border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setChartTick((t) => t + 1)
+                  setView("overview")
+                }}
+                className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs font-bold cursor-pointer transition-colors shadow-2xs"
+                title="Return to Critical Care Overview Board"
+              >
+                <span>← Back to Overview Board</span>
+              </button>
+              <span className="text-slate-500">|</span>
+              <span className="text-slate-300">
+                Viewing Chart for: <strong className="text-white">{pt.name}</strong> ({pt.bed} · MRN {pt.mrn})
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setChartTick((t) => t + 1)
+                setView("overview")
+              }}
+              className="text-slate-300 hover:text-white text-xs font-medium cursor-pointer flex items-center gap-1"
+            >
+              <span>✕</span>
+              <span>Exit Chart</span>
+            </button>
+          </div>
+          <IcuFlowsheet
+            key={`${pt.mrn}-${selectedFlowsheetDate}`}
+            patientId={pt.mrn}
+            patientName={pt.name || "Patient"}
+            bed={pt.bed}
+            initialDate={selectedFlowsheetDate || today}
+            totalDays={pt.totalDays || 10}
+            isManualCharting={pt.isManualCharting}
+            onClose={() => {
+              setChartTick((t) => t + 1)
+              setView("overview")
+            }}
+          />
+        </div>
       ) : view === "discharges" ? (
         <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 bg-white">
           <div className="flex items-center justify-between border-b border-slate-200 pb-4">
@@ -2518,14 +2740,27 @@ export default function ICU({ unit = "All" }: { unit?: string }) {
           )}
         </div>
       ) : !pt.name ? (
-        <div className="flex-1 flex items-center justify-center p-10">
-          <div className="text-center">
-            <div className="text-[14px] font-bold text-[#0F172A]">
-              Bed {pt.bed} is available
+        <div className="flex-1 flex items-center justify-center p-10 bg-slate-50/50">
+          <div className="text-center max-w-md bg-white border border-slate-200 p-8 shadow-xs rounded-xl">
+            <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
+              🛏️
             </div>
-            <p className="text-[12px] text-[#64748B] mt-1">
-              Select an occupied bed from the census strip above.
+            <div className="text-[15px] font-bold text-[#0F172A]">
+              Bed {pt.bed} ({pt.unit}) is Available
+            </div>
+            <p className="text-[12px] text-[#64748B] mt-1 mb-5">
+              This critical care bed is sanitized and prepared for patient admission or emergency transfer.
             </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedBedForAdmission(pt.bed)
+                setShowAdmissionModal(true)
+              }}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm flex items-center gap-1.5 mx-auto cursor-pointer transition-all"
+            >
+              <span>➕ Admit Patient to {pt.bed}</span>
+            </button>
           </div>
         </div>
       ) : (
@@ -2648,7 +2883,8 @@ export default function ICU({ unit = "All" }: { unit?: string }) {
           <MultiDayFlowchartMatrix
             patientId={pt.mrn}
             patientName={pt.name || "Patient"}
-            totalDays={pt.totalDays || 10}
+            totalDays={pt.totalDays || (pt.isManualCharting ? 1 : 10)}
+            isManualCharting={pt.isManualCharting}
             onSelectDate={(d) => {
               setSelectedFlowsheetDate(d)
               setView("flowsheet")

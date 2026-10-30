@@ -1,6 +1,12 @@
-import { CheckCircle, Printer, RotateCcw, X } from "lucide-react"
+import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
+import { CheckCircle, Printer, RotateCcw, X, Download, FileText } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
 import RECEIPT_LOGO_BASE64 from "../../../assets/receiptLogoBase64"
+import {
+  downloadPharmacyInvoicePdf,
+  printPharmacyInvoicePdfDirect,
+} from "./invoicePdfGenerator"
 
 function numberToWords(amount: number): string {
   if (!amount || amount === 0) return "Zero Rupees Only"
@@ -172,35 +178,69 @@ function formatReceiptDateTime(val?: any): string {
 }
 
 interface InvoicePrintModalProps {
-  bill: any
+  bill?: any
   returnRecord?: any
   onClose: () => void
+  autoPrint?: boolean
+  initialView?: "bill" | "return_voucher"
 }
 
 export default function InvoicePrintModal({
   bill,
   returnRecord,
   onClose,
+  autoPrint = false,
+  initialView,
 }: InvoicePrintModalProps) {
-  const printInvoice = () => window.print()
+  const [isPdfLoading, setIsPdfLoading] = useState(false)
 
   if (!bill && !returnRecord) return null
 
-  const effectiveBill = bill || {}
+  let effectiveBill = bill || {}
+  if (typeof effectiveBill === "string") {
+    const found = PharmacyDatabase.getBills().find(
+      (b) => b.id === effectiveBill || b.billNumber === effectiveBill,
+    )
+    if (found) {
+      effectiveBill = found
+    }
+  }
+
   const activeReturn = returnRecord || effectiveBill.returnRecord
-  const isReturnBill = Boolean(
-    activeReturn ||
-      effectiveBill.isReturn ||
-      effectiveBill.isModifiedReturnBill ||
-      effectiveBill.billNumber?.startsWith("MOD-"),
+  const hasBoth = Boolean(activeReturn && effectiveBill && (effectiveBill.items?.length > 0 || effectiveBill.billNumber))
+
+  const [activeDocType, setActiveDocType] = useState<"bill" | "return_voucher">(() => {
+    if (initialView) return initialView
+    if (returnRecord && (!bill || !bill.items || bill.items.length === 0)) return "return_voucher"
+    return "bill"
+  })
+
+  const isReturnVoucher = activeDocType === "return_voucher" || Boolean(returnRecord && (!bill || !bill.items || bill.items.length === 0))
+  const isModifiedBill = !isReturnVoucher && Boolean(
+    effectiveBill.isModifiedReturnBill ||
+    effectiveBill.billNumber?.startsWith("MOD-") ||
+    activeReturn
   )
+  const isReturnBill = isReturnVoucher || isModifiedBill
+
+  useEffect(() => {
+    if (autoPrint) {
+      const timer = setTimeout(() => {
+        window.print()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [autoPrint])
 
   // Compute item rows with all hospital fields accurately mapped
-  const rawItems = (
-    isReturnBill && activeReturn?.items && activeReturn.items.length > 0
-      ? activeReturn.items
-      : effectiveBill.items || []
-  ) as any[]
+  let rawItems: any[] = []
+  if (isReturnVoucher && activeReturn?.items && activeReturn.items.length > 0) {
+    rawItems = activeReturn.items
+  } else if (Array.isArray(effectiveBill.items) && effectiveBill.items.length > 0) {
+    rawItems = effectiveBill.items
+  } else if (activeReturn?.items && activeReturn.items.length > 0) {
+    rawItems = activeReturn.items
+  }
 
   const processedItems = rawItems.map((c: any) => {
     let medName = c.medicineName || c.medicine || ""
@@ -296,33 +336,115 @@ export default function InvoicePrintModal({
   )
   const totalCgstAmt = processedItems.reduce((s, i) => s + (i.cgstAmt || 0), 0)
   const totalSgstAmt = processedItems.reduce((s, i) => s + (i.sgstAmt || 0), 0)
-  const totalBillAmt =
-    effectiveBill.totalAmount !== undefined
-      ? Number(effectiveBill.totalAmount)
-      : processedItems.reduce((s, i) => s + (i.billAmt || 0), 0)
+  const totalBillAmt = isReturnVoucher
+    ? Number(activeReturn?.totalRefund || activeReturn?.refundAmount || processedItems.reduce((s, i) => s + (i.refundAmount || i.billAmt || 0), 0))
+    : effectiveBill.totalAmount !== undefined
+    ? Number(effectiveBill.totalAmount)
+    : processedItems.reduce((s, i) => s + (i.billAmt || 0), 0)
 
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm print:absolute print:inset-0 print:p-0 print:bg-white">
+  const handlePrintReceipt = () => {
+    window.print()
+  }
+
+  const handleDownloadPdf = async () => {
+    try {
+      setIsPdfLoading(true)
+      await downloadPharmacyInvoicePdf(
+        effectiveBill,
+        isReturnBill,
+        processedItems,
+        {
+          totalQty,
+          totalGrossAmount,
+          totalDiscAmt,
+          totalTaxableAmt,
+          totalCgstAmt,
+          totalSgstAmt,
+          totalBillAmt,
+        },
+        numberToWords(totalBillAmt),
+      )
+    } catch (err) {
+      console.error("PDF generation error, falling back to print dialog:", err)
+      handlePrintReceipt()
+    } finally {
+      setIsPdfLoading(false)
+    }
+  }
+
+  const handleDirectPrintPdf = async () => {
+    try {
+      setIsPdfLoading(true)
+      await printPharmacyInvoicePdfDirect(
+        effectiveBill,
+        isReturnBill,
+        processedItems,
+        {
+          totalQty,
+          totalGrossAmount,
+          totalDiscAmt,
+          totalTaxableAmt,
+          totalCgstAmt,
+          totalSgstAmt,
+          totalBillAmt,
+        },
+        numberToWords(totalBillAmt),
+      )
+    } catch (err) {
+      console.error("Direct PDF print error, falling back to receipt print:", err)
+      handlePrintReceipt()
+    } finally {
+      setIsPdfLoading(false)
+    }
+  }
+
+  return createPortal(
+    <div
+      id="pharmacy-modal-portal"
+      className="fixed inset-0 z-[9999] bg-black/60 flex items-center justify-center p-3 sm:p-5 backdrop-blur-xs overflow-y-auto print:p-0 print:bg-white"
+    >
       <style>{`
-        @media print { 
-          body * { visibility: hidden !important; } 
-          #printable-invoice, #printable-invoice * { visibility: visible !important; } 
-          #printable-invoice { 
-            position: absolute !important; 
-            left: 0 !important; 
-            top: 0 !important; 
-            width: 100% !important; 
+        @media print {
+          body > *:not(#pharmacy-modal-portal) {
+            display: none !important;
+          }
+          html, body {
+            background: #ffffff !important;
+            color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          #pharmacy-modal-portal {
+            position: static !important;
+            inset: auto !important;
+            display: block !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            overflow: visible !important;
+            z-index: 99999 !important;
+          }
+          #printable-invoice {
+            position: static !important;
+            width: 100% !important;
             max-width: 100% !important;
-            margin: 0 !important; 
-            padding: 0 !important; 
+            margin: 0 !important;
+            padding: 0 !important;
             border: none !important;
             outline: none !important;
             box-shadow: none !important;
-            background: transparent !important;
-          } 
-          @page { 
-            size: landscape; 
-            margin: 8mm; 
+            background: #ffffff !important;
+            overflow: visible !important;
+            max-height: none !important;
+            height: auto !important;
+          }
+          .print\\:hidden, .print\\:hidden * {
+            display: none !important;
+            visibility: hidden !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 6mm 8mm;
           }
         }
       `}</style>
@@ -332,21 +454,59 @@ export default function InvoicePrintModal({
         className="bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[95vh] overflow-y-auto print:max-w-none print:shadow-none print:w-full print:m-0 print:border-none print:outline-none print:overflow-visible relative"
       >
         {/* Modal Controls (Hidden in Print) */}
-        <div className="p-4 print:p-0 border-b border-[#DDE2EC] flex justify-between items-center print:hidden bg-[#F8FAFC] sticky top-0 z-20">
+        <div className="p-4 print:p-0 border-b border-[#DDE2EC] flex flex-wrap justify-between items-center gap-3 print:hidden bg-[#F8FAFC] sticky top-0 z-20">
           <div className="flex items-center gap-2">
-            {isReturnBill ? (
+            {isReturnVoucher ? (
               <RotateCcw className="text-purple-600" size={20} />
             ) : (
               <CheckCircle className="text-teal-600" size={20} />
             )}
             <h2 className="text-base font-bold text-[#0F1624]">
-              {isReturnBill
+              {isReturnVoucher
+                ? `Return Refund Voucher (${activeReturn?.returnNumber || effectiveBill.billNumber})`
+                : isModifiedBill
                 ? `Pharmacy Receipt — Modified Bill (${effectiveBill.billNumber})`
                 : `Pharmacy Receipt (${effectiveBill.billNumber})`}
             </h2>
-            <span className="text-[11px] font-mono bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold">
-              TAX INVOICE
+            <span
+              className={`text-[11px] font-mono px-2 py-0.5 rounded font-bold ${
+                isReturnVoucher
+                  ? "bg-purple-100 text-purple-800"
+                  : isModifiedBill
+                  ? "bg-amber-100 text-amber-800"
+                  : "bg-slate-200 text-slate-700"
+              }`}
+            >
+              {isReturnVoucher ? "CREDIT NOTE" : isModifiedBill ? "MODIFIED INVOICE" : "TAX INVOICE"}
             </span>
+
+            {/* If both modified bill and return voucher are available, allow 1-click toggle */}
+            {hasBoth && (
+              <div className="ml-3 flex items-center bg-slate-200/80 p-0.5 rounded-lg border border-slate-300">
+                <button
+                  type="button"
+                  onClick={() => setActiveDocType("bill")}
+                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                    activeDocType === "bill"
+                      ? "bg-white text-teal-800 shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  📄 Modified Bill
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveDocType("return_voucher")}
+                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                    activeDocType === "return_voucher"
+                      ? "bg-purple-600 text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  ↩ Refund Voucher
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -356,16 +516,36 @@ export default function InvoicePrintModal({
               <X size={14} /> Close
             </button>
             <button
-              onClick={printInvoice}
-              className="bg-teal-700 hover:bg-teal-800 text-white px-4 py-1.5 text-xs font-bold flex items-center gap-2 rounded-lg shadow-sm transition-colors cursor-pointer"
+              onClick={handleDownloadPdf}
+              disabled={isPdfLoading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 rounded-lg shadow-sm transition-colors cursor-pointer"
+              title="Download official PDF invoice document"
             >
-              <Printer size={15} /> Print Receipt
+              <Download size={14} /> {isPdfLoading ? "Generating..." : "Download PDF"}
+            </button>
+            <button
+              onClick={handleDirectPrintPdf}
+              disabled={isPdfLoading}
+              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 rounded-lg shadow-sm transition-colors cursor-pointer"
+              title="Print PDF directly via browser printer"
+            >
+              <Printer size={14} /> Print PDF
+            </button>
+            <button
+              onClick={handlePrintReceipt}
+              className="bg-teal-700 hover:bg-teal-800 text-white px-4 py-1.5 text-xs font-bold flex items-center gap-2 rounded-lg shadow-sm transition-colors cursor-pointer"
+              title="Open browser print dialog for receipt format"
+            >
+              <FileText size={14} /> Print Receipt
             </button>
           </div>
         </div>
 
         {/* Printable Receipt Body */}
-        <div className="p-8 print:p-4 font-sans text-xs print:text-[9px] text-black w-full mx-auto bg-white relative leading-normal">
+        <div
+          id="pharmacy-invoice-printable-content"
+          className="p-8 print:p-4 font-sans text-xs print:text-[9px] text-black w-full mx-auto bg-white relative leading-normal"
+        >
           {/* Subtle Full-Page Background Watermark */}
           <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center overflow-hidden z-0 select-none">
             <img
@@ -396,12 +576,14 @@ export default function InvoicePrintModal({
                 </div>
                 <div className="mt-2">
                   <h2 className="text-[12px] print:text-[9.5px] font-black uppercase text-black tracking-wide">
-                    {isReturnBill
+                    {isReturnVoucher
+                      ? "CREDIT NOTE / RETURN REFUND VOUCHER"
+                      : isModifiedBill
                       ? "Pharmacy Receipt — Modified Bill"
                       : "Pharmacy Receipt"}
                   </h2>
                   <h3 className="text-[11px] print:text-[8.5px] font-black uppercase text-black tracking-wider">
-                    TAX INVOICE
+                    {isReturnVoucher ? "RETURN REFUND VOUCHER" : "TAX INVOICE"}
                   </h3>
                 </div>
               </div>
@@ -412,18 +594,28 @@ export default function InvoicePrintModal({
                   <tbody>
                     <tr>
                       <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
-                        Bill No
+                        {isReturnVoucher ? "Voucher No" : "Bill No"}
                       </td>
                       <td className="py-0.5 pr-5 font-mono font-bold text-black whitespace-nowrap">
-                        : {effectiveBill.billNumber}
+                        : {isReturnVoucher ? (activeReturn?.returnNumber || effectiveBill.billNumber) : effectiveBill.billNumber}
                       </td>
                       <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
-                        Bill Date
+                        {isReturnVoucher ? "Return Date" : "Bill Date"}
                       </td>
                       <td className="py-0.5 font-mono text-black whitespace-nowrap">
-                        : {formatReceiptDate(effectiveBill.createdAt || effectiveBill.date)}
+                        : {formatReceiptDate(activeReturn?.createdAt || effectiveBill.createdAt || effectiveBill.date)}
                       </td>
                     </tr>
+                    {isReturnVoucher && (
+                      <tr>
+                        <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
+                          Orig Bill No
+                        </td>
+                        <td colSpan={3} className="py-0.5 font-mono font-bold text-blue-900 whitespace-nowrap">
+                          : {activeReturn?.originalBillNumber || effectiveBill.originalBillNumber || effectiveBill.billNumber}
+                        </td>
+                      </tr>
+                    )}
                     <tr>
                       <td className="py-0.5 pr-2 font-bold whitespace-nowrap text-gray-900">
                         UMR No
@@ -634,33 +826,34 @@ export default function InvoicePrintModal({
             <div className="mt-4 flex justify-between items-start text-[10px] print:text-[8.5px] leading-relaxed">
               <div className="space-y-2 max-w-xl">
                 <p className="font-semibold text-black">
-                  Received sum of{" "}
+                  {isReturnVoucher ? "Total Refunded sum of " : "Received sum of "}
                   <span className="font-bold uppercase">
-                    {numberToWords(effectiveBill.totalPaid || effectiveBill.totalAmount || totalBillAmt)}
+                    {numberToWords(totalBillAmt)}
                   </span>{" "}
-                  towards Above Bill
+                  {isReturnVoucher ? "towards Returned Medicines" : "towards Above Bill"}
                 </p>
 
                 <div className="pt-2 border-t border-dashed border-gray-400 space-y-1 font-mono text-[9.5px] print:text-[8.5px]">
                   <div className="flex items-center gap-6">
                     <span className="w-28 font-bold text-gray-900">
-                      {effectiveBill.paymentMode?.toLowerCase().includes("card")
-                        ? "Card Amount"
+                      {isReturnVoucher
+                        ? "Refund Mode :"
+                        : effectiveBill.paymentMode?.toLowerCase().includes("card")
+                        ? "Card Amount :"
                         : effectiveBill.paymentMode?.toLowerCase().includes("upi")
-                        ? "UPI Amount"
-                        : "Cash Amount"}{" "}
-                      :
+                        ? "UPI Amount :"
+                        : "Cash Amount :"}
                     </span>
                     <span className="font-bold text-black">
-                      ₹{(effectiveBill.totalAmount || totalBillAmt).toFixed(2)}
+                      ₹{totalBillAmt.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex items-center gap-6">
                     <span className="w-28 font-bold text-gray-900">
-                      Receipt Amount :
+                      {isReturnVoucher ? "Total Refund :" : "Receipt Amount :"}
                     </span>
                     <span className="font-bold text-black">
-                      ₹{(effectiveBill.totalPaid || effectiveBill.totalAmount || totalBillAmt).toFixed(2)}
+                      ₹{totalBillAmt.toFixed(2)}
                     </span>
                   </div>
 
@@ -693,15 +886,25 @@ export default function InvoicePrintModal({
             >
               ← Back
             </button>
-            <button
-              onClick={printInvoice}
-              className="bg-teal-700 hover:bg-teal-800 text-white px-5 py-2 text-sm font-bold flex items-center gap-2 rounded-lg shadow-sm transition-colors cursor-pointer"
-            >
-              <Printer size={16} /> Print Receipt
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isPdfLoading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 text-sm font-bold flex items-center gap-2 rounded-lg shadow-sm transition-colors cursor-pointer"
+              >
+                <Download size={16} /> {isPdfLoading ? "Generating PDF..." : "Print / Download PDF"}
+              </button>
+              <button
+                onClick={handlePrintReceipt}
+                className="bg-teal-700 hover:bg-teal-800 text-white px-5 py-2 text-sm font-bold flex items-center gap-2 rounded-lg shadow-sm transition-colors cursor-pointer"
+              >
+                <Printer size={16} /> Print Receipt
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

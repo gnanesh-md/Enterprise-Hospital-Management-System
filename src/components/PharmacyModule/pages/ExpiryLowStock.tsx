@@ -61,10 +61,16 @@ interface ExpiryLowStockProps {
 // Generate Official Purchase Order PDF (optional download)
 async function generatePoPdfDoc(po: any, shouldDownload: boolean = false) {
   try {
-    const [{ jsPDF }, { default: autoTable }] = await Promise.all([
+    const [jspdfModule, autoTableModule] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
     ])
+
+    const jsPDF = jspdfModule.jsPDF || jspdfModule.default || jspdfModule
+    const autoTableFn =
+      (autoTableModule as any).default ||
+      (autoTableModule as any).autoTable ||
+      autoTableModule
 
     const doc = new jsPDF({ unit: "mm", format: "a4" })
     const pageW = doc.internal.pageSize.getWidth()
@@ -137,7 +143,15 @@ async function generatePoPdfDoc(po: any, shouldDownload: boolean = false) {
       ]
     })
 
-    autoTable(doc, {
+    const runAutoTable = (options: any) => {
+      if (typeof (doc as any).autoTable === "function") {
+        ;(doc as any).autoTable(options)
+      } else if (typeof autoTableFn === "function") {
+        autoTableFn(doc, options)
+      }
+    }
+
+    runAutoTable({
       startY: 72,
       head: [["#", "Medicine Description", "Form", "Qty", "Unit Rate", "GST", "Total Amount"]],
       body: tableBody,
@@ -392,9 +406,7 @@ export default function ExpiryLowStock({ onNavigate }: ExpiryLowStockProps) {
 
     // Find supplier from medicine catalog or keep blank for user entry
     const supName =
-      foundMed.supplierName &&
-      foundMed.supplierName.trim() !== "" &&
-      foundMed.supplierName.trim().toUpperCase() !== "VH MEDICALS AND CHEMICALS"
+      foundMed.supplierName && foundMed.supplierName.trim() !== ""
         ? foundMed.supplierName.trim()
         : ""
     setSelectedSupplierName(supName)
@@ -744,11 +756,10 @@ Thank you!
     selectedMedicine.generic.trim().toLowerCase() !==
       selectedMedicine.name?.trim().toLowerCase()
 
-  const hasRealSupplier =
+  const hasRealSupplier = !!(
     selectedMedicine?.supplierName &&
-    selectedMedicine.supplierName.trim() !== "" &&
-    selectedMedicine.supplierName.trim().toUpperCase() !==
-      "VH MEDICALS AND CHEMICALS"
+    selectedMedicine.supplierName.trim() !== ""
+  )
 
   return (
     <div className="p-6 space-y-5">

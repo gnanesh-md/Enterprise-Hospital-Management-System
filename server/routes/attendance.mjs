@@ -2,6 +2,7 @@ import express from 'express';
 import { query, withTransaction } from '../db/index.mjs';
 import { requireHrAdmin } from '../middleware/auth.mjs';
 import { logAudit } from '../services/audit.mjs';
+import { broadcastEvent } from './events.mjs';
 
 const router = express.Router();
 
@@ -160,7 +161,7 @@ router.get('/attendance', async (req, res) => {
         a.employee_id as "staffId",
         a.employee_name as "staffName",
         a.department,
-        a.attendance_date as "date",
+        TO_CHAR(a.attendance_date, 'YYYY-MM-DD') as "date",
         a.assigned_shift as "shift",
         COALESCE(a.shift_start_time, '07:00') as "shiftStartTime",
         COALESCE(a.shift_end_time, '15:00') as "shiftEndTime",
@@ -184,19 +185,21 @@ router.get('/attendance', async (req, res) => {
     const params = [hospitalId];
     let pIdx = 2;
 
-    if (startDate && endDate) {
+    const cleanDate = date && String(date).trim() ? String(date).split('T')[0] : null;
+    const cleanStartDate = startDate && String(startDate).trim() ? String(startDate).split('T')[0] : null;
+    const cleanEndDate = endDate && String(endDate).trim() ? String(endDate).split('T')[0] : null;
+
+    if (cleanStartDate && cleanEndDate) {
       sql += ` AND a.attendance_date BETWEEN $${pIdx} AND $${pIdx + 1}`;
-      params.push(startDate, endDate);
+      params.push(cleanStartDate, cleanEndDate);
       pIdx += 2;
-    } else if (date) {
+    } else if (cleanDate) {
       sql += ` AND a.attendance_date = $${pIdx}`;
-      params.push(date);
+      params.push(cleanDate);
       pIdx++;
     } else {
-      const today = new Date().toISOString().split('T')[0];
-      sql += ` AND a.attendance_date = $${pIdx}`;
-      params.push(today);
-      pIdx++;
+      // Default: recent history (last 30 days) to prevent 0-record blackout on date roll-over
+      sql += ` AND a.attendance_date >= (CURRENT_DATE - INTERVAL '30 days')`;
     }
 
     if (employeeId) {
@@ -228,14 +231,23 @@ router.get('/attendance', async (req, res) => {
       sql += ` AND (a.attendance_status = 'Missed Punch' OR (a.clock_in IS NOT NULL AND a.clock_out IS NULL))`;
     }
 
-    sql += ` ORDER BY a.attendance_date DESC, a.employee_name ASC;`;
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit, 10) || 500), 1000);
+    sql += ` ORDER BY a.attendance_date DESC, a.employee_name ASC LIMIT ${limit};`;
 
     const result = await query(sql, params);
+    const attendanceList = result.rows.map((r) => ({
+      ...r,
+      date: r.date ? (typeof r.date === 'string' ? r.date.split('T')[0] : new Date(r.date).toISOString().split('T')[0]) : '',
+      workHours: parseFloat(r.workHours || 0),
+      overtimeHours: parseFloat(r.overtimeHours || 0),
+      lateMinutes: parseInt(r.lateMinutes || 0, 10),
+      earlyExitMinutes: parseInt(r.earlyExitMinutes || 0, 10),
+    }));
 
     return res.json({
-      date: date || new Date().toISOString().split('T')[0],
-      total: result.rows.length,
-      attendance: result.rows,
+      date: cleanDate || new Date().toISOString().split('T')[0],
+      total: attendanceList.length,
+      attendance: attendanceList,
     });
   } catch (err) {
     console.error('Error fetching attendance:', err);
@@ -287,12 +299,18 @@ router.post('/attendance/clock-in', async (req, res) => {
         throw new Error(`Cannot clock in: Employee ${emp.name} is ${emp.status || 'Inactive'}`);
       }
 
-      // 2. Determine shift timing and calculate lateness
-      const shiftTimes = extractShiftTimes(emp.default_shift);
+      // 2. Determine shift timing from roster assignment or default shift
+      const rosterRes = await client.query(
+        `SELECT shift_name FROM shift_assignments WHERE employee_id = $1 AND shift_date = $2 LIMIT 1`,
+        [employeeId, today]
+      );
+      const activeShift = rosterRes.rows[0]?.shift_name || emp.default_shift || 'Morning (07:00 - 15:00)';
+      const shiftTimes = extractShiftTimes(activeShift);
       const metrics = calculateAttendanceMetrics({
         shiftStartStr: shiftTimes.start,
         shiftEndStr: shiftTimes.end,
         clockInStr: clockTime,
+        gracePeriodMinutes: 15,
       });
 
       // 3. Update employee duty_status
@@ -308,11 +326,16 @@ router.post('/attendance/clock-in', async (req, res) => {
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 0, 0, 0, 'Staff Portal')
         ON CONFLICT (employee_id, attendance_date) DO UPDATE SET
           clock_in = COALESCE(attendance.clock_in, EXCLUDED.clock_in),
+          assigned_shift = EXCLUDED.assigned_shift,
           shift_start_time = EXCLUDED.shift_start_time,
           shift_end_time = EXCLUDED.shift_end_time,
-          late_minutes = EXCLUDED.late_minutes,
+          late_minutes = CASE 
+            WHEN attendance.clock_in IS NOT NULL THEN attendance.late_minutes 
+            ELSE EXCLUDED.late_minutes 
+          END,
           attendance_status = CASE 
             WHEN attendance.clock_out IS NOT NULL THEN attendance.attendance_status 
+            WHEN attendance.clock_in IS NOT NULL THEN attendance.attendance_status
             ELSE EXCLUDED.attendance_status 
           END,
           updated_at = CURRENT_TIMESTAMP
@@ -321,7 +344,7 @@ router.post('/attendance/clock-in', async (req, res) => {
 
       const attRes = await client.query(attSql, [
         attId, hospitalId, employeeId, emp.name, emp.department, today,
-        emp.default_shift, shiftTimes.start, shiftTimes.end, clockTime,
+        activeShift, shiftTimes.start, shiftTimes.end, clockTime,
         metrics.lateMinutes, metrics.status
       ]);
 
@@ -335,10 +358,22 @@ router.post('/attendance/clock-in', async (req, res) => {
         action: 'ATTENDANCE_CLOCK_IN',
         entityType: 'ATTENDANCE',
         entityId: attId,
-        newValue: { clockIn: clockTime, status: metrics.status, lateMinutes: metrics.lateMinutes },
+        newValue: { 
+          clockIn: attRes.rows[0].clock_in, 
+          status: attRes.rows[0].attendance_status, 
+          lateMinutes: attRes.rows[0].late_minutes 
+        },
       });
 
       return attRes.rows[0];
+    });
+
+    // Real-time broadcast after successful database commit
+    broadcastEvent('ATTENDANCE_UPDATE', {
+      staffId: employeeId,
+      status: result.attendance_status,
+      dutyStatus: 'On Duty',
+      attendance: result,
     });
 
     return res.json({ message: 'Clock-in recorded successfully', attendance: result });
@@ -397,10 +432,24 @@ router.post('/attendance/clock-out', async (req, res) => {
         clockOutStr: clockTime,
       });
 
-      // 2. Update employee duty_status
+      // 2. Overtime compliance rule: payable overtime must be approved in overtime_records
+      const otApprovalRes = await client.query(
+        `SELECT COALESCE(SUM(extra_hours), 0) as approved_ot 
+         FROM overtime_records 
+         WHERE employee_id = $1 AND overtime_date = $2 AND status = 'Approved'`,
+        [employeeId, today]
+      );
+      const approvedOtHours = parseFloat(otApprovalRes.rows[0]?.approved_ot || 0);
+
+      // Status logic: if total work hours < 4, flag as Half-Day
+      const finalStatus = metrics.workHours < 4.0 
+        ? 'Half-Day' 
+        : (metrics.lateMinutes > 15 ? 'Late' : 'Present');
+
+      // 3. Update employee duty_status
       await client.query(`UPDATE employees SET duty_status = 'Off Duty', updated_at = CURRENT_TIMESTAMP WHERE id = $1`, [employeeId]);
 
-      // 3. Update attendance record
+      // 4. Update attendance record
       const updateSql = `
         UPDATE attendance SET
           clock_out = $1,
@@ -414,7 +463,7 @@ router.post('/attendance/clock-out', async (req, res) => {
       `;
 
       const updatedAtt = await client.query(updateSql, [
-        clockTime, metrics.workHours, metrics.earlyExitMinutes, metrics.overtimeHours, metrics.status, att.id
+        clockTime, metrics.workHours, metrics.earlyExitMinutes, approvedOtHours, finalStatus, att.id
       ]);
 
       await logAudit({
@@ -431,12 +480,20 @@ router.post('/attendance/clock-out', async (req, res) => {
           clockOut: clockTime, 
           workHours: metrics.workHours, 
           earlyExitMinutes: metrics.earlyExitMinutes, 
-          overtimeHours: metrics.overtimeHours, 
-          status: metrics.status 
+          overtimeHours: approvedOtHours, 
+          status: finalStatus 
         },
       });
 
       return updatedAtt.rows[0];
+    });
+
+    // Real-time broadcast after successful database commit
+    broadcastEvent('ATTENDANCE_UPDATE', {
+      staffId: employeeId,
+      status: result.attendance_status,
+      dutyStatus: 'Off Duty',
+      attendance: result,
     });
 
     return res.json({ message: 'Clock-out recorded successfully', attendance: result });
@@ -562,6 +619,12 @@ router.post('/attendance/manual', requireHrAdmin, async (req, res) => {
       return attRes.rows[0];
     });
 
+    broadcastEvent('ATTENDANCE_UPDATE', {
+      staffId: employeeId,
+      status: result.attendance_status,
+      attendance: result,
+    });
+
     return res.status(201).json({ message: 'Manual attendance recorded successfully', attendance: result });
   } catch (err) {
     console.error('Error recording manual attendance:', err);
@@ -667,6 +730,12 @@ router.post('/attendance/correct', requireHrAdmin, async (req, res) => {
       });
 
       return updateRes.rows[0];
+    });
+
+    broadcastEvent('ATTENDANCE_UPDATE', {
+      attendanceId,
+      status: result.attendance_status,
+      attendance: result,
     });
 
     return res.json({ message: 'Attendance correction recorded successfully', attendance: result });
