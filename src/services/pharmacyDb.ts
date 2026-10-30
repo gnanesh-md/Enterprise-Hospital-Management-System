@@ -1,4 +1,9 @@
-import { seedPharmacyHospitalData, seedTestPrescriptionForSelling } from "./pharmacySeedData"
+import {
+  seedPharmacyHospitalData,
+  seedTestPrescriptionForSelling,
+  ensurePharmacyDataSeeded,
+  SEED_PRESCRIPTIONS,
+} from "./pharmacySeedData"
 
 export interface AppUser {
   id: string
@@ -1247,18 +1252,21 @@ if (typeof window !== "undefined") {
   try {
     ;(window as any).clearAllPharmacyData = clearAllPharmacyData
     ;(window as any).purgeSamplePharmacyData = purgeSampleData
+    ;(window as any).seedPharmacyHospitalData = seedPharmacyHospitalData
+    ;(window as any).ensurePharmacyDataSeeded = ensurePharmacyDataSeeded
   } catch (e) {
     console.error("Failed to bind pharmacy window utilities:", e)
   }
 }
 
-export const INITIAL_SEED_PRESCRIPTIONS: AppPrescription[] = []
+export const INITIAL_SEED_PRESCRIPTIONS: AppPrescription[] = SEED_PRESCRIPTIONS
 
 export class PharmacyDatabase {
   static purgeSampleData = purgeSampleData
   static clearAllPharmacyData = clearAllPharmacyData
   static seedHospitalTestData = seedPharmacyHospitalData
   static seedTestPrescriptionForSelling = seedTestPrescriptionForSelling
+  static ensureDataSeeded = ensurePharmacyDataSeeded
   // Categories
 
   static getUsers(): AppUser[] {
@@ -1467,6 +1475,7 @@ export class PharmacyDatabase {
   static getAuditLogs(): AppAuditLog[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(AUDIT_LOGS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
@@ -1484,6 +1493,7 @@ export class PharmacyDatabase {
   static getCategories(): AppCategory[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(CATEGORIES_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
@@ -1521,9 +1531,29 @@ export class PharmacyDatabase {
   static getSuppliers(): AppSupplier[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(SUPPLIERS_KEY)
-      const list: AppSupplier[] = stored ? JSON.parse(stored) : []
-      return Array.isArray(list) ? list : []
+      let list: AppSupplier[] = stored ? JSON.parse(stored) : []
+      if (!Array.isArray(list)) list = []
+      if (!list.some((s) => (s.supplierName || "").toLowerCase().includes("vh medicals"))) {
+        list.push({
+          id: "SUP-VH-01",
+          supplierName: "VH MEDICALS AND CHEMICALS",
+          contactInformation: "Distributor & Wholesaler",
+          phone: "+91 98480 12345",
+          email: "orders@vhmedicals.com",
+          address: "Pharma Complex, Main Road",
+          gstInformation: "37AABCV1234F1Z5",
+          licenseDetails: "DL-AP-1029/2024",
+          paymentTerms: "Credit 30 Days",
+          status: "Active",
+          createdAt: new Date().toISOString(),
+        })
+        if (typeof window !== "undefined") {
+          safeStorageSetItem(SUPPLIERS_KEY, JSON.stringify(list))
+        }
+      }
+      return list
     } catch {
       return []
     }
@@ -1559,6 +1589,7 @@ export class PharmacyDatabase {
   static getMedicines(): AppMedicine[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(MEDICINES_KEY)
       const list: AppMedicine[] = stored ? JSON.parse(stored) : []
       if (Array.isArray(list)) {
@@ -1909,6 +1940,7 @@ export class PharmacyDatabase {
   static getBatches(): AppBatch[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(BATCHES_KEY)
       const list: AppBatch[] = stored ? JSON.parse(stored) : []
       if (Array.isArray(list)) {
@@ -2003,6 +2035,7 @@ export class PharmacyDatabase {
   static getPurchaseOrders(): AppPurchaseOrder[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(POS_KEY)
       const list: AppPurchaseOrder[] = stored ? JSON.parse(stored) : []
       return Array.isArray(list) ? list : []
@@ -2037,6 +2070,7 @@ export class PharmacyDatabase {
   static getGRNs(): AppGRN[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(GRNS_KEY)
       if (!stored) return []
       const list: AppGRN[] = JSON.parse(stored)
@@ -2087,23 +2121,17 @@ export class PharmacyDatabase {
   static getPrescriptions(): AppPrescription[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(PRESCRIPTIONS_KEY)
       let prescriptions: AppPrescription[] = stored ? JSON.parse(stored) : []
       if (!Array.isArray(prescriptions)) return []
 
-      // Self-heal: ensure no mock/seed prescriptions remain in active store
-      const filtered = prescriptions.filter(
-        (p) =>
-          !p.id?.startsWith("RX-REP-") &&
-          !p.id?.startsWith("RX-FALLBACK-") &&
-          !p.id?.startsWith("RX-2026-0088") &&
-          !p.id?.startsWith("RX-2026-0099") &&
-          p.patientName !== "Appanna Chinnapati" &&
-          !(p.patientName && p.patientName.endsWith(" Rx"))
-      )
-      if (filtered.length !== prescriptions.length) {
-        this.savePrescriptions(filtered)
-        return filtered
+      const currentIds = new Set(prescriptions.map((p) => p.id))
+      const missing = INITIAL_SEED_PRESCRIPTIONS.filter((p) => !currentIds.has(p.id))
+      if (missing.length > 0) {
+        const merged = [...missing, ...prescriptions]
+        this.savePrescriptions(merged)
+        return merged
       }
       return prescriptions
     } catch {
@@ -2122,6 +2150,7 @@ export class PharmacyDatabase {
   static getBills(): AppPharmacyBill[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(BILLS_KEY)
       let bills: AppPharmacyBill[] = stored ? JSON.parse(stored) : []
       if (!Array.isArray(bills)) return []
@@ -2201,6 +2230,7 @@ export class PharmacyDatabase {
   static getReturns(): AppPharmacyReturn[] {
     if (typeof window === "undefined") return []
     try {
+      ensurePharmacyDataSeeded()
       const stored = safeStorageGetItem(RETURNS_KEY)
       let list: AppPharmacyReturn[] = stored ? JSON.parse(stored) : []
       if (!Array.isArray(list)) return []

@@ -74,6 +74,14 @@ export default function LabOrdersView({ onOpenReport, onOpenBench, onCollectSamp
     setPatientMatches(matches.slice(0, 5))
   }, [patientSearch, selectedPatient])
 
+  const tabCounts = useMemo(() => {
+    const pendingBilling = orders.filter((o) => o.billing?.status !== "Paid").length
+    const readyForDraw = orders.filter((o) => o.billing?.status === "Paid" && o.status === "Billed").length
+    const inTesting = orders.filter((o) => o.status === "Sample Collected" || o.status === "In Progress").length
+    const completed = orders.filter((o) => o.status === "Completed").length
+    return { pendingBilling, readyForDraw, inTesting, completed }
+  }, [orders])
+
   // Filtered orders list
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -87,8 +95,8 @@ export default function LabOrdersView({ onOpenReport, onOpenBench, onCollectSamp
 
       const matchTab =
         selectedStatusTab === "All" ||
-        (selectedStatusTab === "Pending Billing" && o.billing?.status === "Pending") ||
-        (selectedStatusTab === "Paid" && o.billing?.status === "Paid") ||
+        (selectedStatusTab === "Pending Billing" && o.billing?.status !== "Paid") ||
+        (selectedStatusTab === "Paid" && o.billing?.status === "Paid" && o.status === "Billed") ||
         (selectedStatusTab === "Processing" && (o.status === "Sample Collected" || o.status === "In Progress")) ||
         (selectedStatusTab === "Completed" && o.status === "Completed")
 
@@ -174,13 +182,13 @@ export default function LabOrdersView({ onOpenReport, onOpenBench, onCollectSamp
       {/* ── HEADER ACTIONS & TABS ────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Status Pills */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+        <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
           {[
             { id: "All", label: `All Orders (${orders.length})` },
-            { id: "Pending Billing", label: "Pending Payment" },
-            { id: "Paid", label: "Paid / Clearance" },
-            { id: "Processing", label: "In Processing" },
-            { id: "Completed", label: "Completed" },
+            { id: "Pending Billing", label: `💳 Awaiting Billing (${tabCounts.pendingBilling})` },
+            { id: "Paid", label: `💉 Ready for Draw (${tabCounts.readyForDraw})` },
+            { id: "Processing", label: `🔬 In Testing (${tabCounts.inTesting})` },
+            { id: "Completed", label: `✅ Released (${tabCounts.completed})` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -318,27 +326,56 @@ export default function LabOrdersView({ onOpenReport, onOpenBench, onCollectSamp
 
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {order.status === "Billed" && onCollectSample && (
+                          {!isPaid && (
                             <button
-                              onClick={() => onCollectSample(order)}
-                              className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 text-xs font-bold rounded-lg transition cursor-pointer"
-                              title="Go to Phlebotomy / Sample Collection"
+                              type="button"
+                              onClick={() => {
+                                LabOrderDatabase.markBilled(order.id, {
+                                  mode: "Cash",
+                                  collectedBy: "Billing Counter",
+                                })
+                                loadOrders()
+                              }}
+                              className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title="Clear billing gatekeeper"
                             >
-                              Collect
+                              <DollarSign className="w-3 h-3 text-amber-600" />
+                              <span>Settle Bill</span>
                             </button>
                           )}
-                          <button
-                            onClick={() => {
-                              if (order.status === "Completed" && onOpenReport) {
-                                onOpenReport(order)
-                              } else if (onOpenBench) {
-                                onOpenBench(order)
-                              }
-                            }}
-                            className="px-3 py-1 bg-slate-100 hover:bg-[#7552B8] hover:text-white text-slate-700 text-xs font-bold rounded-lg transition cursor-pointer"
-                          >
-                            {order.status === "Completed" ? "Report" : "Process"}
-                          </button>
+
+                          {isPaid && order.status === "Billed" && onCollectSample && (
+                            <button
+                              type="button"
+                              onClick={() => onCollectSample(order)}
+                              className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#7552B8] border border-purple-200 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title="Go to Phlebotomy / Sample Collection"
+                            >
+                              <span>💉 Draw Sample</span>
+                            </button>
+                          )}
+
+                          {(order.status === "Sample Collected" || order.status === "In Progress" || (isPaid && order.status !== "Completed" && !onCollectSample)) && onOpenBench && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenBench(order)}
+                              className="px-2.5 py-1 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title="Enter analyzer values on workbench"
+                            >
+                              <span>🔬 Enter Results</span>
+                            </button>
+                          )}
+
+                          {order.status === "Completed" && onOpenReport && (
+                            <button
+                              type="button"
+                              onClick={() => onOpenReport(order)}
+                              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-lg transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                              title="View and print official diagnostic report"
+                            >
+                              <span>📄 View Report</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

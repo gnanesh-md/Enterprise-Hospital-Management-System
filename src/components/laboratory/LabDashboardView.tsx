@@ -414,15 +414,42 @@ export default function LabDashboardView({ onNavigate, onOpenOrder }: LabDashboa
                       </td>
 
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => {
-                            if (onOpenOrder) onOpenOrder(order)
-                            else onNavigate(order.status === "Completed" ? "lab_reports" : "lab_workbench")
-                          }}
-                          className="px-3 py-1 bg-[#7552B8] hover:bg-[#6240a3] text-white text-xs font-bold rounded-lg transition shadow-2xs cursor-pointer"
-                        >
-                          {order.status === "Completed" ? "View Report" : "Open Bench"}
-                        </button>
+                        {!isPaid ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate("lab_orders_collection")}
+                            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold rounded-lg transition cursor-pointer"
+                          >
+                            💳 Settle Bill
+                          </button>
+                        ) : order.status === "Billed" ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate("lab_orders_collection")}
+                            className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#7552B8] border border-purple-200 text-xs font-bold rounded-lg transition cursor-pointer"
+                          >
+                            💉 Draw Sample
+                          </button>
+                        ) : order.status === "Completed" ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate("lab_reports")}
+                            className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-2xs cursor-pointer"
+                          >
+                            📄 View Report
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (onOpenOrder) onOpenOrder(order)
+                              else onNavigate("lab_workbench")
+                            }}
+                            className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg transition shadow-2xs cursor-pointer"
+                          >
+                            🔬 Enter Results
+                          </button>
+                        )}
                       </td>
                     </tr>
                   )

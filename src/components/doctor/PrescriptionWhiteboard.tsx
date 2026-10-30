@@ -50,6 +50,8 @@ export default function PrescriptionWhiteboard({
   header,
   onCommit,
   onDirtyChange,
+  onDigitise,
+  isDigitising,
 }: {
   header?: {
     patientName: string
@@ -62,6 +64,8 @@ export default function PrescriptionWhiteboard({
   }
   onCommit?: (dataUrl: string | null) => void
   onDirtyChange?: (hasInk: boolean) => void
+  onDigitise?: (dataUrl: string) => void
+  isDigitising?: boolean
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const inkRef = useRef<HTMLCanvasElement | null>(null)
@@ -254,13 +258,78 @@ export default function PrescriptionWhiteboard({
     redraw()
   }, [redraw])
 
+  const exportCleanPrescription = useCallback(() => {
+    if (strokesRef.current.length === 0) return null
+
+    // Create a crisp 1200x820 offscreen canvas with pure white background,
+    // clear black/slate text metadata, and sharp ink strokes (no ruled grid noise)
+    const exportCanvas = document.createElement("canvas")
+    exportCanvas.width = SHEET_WIDTH
+    exportCanvas.height = SHEET_HEIGHT
+    const ctx = exportCanvas.getContext("2d")
+    if (!ctx) return null
+
+    // 1. Pure white background
+    ctx.fillStyle = "#FFFFFF"
+    ctx.fillRect(0, 0, SHEET_WIDTH, SHEET_HEIGHT)
+
+    // 2. High-contrast header divider
+    ctx.strokeStyle = "#CBD5E1"
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(48, 108)
+    ctx.lineTo(SHEET_WIDTH - 48, 108)
+    ctx.stroke()
+
+    // 3. Header details in sharp dark slate
+    ctx.fillStyle = "#0F172A"
+    ctx.font = "700 22px Inter, system-ui, sans-serif"
+    ctx.fillText(header?.patientName || "Patient Consultation", 48, 52)
+
+    ctx.fillStyle = "#475569"
+    ctx.font = "14px Inter, system-ui, sans-serif"
+    const line = [
+      header?.umr ? `UMR: ${header.umr}` : "",
+      header?.opNumber ? `OP: ${header.opNumber}` : "",
+      header ? `${header.age} yrs · ${header.sex}` : "",
+    ]
+      .filter(Boolean)
+      .join("   ·   ")
+    ctx.fillText(line || "General OPD Consultation Sheet", 48, 78)
+
+    ctx.textAlign = "right"
+    ctx.fillStyle = "#0F172A"
+    ctx.font = "600 15px Inter, system-ui, sans-serif"
+    ctx.fillText(header?.doctorName || "", SHEET_WIDTH - 48, 52)
+    ctx.fillStyle = "#475569"
+    ctx.font = "13px Inter, system-ui, sans-serif"
+    ctx.fillText(
+      header?.date || new Date().toLocaleDateString(),
+      SHEET_WIDTH - 48,
+      76,
+    )
+    ctx.textAlign = "left"
+
+    // 4. Rx Symbol
+    ctx.fillStyle = "#1B4FD8"
+    ctx.font = "italic 800 32px Georgia, serif"
+    ctx.fillText("℞", 48, 142)
+
+    // 5. Render user ink strokes
+    for (const stroke of strokesRef.current) {
+      drawStroke(ctx, stroke)
+    }
+
+    // Export as high-quality JPEG for compact size & rapid transmission (<100KB)
+    return exportCanvas.toDataURL("image/jpeg", 0.90)
+  }, [header])
+
   const commit = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
     const hasInk = strokesRef.current.length > 0
     onDirtyChange?.(hasInk)
-    onCommit?.(hasInk ? canvas.toDataURL("image/png") : null)
-  }, [onCommit, onDirtyChange])
+    const cleanDataUrl = hasInk ? exportCleanPrescription() : null
+    onCommit?.(cleanDataUrl)
+  }, [exportCleanPrescription, onCommit, onDirtyChange])
 
   const pointFromEvent = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current!
@@ -506,6 +575,37 @@ export default function PrescriptionWhiteboard({
         >
           {isFullScreen ? "📉 Exit Fullscreen" : "⛶ Fullscreen Canvas"}
         </button>
+
+        {/* Instant Digitise Sheet Action Button */}
+        {onDigitise && (
+          <button
+            type="button"
+            onClick={() => {
+              const dataUrl = exportCleanPrescription()
+              if (dataUrl) onDigitise(dataUrl)
+            }}
+            disabled={strokeCount === 0 || isDigitising}
+            className={`px-3 py-1.5 text-[11.5px] font-bold rounded-none border flex items-center gap-1.5 transition-all shadow-sm ${
+              isDigitising
+                ? "bg-[#EFF6FF] text-[#1B4FD8] border-[#93C5FD] cursor-wait"
+                : strokeCount === 0
+                ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60"
+                : "bg-[#1B4FD8] hover:bg-[#153eb2] text-white border-[#1B4FD8] cursor-pointer active:scale-95"
+            }`}
+          >
+            {isDigitising ? (
+              <>
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                <span>Digitising…</span>
+              </>
+            ) : (
+              <>
+                <span>✨</span>
+                <span>Digitise Sheet</span>
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Interactive Drawing Canvas Container */}

@@ -2,7 +2,7 @@ import React, { useState } from "react"
 import { ClipboardList, Syringe, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react"
 import LabOrdersView from "./LabOrdersView"
 import SampleCollectionView from "./SampleCollectionView"
-import { LabOrder, LabOrderTest } from "../../services/labOrdersDb"
+import { LabOrder, LabOrderDatabase, LabOrderTest } from "../../services/labOrdersDb"
 
 interface LabOrdersAndCollectionViewProps {
   onOpenWorkbench?: (order: LabOrder, test?: LabOrderTest) => void
@@ -70,7 +70,12 @@ export default function LabOrdersAndCollectionView({
             }}
           />
         ) : (
-          <SampleCollectionView />
+          <SampleCollectionView
+            onOpenWorkbench={(orderId) => {
+              const order = LabOrderDatabase.getOrders().find((o) => o.id === orderId)
+              if (order && onOpenWorkbench) onOpenWorkbench(order)
+            }}
+          />
         )}
       </div>
     </div>

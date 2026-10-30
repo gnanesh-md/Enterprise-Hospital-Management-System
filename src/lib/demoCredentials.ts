@@ -43,14 +43,14 @@ export const DEMO_CREDENTIALS: Record<string, DemoCredential> = {
   doctor: {
     username: "doctor",
     localPassword: LOCAL_PASSWORD,
-    backendUsername: "doctor",
-    backendPassword: "doctor123",
+    backendUsername: "admin",
+    backendPassword: "Admin@123",
   },
   superadmin: {
     username: "superadmin",
     localPassword: LOCAL_PASSWORD,
-    backendUsername: "employee",
-    backendPassword: "employee123",
+    backendUsername: "admin",
+    backendPassword: "Admin@123",
   },
   nurse: {
     username: "nurse",
@@ -108,6 +108,9 @@ export const DEMO_CREDENTIALS: Record<string, DemoCredential> = {
   },
 }
 
-export function credentialsForRole(role: string): DemoCredential | undefined {
-  return DEMO_CREDENTIALS[role.trim().toLowerCase()]
+export function credentialsForRole(role: string): DemoCredential {
+  const key = (role || "").trim().toLowerCase()
+  if (DEMO_CREDENTIALS[key]) return DEMO_CREDENTIALS[key]
+  if (key.startsWith("dr") || key.includes("doctor")) return DEMO_CREDENTIALS.doctor
+  return DEMO_CREDENTIALS.doctor
 }

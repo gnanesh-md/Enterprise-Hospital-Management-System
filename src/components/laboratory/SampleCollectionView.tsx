@@ -13,11 +13,17 @@ import {
   Droplet,
   MapPin,
   RefreshCw,
+  Microscope,
+  ArrowRight,
 } from "lucide-react"
 import { LabLisService, SpecimenRecord, TubeColor } from "../../services/labLisService"
 import { LabOrderDatabase } from "../../services/labOrdersDb"
 
-export default function SampleCollectionView() {
+interface SampleCollectionViewProps {
+  onOpenWorkbench?: (orderId: string) => void
+}
+
+export default function SampleCollectionView({ onOpenWorkbench }: SampleCollectionViewProps = {}) {
   const [specimens, setSpecimens] = useState<SpecimenRecord[]>([])
   const [activeSubTab, setActiveSubTab] = useState<"pending" | "collected" | "all">("pending")
   const [searchQuery, setSearchQuery] = useState("")
@@ -375,9 +381,22 @@ export default function SampleCollectionView() {
                               <span>Draw</span>
                             </button>
                           ) : (
-                            <span className="text-[11px] text-teal-700 font-bold flex items-center gap-0.5">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Done
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] text-teal-700 font-bold flex items-center gap-0.5">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Drawn
+                              </span>
+                              {onOpenWorkbench && (
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenWorkbench(spec.orderId)}
+                                  className="px-2 py-0.5 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-[10.5px] font-bold rounded-md transition cursor-pointer flex items-center gap-1"
+                                  title="Proceed to analyzer bench for testing"
+                                >
+                                  <Microscope className="w-3 h-3" />
+                                  <span>Test Bench</span>
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
                       </td>
