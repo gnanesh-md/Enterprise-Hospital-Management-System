@@ -1,7 +1,33 @@
 import React, { useState, useEffect, useMemo } from "react"
+import mammoth from "mammoth"
+import * as pdfjsLib from "pdfjs-dist"
+import { 
+  FileText, 
+  Printer, 
+  Save, 
+  CheckCircle2, 
+  X, 
+  Upload, 
+  User, 
+  Calendar, 
+  Stethoscope, 
+  Clock, 
+  ShieldCheck, 
+  Sparkles, 
+  Sun, 
+  Moon, 
+  Activity,
+  Layers,
+  FileCheck2,
+  Undo2,
+  FileSpreadsheet
+} from "lucide-react"
 import { BillingDatabase, RadiologyStudyRecord } from "../services/billingDb"
 import { db } from "../services/db"
 import { AuditDatabase } from "../services/auditDb"
+import { RadiologyTemplateDatabase, extractCleanTemplateText, extractTextFromPdfBuffer, extractTextFromWordBuffer } from "../services/radiologyTemplateDb"
+
+import { DiagnosticTariffDatabase } from "../services/diagnosticTariffDb"
 
 export interface ImagingCatalogItem {
   study: string
@@ -482,7 +508,7 @@ export interface PatientStudyGroup {
   totalPrice: number
   studies: RadiologyStudyRecord[]
   modalities: Array<"XR" | "CT" | "MR" | "US" | "NM">
-  status: "Orders" | "Scheduled" | "In Progress" | "Images Ready" | "Reporting" | "Final"
+  status: "Orders" | "Scheduled" | "In Progress" | "Done" | "Images Ready" | "Reporting" | "Final"
 }
 
 const QUEUE_TABS = [
@@ -494,14 +520,403 @@ const QUEUE_TABS = [
   { label: "✓ Completed & Signed", key: "completed" },
 ]
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+}
+
+export function printRadiologyDocument(study: RadiologyStudyRecord, defaultCatalog?: ImagingCatalogItem[]): void {
+  const catalogMatch = defaultCatalog?.find((c) => c.study === study.study) || IMAGING_CATALOG[0]
+  
+  const findingsRaw = study.findings && study.findings.length > 0
+    ? (Array.isArray(study.findings) ? study.findings.join("\n") : String(study.findings))
+    : catalogMatch.defaultFindings.join("\n")
+
+  const impressionRaw = study.impression && study.impression.length > 0
+    ? (Array.isArray(study.impression) ? study.impression.join("\n") : String(study.impression))
+    : catalogMatch.defaultImpression.join("\n")
+
+  const patientName = escapeHtml(study.patient || "Patient")
+  const accessionNo = escapeHtml(study.accessionNo || "RAD-ACC-8801")
+  const umr = escapeHtml(study.umr || `PAT-${study.mrn}`)
+  const mrn = escapeHtml(study.mrn || "")
+  const encounterId = escapeHtml(study.encounterId || `ENC-${study.mrn}`)
+  const referringDoc = escapeHtml(study.provider || "Attending Physician")
+  const department = escapeHtml(study.department || "Outpatient")
+  const billingStatus = escapeHtml(`${study.paymentStatus || "Paid"} (₹${study.price || 0})`)
+  const receiptRef = escapeHtml(study.paidReceiptNo || study.digitalReceiptRef || "RCPT-2026-8331")
+  const studyTitle = escapeHtml(study.study || "Diagnostic Imaging Study")
+  const modality = escapeHtml(study.modality || "XR")
+  const suite = escapeHtml(study.room || "Suite 1")
+  const digitalLink = escapeHtml(study.digitalStudyUrl ? "Attached" : `PACS://${study.accessionNo || "RAD-8801"}`)
+  const indication = escapeHtml(study.indication || catalogMatch.indication || "Clinical indication not specified.")
+  const technique = escapeHtml(study.technique || catalogMatch.technique || "Standard diagnostic protocol.")
+  const dateStr = escapeHtml(study.signedAt || study.ordered || new Date().toLocaleDateString("en-IN"))
+  const statusStr = escapeHtml((study.status || "REPORTING").toUpperCase())
+  const techNotes = escapeHtml(study.technicianNotes || "Diagnostic imaging scan performed per protocol. DICOM images ingested into PACS.")
+  const techName = escapeHtml(study.technician || "Radiology Technologist")
+  const techSig = escapeHtml(study.technicianSignature || "TECH-SIG-88012")
+  const radName = escapeHtml(study.radiologist || "Dr. Laura Kim, MD")
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Radiology Report - ${accessionNo} - ${patientName}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 14mm 16mm 14mm 16mm;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 10pt;
+      line-height: 1.5;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .header-block {
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .brand-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: #0f172a;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 18px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .brand-title {
+      font-size: 15pt;
+      font-weight: 900;
+      letter-spacing: -0.3px;
+      text-transform: uppercase;
+      color: #020617;
+      margin: 0;
+      line-height: 1.1;
+    }
+    .brand-sub {
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: #334155;
+      margin-top: 2px;
+    }
+    .brand-addr {
+      font-size: 7pt;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .brand-meta {
+      text-align: right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 8pt;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+    .meta-acc {
+      font-weight: 800;
+      color: #020617;
+      font-size: 8.5pt;
+    }
+    .meta-status {
+      font-weight: 800;
+      color: #15803d;
+      font-size: 8pt;
+      text-transform: uppercase;
+    }
+    .demographics-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      margin-bottom: 12px;
+      font-size: 8.5pt;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .demographics-table td {
+      padding: 5px 8px;
+      vertical-align: top;
+      border: 1px solid #e2e8f0;
+      line-height: 1.4;
+    }
+    .study-banner {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .study-heading {
+      font-size: 10.5pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #020617;
+      margin: 0 0 4px 0;
+    }
+    .study-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      font-size: 8pt;
+      color: #334155;
+      margin-bottom: 3px;
+    }
+    .study-detail {
+      font-size: 8pt;
+      color: #334155;
+      margin-top: 2px;
+    }
+    .section-header {
+      font-size: 9pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #020617;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 2px;
+      margin-top: 10px;
+      margin-bottom: 6px;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .findings-container {
+      white-space: pre-wrap;
+      font-size: 9.5pt;
+      line-height: 1.6;
+      color: #1e293b;
+      margin-bottom: 12px;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    .impression-container {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-left: 3.5px solid #0284c7;
+      padding: 8px 10px;
+      margin: 10px 0;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .impression-title {
+      font-size: 8.5pt;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #0369a1;
+      margin-bottom: 3px;
+    }
+    .impression-body {
+      white-space: pre-wrap;
+      font-size: 9pt;
+      font-weight: 600;
+      line-height: 1.5;
+      color: #0f172a;
+      word-wrap: break-word;
+    }
+    .tech-box {
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+      padding: 6px 8px;
+      font-size: 8pt;
+      color: #581c87;
+      margin: 8px 0;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .signatures-block {
+      margin-top: 24px;
+      padding-top: 8px;
+      border-top: 1.5px solid #0f172a;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .sig-left, .sig-right {
+      font-size: 8pt;
+      line-height: 1.35;
+    }
+    .sig-right {
+      text-align: right;
+    }
+    .sig-name {
+      font-weight: 800;
+      font-size: 9pt;
+      color: #020617;
+    }
+    .sig-role {
+      font-weight: 600;
+      color: #475569;
+    }
+    .sig-reg {
+      font-size: 7.5pt;
+      color: #94a3b8;
+    }
+    .disclaimer-text {
+      text-align: center;
+      font-size: 7pt;
+      color: #94a3b8;
+      margin-top: 16px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+  <div class="header-block">
+    <div class="brand-left">
+      <div class="brand-logo">+</div>
+      <div>
+        <h1 class="brand-title">IMPERIAL HOSPITALS</h1>
+        <div class="brand-sub">A Unit of Mukunda Healthcare Pvt Ltd • Department of Radiology &amp; Imaging</div>
+        <div class="brand-addr"># 27-14-13/A, Opp. Ganesh Canteen Street, Beside Bhasyam School, Bhimavaram • Ph: 08816-279999 • GSTIN: 37AALCM2238A1ZQ</div>
+      </div>
+    </div>
+    <div class="brand-meta">
+      <div class="meta-acc">ACCESSION: ${accessionNo}</div>
+      <div style="color: #475569; font-weight: 600;">Date: ${dateStr}</div>
+      <div class="meta-status">STATUS: ${statusStr}</div>
+    </div>
+  </div>
+
+  <table class="demographics-table">
+    <tr>
+      <td style="width: 50%;">
+        Patient Name: <strong style="color: #020617; font-size: 9pt;">${patientName}</strong><br />
+        UMR Number: <strong style="font-family: monospace;">${umr}</strong><br />
+        MRN Number: <strong style="font-family: monospace;">${mrn}</strong><br />
+        OP / IP / ER No: <strong style="font-family: monospace;">${encounterId}</strong>
+      </td>
+      <td style="width: 50%; text-align: right;">
+        Referring Physician: <strong style="color: #020617;">${referringDoc}</strong><br />
+        Department: <strong>${department}</strong><br />
+        Billing Status: <strong style="color: #15803d;">${billingStatus}</strong><br />
+        Digital Receipt Ref: <strong style="font-family: monospace;">${receiptRef}</strong>
+      </td>
+    </tr>
+  </table>
+
+  <div class="study-banner">
+    <div class="study-heading">INVESTIGATION: ${studyTitle}</div>
+    <div class="study-grid">
+      <div>Category: <strong>${modality}</strong></div>
+      <div>Scanner Suite: <strong>${suite}</strong></div>
+      <div>Digital Study Link: <strong style="font-family: monospace;">${digitalLink}</strong></div>
+    </div>
+    <div class="study-detail"><strong>Clinical Indication:</strong> ${indication}</div>
+    <div class="study-detail"><strong>Imaging Technique &amp; Protocol:</strong> ${technique}</div>
+  </div>
+
+  <div class="section-header">DIAGNOSTIC FINDINGS:</div>
+  <div class="findings-container">${escapeHtml(findingsRaw)}</div>
+
+  <div class="impression-container">
+    <div class="impression-title">DIAGNOSTIC IMPRESSION:</div>
+    <div class="impression-body">${escapeHtml(impressionRaw)}</div>
+  </div>
+
+  ${techNotes ? `
+  <div class="tech-box">
+    <strong>Technician Operational Report:</strong> ${techNotes}
+  </div>` : ""}
+
+  <div class="signatures-block">
+    <div class="sig-left">
+      <div class="sig-role">Radiology Technologist</div>
+      <div class="sig-name">${techName}</div>
+      <div class="sig-reg">Signature Ref: ${techSig}</div>
+    </div>
+    <div class="sig-right">
+      <div class="sig-name">${radName}</div>
+      <div class="sig-role">Senior Consultant Radiologist</div>
+      <div class="sig-reg">Reg No: MCI-RAD-77109</div>
+    </div>
+  </div>
+
+  <div class="disclaimer-text">
+    * This is an official digital diagnostic report issued by the Department of Radiology. Suggested clinical correlation and further evaluation.
+  </div>
+</body>
+</html>`
+
+  const iframe = document.createElement("iframe")
+  iframe.style.position = "fixed"
+  iframe.style.right = "0"
+  iframe.style.bottom = "0"
+  iframe.style.width = "0"
+  iframe.style.height = "0"
+  iframe.style.border = "0"
+  document.body.appendChild(iframe)
+
+  const doc = iframe.contentWindow?.document
+  if (!doc) return
+
+  doc.open()
+  doc.write(html)
+  doc.close()
+
+  setTimeout(() => {
+    iframe.contentWindow?.focus()
+    iframe.contentWindow?.print()
+    setTimeout(() => {
+      try {
+        document.body.removeChild(iframe)
+      } catch {}
+    }, 2000)
+  }, 300)
+}
+
 export default function Radiology({
   technician = "Radiology Specialist",
+  initialTab = "worklist",
 }: {
   technician?: string
+  initialTab?: "worklist" | "reports" | "templates"
 }) {
   const [tick, setTick] = useState(0)
+  const [mainTab, setMainTab] = useState<"worklist" | "reports" | "templates">(initialTab)
+
+  useEffect(() => {
+    if (initialTab) {
+      setMainTab(initialTab)
+    }
+  }, [initialTab])
+
   const [activeQueue, setActiveQueue] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [reportsSearchQuery, setReportsSearchQuery] = useState("")
   const [modalityFilter, setModalityFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null)
@@ -509,6 +924,18 @@ export default function Radiology({
     text: string
     type: "success" | "error" | "info"
   } | null>(null)
+
+  // Action: Mark scanning test as DONE
+  const handleMarkStudyDone = (studyId: string, studyName: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    try {
+      BillingDatabase.updateRadiologyStudy(studyId, { status: "Done" })
+      showToast(`✓ Marked "${studyName}" as DONE! Moved to Radiology Reports.`, "success")
+      setTick((t) => t + 1)
+    } catch (err: any) {
+      showToast(err.message || "Failed to update study status", "error")
+    }
+  }
 
   // Modality Room Status State (Persisted in LocalStorage)
   const [modalitySuites, setModalitySuites] = useState(() => {
@@ -548,16 +975,199 @@ export default function Radiology({
   const [showSubmitArtifactsModal, setShowSubmitArtifactsModal] = useState<RadiologyStudyRecord | null>(null)
   const [showNewOrderModal, setShowNewOrderModal] = useState(false)
   const [showAddStudyModal, setShowAddStudyModal] = useState<PatientStudyGroup | null>(null)
-  const [activePacsStudy, setActivePacsStudy] = useState<RadiologyStudyRecord | null>(null)
   const [activeReportStudy, setActiveReportStudy] = useState<RadiologyStudyRecord | null>(null)
   const [activePdfStudy, setActivePdfStudy] = useState<RadiologyStudyRecord | null>(null)
+  const [showUploadTemplateModal, setShowUploadTemplateModal] = useState(false)
+  const [templateUploadForm, setTemplateUploadForm] = useState({
+    testName: "Ultrasound Whole Abdomen",
+    customName: "",
+    templateName: "",
+    genderTarget: "All" as "All" | "Male" | "Female",
+    category: "Ultrasound" as "X-Ray" | "CT Scan" | "MRI" | "Ultrasound (USG)" | "Ultrasound" | "Echocardiography" | "Doppler" | "Mammography" | "Fluoroscopy / Special Procedures" | "Other",
+    rawContent: "",
+    fileName: "",
+  })
+
+  // Save Uploaded / Pasted Radiology Report Template
+  const handleSaveUploadedTemplate = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const targetTestName = templateUploadForm.testName === "custom" ? templateUploadForm.customName.trim() : templateUploadForm.testName.trim()
+
+    if (!targetTestName) {
+      showToast("Please select or enter a Test Name", "error")
+      return
+    }
+    if (!templateUploadForm.rawContent.trim()) {
+      showToast("Please enter or paste template content", "error")
+      return
+    }
+
+    try {
+      const existingTest = RadiologyTemplateDatabase.getTestByName(targetTestName)
+      const catItem = IMAGING_CATALOG.find((c) => c.study.toLowerCase() === targetTestName.toLowerCase())
+      const testCategory = templateUploadForm.category && templateUploadForm.category !== "Ultrasound (USG)"
+        ? templateUploadForm.category
+        : (catItem ? catItem.category : (targetTestName.toLowerCase().includes("x-ray") || targetTestName.toLowerCase().includes("xr") ? "X-Ray" : templateUploadForm.category || "X-Ray"))
+      const test = RadiologyTemplateDatabase.saveTest({
+        id: existingTest?.id,
+        name: targetTestName,
+        category: (testCategory as any) || "X-Ray",
+      })
+
+      RadiologyTemplateDatabase.saveTemplate(test.id, [], {
+        rawContent: templateUploadForm.rawContent.trim(),
+        uploadedFileName: templateUploadForm.fileName || templateUploadForm.templateName || `${targetTestName.replace(/\s+/g, "_")}_Template.txt`,
+        genderTarget: templateUploadForm.genderTarget || "All",
+        status: "Active",
+      })
+
+      if (activeReportStudy) {
+        setReportingForm((prev) => ({
+          ...prev,
+          findings: templateUploadForm.rawContent.trim().split("\n"),
+        }))
+      }
+
+      showToast(`✓ Template for "${targetTestName}" (${templateUploadForm.genderTarget}) saved and activated successfully!`, "success")
+      setTick((t) => t + 1)
+      setShowUploadTemplateModal(false)
+      setTemplateUploadForm({
+        testName: "Chest X-Ray PA/Lateral",
+        customName: "",
+        templateName: "",
+        genderTarget: "All",
+        category: "X-Ray",
+        rawContent: "",
+        fileName: "",
+      })
+    } catch (err: any) {
+      showToast(err.message || "Failed to save template", "error")
+    }
+  }
+
+  // Direct PDF / Document template import from within the Report Editor
+  const handleEditorDirectFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !activeReportStudy) return
+
+    showToast(`Reading and parsing "${file.name}"...`, "info")
+    const lowerName = file.name.toLowerCase()
+
+    try {
+      if (lowerName.endsWith(".docx") || lowerName.endsWith(".doc")) {
+        const reader = new FileReader()
+        reader.onload = async (ev) => {
+          const buf = ev.target?.result as ArrayBuffer
+          if (buf) {
+            try {
+              const extracted = await extractTextFromWordBuffer(buf, file.name)
+              if (extracted && extracted.trim()) {
+                setReportingForm((prev) => ({
+                  ...prev,
+                  findings: extracted.trim().split("\n"),
+                }))
+                try {
+                  const test = RadiologyTemplateDatabase.saveTest({
+                    name: activeReportStudy.study,
+                    category: (activeReportStudy as any).category || "X-Ray",
+                  })
+                  RadiologyTemplateDatabase.saveTemplate(test.id, [], {
+                    rawContent: extracted.trim(),
+                    uploadedFileName: file.name,
+                    uploadedFileType: "word",
+                    status: "Active",
+                    genderTarget: "All",
+                  })
+                  setTick((t) => t + 1)
+                } catch {}
+                showToast(`✓ Extracted and loaded template from Word "${file.name}"!`, "success")
+              } else {
+                showToast(`No readable text found in "${file.name}"`, "error")
+              }
+            } catch (err: any) {
+              showToast(`Failed to parse Word document: ${err?.message || err}`, "error")
+            }
+          }
+        }
+        reader.readAsArrayBuffer(file)
+      } else if (lowerName.endsWith(".pdf")) {
+        const reader = new FileReader()
+        reader.onload = async (ev) => {
+          const buf = ev.target?.result as ArrayBuffer
+          if (buf) {
+            try {
+              const extracted = await extractTextFromPdfBuffer(buf)
+              if (extracted && extracted.trim()) {
+                setReportingForm((prev) => ({
+                  ...prev,
+                  findings: extracted.trim().split("\n"),
+                }))
+                try {
+                  const test = RadiologyTemplateDatabase.saveTest({
+                    name: activeReportStudy.study,
+                    category: (activeReportStudy as any).category || "X-Ray",
+                  })
+                  RadiologyTemplateDatabase.saveTemplate(test.id, [], {
+                    rawContent: extracted.trim(),
+                    uploadedFileName: file.name,
+                    uploadedFileType: "pdf",
+                    status: "Active",
+                    genderTarget: "All",
+                  })
+                  setTick((t) => t + 1)
+                } catch {}
+                showToast(`✓ Extracted and loaded template from PDF "${file.name}"!`, "success")
+              } else {
+                showToast(`No readable text layer found in PDF "${file.name}". You can paste or type template text.`, "error")
+              }
+            } catch (err: any) {
+              showToast(`Failed to extract text from PDF: ${err?.message || err}`, "error")
+            }
+          }
+        }
+        reader.readAsArrayBuffer(file)
+      } else {
+        const reader = new FileReader()
+        reader.onload = (ev) => {
+          const content = ev.target?.result as string
+          if (content && content.trim()) {
+            const cleaned = extractCleanTemplateText(file.name, content)
+            setReportingForm((prev) => ({
+              ...prev,
+              findings: cleaned.trim().split("\n"),
+            }))
+            try {
+              const test = RadiologyTemplateDatabase.saveTest({
+                name: activeReportStudy.study,
+                category: (activeReportStudy as any).category || "X-Ray",
+              })
+              RadiologyTemplateDatabase.saveTemplate(test.id, [], {
+                rawContent: cleaned.trim(),
+                uploadedFileName: file.name,
+                uploadedFileType: "text",
+                status: "Active",
+                genderTarget: "All",
+              })
+              setTick((t) => t + 1)
+            } catch {}
+            showToast(`✓ Loaded template from "${file.name}"!`, "success")
+          }
+        }
+        reader.readAsText(file)
+      }
+    } catch (err: any) {
+      showToast(`Error reading file: ${err?.message || err}`, "error")
+    } finally {
+      e.target.value = ""
+    }
+  }
 
   // Submit Artifacts Form State
   const [artifactForm, setArtifactForm] = useState({
     digitalStudyUrl: "",
     digitalReceiptRef: "",
     technicianName: technician,
-    technicianNotes: "Diagnostic imaging scan performed per protocol. High-resolution DICOM images ingested into PACS.",
+    technicianNotes: "Diagnostic imaging scan performed per protocol. High-resolution diagnostic images attached.",
     technicianSignature: `TECH-SIG-${Math.floor(10000 + Math.random() * 90000)}`,
   })
 
@@ -567,7 +1177,7 @@ export default function Radiology({
       digitalStudyUrl: study.digitalStudyUrl || customUploadUrl || "https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=800&q=80",
       digitalReceiptRef: study.paidReceiptNo || study.digitalReceiptRef || `RCPT-2026-${Math.floor(5500 + Math.random() * 4000)}`,
       technicianName: study.technician || technician,
-      technicianNotes: study.technicianNotes || "Diagnostic imaging scan completed cleanly per protocol. High-resolution DICOM images ingested into PACS.",
+      technicianNotes: study.technicianNotes || "Diagnostic imaging scan completed cleanly per protocol. High-resolution diagnostic images attached.",
       technicianSignature: study.technicianSignature || `TECH-SIG-${Math.floor(10000 + Math.random() * 90000)}`,
     })
     setShowSubmitArtifactsModal(study)
@@ -648,20 +1258,31 @@ export default function Radiology({
     radiologist: "Dr. Laura Kim, MD · Senior Consultant Radiologist",
     reportStatus: "Final" as "Draft" | "Final",
   })
+  const [reportEditorTheme, setReportEditorTheme] = useState<"light" | "dark">("light")
 
-  // Subscribe to changes in BillingDatabase
+  // Subscribe to changes in BillingDatabase and RadiologyTemplateDatabase
   useEffect(() => {
     const refresh = () => setTick((t) => t + 1)
-    const unsub = BillingDatabase.onUpdate(refresh)
+    const unsubBilling = BillingDatabase.onUpdate(refresh)
+    const unsubTemplate = RadiologyTemplateDatabase.onUpdate(refresh)
     let channel: BroadcastChannel | null = null
+    let tplChannel: BroadcastChannel | null = null
     try {
       channel = new BroadcastChannel("hospai_rad_channel")
       channel.onmessage = refresh
     } catch {}
+    try {
+      tplChannel = new BroadcastChannel("hospai_rad_template_channel")
+      tplChannel.onmessage = refresh
+    } catch {}
     return () => {
-      unsub()
+      unsubBilling()
+      unsubTemplate()
       try {
         channel?.close()
+      } catch {}
+      try {
+        tplChannel?.close()
       } catch {}
     }
   }, [])
@@ -728,6 +1349,7 @@ export default function Radiology({
           "In Progress": 5,
           "Orders": 4,
           "Scheduled": 4,
+          "Done": 3,
           "Images Ready": 3,
           "Reporting": 2,
           "Final": 1,
@@ -743,7 +1365,20 @@ export default function Radiology({
 
   // Helper to test if an order group is completed
   const isGroupCompleted = (grp: PatientStudyGroup): boolean => {
-    return grp.status === "Final" || (grp.studies.length > 0 && grp.studies.every((s) => s.status === "Final"))
+    return (
+      grp.status === "Done" ||
+      grp.status === "Images Ready" ||
+      grp.status === "Reporting" ||
+      grp.status === "Final" ||
+      (grp.studies.length > 0 &&
+        grp.studies.every(
+          (s) =>
+            s.status === "Done" ||
+            s.status === "Images Ready" ||
+            s.status === "Reporting" ||
+            s.status === "Final"
+        ))
+    )
   }
 
   // Filter patient groups by active tab, search, modality, priority
@@ -869,14 +1504,42 @@ export default function Radiology({
     }
   }
 
-  // Open Reporting Editor
+  // Open Reporting Editor with Smart Gender & Test Template Matching
+  // Open Reporting Editor with Smart Gender & Test Template Matching
   const openReportingEditor = (study: RadiologyStudyRecord) => {
-    const catItem = IMAGING_CATALOG.find((c) => c.study === study.study) || IMAGING_CATALOG[0]
+    const patientObj = db.getPatients().find((p) => p.name.trim().toLowerCase() === study.patient.trim().toLowerCase() || p.umr === study.umr)
+    const patientGender = patientObj?.sex || (study.patient.toLowerCase().includes("female") || study.patient.toLowerCase().includes("mrs") || study.patient.toLowerCase().includes("ms") ? "Female" : "Male")
+
+    const matchedTemplate = RadiologyTemplateDatabase.getActiveTemplateForTest(study.study, patientGender)
+    const catItem = IMAGING_CATALOG.find((c) => c.study === study.study || c.study.toLowerCase() === study.study.toLowerCase() || study.study.toLowerCase().includes(c.study.toLowerCase()) || c.study.toLowerCase().includes(study.study.toLowerCase())) || IMAGING_CATALOG[0]
+
+    // Check if the report was explicitly edited and saved by the user (Draft or Final)
+    const hasBeenSaved = (study.reportStatus === "Draft" || study.reportStatus === "Final") && study.findings && study.findings.length > 0
+
+    let defaultFindings: string[] = []
+    let defaultImpression: string[] = study.impression && study.impression.length > 0 ? study.impression : catItem.defaultImpression
+
+    if (hasBeenSaved && study.findings && study.findings.length > 0) {
+      // Preserve the exact findings that were saved by the user when editing!
+      defaultFindings = study.findings
+    } else if (matchedTemplate && matchedTemplate.rawContent && matchedTemplate.rawContent.trim()) {
+      // Use active template for this test and gender
+      defaultFindings = matchedTemplate.rawContent.trim().split("\n")
+    } else if (matchedTemplate && matchedTemplate.sections && matchedTemplate.sections.length > 0) {
+      defaultFindings = matchedTemplate.sections.map(
+        (sec) => `${sec.title}: ${sec.fields.map((f) => f.defaultValue || "").filter(Boolean).join(", ")}`
+      )
+    } else if (study.findings && study.findings.length > 0) {
+      defaultFindings = study.findings
+    } else {
+      defaultFindings = catItem.defaultFindings
+    }
+
     setReportingForm({
       indication: study.indication || catItem.indication,
       technique: study.technique || catItem.technique,
-      findings: study.findings && study.findings.length > 0 ? study.findings : catItem.defaultFindings,
-      impression: study.impression && study.impression.length > 0 ? study.impression : catItem.defaultImpression,
+      findings: defaultFindings,
+      impression: defaultImpression,
       comparison: study.comparison || "No prior imaging studies available for interval comparison.",
       radiologist: study.radiologist || "Dr. Laura Kim, MD · Senior Consultant Radiologist",
       reportStatus: (study.reportStatus as any) || "Final",
@@ -889,18 +1552,62 @@ export default function Radiology({
     if (!activeReportStudy) return
     try {
       const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      const updatedFindings = [...reportingForm.findings]
+
       BillingDatabase.updateRadiologyStudy(activeReportStudy.id, {
         indication: reportingForm.indication,
         technique: reportingForm.technique,
-        findings: reportingForm.findings,
+        findings: updatedFindings,
         impression: reportingForm.impression,
         comparison: reportingForm.comparison,
         radiologist: reportingForm.radiologist,
         reportStatus: status,
-        signedAt: status === "Final" ? now : undefined,
+        signedAt: status === "Final" ? now : activeReportStudy.signedAt,
         status: status === "Final" ? "Final" : "Reporting",
       })
+
+      // Also persist to RadiologyTemplateDatabase report records
+      const patientObj = db.getPatients().find((p) => p.name.trim().toLowerCase() === activeReportStudy.patient.trim().toLowerCase() || p.umr === activeReportStudy.umr)
+      const matchedTemplate = RadiologyTemplateDatabase.getActiveTemplateForTest(activeReportStudy.study, patientObj?.sex)
+
+      if (status === "Final") {
+        RadiologyTemplateDatabase.finalizeReport({
+          studyId: activeReportStudy.id,
+          patientName: activeReportStudy.patient,
+          mrn: activeReportStudy.mrn,
+          umr: activeReportStudy.umr,
+          encounterId: activeReportStudy.encounterId,
+          referringDoctor: activeReportStudy.provider,
+          orderedDate: activeReportStudy.ordered,
+          testId: matchedTemplate?.testId || "test_custom",
+          testName: activeReportStudy.study,
+          templateId: matchedTemplate?.id || "tpl_custom",
+          templateVersion: matchedTemplate?.version || 1,
+          templateStructure: matchedTemplate?.sections || [],
+          fieldValues: { findings: updatedFindings.join("\n") },
+          radiologistName: reportingForm.radiologist,
+        })
+      } else {
+        RadiologyTemplateDatabase.saveReportDraft({
+          studyId: activeReportStudy.id,
+          patientName: activeReportStudy.patient,
+          mrn: activeReportStudy.mrn,
+          umr: activeReportStudy.umr,
+          encounterId: activeReportStudy.encounterId,
+          referringDoctor: activeReportStudy.provider,
+          orderedDate: activeReportStudy.ordered,
+          testId: matchedTemplate?.testId || "test_custom",
+          testName: activeReportStudy.study,
+          templateId: matchedTemplate?.id || "tpl_custom",
+          templateVersion: matchedTemplate?.version || 1,
+          templateStructure: matchedTemplate?.sections || [],
+          fieldValues: { findings: updatedFindings.join("\n") },
+          radiologistName: reportingForm.radiologist,
+        })
+      }
+
       setActiveReportStudy(null)
+      setTick((t) => t + 1)
       showToast(
         status === "Final"
           ? `✓ Official radiology report signed out & finalized by ${reportingForm.radiologist}`
@@ -942,7 +1649,7 @@ export default function Radiology({
       department: newOrderForm.department,
       status: "Orders",
       room: catItem.room,
-      price: catItem.price,
+      price: catItem.price ?? 0,
       paymentStatus: newOrderForm.paymentStatus,
       paidReceiptNo: receiptNo,
       paidAt: isPaid ? new Date().toISOString() : undefined,
@@ -981,7 +1688,7 @@ export default function Radiology({
       department: first.department,
       status: "Orders",
       room: catItem.room,
-      price: catItem.price,
+      price: catItem.price ?? 0,
       paymentStatus: showAddStudyModal.paymentStatus,
       paidReceiptNo: showAddStudyModal.paidReceiptNo,
       indication: catItem.indication,
@@ -1070,7 +1777,7 @@ export default function Radiology({
               Diagnostic Radiology
             </span>
             <span className="text-xs text-gray-400">•</span>
-            <span className="text-xs text-gray-600 font-medium">PACS & Imaging Suite</span>
+            <span className="text-xs text-gray-600 font-medium">Diagnostic & Imaging Suite</span>
           </div>
           <h1 className="text-xl font-bold text-gray-900 tracking-tight mt-0.5">
             Radiology Portal
@@ -1078,6 +1785,7 @@ export default function Radiology({
         </div>
 
         <div className="flex items-center gap-3">
+
           <div className="text-right border-r pr-3 border-gray-200 hidden sm:block">
             <span className="text-[10.5px] text-gray-400 block font-medium">Logged in Specialist</span>
             <span className="text-xs font-bold text-gray-800">{technician}</span>
@@ -1123,33 +1831,8 @@ export default function Radiology({
 
       {/* Primary Work Area */}
       <div className="flex-1 flex flex-col p-6 space-y-4">
-        {/* Scanner Suites Live Status Card (High-Visibility Crisp Executive Styling) */}
-        <div className="bg-white border border-slate-300 p-3.5 rounded-none shadow-xs flex flex-wrap items-center gap-3 shrink-0">
-          <div className="flex items-center gap-2 pr-3.5 border-r border-slate-200 shrink-0">
-            <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
-              Scanner Suite Rooms:
-            </span>
-          </div>
-          <div className="flex items-center gap-2.5 overflow-x-auto flex-1 py-0.5">
-            {modalitySuites.map((m: any, i: number) => (
-              <button
-                key={i}
-                onClick={() => toggleSuiteStatus(i)}
-                className={`px-3 py-1.5 rounded-none text-xs font-bold border shadow-2xs transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
-                  m.status === "Available"
-                    ? "bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400"
-                    : "bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100 hover:border-rose-400"
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full inline-block ${m.status === "Available" ? "bg-emerald-600 animate-pulse" : "bg-rose-600"}`} />
-                <span>{m.label} ({m.room}):</span>
-                <span className={`px-2 py-0.5 rounded-none text-[10.5px] uppercase tracking-wider font-extrabold ${m.status === "Available" ? "bg-emerald-200/80 text-emerald-950 border border-emerald-300/60" : "bg-rose-200/80 text-rose-950 border border-rose-300/60"}`}>
-                  {m.status}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {mainTab === "worklist" && (
+          <>
 
         {selectedGroup ? (
           /* ========================================================================= */
@@ -1187,37 +1870,29 @@ export default function Radiology({
                 </div>
               </div>
 
-              {/* Action Buttons (Soft, eye-pleasing executive tones) */}
+              {/* Action Buttons (Clean executive layout) */}
               <div className="flex items-center gap-2 flex-wrap">
                 <button
+                  onClick={() => {
+                    selectedGroup.studies.forEach((st) => {
+                      if (st.status !== "Done" && st.status !== "Images Ready" && st.status !== "Reporting" && st.status !== "Final") {
+                        BillingDatabase.updateRadiologyStudy(st.id, { status: "Done" })
+                      }
+                    })
+                    showToast(`✓ Marked tests as DONE for ${selectedGroup.patient}! Returned to Radiology Department.`, "success")
+                    setTick((t) => t + 1)
+                    setSelectedGroupKey(null)
+                    setMainTab("worklist")
+                  }}
+                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-none shadow-2xs transition-colors flex items-center gap-1.5"
+                >
+                  <span>✓</span> Mark Done
+                </button>
+                <button
                   onClick={() => setShowAddStudyModal(selectedGroup)}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-none shadow-2xs transition-colors flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-none transition-colors flex items-center gap-1.5"
                 >
                   <span>➕</span> Add Study
-                </button>
-                <button
-                  onClick={() => openSubmitArtifactsModal(selectedGroup.studies[0])}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-none transition-colors flex items-center gap-1.5"
-                >
-                  <span>📤</span> Submit Record
-                </button>
-                <button
-                  onClick={() => setActivePacsStudy(selectedGroup.studies[0])}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-none transition-colors flex items-center gap-1.5"
-                >
-                  <span>🩻</span> PACS Viewer
-                </button>
-                <button
-                  onClick={() => openReportingEditor(selectedGroup.studies[0])}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors flex items-center gap-1.5"
-                >
-                  <span>📋</span> Dictate & Report
-                </button>
-                <button
-                  onClick={() => setActivePdfStudy(selectedGroup.studies[0])}
-                  className="px-3.5 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-none transition-colors flex items-center gap-1.5"
-                >
-                  <span>📄</span> Preview / Print Record
                 </button>
               </div>
             </div>
@@ -1302,7 +1977,7 @@ export default function Radiology({
                       <th className="py-2.5 px-4">Urgency</th>
                       <th className="py-2.5 px-4">Price</th>
                       <th className="py-2.5 px-4">Billing Status</th>
-                      <th className="py-2.5 px-4">Scan / PACS Status</th>
+                      <th className="py-2.5 px-4">Scan Status</th>
                       <th className="py-2.5 px-4 text-right">Action</th>
                     </tr>
                   </thead>
@@ -1351,10 +2026,8 @@ export default function Radiology({
                           <td className="py-3 px-4">
                             <span
                               className={`px-2 py-0.5 rounded-none text-[11px] font-bold border ${
-                                study.status === "Final"
+                                study.status === "Final" || study.status === "Images Ready" || study.status === "Reporting" || study.status === "Done"
                                   ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                  : study.status === "Images Ready" || study.status === "Reporting"
-                                  ? "bg-purple-50 text-purple-800 border-purple-200"
                                   : study.status === "In Progress"
                                   ? "bg-blue-50 text-blue-800 border-blue-200"
                                   : "bg-gray-50 text-gray-700 border-gray-200"
@@ -1362,10 +2035,10 @@ export default function Radiology({
                             >
                               {study.status === "Final"
                                 ? "✓ Signed Report"
-                                : study.status === "Images Ready"
-                                ? "🩻 Images Ready in PACS"
+                                : study.status === "Done" || study.status === "Images Ready" || study.status === "Reporting"
+                                ? "✓ Done"
                                 : study.status === "In Progress"
-                                ? "⚡ Scanning Ongoing"
+                                ? "⚡ Processing"
                                 : "🕒 Waiting for Scan"}
                             </span>
                           </td>
@@ -1378,36 +2051,33 @@ export default function Radiology({
                               <div className="flex items-center justify-end gap-1.5 flex-wrap">
                                 {(study.status === "Orders" || study.status === "Scheduled") && (
                                   <button
-                                    onClick={() => handleStartScan(study)}
-                                    className="px-2.5 py-1 text-xs font-bold text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors"
+                                    onClick={() => {
+                                      BillingDatabase.updateRadiologyStudy(study.id, { status: "In Progress" })
+                                      showToast(`⚡ Started scanning for "${study.study}"`, "info")
+                                      setTick((t) => t + 1)
+                                    }}
+                                    className="px-3 py-1 text-xs font-bold text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors shadow-2xs"
                                   >
-                                    Start Scan
+                                    Start Scanning
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => openSubmitArtifactsModal(study)}
-                                  className="px-2.5 py-1 text-xs font-bold text-purple-800 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-none transition-colors"
-                                >
-                                  📤 Submit Record
-                                </button>
-                                <button
-                                  onClick={() => setActivePacsStudy(study)}
-                                  className="px-2.5 py-1 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-none border border-slate-300 transition-colors"
-                                >
-                                  🩻 PACS
-                                </button>
-                                <button
-                                  onClick={() => openReportingEditor(study)}
-                                  className="px-2.5 py-1 text-xs font-bold text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-none transition-colors"
-                                >
-                                  📋 Dictate
-                                </button>
-                                <button
-                                  onClick={() => setActivePdfStudy(study)}
-                                  className="px-2.5 py-1 text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-none transition-colors"
-                                >
-                                  📄 Preview / Print
-                                </button>
+                                {study.status === "In Progress" && (
+                                  <button
+                                    onClick={() => {
+                                      BillingDatabase.updateRadiologyStudy(study.id, { status: "Done" })
+                                      showToast(`✓ Process completed for "${study.study}"`, "success")
+                                      setTick((t) => t + 1)
+                                    }}
+                                    className="px-3 py-1 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-none transition-colors shadow-2xs"
+                                  >
+                                    Complete Process
+                                  </button>
+                                )}
+                                {(study.status === "Done" || study.status === "Images Ready" || study.status === "Reporting" || study.status === "Final") && (
+                                  <span className="px-2.5 py-1 text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-none inline-flex items-center gap-1">
+                                    ✓ Done
+                                  </span>
+                                )}
                               </div>
                             )}
                           </td>
@@ -1417,6 +2087,41 @@ export default function Radiology({
                   </tbody>
                 </table>
               </div>
+
+              {/* Banner when all tests for patient are completed */}
+              {selectedGroup.studies.every((st) => st.status === "Done" || st.status === "Images Ready" || st.status === "Reporting" || st.status === "Final") && (
+                <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-none flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-none bg-emerald-700 text-white flex items-center justify-center font-bold text-sm">
+                      ✓
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
+                        All Tests Completed
+                      </h4>
+                      <p className="text-xs text-emerald-700 mt-0.5">
+                        All prescribed scans for {selectedGroup.patient} are complete. Click "MARK DONE" to finalize and return to the patient worklist for the next patient.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      selectedGroup.studies.forEach((st) => {
+                        if (st.status !== "Done" && st.status !== "Images Ready" && st.status !== "Reporting" && st.status !== "Final") {
+                          BillingDatabase.updateRadiologyStudy(st.id, { status: "Done" })
+                        }
+                      })
+                      showToast(`✓ Marked tests as DONE for ${selectedGroup.patient}! Returned to Radiology Department.`, "success")
+                      setTick((t) => t + 1)
+                      setSelectedGroupKey(null)
+                      setMainTab("worklist")
+                    }}
+                    className="px-4 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-none shadow-xs transition-colors flex items-center gap-2"
+                  >
+                    <span>✓</span> MARK DONE (Return to Patient List) →
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -1468,7 +2173,7 @@ export default function Radiology({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by Patient Name, ID (PAT-xxxx), Rad Order ID, Doctor, Study..."
+                  placeholder="Search by Patient Name, UMR ID, Doctor..."
                   className="w-full text-xs pl-8 pr-3 py-2 rounded-none border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
                 <span className="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
@@ -1523,14 +2228,12 @@ export default function Radiology({
                 <table className="w-full text-xs text-left">
                   <thead className="bg-gray-100 text-gray-700 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-200 sticky top-0 z-10">
                     <tr>
-                      <th className="py-2.5 px-4">Patient ID / Name</th>
-                      <th className="py-2.5 px-4">Visit / Encounter</th>
+                      <th className="py-2.5 px-4">Patient Name</th>
+                      <th className="py-2.5 px-4">UMR ID</th>
                       <th className="py-2.5 px-4">Ordering Doctor</th>
-                      <th className="py-2.5 px-4">Rad Order ID</th>
-                      <th className="py-2.5 px-4">Ordered Studies</th>
                       <th className="py-2.5 px-4">Billing Status</th>
-                      <th className="py-2.5 px-4">Date / Time</th>
-                      <th className="py-2.5 px-4 text-right">Actions</th>
+                      <th className="py-2.5 px-4">Date &amp; Time</th>
+                      <th className="py-2.5 px-4 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 bg-white">
@@ -1545,7 +2248,7 @@ export default function Radiology({
                           className="hover:bg-slate-50 transition-colors cursor-pointer"
                           onClick={() => setSelectedGroupKey(grp.groupKey)}
                         >
-                          {/* Patient ID / Name */}
+                          {/* Patient Name */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
                               <strong className="text-gray-900 block text-xs font-bold">
@@ -1557,18 +2260,11 @@ export default function Radiology({
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-1.5 text-[11px] text-gray-500 mt-0.5">
-                              <span className="font-mono font-semibold text-blue-700">
-                                {grp.umr || `PAT-${grp.mrn}`}
-                              </span>
-                              <span>•</span>
-                              <span>MRN: {grp.mrn}</span>
-                            </div>
                           </td>
 
-                          {/* Visit / Encounter */}
-                          <td className="py-3 px-4 font-mono text-gray-700 text-xs">
-                            {grp.encounterId}
+                          {/* UMR ID */}
+                          <td className="py-3 px-4 font-mono font-semibold text-blue-700 text-xs">
+                            {grp.umr || `PAT-${grp.mrn}`}
                           </td>
 
                           {/* Doctor */}
@@ -1577,35 +2273,6 @@ export default function Radiology({
                               {grp.provider}
                             </span>
                             <span className="text-[11px] text-gray-500">{grp.department}</span>
-                          </td>
-
-                          {/* Rad Order ID */}
-                          <td className="py-3 px-4 font-mono font-bold text-gray-800 text-xs">
-                            {firstStudy.id}
-                          </td>
-
-                          {/* Ordered Studies */}
-                          <td className="py-3 px-4">
-                            <div className="flex flex-wrap gap-1 max-w-xs">
-                              {grp.studies.slice(0, 3).map((st) => (
-                                <span
-                                  key={st.id}
-                                  className={`px-2 py-0.5 rounded-none text-[10.5px] font-semibold border ${
-                                    st.status === "Final"
-                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                      : "bg-gray-100 text-gray-700 border border-gray-200"
-                                  }`}
-                                >
-                                  [{st.modality}] {st.study}
-                                  {st.status === "Final" && " ✓"}
-                                </span>
-                              ))}
-                              {grp.studies.length > 3 && (
-                                <span className="text-[10px] text-blue-600 font-bold self-center">
-                                  +{grp.studies.length - 3} more
-                                </span>
-                              )}
-                            </div>
                           </td>
 
                           {/* Billing Status */}
@@ -1621,19 +2288,21 @@ export default function Radiology({
                             </span>
                           </td>
 
-                          {/* Date / Time */}
+                          {/* Date & Time */}
                           <td className="py-3 px-4 text-gray-500 text-[11px] whitespace-nowrap">
                             {grp.ordered}
                           </td>
 
                           {/* Action Button */}
                           <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => setSelectedGroupKey(grp.groupKey)}
-                              className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-none transition-colors shadow-2xs"
-                            >
-                              Open Details →
-                            </button>
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setSelectedGroupKey(grp.groupKey)}
+                                className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-none transition-colors shadow-2xs"
+                              >
+                                Open Details →
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )
@@ -1644,416 +2313,505 @@ export default function Radiology({
             </div>
           </div>
         )}
+        </>
+        )}
+
+        {/* TAB 2: RADIOLOGY REPORTS MODULE (INSIDE RADIOLOGY DEPARTMENT) */}
+        {mainTab === "reports" && (
+          <div className="flex-1 flex flex-col space-y-6 overflow-y-auto">
+            {/* Search & Template Upload Bar for Radiology Reports */}
+            <div className="bg-white border border-gray-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <div className="flex-1 min-w-[280px] max-w-lg relative">
+                <input
+                  type="text"
+                  value={reportsSearchQuery}
+                  onChange={(e) => setReportsSearchQuery(e.target.value)}
+                  placeholder="Search Radiology Reports by Patient Name, UMR, MRN, Test Name, Doctor..."
+                  className="w-full text-xs pl-8 pr-3 py-2 rounded-none border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
+                />
+                <span className="absolute left-2.5 top-2.5 text-gray-400 text-xs">🔍</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {reportsSearchQuery && (
+                  <button
+                    onClick={() => setReportsSearchQuery("")}
+                    className="text-xs text-gray-500 hover:text-gray-900 font-semibold underline cursor-pointer mr-2"
+                  >
+                    Clear Search
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowUploadTemplateModal(true)}
+                  className="px-3.5 py-1.5 text-xs font-bold text-white bg-blue-800 hover:bg-blue-900 rounded-none shadow-2xs transition-colors flex items-center gap-1.5"
+                >
+                  <span>📤</span> Upload / Manage Report Templates
+                </button>
+              </div>
+            </div>
+
+            {/* SECTION A: COMPLETED INVESTIGATIONS READY FOR REPORT PREPARATION */}
+            <div className="bg-white shadow-xs border border-gray-200 flex flex-col overflow-hidden">
+              <div className="p-4 border-b border-gray-200 bg-blue-900 text-white flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-white">
+                    Completed Radiology Investigations (Ready for Reporting)
+                  </h2>
+                  <p className="text-xs text-blue-200 mt-0.5">
+                    Scanning completed. Click "Open Patient Report" to enter findings, finalize & print reports.
+                  </p>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 bg-blue-800 text-blue-100 border border-blue-700 font-mono">
+                  {rawStudies.filter((s) => s.status === "Images Ready" || (s.status as string) === "Done" || s.status === "Reporting").length} Pending Reports
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                {rawStudies.filter((s) => {
+                  const isDone = s.status === "Images Ready" || (s.status as string) === "Done" || s.status === "Reporting"
+                  if (!isDone) return false
+                  if (reportsSearchQuery.trim()) {
+                    const q = reportsSearchQuery.toLowerCase().trim()
+                    const matchPatient = s.patient.toLowerCase().includes(q)
+                    const matchMrn = s.mrn.toLowerCase().includes(q)
+                    const matchUmr = (s.umr || "").toLowerCase().includes(q)
+                    const matchDoctor = (s.provider || "").toLowerCase().includes(q)
+                    const matchStudy = s.study.toLowerCase().includes(q)
+                    if (!matchPatient && !matchMrn && !matchUmr && !matchDoctor && !matchStudy) return false
+                  }
+                  return true
+                }).length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">
+                    <p className="text-xs font-bold text-gray-600">No completed tests awaiting report entry.</p>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      When staff marks a scanning test as DONE, it will automatically appear here for technician reporting.
+                    </p>
+                  </div>
+                ) : (
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-100 text-gray-700 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-200">
+                      <tr>
+                        <th className="py-2.5 px-4">Patient Name / UMR</th>
+                        <th className="py-2.5 px-4">Visit ID</th>
+                        <th className="py-2.5 px-4">Prescribed Test Name</th>
+                        <th className="py-2.5 px-4">Referring Doctor</th>
+                        <th className="py-2.5 px-4">Scanning Status</th>
+                        <th className="py-2.5 px-4 text-right">Technician Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {rawStudies
+                        .filter((s) => {
+                          const isDone = s.status === "Images Ready" || (s.status as string) === "Done" || s.status === "Reporting"
+                          if (!isDone) return false
+                          if (reportsSearchQuery.trim()) {
+                            const q = reportsSearchQuery.toLowerCase().trim()
+                            const matchPatient = s.patient.toLowerCase().includes(q)
+                            const matchMrn = s.mrn.toLowerCase().includes(q)
+                            const matchUmr = (s.umr || "").toLowerCase().includes(q)
+                            const matchDoctor = (s.provider || "").toLowerCase().includes(q)
+                            const matchStudy = s.study.toLowerCase().includes(q)
+                            if (!matchPatient && !matchMrn && !matchUmr && !matchDoctor && !matchStudy) return false
+                          }
+                          return true
+                        })
+                        .map((study) => {
+                          return (
+                            <tr key={study.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="py-3 px-4">
+                                <strong className="text-gray-900 block text-xs font-bold">{study.patient}</strong>
+                                <span className="font-mono text-[11px] text-blue-700 font-semibold">
+                                  {study.umr || `PAT-${study.mrn}`}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 font-mono text-gray-700">{study.encounterId || `ENC-${study.mrn}`}</td>
+                              <td className="py-3 px-4">
+                                <strong className="text-gray-900 block">{study.study}</strong>
+                                <span className="text-[11px] text-gray-500">Modality: {study.modality}</span>
+                              </td>
+                              <td className="py-3 px-4 text-gray-800">{study.provider}</td>
+                              <td className="py-3 px-4">
+                                <span className="px-2 py-0.5 text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                  ✓ DONE
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <button
+                                  onClick={() => openReportingEditor(study)}
+                                  className="px-3 py-1.5 text-xs font-bold text-white bg-blue-900 hover:bg-blue-950 transition-colors shadow-2xs inline-flex items-center gap-1.5"
+                                >
+                                  <span>📋</span> Open Patient Report
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+
+            {/* SECTION B: FINALIZED DIAGNOSTIC RADIOLOGY REPORTS ARCHIVE */}
+            <div className="bg-white shadow-xs border border-gray-200 flex flex-col overflow-hidden">
+              <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                  Finalized Diagnostic Radiology Reports Archive
+                </h2>
+                <span className="text-xs text-gray-500 font-semibold font-mono">
+                  Total Signed Reports: {rawStudies.filter((s) => s.status === "Final").length}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                {rawStudies.filter((s) => {
+                  if (s.status !== "Final") return false
+                  if (reportsSearchQuery.trim()) {
+                    const q = reportsSearchQuery.toLowerCase().trim()
+                    const matchPatient = s.patient.toLowerCase().includes(q)
+                    const matchMrn = s.mrn.toLowerCase().includes(q)
+                    const matchUmr = (s.umr || "").toLowerCase().includes(q)
+                    const matchDoctor = (s.provider || "").toLowerCase().includes(q)
+                    const matchStudy = s.study.toLowerCase().includes(q)
+                    if (!matchPatient && !matchMrn && !matchUmr && !matchDoctor && !matchStudy) return false
+                  }
+                  return true
+                }).length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">
+                    <p className="text-xs font-bold text-gray-600">No Finalized Reports Archived Yet</p>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Signed radiology reports will be archived here for viewing and printing.
+                    </p>
+                  </div>
+                ) : (
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-gray-100 text-gray-700 font-semibold text-[11px] uppercase tracking-wider border-b border-gray-200">
+                      <tr>
+                        <th className="py-2.5 px-4">Study ID</th>
+                        <th className="py-2.5 px-4">Patient Name / UMR</th>
+                        <th className="py-2.5 px-4">Prescribed Test</th>
+                        <th className="py-2.5 px-4">Modality</th>
+                        <th className="py-2.5 px-4">Signed Radiologist</th>
+                        <th className="py-2.5 px-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {rawStudies
+                        .filter((s) => {
+                          if (s.status !== "Final") return false
+                          if (reportsSearchQuery.trim()) {
+                            const q = reportsSearchQuery.toLowerCase().trim()
+                            const matchPatient = s.patient.toLowerCase().includes(q)
+                            const matchMrn = s.mrn.toLowerCase().includes(q)
+                            const matchUmr = (s.umr || "").toLowerCase().includes(q)
+                            const matchDoctor = (s.provider || "").toLowerCase().includes(q)
+                            const matchStudy = s.study.toLowerCase().includes(q)
+                            if (!matchPatient && !matchMrn && !matchUmr && !matchDoctor && !matchStudy) return false
+                          }
+                          return true
+                        })
+                        .map((study) => (
+                          <tr key={study.id} className="hover:bg-slate-50">
+                            <td className="py-3 px-4 font-mono font-bold text-blue-900">{study.id}</td>
+                            <td className="py-3 px-4">
+                              <strong className="text-gray-900 block text-xs">{study.patient}</strong>
+                              <span className="font-mono text-[11px] text-gray-500">
+                                {study.umr || `MRN: ${study.mrn}`}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-bold text-gray-800">{study.study}</td>
+                            <td className="py-3 px-4 uppercase font-bold text-slate-700">{study.modality}</td>
+                            <td className="py-3 px-4 font-medium text-gray-900">
+                              {study.radiologist || "Consultant Radiologist"}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => openReportingEditor(study)}
+                                  className="px-2.5 py-1 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300"
+                                >
+                                  👁️ View Report
+                                </button>
+                                <button
+                                  onClick={() => setActivePdfStudy(study)}
+                                  className="px-2.5 py-1 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200"
+                                >
+                                  🖨️ Print Report
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ========================================================================= */}
-      {/* MODAL 1: PACS DICOM VIEWER SIMULATOR                                      */}
-      {/* ========================================================================= */}
-      {activePacsStudy && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col p-4 animate-in fade-in duration-150">
-          {/* Top Bar */}
-          <div className="bg-[#0F172A] text-white px-6 py-3 rounded-none border-b border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-xl text-blue-400">🩻</span>
-              <div>
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <span>PACS VIEWER · {activePacsStudy.study}</span>
-                  <span className="px-2 py-0.5 rounded-none bg-blue-900 text-blue-200 text-[10.5px]">
-                    {activePacsStudy.modality}
-                  </span>
-                </div>
-                <div className="text-[11px] text-slate-400 font-mono">
-                  {activePacsStudy.patient} · MRN: {activePacsStudy.mrn} · Accession:{" "}
-                  {activePacsStudy.accessionNo || "RAD-ACC-8801"}
-                </div>
-              </div>
-            </div>
 
-            {/* Toolbar */}
-            <div className="flex items-center gap-3 text-xs font-bold">
-              {/* Presets */}
-              <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-none border border-slate-700">
-                {(["soft", "bone", "lung", "brain", "angio"] as const).map((preset) => (
-                  <button
-                    key={preset}
-                    onClick={() => {
-                      setPacsPreset(preset)
-                      if (preset === "bone") {
-                        setPacsBrightness(120)
-                        setPacsContrast(160)
-                      } else if (preset === "lung") {
-                        setPacsBrightness(130)
-                        setPacsContrast(110)
-                      } else if (preset === "brain") {
-                        setPacsBrightness(95)
-                        setPacsContrast(140)
-                      } else {
-                        setPacsBrightness(100)
-                        setPacsContrast(100)
-                      }
-                    }}
-                    className={`px-2 py-1 rounded-none text-[11px] uppercase transition-colors ${
-                      pacsPreset === preset ? "bg-blue-700 text-white" : "text-slate-300 hover:text-white"
-                    }`}
-                  >
-                    {preset}
-                  </button>
-                ))}
-              </div>
-
-              {/* Invert */}
-              <button
-                onClick={() => setPacsInvert((v) => !v)}
-                className={`px-2.5 py-1.5 rounded-none border text-xs font-bold cursor-pointer transition-colors ${
-                  pacsInvert ? "bg-amber-700 border-amber-600 text-white" : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
-                }`}
-              >
-                ☯ Invert
-              </button>
-
-              {/* Caliper Mode */}
-              <button
-                onClick={() => setPacsMeasureMode((v) => !v)}
-                className={`px-2.5 py-1.5 rounded-none border text-xs font-bold cursor-pointer transition-colors ${
-                  pacsMeasureMode ? "bg-emerald-800 border-emerald-700 text-white" : "bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700"
-                }`}
-              >
-                📏 Caliper (14.2 mm)
-              </button>
-
-              {/* Rotate */}
-              <button
-                onClick={() => setPacsRotation((r) => (r + 90) % 360)}
-                className="px-2.5 py-1.5 rounded-none border bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700 text-xs font-bold cursor-pointer"
-              >
-                ↻ 90°
-              </button>
-
-              <button
-                onClick={() => setActivePacsStudy(null)}
-                className="text-white hover:text-red-400 text-xl font-bold ml-3"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-
-          {/* Main PACS Canvas Body */}
-          <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden select-none">
-            {/* Multi-slice Sidebar */}
-            <div className="absolute left-4 top-4 bottom-4 w-28 bg-[#0F172A]/80 backdrop-blur-md rounded-none border border-slate-800 p-2 space-y-2 overflow-y-auto z-10">
-              <div className="text-[10px] uppercase font-bold text-slate-400 px-1">Slices (1-8)</div>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((s) => (
-                <div
-                  key={s}
-                  onClick={() => setPacsSlice(s)}
-                  className={`p-2 rounded-none border cursor-pointer text-center font-mono text-xs transition-colors ${
-                    pacsSlice === s
-                      ? "bg-blue-700 border-blue-500 text-white font-bold"
-                      : "bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
-                  }`}
-                >
-                  <div className="text-lg">🩻</div>
-                  <div className="text-[10px]">Slice {s}/8</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Canvas Rendering */}
-            <div
-              style={{
-                transform: `scale(${pacsZoom}) rotate(${pacsRotation}deg)`,
-                filter: `brightness(${pacsBrightness}%) contrast(${pacsContrast}%) ${
-                  pacsInvert ? "invert(1)" : ""
-                }`,
-                transition: "transform 0.15s ease-out",
-              }}
-              className="w-[580px] h-[580px] bg-[#020617] rounded-none border border-slate-800 shadow-2xl flex items-center justify-center relative overflow-hidden"
-            >
-              {customUploadUrl ? (
-                <img src={customUploadUrl} alt="PACS Scan" className="w-full h-full object-contain" />
-              ) : activePacsStudy.modality === "XR" ? (
-                <svg viewBox="0 0 400 400" className="w-full h-full p-6 text-slate-300">
-                  <rect width="400" height="400" fill="#030712" />
-                  <line x1="200" y1="40" x2="200" y2="360" stroke="#64748B" strokeWidth="8" strokeDasharray="12 4" />
-                  <path d="M 80,90 Q 200,100 200,90 Q 200,100 320,90" fill="none" stroke="#94A3B8" strokeWidth="7" />
-                  {[120, 150, 180, 210, 240, 270, 300].map((y, i) => (
-                    <g key={i}>
-                      <path d={`M 195,${y - 10} Q 100,${y} 80,${y + 20}`} fill="none" stroke="#475569" strokeWidth="5" />
-                      <path d={`M 205,${y - 10} Q 300,${y} 320,${y + 20}`} fill="none" stroke="#475569" strokeWidth="5" />
-                    </g>
-                  ))}
-                  <path d="M 170,180 C 140,220 160,280 230,280 C 260,280 240,220 200,180 Z" fill="#334155" opacity="0.85" />
-                  <path d="M 60,330 Q 130,290 190,320" fill="none" stroke="#64748B" strokeWidth="6" />
-                  <path d="M 210,320 Q 270,290 340,330" fill="none" stroke="#64748B" strokeWidth="6" />
-                </svg>
-              ) : activePacsStudy.modality === "CT" ? (
-                <svg viewBox="0 0 400 400" className="w-full h-full p-6 text-slate-300">
-                  <rect width="400" height="400" fill="#030712" />
-                  <ellipse cx="200" cy="200" rx="140" ry="165" fill="#1E293B" stroke="#E2E8F0" strokeWidth="12" />
-                  <ellipse cx="200" cy="200" rx="128" ry="153" fill="#334155" opacity="0.9" />
-                  <path d="M 185,160 Q 170,200 185,230 Q 195,200 185,160 Z" fill="#0F172A" />
-                  <path d="M 215,160 Q 230,200 215,230 Q 205,200 215,160 Z" fill="#0F172A" />
-                </svg>
-              ) : activePacsStudy.modality === "MR" ? (
-                <svg viewBox="0 0 400 400" className="w-full h-full p-6 text-slate-300">
-                  <rect width="400" height="400" fill="#030712" />
-                  <rect x="185" y="40" width="30" height="320" fill="#1E293B" />
-                  {[60, 120, 180, 240, 300].map((y, i) => (
-                    <g key={i}>
-                      <rect x="110" y={y} width="65" height="42" rx="0" fill="#64748B" stroke="#CBD5E1" strokeWidth="2" />
-                      <rect x="112" y={y + 44} width="61" height="12" rx="0" fill="#38BDF8" opacity="0.8" />
-                    </g>
-                  ))}
-                </svg>
-              ) : (
-                <svg viewBox="0 0 400 400" className="w-full h-full p-6 text-slate-300">
-                  <rect width="400" height="400" fill="#030712" />
-                  <path d="M 200,40 L 70,360 A 240,240 0 0,0 330,360 Z" fill="#0F172A" stroke="#334155" strokeWidth="2" />
-                  <ellipse cx="190" cy="220" rx="45" ry="30" fill="#020617" stroke="#475569" strokeWidth="3" />
-                  <circle cx="180" cy="225" r="7" fill="#E2E8F0" />
-                </svg>
-              )}
-
-              {/* Overlay Caliper Measurement */}
-              {pacsMeasureMode && (
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  <svg viewBox="0 0 400 400" className="w-full h-full">
-                    <line x1="160" y1="180" x2="240" y2="220" stroke="#10B981" strokeWidth="3" strokeDasharray="4 2" />
-                    <circle cx="160" cy="180" r="4" fill="#10B981" />
-                    <circle cx="240" cy="220" r="4" fill="#10B981" />
-                    <text x="205" y="195" fill="#10B981" fontSize="12" fontWeight="bold" fontFamily="monospace">
-                      14.2 mm
-                    </text>
-                  </svg>
-                </div>
-              )}
-
-              {/* Corner Overlay Badges */}
-              <div className="absolute top-3 left-3 text-[10.5px] font-mono text-emerald-400 space-y-0.5 pointer-events-none">
-                <div>{activePacsStudy.patient}</div>
-                <div>MRN: {activePacsStudy.mrn}</div>
-                <div>{activePacsStudy.study}</div>
-              </div>
-
-              <div className="absolute top-3 right-3 text-[10.5px] font-mono text-emerald-400 text-right pointer-events-none">
-                <div>RADIOLOGY PACS SERVER</div>
-                <div>ROOM: {activePacsStudy.room}</div>
-                <div>MODALITY: {activePacsStudy.modality}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Controls */}
-          <div className="bg-[#0F172A] text-white px-6 py-3 rounded-none border-t border-slate-800 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Zoom:</span>
-                <input
-                  type="range"
-                  min="0.6"
-                  max="2.5"
-                  step="0.1"
-                  value={pacsZoom}
-                  onChange={(e) => setPacsZoom(parseFloat(e.target.value))}
-                  className="w-24 accent-blue-500"
-                />
-                <span className="font-mono text-slate-300 w-10">{Math.round(pacsZoom * 100)}%</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400">Brightness:</span>
-                <input
-                  type="range"
-                  min="50"
-                  max="180"
-                  value={pacsBrightness}
-                  onChange={(e) => setPacsBrightness(parseInt(e.target.value, 10))}
-                  className="w-24 accent-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <label className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-none text-xs font-bold cursor-pointer transition-colors flex items-center gap-1">
-                <span>📁</span> Upload Custom Image
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0]
-                    if (file) {
-                      setCustomUploadUrl(URL.createObjectURL(file))
-                      showToast("✓ Custom medical image loaded in PACS", "success")
-                    }
-                  }}
-                  className="hidden"
-                />
-              </label>
-
-              <button
-                onClick={() => {
-                  const s = activePacsStudy
-                  setActivePacsStudy(null)
-                  openReportingEditor(s)
-                }}
-                className="px-4 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-none text-xs font-bold cursor-pointer shadow-xs transition-colors"
-              >
-                📝 Dictate Findings
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ========================================================================= */}
-      {/* MODAL 2: RADIOLOGIST DIAGNOSTIC REPORTING & DICTATION EDITOR              */}
+      {/* MODAL 2: RADIOLOGY REPORT EDITOR (CLEAN, LIGHT & MODERN DESIGN)           */}
       {/* ========================================================================= */}
       {activeReportStudy && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-none max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in duration-150 max-h-[92vh] flex flex-col">
-            <div className="px-6 py-4 bg-slate-800 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">📝</span>
-                <h3 className="font-bold text-sm">Radiologist Diagnostic Dictation & Report Sign-Off</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-hidden animate-in fade-in duration-150">
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-xl max-w-4xl w-full flex flex-col max-h-[92vh] overflow-hidden">
+            {/* Top Toolbar / Header */}
+            <div className="px-6 py-3.5 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3 bg-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-gray-900 leading-tight">Radiology Report Editor</h3>
+                  <p className="text-xs text-gray-500 font-medium">
+                    {activeReportStudy.study} · <span className="font-semibold text-gray-700">{activeReportStudy.patient}</span>
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setActiveReportStudy(null)} className="text-white hover:text-gray-200 font-bold">
-                ✕
-              </button>
+
+              {/* Template Select & Quick Actions */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1">
+                  <span className="text-[11px] font-medium text-gray-500">Template:</span>
+                  <select
+                    className="bg-transparent text-gray-800 text-xs font-medium focus:outline-none cursor-pointer pr-1"
+                    onChange={(e) => {
+                      const tplIdOrName = e.target.value
+                      if (!tplIdOrName) return
+                      const savedTpl =
+                        RadiologyTemplateDatabase.getTemplateById(tplIdOrName) ||
+                        RadiologyTemplateDatabase.getActiveTemplateForTest(tplIdOrName, (activeReportStudy as any)?.sex) ||
+                        RadiologyTemplateDatabase.getTemplates().find((t) => t.testName.toLowerCase() === tplIdOrName.toLowerCase())
+                      if (savedTpl && savedTpl.rawContent && savedTpl.rawContent.trim()) {
+                        setReportingForm((prev) => ({
+                          ...prev,
+                          findings: savedTpl.rawContent!.trim().split("\n"),
+                        }))
+                        showToast(`✓ Loaded "${savedTpl.testName}" template into report`, "info")
+                      } else if (savedTpl && savedTpl.sections && savedTpl.sections.length > 0) {
+                        const secFindings = savedTpl.sections.map(
+                          (sec) => `${sec.title}: ${sec.fields.map((f) => f.defaultValue || "").filter(Boolean).join(", ")}`
+                        )
+                        setReportingForm((prev) => ({
+                          ...prev,
+                          findings: secFindings,
+                        }))
+                        showToast(`✓ Loaded "${savedTpl.testName}" template into report`, "info")
+                      } else {
+                        const match = IMAGING_CATALOG.find((c) => c.study.toLowerCase() === tplIdOrName.toLowerCase())
+                        if (match) {
+                          setReportingForm((prev) => ({
+                            ...prev,
+                            indication: match.indication,
+                            technique: match.technique,
+                            findings: match.defaultFindings,
+                            impression: match.defaultImpression,
+                          }))
+                          showToast(`✓ Loaded ${match.study} template`, "info")
+                        }
+                      }
+                    }}
+                  >
+                    <option value="">-- Choose Template --</option>
+                    <optgroup label="Custom Templates">
+                      {RadiologyTemplateDatabase.getTemplates().map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.testName} {t.genderTarget && t.genderTarget !== "All" ? `(${t.genderTarget})` : ""} {t.uploadedFileName ? `[${t.uploadedFileName}]` : ""}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Standard Catalog">
+                      {IMAGING_CATALOG.map((c) => (
+                        <option key={c.study} value={c.study}>
+                          {c.study} ({c.modality})
+                        </option>
+                      ))}
+                    </optgroup>
+                  </select>
+                </div>
+
+                {/* Direct Document / PDF Import */}
+                <input
+                  type="file"
+                  id="editor-direct-file-input"
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.txt"
+                  onChange={handleEditorDirectFileUpload}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("editor-direct-file-input")?.click()}
+                  className="px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Upload PDF or Word document directly into this report"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload PDF / Doc</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const catItem = IMAGING_CATALOG.find((c) => c.study === activeReportStudy.study)
+                    setTemplateUploadForm({
+                      testName: activeReportStudy.study,
+                      customName: "",
+                      templateName: `${activeReportStudy.study} Standard Template`,
+                      genderTarget: "All",
+                      category: (catItem ? catItem.category : "X-Ray") as any,
+                      rawContent: reportingForm.findings.join("\n"),
+                      fileName: "",
+                    })
+                    setShowUploadTemplateModal(true)
+                  }}
+                  className="px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors flex items-center gap-1"
+                  title="Open Template Library"
+                >
+                  <span>Template Library</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveReportStudy(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors ml-1"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="p-6 space-y-4 text-xs overflow-y-auto flex-1">
-              <div className="flex items-center justify-between p-3 bg-slate-100 rounded-none border border-slate-200 text-xs">
-                <div>
-                  <span className="font-bold text-slate-950 text-sm">{activeReportStudy.patient}</span>
-                  <div className="text-slate-800 font-mono text-[11px]">
-                    MRN: {activeReportStudy.mrn} · Accession: {activeReportStudy.accessionNo || "RAD-ACC-8801"}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="font-extrabold text-slate-900 text-xs">{activeReportStudy.study}</span>
-                  <div className="text-[11px] text-slate-700">
-                    Room: {activeReportStudy.room} ({activeReportStudy.modality})
-                  </div>
-                </div>
+            {/* Clean Patient Information Strip */}
+            <div className="bg-slate-50/70 border-b border-gray-100 px-6 py-2.5 flex flex-wrap items-center justify-between text-xs text-gray-600 gap-3 shrink-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-400">Patient:</span>
+                <span className="font-semibold text-gray-900 uppercase">{activeReportStudy.patient}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-400">Age &amp; Sex:</span>
+                <span className="font-medium text-gray-800">
+                  {(activeReportStudy as any).age || "45"} Yrs / {((activeReportStudy as any).sex || (activeReportStudy.patient.toLowerCase().includes("female") || activeReportStudy.patient.toLowerCase().includes("mrs") || activeReportStudy.patient.toLowerCase().includes("ms") ? "Female" : "Male"))}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-400">Ref. Doctor:</span>
+                <span className="font-medium text-gray-800 uppercase">{activeReportStudy.provider || "DR. SARAH JENKINS"}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-400">Date:</span>
+                <span className="font-medium text-gray-800">
+                  {activeReportStudy.signedAt || activeReportStudy.ordered || new Date().toLocaleDateString("en-IN")}
+                </span>
+              </div>
+            </div>
+
+            {/* Document Body / Editor */}
+            <div className="p-6 sm:p-8 overflow-y-auto flex-1 bg-white space-y-3">
+              {/* Centered Clean Examination Title */}
+              <div className="text-center pb-2">
+                <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-wide uppercase">
+                  {activeReportStudy.study}
+                </h2>
               </div>
 
-              {/* Template Selector */}
-              <div>
-                <label className="block text-gray-700 font-bold mb-1">Load Structured Template</label>
-                <select
-                  className="w-full bg-gray-50 border border-gray-300 rounded-none p-2 font-semibold text-gray-800"
-                  onChange={(e) => {
-                    const match = IMAGING_CATALOG.find((c) => c.study === e.target.value)
-                    if (match) {
-                      setReportingForm((prev) => ({
-                        ...prev,
-                        indication: match.indication,
-                        technique: match.technique,
-                        findings: match.defaultFindings,
-                        impression: match.defaultImpression,
-                      }))
-                      showToast(`✓ Loaded ${match.study} template`, "info")
-                    }
-                  }}
-                >
-                  <option value="">-- Choose Template to Pre-populate Findings --</option>
-                  {IMAGING_CATALOG.map((c) => (
-                    <option key={c.study} value={c.study}>
-                      {c.study} ({c.modality})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Clinical Indication */}
-              <div>
-                <label className="block text-gray-700 font-bold mb-1">Clinical Indication *</label>
-                <input
-                  type="text"
-                  value={reportingForm.indication}
-                  onChange={(e) => setReportingForm({ ...reportingForm, indication: e.target.value })}
-                  className="w-full bg-white border rounded-none p-2 font-medium"
-                />
-              </div>
-
-              {/* Technique */}
-              <div>
-                <label className="block text-gray-700 font-bold mb-1">Imaging Technique & Protocol</label>
-                <input
-                  type="text"
-                  value={reportingForm.technique}
-                  onChange={(e) => setReportingForm({ ...reportingForm, technique: e.target.value })}
-                  className="w-full bg-white border rounded-none p-2 font-medium"
-                />
-              </div>
-
-              {/* Findings */}
-              <div>
-                <label className="block text-gray-700 font-bold mb-1">Diagnostic Findings (Line by line) *</label>
+              {/* Textarea Editor */}
+              <div className="relative">
                 <textarea
-                  rows={4}
+                  rows={14}
                   value={reportingForm.findings.join("\n")}
                   onChange={(e) =>
                     setReportingForm({
                       ...reportingForm,
-                      findings: e.target.value.split("\n").filter((l) => l.trim().length > 0),
+                      findings: e.target.value.split("\n"),
                     })
                   }
-                  className="w-full bg-white border rounded-none p-2 font-mono text-xs"
+                  placeholder="Enter clinical examination findings, technique, and impression..."
+                  className="w-full text-sm p-4 bg-white border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-50 rounded-xl text-gray-800 leading-relaxed font-sans placeholder-gray-400 transition-all shadow-2xs resize-y"
                 />
               </div>
 
-              {/* Impression */}
-              <div>
-                <label className="block text-gray-700 font-bold mb-1">Diagnostic Impression *</label>
-                <textarea
-                  rows={3}
-                  value={reportingForm.impression.join("\n")}
-                  onChange={(e) =>
-                    setReportingForm({
-                      ...reportingForm,
-                      impression: e.target.value.split("\n").filter((l) => l.trim().length > 0),
-                    })
-                  }
-                  className="w-full bg-white border rounded-none p-2 font-mono font-semibold text-xs text-gray-900"
-                />
+              {/* Footnote */}
+              <div className="text-xs italic text-gray-400 pt-1">
+                * Suggested Clinical correlation and further evaluation.
               </div>
 
-              {/* Radiologist */}
-              <div>
-                <label className="block text-gray-700 font-bold mb-1">Signing Radiologist Credentials</label>
-                <input
-                  type="text"
-                  value={reportingForm.radiologist}
-                  onChange={(e) => setReportingForm({ ...reportingForm, radiologist: e.target.value })}
-                  className="w-full bg-white border rounded-none p-2 font-medium"
-                />
+              {/* Simple Clean Radiologist Signature Block */}
+              <div className="pt-4 flex justify-end text-right">
+                <div>
+                  <div className="font-semibold text-gray-800 text-xs sm:text-sm tracking-wide">
+                    {reportingForm.radiologist || "DR. T. MEGHANA, MBBS, MDRD"}
+                  </div>
+                  <div className="text-[11px] text-gray-400">Consultant Radiologist</div>
+                </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                onClick={() => handleSaveReport("Draft")}
-                className="px-4 py-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-none font-bold transition-colors text-xs"
-              >
-                Save Draft
-              </button>
+            {/* Bottom Actions Bar */}
+            <div className="px-6 py-3.5 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 shrink-0 text-xs">
+              <div className="flex items-center gap-3">
+                <span className="text-gray-400 text-xs font-medium">
+                  {reportingForm.findings.join("\n").split(/\s+/).filter(Boolean).length} words • {reportingForm.findings.length} lines
+                </span>
+                {reportingForm.findings.join("").trim() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("Clear report text?")) {
+                        setReportingForm({ ...reportingForm, findings: [""] })
+                      }
+                    }}
+                    className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setActiveReportStudy(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-none font-bold transition-colors text-xs"
+                  className="px-3.5 py-1.5 text-gray-500 hover:text-gray-800 font-medium transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSaveReport("Final")}
-                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-none font-bold shadow-xs transition-colors text-xs"
+                  onClick={() => handleSaveReport("Draft")}
+                  className="px-3.5 py-1.5 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg font-medium shadow-2xs transition-colors"
                 >
-                  ✓ Sign & Finalize Official Report
+                  Save Draft
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!activeReportStudy) return
+                    const currentStudy: RadiologyStudyRecord = {
+                      ...activeReportStudy,
+                      findings: reportingForm.findings,
+                      impression: reportingForm.impression,
+                      radiologist: reportingForm.radiologist || activeReportStudy.radiologist,
+                      technicianNotes: (reportingForm as any).technicianNotes || activeReportStudy.technicianNotes,
+                      technique: reportingForm.technique || activeReportStudy.technique,
+                      indication: reportingForm.indication || activeReportStudy.indication,
+                    }
+                    setActivePdfStudy(currentStudy)
+                  }}
+                  className="px-3.5 py-1.5 bg-white hover:bg-gray-50 text-emerald-700 border border-emerald-200 rounded-lg font-medium shadow-2xs transition-colors flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Preview</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveReport("Final")}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow-xs transition-colors flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Sign &amp; Finalize</span>
                 </button>
               </div>
             </div>
@@ -2085,7 +2843,8 @@ export default function Radiology({
             <div className="p-6 flex-1 overflow-y-auto space-y-4 text-xs">
               {/* Category Filter Tabs */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-gray-200">
-                {[
+                {
+                [
                   "all",
                   "X-Ray",
                   "CT Scan",
@@ -2111,9 +2870,10 @@ export default function Radiology({
 
               {/* Master Items Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {IMAGING_CATALOG.filter((item) =>
-                  masterActiveTab === "all" ? true : item.category === masterActiveTab
-                ).map((item) => (
+                {IMAGING_CATALOG.filter((item) => {
+                  if (masterActiveTab === "all") return true
+                  return item.category === masterActiveTab
+                }).map((item) => (
                   <div
                     key={item.code}
                     className="p-3.5 bg-gray-50 border border-gray-200 rounded-none flex flex-col justify-between hover:bg-slate-50 transition-colors shadow-2xs"
@@ -2131,11 +2891,12 @@ export default function Radiology({
 
                       <div className="space-y-1 text-[11.5px] text-gray-700 mt-2">
                         <div>
-                          <strong className="text-gray-900">Category:</strong> {item.category}
+                          <strong className="text-gray-900">Category / Modality:</strong> {item.category}
                         </div>
                         <div>
                           <strong className="text-gray-900">Suite / Room:</strong> {item.room}
                         </div>
+                        
                         <div className="line-clamp-2">
                           <strong className="text-gray-900">Indication:</strong> {item.indication}
                         </div>
@@ -2159,6 +2920,295 @@ export default function Radiology({
                 Close Master Catalog
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: UPLOAD / MANAGE RADIOLOGY REPORT TEMPLATES                          */}
+      {/* ========================================================================= */}
+      {showUploadTemplateModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-none max-w-2xl w-full shadow-2xl border border-gray-200 overflow-hidden max-h-[92vh] flex flex-col">
+            <div className="px-6 py-4 bg-slate-800 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📤</span>
+                <div>
+                  <h3 className="font-bold text-sm">Upload &amp; Manage Radiology Report Templates</h3>
+                  <p className="text-[11px] text-slate-300">Upload or paste formatted templates for specific diagnostic tests</p>
+                </div>
+              </div>
+              <button onClick={() => setShowUploadTemplateModal(false)} className="text-white hover:text-gray-200 font-bold text-lg">
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleSaveUploadedTemplate}
+              className="p-6 space-y-4 text-xs overflow-y-auto flex-1"
+            >
+              {/* Active Saved Templates Quick View & Edit Bar */}
+              <div className="bg-slate-50 border border-slate-200 p-3 rounded-none">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-2">
+                  Active Saved Templates ({RadiologyTemplateDatabase.getTemplates().filter((t) => t.status === "Active").length})
+                </span>
+                <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
+                  {RadiologyTemplateDatabase.getTemplates()
+                    .filter((t) => t.status === "Active")
+                    .map((tpl) => (
+                      <div
+                        key={tpl.id}
+                        className="px-2.5 py-1 text-[11px] font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-none shadow-2xs flex items-center gap-2"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const catItem = IMAGING_CATALOG.find((c) => c.study.toLowerCase() === tpl.testName.toLowerCase())
+                            const testItem = RadiologyTemplateDatabase.getTestById(tpl.testId)
+                            const cat = (testItem?.category || catItem?.category || (tpl.testName.toLowerCase().includes("x-ray") || tpl.testName.toLowerCase().includes("xr") ? "X-Ray" : "Ultrasound (USG)")) as any
+                            setTemplateUploadForm({
+                              testName: tpl.testName,
+                              customName: "",
+                              templateName: tpl.uploadedFileName || tpl.testName,
+                              genderTarget: tpl.genderTarget || "All",
+                              category: cat,
+                              rawContent: tpl.rawContent || "",
+                              fileName: tpl.uploadedFileName || "",
+                            })
+                            showToast(`Loaded "${tpl.testName}" (${tpl.genderTarget || "All"}) template into editor!`, "info")
+                          }}
+                          className="font-bold text-blue-700 hover:underline flex items-center gap-1.5 cursor-pointer text-left"
+                        >
+                          <span>✏️ {tpl.testName}</span>
+                          {tpl.genderTarget && tpl.genderTarget !== "All" && (
+                            <span className="px-1 py-0.2 bg-blue-100 text-blue-800 text-[10px] font-bold">
+                              {tpl.genderTarget}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          title="Delete this template"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (window.confirm(`Are you sure you want to delete the template for "${tpl.testName}" (${tpl.genderTarget || "All"})?`)) {
+                              RadiologyTemplateDatabase.deleteTemplate(tpl.id)
+                              setTick((t) => t + 1)
+                              showToast(`✓ Deleted template for "${tpl.testName}"`, "success")
+                            }
+                          }}
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 p-0.5 font-bold rounded-none cursor-pointer transition-colors"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* Test Name Selection / Custom Input */}
+              <div>
+                <label className="block text-gray-800 font-bold mb-1">Radiology Test Name *</label>
+                <div className="space-y-2">
+                  <select
+                    value={templateUploadForm.testName}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      const catItem = IMAGING_CATALOG.find((c) => c.study.toLowerCase() === val.toLowerCase())
+                      const targetCat = catItem ? catItem.category : (val.toLowerCase().includes("x-ray") || val.toLowerCase().includes("xr") ? "X-Ray" : templateUploadForm.category)
+                      const existingTpl =
+                        RadiologyTemplateDatabase.getActiveTemplateForTest(val, templateUploadForm.genderTarget) ||
+                        RadiologyTemplateDatabase.getTemplates().find(
+                          (t) => t.testName.toLowerCase() === val.toLowerCase() && (t.genderTarget || "All") === templateUploadForm.genderTarget && t.status === "Active"
+                        )
+                      const defaultContent = catItem
+                        ? `${catItem.study}\n\n${catItem.defaultFindings.join("\n")}\n\nIMPRESSION:\n${catItem.defaultImpression.join("\n")}`
+                        : ""
+                      setTemplateUploadForm({
+                        ...templateUploadForm,
+                        testName: val,
+                        category: targetCat as any,
+                        rawContent: existingTpl?.rawContent || defaultContent,
+                        templateName: existingTpl?.uploadedFileName || (existingTpl ? existingTpl.testName : (catItem ? `${catItem.study} Standard Template` : "")),
+                      })
+                    }}
+                    className="w-full bg-white border border-gray-300 rounded-none p-2 font-medium"
+                  >
+                    {IMAGING_CATALOG.map((c) => (
+                      <option key={c.study} value={c.study}>
+                        {c.study} ({c.category})
+                      </option>
+                    ))}
+                    <option value="custom">-- Custom / Other Test Name --</option>
+                  </select>
+
+                  {templateUploadForm.testName === "custom" && (
+                    <input
+                      type="text"
+                      placeholder="Enter custom test name (e.g. ULTRASONOGRAPHY OF ABDOMEN)"
+                      value={templateUploadForm.customName}
+                      onChange={(e) => setTemplateUploadForm({ ...templateUploadForm, customName: e.target.value })}
+                      className="w-full bg-white border border-gray-300 rounded-none p-2 font-medium"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Gender Target Selection */}
+              <div>
+                <label className="block text-gray-800 font-bold mb-1">Target Patient Gender / Category *</label>
+                <select
+                  value={templateUploadForm.genderTarget}
+                  onChange={(e) => {
+                    const newGender = e.target.value as "All" | "Male" | "Female"
+                    const tName = templateUploadForm.testName === "custom" ? templateUploadForm.customName : templateUploadForm.testName
+                    const existingTpl = RadiologyTemplateDatabase.getTemplates().find(
+                      (t) => (t.testName === tName || t.testName.toLowerCase().includes(tName.toLowerCase())) && (t.genderTarget || "All") === newGender && t.status === "Active"
+                    )
+                    setTemplateUploadForm({
+                      ...templateUploadForm,
+                      genderTarget: newGender,
+                      rawContent: existingTpl?.rawContent || templateUploadForm.rawContent,
+                    })
+                  }}
+                  className="w-full bg-white border border-gray-300 rounded-none p-2 font-medium"
+                >
+                  <option value="All">All Patients (General Format)</option>
+                  <option value="Male">Male Patients Only (e.g. includes Prostate)</option>
+                  <option value="Female">Female Patients Only (e.g. includes Uterus &amp; Ovaries)</option>
+                </select>
+              </div>
+
+              {/* Template Title / File Name */}
+              <div>
+                <label className="block text-gray-800 font-bold mb-1">Template Format Title / File Reference</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Abdomen Sonography Standard Format 2026"
+                  value={templateUploadForm.templateName}
+                  onChange={(e) => setTemplateUploadForm({ ...templateUploadForm, templateName: e.target.value, fileName: e.target.value })}
+                  className="w-full bg-white border border-gray-300 rounded-none p-2 font-medium"
+                />
+              </div>
+
+              {/* File Attachment / File Import */}
+              <div>
+                <label className="block text-gray-800 font-bold mb-1">Upload Template File (.txt, .pdf, .docx)</label>
+                <input
+                  type="file"
+                  accept=".txt,.pdf,.doc,.docx"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      setTemplateUploadForm((prev) => ({ ...prev, fileName: file.name }))
+                      const lowerName = file.name.toLowerCase()
+                      const isDocx = lowerName.endsWith(".docx") || lowerName.endsWith(".doc")
+                      const isPdf = lowerName.endsWith(".pdf")
+                      
+                      if (isDocx) {
+                        const reader = new FileReader()
+                        reader.onload = async (event) => {
+                          const arrayBuffer = event.target?.result as ArrayBuffer
+                          if (arrayBuffer) {
+                            try {
+                              const extractedWordText = await extractTextFromWordBuffer(arrayBuffer, file.name)
+                              if (extractedWordText && extractedWordText.trim()) {
+                                setTemplateUploadForm((prev) => ({ ...prev, rawContent: extractedWordText.trim() }))
+                                showToast(`✓ Extracted template text from Word document "${file.name}"!`, "success")
+                              } else {
+                                showToast(`No readable text found in Word document "${file.name}"`, "error")
+                              }
+                            } catch (err: any) {
+                              showToast(`Failed to parse Word document: ${err?.message || err}`, "error")
+                            }
+                          }
+                        }
+                        reader.readAsArrayBuffer(file)
+                      } else if (isPdf) {
+                        const reader = new FileReader()
+                        reader.onload = async (event) => {
+                          const arrayBuffer = event.target?.result as ArrayBuffer
+                          if (arrayBuffer) {
+                            try {
+                              const cleanedPdfText = await extractTextFromPdfBuffer(arrayBuffer)
+                              if (cleanedPdfText && cleanedPdfText.trim()) {
+                                setTemplateUploadForm((prev) => ({ ...prev, rawContent: cleanedPdfText.trim() }))
+                                showToast(`✓ Extracted template text from PDF document "${file.name}"!`, "success")
+                              } else {
+                                showToast(`No readable text layer found in PDF "${file.name}". You can paste or type the text.`, "error")
+                              }
+                            } catch (err: any) {
+                              showToast(`Failed to extract text from PDF: ${err?.message || err}`, "error")
+                            }
+                          }
+                        }
+                        reader.readAsArrayBuffer(file)
+                      } else {
+                        const reader = new FileReader()
+                        reader.onload = (event) => {
+                          const content = event.target?.result as string
+                          if (content) {
+                            let cleanedText = extractCleanTemplateText(file.name, content)
+                            if (lowerName.endsWith(".json")) {
+                              try {
+                                const parsed = JSON.parse(content)
+                                if (parsed.rawContent) {
+                                  cleanedText = parsed.rawContent
+                                } else if (Array.isArray(parsed.sections)) {
+                                  cleanedText = parsed.sections
+                                    .map((s: any) => `${s.title}:\n` + (s.fields || []).map((f: any) => `  ${f.label}: ${f.defaultValue || ""}`).join("\n"))
+                                    .join("\n\n")
+                                }
+                              } catch {}
+                            }
+                            setTemplateUploadForm((prev) => ({ ...prev, rawContent: cleanedText.trim() }))
+                            showToast(`✓ Loaded text file "${file.name}"`, "info")
+                          }
+                        }
+                        reader.readAsText(file)
+                      }
+                    }
+                  }}
+                  className="w-full text-xs text-gray-600 bg-gray-50 border border-gray-300 rounded-none p-2"
+                />
+              </div>
+
+              {/* Formatted Template Content Textarea */}
+              <div>
+                <label className="block text-gray-800 font-bold mb-1">
+                  Template Content Format (Structured Sections &amp; Default Text) *
+                </label>
+                <p className="text-[11px] text-gray-500 mb-1.5">
+                  Type or edit the report layout (e.g., LIVER:, GALL BLADDER:, SPLEEN:, KIDNEYS:, IMPRESSION:). Whenever this test comes in, this template will be pre-filled automatically!
+                </p>
+                <textarea
+                  rows={12}
+                  required
+                  value={templateUploadForm.rawContent}
+                  onChange={(e) => setTemplateUploadForm({ ...templateUploadForm, rawContent: e.target.value })}
+                  placeholder={`ULTRASONOGRAPHY OF ABDOMEN\n\nLIVER: Normal in size with normal contour...\nGALL BLADDER: Partially distended...\nSPLEEN: Normal in size...\nKIDNEYS: Both kidneys are normal...\n\nIMPRESSION:\n   ❖ NO SIGNIFICANT ABNORMALITY DETECTED.`}
+                  className="w-full bg-slate-950 text-emerald-400 font-mono text-xs p-3 rounded-none border border-slate-800 leading-relaxed shadow-inner"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadTemplateModal(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-none font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleSaveUploadedTemplate(e)}
+                  className="px-5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-none font-bold text-xs shadow-xs transition-colors cursor-pointer"
+                >
+                  ✓ Save &amp; Activate Template
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -2294,35 +3344,50 @@ export default function Radiology({
       {/* MODAL 3: OFFICIAL DIAGNOSTIC RADIOLOGY REPORT (PREVIEW / PRINTABLE)       */}
       {/* ========================================================================= */}
       {activePdfStudy && (
-        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white">
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print-modal-backdrop">
           <style>{`
             @media print {
-              body * {
+              body {
                 visibility: hidden !important;
-              }
-              #printable-radiology-report,
-              #printable-radiology-report * {
-                visibility: visible !important;
+                background: #ffffff !important;
               }
               #printable-radiology-report {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
+                visibility: visible !important;
+                position: static !important;
+                display: block !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 margin: 0 !important;
-                padding: 12mm 15mm !important;
+                padding: 0 !important;
                 background: #ffffff !important;
                 color: #0f172a !important;
                 box-shadow: none !important;
+                overflow: visible !important;
+              }
+              #printable-radiology-report * {
+                visibility: visible !important;
+              }
+              .print-modal-backdrop {
+                position: static !important;
+                display: block !important;
+                background: transparent !important;
+                padding: 0 !important;
+              }
+              .print-modal-window {
+                position: static !important;
+                display: block !important;
+                border: none !important;
+                box-shadow: none !important;
+                max-height: none !important;
+                overflow: visible !important;
               }
               @page {
                 size: A4 portrait;
-                margin: 0;
+                margin: 12mm 15mm;
               }
             }
           `}</style>
-          <div className="bg-white rounded-none max-w-4xl w-full shadow-2xl border border-gray-300 overflow-hidden max-h-[95vh] flex flex-col print:max-w-none print:w-full print:max-h-none print:border-none print:shadow-none">
+          <div className="bg-white rounded-none max-w-4xl w-full shadow-2xl border border-gray-300 overflow-hidden max-h-[95vh] flex flex-col print:max-w-none print:w-full print:max-h-none print:border-none print:shadow-none print-modal-window">
             {/* Top Toolbar (Preview / Verification Mode) */}
             <div className="px-6 py-3.5 bg-slate-900 text-white flex items-center justify-between shrink-0 print:hidden">
               <div className="flex items-center gap-2">
@@ -2334,7 +3399,8 @@ export default function Radiology({
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => window.print()}
+                  type="button"
+                  onClick={() => printRadiologyDocument(activePdfStudy)}
                   className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-none text-xs font-bold shadow-md transition-colors flex items-center gap-1.5 cursor-pointer border border-emerald-500"
                 >
                   <span>🖨️</span> Print Record
@@ -2416,29 +3482,25 @@ export default function Radiology({
 
                 {/* Report Findings */}
                 <div className="pt-2">
-                  <h4 className="font-extrabold text-slate-950 mb-1.5 uppercase tracking-wide border-b pb-1">
+                  <h4 className="font-extrabold text-slate-950 mb-2 uppercase tracking-wide border-b pb-1 text-xs">
                     Diagnostic Findings:
                   </h4>
-                  <ul className="list-disc list-inside space-y-1 text-slate-800 text-[12px] pl-1">
+                  <div className="text-slate-800 text-[13px] leading-relaxed whitespace-pre-wrap font-sans">
                     {(activePdfStudy.findings && activePdfStudy.findings.length > 0
-                      ? activePdfStudy.findings
-                      : IMAGING_CATALOG[0].defaultFindings
-                    ).map((f, i) => (
-                      <li key={i}>{f}</li>
-                    ))}
-                  </ul>
+                      ? (Array.isArray(activePdfStudy.findings) ? activePdfStudy.findings.join("\n") : String(activePdfStudy.findings))
+                      : IMAGING_CATALOG[0].defaultFindings.join("\n")
+                    )}
+                  </div>
                 </div>
 
                 {/* Diagnostic Impression */}
                 <div className="p-4 bg-slate-50 border border-slate-300 space-y-1.5">
-                  <h4 className="font-extrabold text-slate-950 uppercase tracking-wide">Diagnostic Impression:</h4>
-                  <div className="text-slate-900 font-bold text-[12px] space-y-1">
+                  <h4 className="font-extrabold text-slate-950 uppercase tracking-wide text-xs">Diagnostic Impression:</h4>
+                  <div className="text-slate-900 font-bold text-[13px] leading-relaxed whitespace-pre-wrap">
                     {(activePdfStudy.impression && activePdfStudy.impression.length > 0
-                      ? activePdfStudy.impression
-                      : IMAGING_CATALOG[0].defaultImpression
-                    ).map((imp, i) => (
-                      <div key={i}>{imp}</div>
-                    ))}
+                      ? (Array.isArray(activePdfStudy.impression) ? activePdfStudy.impression.join("\n") : String(activePdfStudy.impression))
+                      : IMAGING_CATALOG[0].defaultImpression.join("\n")
+                    )}
                   </div>
                 </div>
 

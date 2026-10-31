@@ -507,7 +507,7 @@ export interface RadiologyStudyRecord {
 
   provider: string
 
-  status: "Orders" | "Scheduled" | "In Progress" | "Images Ready" | "Reporting" | "Final"
+  status: "Orders" | "Scheduled" | "In Progress" | "Done" | "Images Ready" | "Reporting" | "Final"
 
   room: string
 

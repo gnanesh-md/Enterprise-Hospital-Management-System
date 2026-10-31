@@ -51,6 +51,7 @@ export const ALL_SYSTEM_MODULES = [
   "laboratory",
 
   "radiology",
+  "radiology_reports",
   "pharmacy",
   "pharmacy_dispensing",
   "pharmacy_rx",
@@ -226,6 +227,7 @@ const INITIAL_ROLES: AppRole[] = [
 
       "laboratory",
       "radiology",
+      "radiology_reports",
       "intelligence",
       "dpi_ocr",
       "discharge",
@@ -339,6 +341,7 @@ const INITIAL_ROLES: AppRole[] = [
       "dashboard",
       "laboratory",
       "radiology",
+      "radiology_reports",
       "patients",
       "chart",
       "reports",
