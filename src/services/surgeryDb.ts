@@ -598,6 +598,59 @@ export const DEFAULT_SEED_CASES: SurgicalCase[] = [
     createdAt: "2026-09-23T09:00:00Z",
     updatedAt: "2026-09-23T11:45:00Z",
   },
+  {
+    id: "SURG-108",
+    caseNo: "OT-2026-088",
+    orRoom: "Emergency OR 1",
+    patientId: "P-100888",
+    patientName: "Appanna Chinnapati",
+    age: 54,
+    gender: "Male",
+    mrn: "100888",
+    ipNo: "IP-884988",
+    cptCode: "38100",
+    icd10Code: "S36.032A",
+    procedureName: "Emergency Exploratory Laparotomy + Splenectomy + Jejunal Repair",
+    specialty: "General Surgery / Trauma",
+    surgeon: "Dr. Vance",
+    assistantSurgeon: "Dr. Williams",
+    anesthesiologist: "Dr. Rodriguez",
+    scrubNurse: "RN Murphy",
+    circulatingNurse: "RN Davis",
+    scheduledTime: "03:45 AM",
+    durationEst: "165 mins",
+    urgency: "Emergency STAT",
+    insuranceProvider: "Star Health / CM Relief Fund",
+    totalAmount: 85000,
+    status: "Completed",
+    billedAt: "2026-10-04T06:30:00Z",
+    invoiceId: 100888,
+    createdAt: "2026-10-04T03:45:00Z",
+    updatedAt: "2026-10-04T06:30:00Z",
+    operationRecord: {
+      surgeonPreparedInOr: "Dr. Vance",
+      preOpDiagnosis: "Blunt Abdominal Trauma, Massive Hemoperitoneum, Splenic Rupture in Hemorrhagic Shock",
+      postOpDiagnosis: "Grade IV Splenic Shattered Pole Laceration with 1800 mL Hemoperitoneum, Traumatic Mesenteric Contusion and 2cm Jejunal Seromuscular Tear",
+      procedureProposed: "Emergency Exploratory Laparotomy, Splenectomy, Hemoperitoneum Evacuation",
+      procedureExecuted: "Exploratory Laparotomy, Splenectomy, Primary Two-Layer Jejunal Repair, Peritoneal Lavage with 4L warm saline, and Bilateral Subdiaphragmatic & Pelvic Closed Suction Drain Placement (28 Fr)",
+      asstSurgeons: ["Dr. Williams"],
+      skinPreparation: "Povidone Iodine 10% + Chlorhexidine",
+      histopathologySent: true,
+      photosVideosRecorded: false,
+      swabCountCorrect: true,
+      instrumentCountCorrect: true,
+      suturesUsed: "Loop PDS 1, 3-0 PDS continuous, 3-0 Silk interrupted, Vicryl 2-0, Ethilon 2-0",
+      drainageCount: 2,
+      bloodLossMl: 1800,
+      surgeryStartTime: "2026-10-04T03:45:00Z",
+      surgeryEndTime: "2026-10-04T06:30:00Z",
+      operatingTimeMins: 165,
+      complications: "Intraoperative hemorrhagic shock managed with 3 units PRBC, 2 units FFP, and Norepinephrine infusion",
+      surgeonProcedureNotes: "Midline laparotomy incision. Immediate suction of 1800 mL hemoperitoneum and large perisplenic clots. Splenic hilum mobilized and controlled; splenectomy completed with double ligatures. Proximal jejunal 2cm seromuscular tear repaired primarily in two layers with PDS and silk. Thorough warm peritoneal lavage with 4L normal saline. Two 28 Fr closed suction drains placed in left subdiaphragmatic splenic bed and pelvis. Mass closure of abdominal wall with loop PDS. Patient transferred intubated to SICU in guarded condition.",
+      postOpInstructions: "Transfer intubated to SICU Bed-3. Strict NPO with Ryle's tube aspiration. Continue IV Meropenem 1g Q8H, Metronidazole 500mg Q8H, IV Tramadol, and IV Pantoprazole. Titrate Norepinephrine for MAP > 65. Serial ABG, Hb, and drain output monitoring Q1H. Transfuse PRBC if Hb < 8 g/dL. Plan post-splenectomy vaccinations prior to discharge.",
+      surgeonSignature: "Dr. Vance, MS, MCh (Trauma Surgery)",
+    },
+  },
 ]
 
 type CaseInfoBooklet = Partial<SurgicalCaseInfo> & Record<string, unknown>
@@ -709,7 +762,15 @@ class SurgeryDbService {
   private loadFromCache() {
     try {
       const raw = localStorage.getItem(CACHE_KEY)
-      if (raw) this.cases = JSON.parse(raw)
+      if (raw) {
+        this.cases = JSON.parse(raw)
+        const currentIds = new Set((this.cases || []).map((c) => c.id))
+        const missing = DEFAULT_SEED_CASES.filter((c) => !currentIds.has(c.id))
+        if (missing.length > 0) {
+          this.cases = [...(this.cases || []), ...missing]
+          this.saveToCache()
+        }
+      }
       if (!this.cases || this.cases.length === 0) {
         this.cases = DEFAULT_SEED_CASES
       }

@@ -15,6 +15,7 @@ import {
   PlusCircle,
 } from "lucide-react"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
+import { toast } from "react-hot-toast"
 
 import PageHeader from "../components/PageHeader"
 import StatusBadge from "../components/StatusBadge"
@@ -41,14 +42,14 @@ export default function PrescriptionQueue({
   const [search, setSearch] = useState("")
 
   useEffect(() => {
-    // If the queue has no pending prescriptions or lacks Mr. G KUMAR, automatically seed it!
-    const rxList = PharmacyDatabase.getPrescriptions()
-    const hasKumar = rxList.some((r) => r.id === "RX-OPD-112320")
-    if (!hasKumar || rxList.length === 0) {
-      PharmacyDatabase.seedTestPrescriptionForSelling()
-      refresh()
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
     }
-  }, [])
+  }, [refresh])
 
   const filtered = prescriptions.filter((rx) => {
     const matchStatus =
@@ -99,12 +100,13 @@ export default function PrescriptionQueue({
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex flex-wrap items-center gap-2 ml-auto">
               <button
                 type="button"
                 onClick={() => {
                   PharmacyDatabase.seedTestPrescriptionForSelling()
                   refresh()
+                  toast.success("Added prescription for Mr. G. Kumar with batch stock ready!")
                 }}
                 className="flex items-center gap-1.5 px-3 py-2 bg-[#0F766E] text-white text-[12px] font-semibold rounded hover:bg-[#0c5e58] transition-colors shadow-sm"
                 title="Seed Mr. G KUMAR prescription with ready batch stock"
@@ -167,7 +169,7 @@ export default function PrescriptionQueue({
                         <p className="font-medium text-[#0F1624] text-[13px]">
                           {rx.patient}
                         </p>
-                        <p className="text-[11px] text-[#94A3B8]">
+                        <p className="text-[11px] text-[#94A3B8] whitespace-nowrap">
                           {rx.age}y · {rx.gender} · {rx.contact}
                         </p>
                       </td>
@@ -230,9 +232,10 @@ export default function PrescriptionQueue({
         </div>
       </div>
 
-      {/* Detail Drawer */}
+      {/* Detail Drawer -- beside the list on desktop; below lg there is no
+        room for both, so it covers the screen as a sheet (X closes it). */}
       {selected && (
-        <div className="w-96 bg-white border-l border-[#E2E8F0] flex flex-col flex-shrink-0 overflow-hidden">
+        <div className="fixed inset-0 z-50 lg:static lg:inset-auto lg:z-auto w-full lg:w-96 bg-white border-l border-[#E2E8F0] flex flex-col flex-shrink-0 overflow-hidden">
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#F0F2F5]">
             <div>
               <p className="font-semibold text-[14px] text-[#0F1624]">

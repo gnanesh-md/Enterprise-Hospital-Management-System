@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react"
-import { Mail, MailOpen, Paperclip, Send } from "lucide-react"
+import { Mail, MailOpen, Paperclip, Send, Receipt } from "lucide-react"
 import { InsuranceEngineService as E } from "../../services/insuranceDb"
+import { PharmacyDatabase } from "../../services/pharmacyDb"
+import { BillingDatabase } from "../../services/billingDb"
 import type { ComprehensiveClaimRecord, MailPurpose, MailRecord } from "../../types/insurance"
 import { SubmitForm } from "./forms"
-import { Field, attempt, btn, fieldCls, fmtDateTime, type Notify } from "./ui"
+import { Field, attempt, btn, fieldCls, fmtDateTime, inr, type Notify } from "./ui"
 
 // Email is how the insurance desk works with insurers and TPAs: verify the
 // documents, email them, and record the insurer's emailed reply. The mail
@@ -43,6 +45,34 @@ export function MailComposer({
   const verified = draft.documents.filter((d) => d.isUploaded && d.status === "Verified")
   const [attach, setAttach] = useState<string[]>(verified.map((d) => d.id))
   const [portal, setPortal] = useState(false)
+
+  // Saved bills raised for this case — fixed package, pharmacy, reception/hospital —
+  // selectable as extra attachments on the submission email.
+  const savedBills = useMemo(() => {
+    const out: { id: string; label: string }[] = []
+    try {
+      const fb = E.getFixedPackageBillForCase(c.id)
+      if (fb && fb.packageCode) out.push({ id: `fixed:${fb.id}`, label: `Fixed Package Bill ${fb.id} — ${inr(fb.totalAmount)}` })
+    } catch { /* ignore */ }
+    try {
+      const pName = (c.patientName || "").toLowerCase().trim()
+      const pId = (c.patientId || "").toLowerCase().trim()
+      const uhid = (c.policy?.memberId || "").toLowerCase().trim()
+      PharmacyDatabase.getBills()
+        .filter((b) => {
+          const bName = (b.patientName || "").toLowerCase().trim()
+          return (pName && bName.includes(pName)) || (pId && (b.patientId || "").toLowerCase().trim() === pId) || (uhid && (b.uhid || "").toLowerCase().trim() === uhid)
+        })
+        .forEach((b) => out.push({ id: `pharm:${b.id}`, label: `Pharmacy Bill ${b.billNumber} — ${inr(b.totalAmount)}` }))
+    } catch { /* ignore */ }
+    try {
+      const hb = c.billingClaimId ? BillingDatabase.getClaimById(c.billingClaimId) : undefined
+      if (hb) out.push({ id: `hosp:${hb.id || hb.invoiceNo}`, label: `Reception / Hospital Bill ${hb.invoiceNo} — ${inr(hb.totalAmount)}` })
+    } catch { /* ignore */ }
+    return out
+  }, [c])
+  const [billSel, setBillSel] = useState<string[]>([])
+  const billAttachments = savedBills.filter((b) => billSel.includes(b.id)).map((b) => b.label)
   const notReady = draft.documents.filter((d) => d.isMandatory && !(d.isUploaded && d.status === "Verified"))
   const gated = purpose === "Pre-Auth" || purpose === "Claim"
 
@@ -114,12 +144,33 @@ export function MailComposer({
           )}
         </div>
 
+        <div>
+          <div className="text-[12px] font-medium text-slate-500 mb-1.5 flex items-center gap-1.5">
+            <Receipt size={12} /> Saved bills ({billSel.length})
+          </div>
+          {savedBills.length === 0 ? (
+            <div className="text-[12px] text-slate-500">No saved bills for this case yet. Save a fixed package / pharmacy / reception bill first.</div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {savedBills.map((b) => {
+                const on = billSel.includes(b.id)
+                return (
+                  <label key={b.id} className={`inline-flex items-center gap-1.5 px-2 h-8 border text-[11.5px] cursor-pointer ${on ? "border-blue-400 bg-blue-50" : "border-slate-200"}`}>
+                    <input type="checkbox" className="accent-blue-600" checked={on} onChange={(e) => setBillSel(e.target.checked ? [...billSel, b.id] : billSel.filter((x) => x !== b.id))} />
+                    {b.label}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-2 pt-1">
           <button
             type="button"
             className={btn.primary}
             disabled={gated && notReady.length > 0}
-            onClick={() => attempt(notify, () => E.sendInsurerEmail(c.id, { purpose, to, cc, subject, body, attachmentIds: attach, queryId }), `Email sent to ${to} and recorded on the case.`)}
+            onClick={() => attempt(notify, () => E.sendInsurerEmail(c.id, { purpose, to, cc, subject, body, attachmentIds: attach, extraAttachments: billAttachments, queryId }), `Email sent to ${to} and recorded on the case.`)}
           >
             <Send size={14} /> {PURPOSE_LABEL[purpose]}
           </button>

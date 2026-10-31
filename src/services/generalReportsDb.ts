@@ -104,6 +104,7 @@ export interface RecentActivityItem {
 }
 
 const STORAGE_GENERAL_REPORTS_SEEDED = "hospai_gen_reports_seeded_v6"
+let generalSeedScheduled = false
 
 export class GeneralReportsService {
   /**
@@ -495,9 +496,31 @@ export class GeneralReportsService {
   public static ensureAllLongitudinalData(): void {
     if (typeof window === "undefined") return
 
-    // 1. Ensure OP data
+    // 1. Ensure OP data (plain localStorage writes, no broadcast -- safe inline)
     OpReportsService.ensureLongitudinalData()
 
+    if (generalSeedScheduled) return
+    try {
+      if (localStorage.getItem(STORAGE_GENERAL_REPORTS_SEEDED)) return
+    } catch {
+      return
+    }
+
+    // The report getters call this from inside a page's render (useMemo), and the
+    // seed below writes through stores that broadcast synchronously --
+    // PharmacyDatabase.saveBills dispatches a same-tab "storage" event. Mid-render,
+    // that set state in whatever was still subscribed (the Dashboard being
+    // navigated away from): React's "Cannot update a component while rendering a
+    // different component". Deferred past the commit, the same broadcast is what
+    // refreshes the report pages (useLiveClinic bumps on it).
+    generalSeedScheduled = true
+    window.setTimeout(() => {
+      generalSeedScheduled = false
+      this.seedGeneralReportsData()
+    }, 0)
+  }
+
+  private static seedGeneralReportsData(): void {
     try {
       const alreadySeeded = localStorage.getItem(STORAGE_GENERAL_REPORTS_SEEDED)
       if (alreadySeeded) return
@@ -570,6 +593,10 @@ export class GeneralReportsService {
               triage.includes("1") || triage.includes("2")
                 ? "Critical"
                 : "Stable",
+            // 60 demo visits fired at once used to mean 60 concurrent Qwen
+            // calls (and 60 console failures whenever vLLM was busy or down),
+            // for a triage that the .then() below overwrites anyway.
+            skipAiTriage: true,
           })
             .then((res) => {
               if (res.visit) {
@@ -774,109 +801,6 @@ export class GeneralReportsService {
           })
         }
         localStorage.setItem("hosp_rad_studies_v1", JSON.stringify(currentRad))
-      }
-
-      // 6. Ensure Prescriptions
-      const currentRx = PharmacyDatabase.getPrescriptions()
-      if (currentRx.length < 35) {
-        for (let i = 1; i <= 50; i++) {
-          const daysAgo = i <= 20 ? i % 14 : Math.floor(Math.random() * 45) + 14
-          const d = new Date(now)
-          d.setDate(d.getDate() - daysAgo)
-          const doc = doctors[i % doctors.length]
-          const isDispensed = i % 5 !== 0
-          ;(currentRx as any).push({
-            id: `RX-REP-${1000 + i}`,
-            encounterId: `ENC-REP-${d.toISOString().split("T")[0].replace(/-/g, "")}-${i}`,
-            patientId: `P-${10000 + i}`,
-            patientName: `Patient ${1000 + i} Rx`,
-            umr: `UMR${10000 + i}`,
-            age: 28 + (i % 50),
-            gender: i % 2 === 0 ? "Male" : "Female",
-            doctorName: doc.name,
-            department: doc.specialty || "General Medicine",
-            items: [
-              {
-                id: `RXI-${i}-1`,
-                medicineName: "Amoxicillin 500mg",
-                dosage: "1 capsule",
-                frequency: "TID",
-                duration: "5 days",
-                quantity: 15,
-                substitutionAllowed: true,
-              },
-              {
-                id: `RXI-${i}-2`,
-                medicineName: "Paracetamol 650mg",
-                dosage: "1 tab",
-                frequency: "SOS",
-                duration: "5 days",
-                quantity: 10,
-                substitutionAllowed: true,
-              },
-            ],
-            status: isDispensed ? "Dispensed" : "Sent To Pharmacy",
-            source: "DIGITAL",
-            priority: "Normal",
-            createdAt: d.toISOString(),
-            date: d.toISOString().split("T")[0],
-          })
-        }
-        PharmacyDatabase.savePrescriptions(currentRx)
-      }
-
-      // 7. Ensure Pharmacy Bills
-      const currentBills = PharmacyDatabase.getBills()
-      if (currentBills.length < 20) {
-        const meds = PharmacyDatabase.getMedicines()
-        for (let i = 1; i <= 35; i++) {
-          const daysAgo = i <= 15 ? i % 14 : Math.floor(Math.random() * 45) + 14
-          const d = new Date(now)
-          d.setDate(d.getDate() - daysAgo)
-          const med = meds[i % (meds.length || 1)]
-          const qty = 2 + (i % 4)
-          const unitP = med ? (med as any).price || 150 : 150
-          const totalAmt = qty * unitP
-          currentBills.push({
-            id: `BILL-REP-${1000 + i}`,
-            billNumber: `PB-${20000 + i}`,
-            patientId: `P-${10000 + i}`,
-            patientName: `Patient ${1000 + i}`,
-            uhid: `UMR${10000 + i}`,
-            doctorName: "Dr. General",
-            department: "General Medicine",
-            billType: "Cash",
-            paymentStatus: "Paid",
-            paymentMode: i % 2 === 0 ? "Cash" : "UPI",
-            subTotal: totalAmt,
-            discount: 0,
-            tax: 0,
-            taxableTotal: totalAmt,
-            cgstTotal: 0,
-            sgstTotal: 0,
-            totalAmount: totalAmt,
-            createdBy: "Pharmacist",
-            createdAt: d.toISOString(),
-            items: [
-              {
-                medicineId: med ? med.id : `MED-${i}`,
-                medicineName: med ? med.medicineName : "Amoxicillin 500mg",
-                batchNumber: `BATCH-${100 + (i % 10)}`,
-                expiryDate: "2027-12-31",
-                quantity: qty,
-                unitPrice: unitP,
-                grossAmount: totalAmt,
-                discount: 0,
-                taxableAmount: totalAmt,
-                cgstAmount: 0,
-                sgstAmount: 0,
-                tax: 0,
-                totalPrice: totalAmt,
-              },
-            ],
-          })
-        }
-        PharmacyDatabase.saveBills(currentBills)
       }
 
       localStorage.setItem(STORAGE_GENERAL_REPORTS_SEEDED, "true")

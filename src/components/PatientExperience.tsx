@@ -1,7 +1,34 @@
-import React from "react"
+import React, { useState } from "react"
 import { Icon } from "./icons"
+import { MessageCircle, X, Search } from "lucide-react"
+import SendToPatientDialog from "./messaging/SendToPatientDialog"
+import { db } from "../services/db"
 
 export default function PatientExperience() {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedPatient, setSelectedPatient] = useState<{ name: string; phone: string; id?: string }>({
+    name: "",
+    phone: "",
+    id: "",
+  })
+  const [search, setSearch] = useState("")
+
+  const encounters = db.getEncounters().slice(0, 10)
+  const filtered = encounters.filter(
+    (e) =>
+      !search ||
+      e.patientName.toLowerCase().includes(search.toLowerCase()) ||
+      (e.phone && e.phone.includes(search)) ||
+      (e.umr && e.umr.toLowerCase().includes(search.toLowerCase())),
+  )
+
+  const handleStartFeedback = (p: { name: string; phone: string; id?: string }) => {
+    setSelectedPatient(p)
+    setPickerOpen(false)
+    setDialogOpen(true)
+  }
+
   return (
     <div className="flex-1 flex flex-col h-full bg-[#F0F2F5]">
       <div className="bg-white border-b border-[#DDE2EC] px-6 py-4 flex items-center justify-between flex-shrink-0">
@@ -14,6 +41,13 @@ export default function PatientExperience() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="h-8 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[12px] font-medium rounded transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+          >
+            <MessageCircle size={14} /> Request Feedback (WhatsApp)
+          </button>
           <button className="h-8 px-3 bg-white border border-[#DDE2EC] text-[#1B4FD8] text-[12px] font-medium rounded hover:bg-[#F8FAFC] transition-colors flex items-center gap-2">
             <Icon.Download /> Export Data
           </button>
@@ -213,6 +247,121 @@ export default function PatientExperience() {
           </div>
         </div>
       </div>
+
+      {/* Pick patient to request feedback */}
+      {pickerOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl border border-[#DDE2EC] w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-5 py-3.5 border-b border-[#DDE2EC] bg-[#F8FAFC] flex justify-between items-center">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Request Feedback via WhatsApp
+                </h3>
+                <p className="text-[11.5px] text-[#64748B]">
+                  Select a patient or enter details to request rating & review
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3">
+              <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search recent patients by name, UMR, or phone..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-1.5 text-[12.5px] border border-[#DDE2EC] rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="max-h-56 overflow-y-auto divide-y divide-gray-100 border border-gray-100 rounded-lg">
+                {filtered.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() =>
+                      handleStartFeedback({
+                        name: e.patientName,
+                        phone: e.phone,
+                        id: e.umr,
+                      })
+                    }
+                    className="w-full text-left p-2.5 hover:bg-blue-50/50 transition-colors flex justify-between items-center group cursor-pointer"
+                  >
+                    <div>
+                      <div className="text-[12.5px] font-semibold text-gray-800 group-hover:text-blue-600">
+                        {e.patientName}
+                      </div>
+                      <div className="text-[11px] text-gray-500 font-mono">
+                        {e.umr || e.opNumber} · {e.phone || "No phone"}
+                      </div>
+                    </div>
+                    <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                      Select
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <div className="text-[11.5px] font-medium text-gray-700 mb-1.5">
+                  Or enter mobile manually:
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    placeholder="Patient Name"
+                    value={selectedPatient.name}
+                    onChange={(e) =>
+                      setSelectedPatient((prev) => ({ ...prev, name: e.target.value }))
+                    }
+                    className="px-2.5 py-1.5 text-[12px] border border-[#DDE2EC] rounded-md focus:outline-none"
+                  />
+                  <input
+                    type="tel"
+                    placeholder="Mobile Number"
+                    value={selectedPatient.phone}
+                    onChange={(e) =>
+                      setSelectedPatient((prev) => ({ ...prev, phone: e.target.value }))
+                    }
+                    className="px-2.5 py-1.5 text-[12px] border border-[#DDE2EC] rounded-md focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedPatient.name || selectedPatient.phone) {
+                      setPickerOpen(false)
+                      setDialogOpen(true)
+                    }
+                  }}
+                  disabled={!selectedPatient.phone}
+                  className="mt-2 w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[12px] font-medium rounded-md transition-colors cursor-pointer"
+                >
+                  Continue to WhatsApp Message
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Actual Send to Patient Dialog */}
+      <SendToPatientDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        patient={selectedPatient}
+        kind="feedback_request"
+        documentLabel="Feedback / Review Request"
+      />
     </div>
   )
 }

@@ -1673,7 +1673,14 @@ export async function apiFetch<T = any>(
 
     clearTimeout(timeoutId)
 
-    isBackendOnline = true
+    if (response.ok) {
+      isBackendOnline = true
+    } else {
+      if (response.status >= 500) {
+        isBackendOnline = false
+        lastBackendProbeTime = Date.now()
+      }
+    }
 
     if (!response.ok) {
       const payload = await response.json().catch(() => ({}))

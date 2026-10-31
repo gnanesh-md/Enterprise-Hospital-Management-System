@@ -18,10 +18,12 @@ const MODULE_TO_PAGE: Record<string, string> = {
   pharmacy_medicine: "medicines",
   pharmacy_category: "categories",
   pharmacy_suppliers: "suppliers",
-  pharmacy_po: "purchase-orders",
+  pharmacy_po: "ocr", // Redirect old PO requests to Inward GRN
   pharmacy_grn: "ocr",
   pharmacy_ledger: "inventory-ledger",
+  pharmacy_transfers: "inventory-ledger",
   pharmacy_expiry: "expiry-low-stock",
+  pharmacy_write_off: "write-off",
   pharmacy_analytics: "reports",
   pharmacy_notifications: "notifications",
   pharmacy_users: "users",
@@ -29,9 +31,27 @@ const MODULE_TO_PAGE: Record<string, string> = {
   pharmacy_settings: "settings",
 }
 
-const PAGE_TO_MODULE: Record<string, string> = Object.fromEntries(
-  Object.entries(MODULE_TO_PAGE).map(([module, page]) => [page, module]),
-)
+const PAGE_TO_MODULE: Record<string, string> = {
+  dashboard: "pharmacy",
+  dispensing: "pharmacy_dispensing",
+  prescriptions: "pharmacy_rx",
+  ocr: "pharmacy_ocr",
+  grn: "pharmacy_ocr",
+  "purchase-orders": "pharmacy_ocr",
+  "sales-returns": "pharmacy_returns",
+  "supplier-returns": "pharmacy_supplier_returns",
+  medicines: "pharmacy_medicine",
+  categories: "pharmacy_category",
+  suppliers: "pharmacy_suppliers",
+  "inventory-ledger": "pharmacy_ledger",
+  "expiry-low-stock": "pharmacy_expiry",
+  "write-off": "pharmacy_write_off",
+  reports: "pharmacy_analytics",
+  notifications: "pharmacy_notifications",
+  "audit-log": "pharmacy_audit",
+  users: "pharmacy_users",
+  settings: "pharmacy_settings",
+}
 
 interface PharmacyProps {
   activeModule?: string
@@ -45,7 +65,9 @@ export default function Pharmacy({ activeModule, onNavigate }: PharmacyProps) {
   // is reported back as a module key, so the main sidebar highlight follows
   // along instead of drifting out of sync with what is on screen.
   const handleNavigate = (nextPage: string) => {
-    const nextModule = PAGE_TO_MODULE[nextPage]
+    const nextModule =
+      PAGE_TO_MODULE[nextPage] ||
+      (nextPage.startsWith("pharmacy") ? nextPage : undefined)
     if (nextModule && onNavigate) onNavigate(nextModule)
   }
 

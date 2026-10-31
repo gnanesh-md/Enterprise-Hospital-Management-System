@@ -20,7 +20,7 @@ from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import concurrent.futures
 
-from core.config import settings
+from core.config import settings, served_model
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ def extract_page_text(page_img_bytes: bytes, page_num: int) -> str:
     try:
         base64_img = base64.b64encode(page_img_bytes).decode('utf-8')
         resp = client.chat.completions.create(
-            model=OCR_MODEL,
+            model=served_model(OCR_MODEL),
             messages=[{
                 "role": "user",
                 "content": [

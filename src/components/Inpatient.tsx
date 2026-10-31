@@ -6,6 +6,7 @@ import { WardBedBoard } from "./bed/WardBedBoard"
 import { BedTransferNotificationPanel } from "./bed/BedTransferNotificationPanel"
 import { WardAlertsNotificationPanel } from "./bed/WardAlertsNotificationPanel"
 import IcuDepartment from "./IcuDepartment"
+import { BedDatabase } from "../services/bedDb"
 import { apiFetch } from "../lib/api"
 import { formatDateTimeIST } from "../lib/format"
 
@@ -41,6 +42,8 @@ type Summary = {
 type ErBedRequest = {
   id: number
   visit_no: string
+  patient_id?: string | null
+  er_visit_id?: number | null
   patient_name: string | null
   patient_last_name: string | null
   is_unknown_patient: boolean
@@ -328,7 +331,27 @@ export default function Inpatient({
               onOpenBedManagement={goToBedManagement}
             />
             <BedTransferNotificationPanel
-              onAllocateTransfer={() => goToBedManagement()}
+              onAllocateTransfer={(notif) => {
+                BedDatabase.setPendingAllocation({
+                  patient_id: notif.patient_id,
+                  name: notif.patient_name,
+                  last_name: notif.patient_last_name || undefined,
+                  phone: notif.patient_phone || undefined,
+                  age: notif.patient_age || undefined,
+                  gender: notif.patient_gender || undefined,
+                  source: "ER",
+                  visit_no: notif.er_visit_id ? `ER-${notif.er_visit_id}` : `TR-${notif.patient_id}`,
+                  er_bed_request_id: notif.er_bed_request_id,
+                  er_visit_id: notif.er_visit_id,
+                  notification_id: notif.id,
+                  requested_level_of_care: notif.target_bed_type === "ICU" ? "ICU" : notif.target_destination,
+                  requested_specialty: notif.target_ward || notif.target_destination,
+                  clinical_notes: `Transferred from ${notif.source_department}. Reason: ${notif.clinical_reason}`,
+                  priority: notif.priority,
+                  timestamp: notif.sent_at,
+                })
+                goToBedManagement()
+              }}
               onViewPatientChart={onOpenPatientClinical}
               canManageBeds={!permissions || permissions.includes("beds")}
             />
@@ -336,10 +359,12 @@ export default function Inpatient({
               Open Bed Management →
             </Btn>
           </div>
-        </div>        <div className="px-6 pb-3 flex items-end justify-between gap-6 flex-wrap">
-          <div className="flex items-stretch divide-x divide-[#E2E8F0] border border-[#E2E8F0] rounded-none overflow-hidden">
+        </div>        <div className="px-6 pb-3 flex items-end justify-between gap-3 sm:gap-6 flex-wrap">
+          {/* gap-px over a border-coloured fill draws the dividers, so the
+            strip reads the same as one row of four or a 2x2 on a phone. */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-[#E2E8F0] border border-[#E2E8F0] rounded-none overflow-hidden w-full sm:w-auto">
             {boardStats.map((stat) => (
-              <div key={stat.label} className="px-4 py-2 min-w-[104px]">
+              <div key={stat.label} className="px-4 py-2 sm:min-w-[104px] bg-white">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8]">
                   {stat.label}
                 </div>
@@ -554,9 +579,10 @@ export default function Inpatient({
                   <WardBedBoard
                     rooms={activeRooms}
                     readOnly={false}
-                    onBedClick={
-                      goToBedManagement
-                    }
+                    onBedClick={(bed) => {
+                      sessionStorage.setItem("hospai_target_bed_id", String(bed.id))
+                      goToBedManagement()
+                    }}
                     onPatientClick={
                       onOpenPatientClinical
                         ? (bed) =>
@@ -607,7 +633,29 @@ export default function Inpatient({
                   <span className="shrink-0 font-mono text-[10.5px] text-[#94A3B8]">
                     {formatDateTimeIST(req.requested_at)}
                   </span>
-                  <Btn variant="primary" size="xs" onClick={goToBedManagement}>
+                  <Btn
+                    variant="primary"
+                    size="xs"
+                    onClick={() => {
+                      BedDatabase.setPendingAllocation({
+                        patient_id:
+                          req.patient_id ||
+                          `P-ER-${req.er_visit_id || req.id}`,
+                        name: req.patient_name || "Emergency Patient",
+                        last_name: req.patient_last_name || undefined,
+                        source: "ER",
+                        visit_no: req.visit_no,
+                        er_bed_request_id: req.id,
+                        er_visit_id: req.er_visit_id || undefined,
+                        requested_level_of_care: req.requested_level_of_care,
+                        requested_specialty:
+                          req.requested_specialty || undefined,
+                        clinical_notes: `ER Admission Request (${req.visit_no}) for ${req.requested_level_of_care}`,
+                        timestamp: req.requested_at,
+                      })
+                      goToBedManagement()
+                    }}
+                  >
                     Assign Bed
                   </Btn>
                 </li>

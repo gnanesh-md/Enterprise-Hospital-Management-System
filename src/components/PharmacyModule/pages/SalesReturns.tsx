@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
   Search, Download, Printer, RefreshCcw, Eye, X, AlertCircle, 
   CheckCircle2, RotateCcw, ArrowRight, CornerDownRight, FileText, Trash2 
@@ -25,6 +25,13 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
   // Returns tab states
   const [searchBillNo, setSearchBillNo] = useState("");
   const [searchedBill, setSearchedBill] = useState<AppPharmacyBill | null>(null);
+  const [matchingCandidateBills, setMatchingCandidateBills] = useState<{
+    masterNumber: string;
+    original: AppPharmacyBill;
+    latest: AppPharmacyBill;
+    prevRefunds: number;
+    activeTotal: number;
+  }[]>([]);
   const [searchError, setSearchError] = useState("");
   const [returnQuantities, setReturnQuantities] = useState<Record<string, number>>({});
   const [returnReason, setReturnReason] = useState("Patient not using");
@@ -34,12 +41,45 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
   const [processedModifiedBill, setProcessedModifiedBill] = useState<AppPharmacyBill | null>(null);
   const [recentReturns, setRecentReturns] = useState<AppPharmacyReturn[]>(() => PharmacyDatabase.getReturns());
 
+  // Real-time synchronization: listen for sales, returns, and inventory modifications
+  useEffect(() => {
+    const handleUpdate = () => {
+      setRecentReturns(PharmacyDatabase.getReturns());
+      refresh();
+    };
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, [refresh]);
+
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const qDigits = q.replace(/\D/g, "");
+
     const matched = bills.filter(inv => {
-      const matchesSearch = !search || inv.billNumber.toLowerCase().includes(search.toLowerCase()) || inv.patientName.toLowerCase().includes(search.toLowerCase());
+      const bNo = (inv.billNumber || "").toLowerCase();
+      const origBNo = (inv.originalBillNumber || "").toLowerCase();
+      const pName = (inv.patientName || "").toLowerCase();
+      const uhid = (inv.uhid || "").toLowerCase();
+      const doctor = (inv.doctorName || "").toLowerCase();
+      const bDigits = bNo.replace(/\D/g, "");
+
+      const matchesSearch = !q ||
+        bNo.includes(q) ||
+        origBNo.includes(q) ||
+        pName.includes(q) ||
+        uhid.includes(q) ||
+        doctor.includes(q) ||
+        (qDigits.length >= 2 && bDigits.endsWith(qDigits)) ||
+        (inv.items || []).some(i => (i.medicineName || "").toLowerCase().includes(q));
+
       const matchesDate = !dateFilter || (inv.billDate || (inv as any).createdAt || "").startsWith(dateFilter);
       return matchesSearch && matchesDate;
     });
+
     // Deduplicate by billNumber so we only see the latest version in the table
     const seen = new Set<string>();
     return matched.filter(inv => {
@@ -50,7 +90,6 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
     });
   }, [bills, search, dateFilter]);
   
-  // Net Revenue = Gross Sales Revenue (original bills only) - Total Refunds
   const originalBills = useMemo(() => bills.filter(b => !b.isModifiedReturnBill && !b.billNumber?.startsWith("MOD-")), [bills]);
   
   // Scoped bills: if dateFilter is provided, match date; otherwise include all
@@ -67,14 +106,29 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
 
   const grossRevenue = useMemo(() => scopedOriginalBills.reduce((sum, b) => sum + (b.totalAmount || 0), 0), [scopedOriginalBills]);
   const totalRefunds = useMemo(() => scopedReturns.reduce((sum, r) => sum + (r.refundAmount || 0), 0), [scopedReturns]);
-  const netRevenue = Math.max(0, grossRevenue - totalRefunds);
   const totalSaleBills = scopedOriginalBills.length;
-  const avgBill = totalSaleBills > 0 ? (netRevenue / totalSaleBills) : 0;
+  
+  // Total units restocked to inventory from customer returns
+  const totalRestockedUnits = useMemo(() => {
+    return scopedReturns.reduce((sum, r) => {
+      if (r.returnQuantity) return sum + r.returnQuantity;
+      if (r.items && r.items.length > 0) {
+        return sum + r.items.reduce((s, i) => s + (i.returnQuantity || 0), 0);
+      }
+      return sum;
+    }, 0);
+  }, [scopedReturns]);
+
+  // Modified return bills count
+  const modifiedBillsCount = useMemo(() => {
+    return bills.filter(b => b.isModifiedReturnBill || b.billNumber?.startsWith("MOD-")).length;
+  }, [bills]);
 
   // Reset to clean Returns view
   const handleResetToReturns = () => {
     setSearchedBill(null);
     setSearchBillNo("");
+    setMatchingCandidateBills([]);
     setReturnQuantities({});
     setSearchError("");
     setProcessSuccess(null);
@@ -83,41 +137,111 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
     setRecentReturns(PharmacyDatabase.getReturns());
   };
 
-  // Search bill handler
-  const handleSearchBill = (queryOverride?: string) => {
-    const query = (queryOverride ?? searchBillNo).trim();
+  const selectBillForReturn = (item: { masterNumber: string; original: AppPharmacyBill; latest: AppPharmacyBill }) => {
+    setSearchedBill(item.original);
+    setSearchBillNo(item.masterNumber);
+    setMatchingCandidateBills([]);
     setSearchError("");
     setProcessSuccess(null);
     setProcessedReturn(null);
     setProcessedModifiedBill(null);
 
-    if (!query) {
-      setSearchError("Please enter a valid bill number to search.");
+    // Initialize return quantities to 0
+    const initialQty: Record<string, number> = {};
+    item.original.items.forEach(it => {
+      initialQty[`${it.medicineId}_${it.batchNumber}`] = 0;
+    });
+    setReturnQuantities(initialQty);
+  };
+
+  // Search bill handler (allows searching by full bill number, last 5 digits, patient name, UHID, or doctor)
+  const handleSearchBill = (queryOverride?: string) => {
+    const rawQuery = (queryOverride ?? searchBillNo).trim();
+    setSearchError("");
+    setProcessSuccess(null);
+    setProcessedReturn(null);
+    setProcessedModifiedBill(null);
+    setMatchingCandidateBills([]);
+
+    if (!rawQuery) {
+      setSearchError("Please enter a bill number (full or last 5 digits), patient name, or UHID to search.");
       setSearchedBill(null);
       return;
     }
 
-    // Lookup bill in database
-    const allBills = PharmacyDatabase.getBills();
-    const found = allBills.find(
-      b => !b.isModifiedReturnBill && (b.billNumber.toLowerCase() === query.toLowerCase() || b.id.toLowerCase() === query.toLowerCase())
-    );
+    const q = rawQuery.toLowerCase();
+    const qDigits = q.replace(/\D/g, "");
 
-    if (!found) {
-      setSearchError(`Bill "${query}" not found. Please verify the bill number and try again.`);
+    // Lookup bills in database
+    const allBills = PharmacyDatabase.getBills();
+    
+    // Group all bills by master bill number (originalBillNumber || billNumber)
+    const masterNumbers = Array.from(new Set(allBills.map(b => b.originalBillNumber || b.billNumber)));
+    
+    const candidateList = masterNumbers.map(bNum => {
+      const orig = allBills.find(b => !b.isModifiedReturnBill && (b.billNumber === bNum || b.originalBillNumber === bNum)) 
+        || allBills.find(b => b.billNumber === bNum);
+      if (!orig) return null;
+      
+      const latest = allBills.find(b => b.isModifiedReturnBill && (b.billNumber === bNum || b.originalBillNumber === bNum)) || orig;
+      const returns = PharmacyDatabase.getReturnsForBill(bNum);
+      const prevRefunds = returns.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
+      const origTotal = orig.totalAmount || 0;
+
+      const allItemsReturned = (orig.items || []).every(it => {
+        const k = `${it.medicineId}_${it.batchNumber}`;
+        const returnedCount = returns.reduce((sum, r) => {
+          const matchedItem = r.items?.find(ri => `${ri.medicineId}_${ri.batchNumber}` === k);
+          return sum + (matchedItem ? matchedItem.returnQuantity : 0);
+        }, 0);
+        return returnedCount >= (it.quantity || 0);
+      });
+
+      const activeTotal = allItemsReturned 
+        ? 0 
+        : latest.isModifiedReturnBill 
+          ? (latest.totalAmount || 0) 
+          : Math.max(0, origTotal - prevRefunds);
+
+      return {
+        masterNumber: bNum,
+        original: orig,
+        latest,
+        prevRefunds,
+        activeTotal
+      };
+    }).filter(Boolean) as { masterNumber: string; original: AppPharmacyBill; latest: AppPharmacyBill; prevRefunds: number; activeTotal: number }[];
+
+    // Filter by matching query
+    const matches = candidateList.filter(item => {
+      const bNo = (item.original.billNumber || "").toLowerCase();
+      const pName = (item.original.patientName || "").toLowerCase();
+      const uhid = (item.original.uhid || "").toLowerCase();
+      const doc = (item.original.doctorName || "").toLowerCase();
+      const bDigits = bNo.replace(/\D/g, "");
+
+      if (bNo === q || bNo.includes(q)) return true;
+      if (pName.includes(q)) return true;
+      if (uhid.includes(q)) return true;
+      if (doc.includes(q)) return true;
+      if (qDigits.length >= 2 && bDigits.endsWith(qDigits)) return true;
+      if (bNo.endsWith(q)) return true;
+
+      return false;
+    });
+
+    if (matches.length === 0) {
+      setSearchError(`No bills found matching "${rawQuery}". You can search by bill number (full or last 5 digits e.g. 00042), patient name, or UHID.`);
       setSearchedBill(null);
       setReturnQuantities({});
       return;
     }
 
-    setSearchedBill(found);
-    setSearchBillNo(found.billNumber);
-    // Initialize return quantities to 0
-    const initialQty: Record<string, number> = {};
-    found.items.forEach(item => {
-      initialQty[`${item.medicineId}_${item.batchNumber}`] = 0;
-    });
-    setReturnQuantities(initialQty);
+    if (matches.length === 1) {
+      selectBillForReturn(matches[0]);
+    } else {
+      setMatchingCandidateBills(matches);
+    }
   };
 
   // Start return from sales history
@@ -131,7 +255,8 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
   // Calculate past returns for the searched bill
   const existingReturnsForSearchedBill = useMemo(() => {
     if (!searchedBill) return [];
-    return PharmacyDatabase.getReturnsForBill(searchedBill.billNumber);
+    const targetNum = searchedBill.originalBillNumber || searchedBill.billNumber;
+    return PharmacyDatabase.getReturnsForBill(targetNum);
   }, [searchedBill, recentReturns]);
 
   // Calculate previously returned quantities per line item
@@ -151,6 +276,23 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
     });
     return map;
   }, [searchedBill, existingReturnsForSearchedBill]);
+
+  const allPreviousRefundAmount = useMemo(() => {
+    return existingReturnsForSearchedBill.reduce((sum, r) => sum + (r.refundAmount || 0), 0);
+  }, [existingReturnsForSearchedBill]);
+
+  const currentActiveBillTotal = useMemo(() => {
+    if (!searchedBill) return 0;
+    const origTotal = searchedBill.totalAmount || 0;
+    // Check if any items are still eligible for return
+    const totalEligible = searchedBill.items.reduce((sum, origItem) => {
+      const key = `${origItem.medicineId}_${origItem.batchNumber}`;
+      const prev = previouslyReturnedMap[key] || 0;
+      return sum + Math.max(0, origItem.quantity - prev);
+    }, 0);
+    if (totalEligible === 0) return 0;
+    return Math.max(0, origTotal - allPreviousRefundAmount);
+  }, [searchedBill, allPreviousRefundAmount, previouslyReturnedMap]);
 
   // Handle return quantity change
   const handleQuantityChange = (key: string, maxEligible: number, val: number) => {
@@ -185,11 +327,15 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
         totalReturnQty: 0,
         totalRefundAmount: 0,
         originalTotalAmount: 0,
+        currentBillAmountBeforeReturn: 0,
         modifiedTotalAmount: 0,
+        allPreviousRefundAmount: 0,
+        cumulativeRefundAmount: 0,
       };
     }
 
     let totalReturnQty = 0;
+    let totalEligibleAcrossBill = 0;
     let totalRefundAmount = 0;
 
     const itemsToReturn: (AppPharmacyReturnItem & { maxEligible: number; previouslyReturned: number })[] = [];
@@ -201,10 +347,17 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
       const currentReturnQty = returnQuantities[key] || 0;
       const finalQuantity = Math.max(0, maxEligible - currentReturnQty);
 
+      totalEligibleAcrossBill += maxEligible;
+
+      // Calculate paid unit price including GST and deducting discount
+      const lineTotalPaid = origItem.totalPrice ?? (origItem.quantity * origItem.unitPrice * (1 - (origItem.discount || 0) / 100) * (1 + (origItem.tax || 0) / 100));
+      const unitPaidPrice = origItem.quantity > 0 ? (lineTotalPaid / origItem.quantity) : origItem.unitPrice;
+      const lineRemainingAmount = maxEligible > 0 ? (lineTotalPaid * (maxEligible / origItem.quantity)) : 0;
+      const refundAmount = currentReturnQty === maxEligible ? lineRemainingAmount : Number((currentReturnQty * unitPaidPrice).toFixed(2));
+      const finalAmount = Math.max(0, lineRemainingAmount - refundAmount);
+
       const unitPrice = origItem.unitPrice;
       const originalAmount = origItem.grossAmount || (origItem.quantity * unitPrice);
-      const refundAmount = currentReturnQty * unitPrice;
-      const finalAmount = finalQuantity * unitPrice;
 
       if (currentReturnQty > 0) {
         totalReturnQty += currentReturnQty;
@@ -231,16 +384,34 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
     });
 
     const originalTotalAmount = searchedBill.totalAmount || 0;
-    const modifiedTotalAmount = Math.max(0, originalTotalAmount - totalRefundAmount);
+    const currentBillAmountBeforeReturn = totalEligibleAcrossBill === 0
+      ? 0
+      : Math.max(0, originalTotalAmount - allPreviousRefundAmount);
+
+    const isAllRemainingBeingReturned = totalReturnQty > 0 && totalReturnQty >= totalEligibleAcrossBill;
+    if (isAllRemainingBeingReturned) {
+      totalRefundAmount = currentBillAmountBeforeReturn;
+    }
+
+    const modifiedTotalAmount = (totalEligibleAcrossBill === 0 || isAllRemainingBeingReturned)
+      ? 0
+      : Math.max(0, currentBillAmountBeforeReturn - totalRefundAmount);
+
+    const cumulativeRefundAmount = (totalEligibleAcrossBill === 0 || isAllRemainingBeingReturned)
+      ? originalTotalAmount
+      : (allPreviousRefundAmount + totalRefundAmount);
 
     return {
       itemsToReturn,
       totalReturnQty,
       totalRefundAmount,
       originalTotalAmount,
+      currentBillAmountBeforeReturn,
       modifiedTotalAmount,
+      allPreviousRefundAmount,
+      cumulativeRefundAmount,
     };
-  }, [searchedBill, returnQuantities, previouslyReturnedMap]);
+  }, [searchedBill, returnQuantities, previouslyReturnedMap, allPreviousRefundAmount]);
 
   // Process return action
   const handleProcessReturn = () => {
@@ -263,19 +434,27 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
     setProcessedReturn(result.returnRecord);
     setProcessedModifiedBill(result.modifiedBill);
     setProcessSuccess(
-      `Return ${result.returnRecord.returnNumber} processed successfully! Modified Bill ${result.modifiedBill.billNumber} created.`
+      `Return ${result.returnRecord.returnNumber} processed successfully! Refund of ₹${result.returnRecord.refundAmount?.toFixed(2)} issued. Modified Bill ${result.modifiedBill.billNumber} updated to ₹${result.modifiedBill.totalAmount?.toFixed(2)}.`
     );
     setRecentReturns(PharmacyDatabase.getReturns());
     refresh();
+
+    // Reset return quantities to 0 for remaining items so user can immediately see updated state
+    const resetQty: Record<string, number> = {};
+    searchedBill.items.forEach(it => {
+      resetQty[`${it.medicineId}_${it.batchNumber}`] = 0;
+    });
+    setReturnQuantities(resetQty);
   };
 
   // Re-print any past return bill
-  const handlePrintPastReturn = (ret: AppPharmacyReturn) => {
+  const handlePrintPastReturn = (ret: AppPharmacyReturn, view: "bill" | "return_voucher" = "bill") => {
     const allBills = PharmacyDatabase.getBills();
     let modBill = allBills.find(b => b.billNumber === ret.modifiedBillNumber);
     if (!modBill) {
       modBill = {
         id: ret.id,
+        isModifiedReturnBill: true,
         billNumber: ret.modifiedBillNumber || ("MOD-" + ret.originalBillNumber),
         patientId: ret.patientId || "",
         patientName: ret.patientName || "Patient",
@@ -309,8 +488,13 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
         createdBy: "Pharmacist",
         createdAt: ret.createdAt
       };
+    } else {
+      modBill = {
+        ...modBill,
+        isModifiedReturnBill: true,
+      };
     }
-    setPrintReturnModal({ bill: modBill, returnRecord: ret });
+    setPrintReturnModal({ bill: modBill, returnRecord: ret, initialView: view } as any);
   };
 
   // Delete return from history
@@ -348,12 +532,14 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
 
   return (
     <div className="space-y-6 font-sans text-[#0F1624]">
-      {printInv && <InvoicePrintModal bill={printInv} onClose={() => setPrintInv(null)} />}
+      {printInv && <InvoicePrintModal bill={printInv} onClose={() => setPrintInv(null)} autoPrint={true} />}
       {printReturnModal && (
         <InvoicePrintModal 
           bill={printReturnModal.bill} 
           returnRecord={printReturnModal.returnRecord} 
+          initialView={(printReturnModal as any).initialView}
           onClose={() => setPrintReturnModal(null)} 
+          autoPrint={true}
         />
       )}
 
@@ -376,28 +562,28 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { 
-              label: dateFilter ? `Net Revenue (${dateFilter})` : "Net Revenue", 
-              value: "₹" + netRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 }), 
-              subtext: `Gross: ₹${grossRevenue.toLocaleString("en-IN", { minimumFractionDigits: 0 })} · Returns: -₹${totalRefunds.toLocaleString("en-IN", { minimumFractionDigits: 0 })}`,
-              color: "#1B4FD8", bg: "bg-blue-50", border: "border-blue-200" 
-            },
-            { 
-              label: "Total Sale Bills", 
+              label: dateFilter ? `Sale Invoices (${dateFilter})` : "Total Sale Invoices", 
               value: totalSaleBills.toString(), 
-              subtext: `${totalSaleBills} transaction${totalSaleBills === 1 ? "" : "s"}`,
-              color: "#16a34a", bg: "bg-emerald-50", border: "border-emerald-200" 
+              subtext: `₹${grossRevenue.toLocaleString("en-IN", { minimumFractionDigits: 2 })} Total Billed`,
+              color: "#0F766E", bg: "bg-teal-50", border: "border-teal-200" 
             },
             { 
-              label: "Total Refunds Processed", 
+              label: dateFilter ? `Refunds Issued (${dateFilter})` : "Total Refunds Issued", 
               value: "₹" + totalRefunds.toLocaleString("en-IN", { minimumFractionDigits: 2 }), 
-              subtext: `${scopedReturns.length} return${scopedReturns.length === 1 ? "" : "s"} processed`,
-              color: "#dc2626", bg: "bg-red-50", border: "border-red-200" 
+              subtext: `${scopedReturns.length} return voucher${scopedReturns.length === 1 ? "" : "s"} processed`,
+              color: "#DC2626", bg: "bg-red-50", border: "border-red-200" 
             },
             { 
-              label: "Avg. Ticket Value", 
-              value: "₹" + avgBill.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 
-              subtext: "Net average per invoice",
-              color: "#7c3aed", bg: "bg-purple-50", border: "border-purple-200" 
+              label: "Returned Items Restocked", 
+              value: `${totalRestockedUnits} Units`, 
+              subtext: "Restocked into inventory ledger",
+              color: "#16A34A", bg: "bg-emerald-50", border: "border-emerald-200" 
+            },
+            { 
+              label: "Active Modified Bills", 
+              value: modifiedBillsCount.toString(), 
+              subtext: "Revised post-return invoices",
+              color: "#7C3AED", bg: "bg-purple-50", border: "border-purple-200" 
             },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-xl p-4 border border-[#E2E8F0] shadow-sm flex flex-col justify-between">
@@ -521,7 +707,15 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                       <td className="p-3 text-[13px] font-semibold text-[#0F1624] text-right">
                         ₹{(inv.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="p-3"><StatusBadge status="completed" size="sm" /></td>
+                      <td className="p-3 text-center">
+                        {isModifiedBill && (inv.totalAmount || 0) === 0 ? (
+                          <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800">
+                            FULLY RETURNED
+                          </span>
+                        ) : (
+                          <StatusBadge status="completed" size="sm" />
+                        )}
+                      </td>
                       <td className="p-3">
                         <div className="flex items-center justify-center gap-1">
                           <button 
@@ -573,19 +767,37 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
               <div className="flex items-center gap-2 text-[12px] text-[#64748B] flex-wrap">
                 <span className="font-medium text-[11px] uppercase tracking-wider text-[#94A3B8]">Quick Select:</span>
                 {originalBills.length > 0 ? (
-                  originalBills.slice(0, 3).map((ob, idx) => (
-                    <button 
-                      key={ob.billNumber}
-                      onClick={() => { setSearchBillNo(ob.billNumber); handleSearchBill(ob.billNumber); }}
-                      className={`px-2.5 py-1 font-mono text-[11px] font-bold rounded-lg border transition-colors ${
-                        idx === 0 
-                          ? "bg-blue-50 text-blue-700 border-blue-200/60 hover:bg-blue-100" 
-                          : "bg-purple-50 text-purple-700 border-purple-200/60 hover:bg-purple-100"
-                      }`}
-                    >
-                      {ob.billNumber} ({ob.patientName})
-                    </button>
-                  ))
+                  originalBills.slice(0, 4).map((ob) => {
+                    const billNum = ob.originalBillNumber || ob.billNumber;
+                    const returns = PharmacyDatabase.getReturnsForBill(billNum);
+                    const prevRefunds = returns.reduce((s, r) => s + (r.refundAmount || 0), 0);
+                    const allItemsReturned = (ob.items || []).every(it => {
+                      const k = `${it.medicineId}_${it.batchNumber}`;
+                      const returnedCount = returns.reduce((sum, r) => {
+                        const matchedItem = r.items?.find(ri => `${ri.medicineId}_${ri.batchNumber}` === k);
+                        return sum + (matchedItem ? matchedItem.returnQuantity : 0);
+                      }, 0);
+                      return returnedCount >= (it.quantity || 0);
+                    });
+                    const activeAmount = allItemsReturned ? 0 : Math.max(0, (ob.totalAmount || 0) - prevRefunds);
+                    const isMod = returns.length > 0;
+                    return (
+                      <button 
+                        key={ob.billNumber}
+                        onClick={() => { setSearchBillNo(billNum); handleSearchBill(billNum); }}
+                        className={`px-2.5 py-1 font-mono text-[11px] font-bold rounded-lg border transition-colors flex items-center gap-1.5 cursor-pointer ${
+                          isMod 
+                            ? "bg-purple-50 text-purple-700 border-purple-200/60 hover:bg-purple-100" 
+                            : "bg-blue-50 text-blue-700 border-blue-200/60 hover:bg-blue-100"
+                        }`}
+                      >
+                        <span>{billNum}</span>
+                        <span className="text-[10px] text-gray-500 font-sans">({ob.patientName})</span>
+                        <span className="font-sans font-bold text-teal-800">₹{activeAmount.toFixed(0)}</span>
+                        {isMod && <span className="text-[9px] px-1 py-0.2 bg-purple-200 text-purple-800 rounded font-sans">MOD</span>}
+                      </button>
+                    );
+                  })
                 ) : (
                   <span className="text-[12px] text-[#94A3B8] italic">No active bills found</span>
                 )}
@@ -594,7 +806,7 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
 
             <div className="max-w-2xl">
               <label className="block text-[11px] font-bold text-[#64748B] uppercase tracking-wider mb-2">
-                Original Bill Number *
+                Search Bill (Bill Number, Last 5 Digits, Patient Name, or UHID) *
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -602,19 +814,65 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                     value={searchBillNo}
                     onChange={e => setSearchBillNo(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter") handleSearchBill(); }}
-                    placeholder="Enter bill number (e.g. BILL-2026-001245)"
+                    placeholder="Enter bill no (e.g. 00042 or full no), patient name, or UHID..."
                     className="w-full pl-9 pr-3 py-2.5 rounded border border-[#E2E8F0] bg-[#F8FAFC] focus:bg-white text-[13px] font-mono font-medium focus:border-[#0F766E] focus:outline-none transition-all shadow-inner" 
                   />
                   <Search size={15} className="absolute left-3 top-3.5 text-[#94A3B8]" />
                 </div>
                 <button 
                   onClick={() => handleSearchBill()}
-                  className="px-5 py-2.5 rounded text-white text-[13px] font-semibold flex items-center gap-2 shadow-sm transition-all hover:bg-teal-700 shrink-0" 
+                  className="px-5 py-2.5 rounded text-white text-[13px] font-semibold flex items-center gap-2 shadow-sm transition-all hover:bg-teal-700 shrink-0 cursor-pointer" 
                   style={{ background: "#0F766E" }}
                 >
                   <Search size={14} /> Search Bill
                 </button>
               </div>
+
+              {/* Multiple Matching Candidate Bills */}
+              {matchingCandidateBills.length > 1 && (
+                <div className="mt-3 p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12px] font-bold text-blue-900">
+                      Found {matchingCandidateBills.length} matching bills. Click to select for return:
+                    </span>
+                    <button 
+                      onClick={() => setMatchingCandidateBills([])}
+                      className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                    {matchingCandidateBills.map((cand) => (
+                      <div 
+                        key={cand.masterNumber}
+                        onClick={() => selectBillForReturn(cand)}
+                        className="p-3 bg-white border border-blue-200 hover:border-blue-500 rounded-lg shadow-2xs hover:shadow-sm cursor-pointer transition-all flex items-center justify-between group"
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-[13px] text-blue-700 group-hover:text-blue-900">{cand.masterNumber}</span>
+                            {cand.latest.isModifiedReturnBill && (
+                              <span className="px-1.5 py-0.5 text-[9px] bg-purple-100 text-purple-700 font-bold rounded">MODIFIED</span>
+                            )}
+                          </div>
+                          <p className="text-[12px] font-semibold text-gray-800 mt-0.5">{cand.original.patientName} <span className="text-gray-400 font-mono text-[11px]">({cand.original.uhid})</span></p>
+                          <p className="text-[11px] text-gray-500">Dr. {cand.original.doctorName}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="block font-bold text-[14px] text-teal-800">₹{cand.activeTotal.toFixed(2)}</span>
+                          {cand.prevRefunds > 0 && (
+                            <span className="block text-[10px] text-amber-700 font-medium">Refunded: ₹{cand.prevRefunds.toFixed(0)}</span>
+                          )}
+                          <span className="text-[11px] text-blue-600 font-bold flex items-center justify-end gap-1 mt-1 group-hover:underline">
+                            Select →
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {searchError && (
@@ -647,12 +905,22 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                     ← Back to Returns
                   </button>
                   {processedReturn && processedModifiedBill && (
-                    <button 
-                      onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn })}
-                      className="px-4 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-[12px] rounded-lg flex items-center gap-1.5 shadow-sm transition-colors"
-                    >
-                      <Printer size={13} /> Print Modified Bill
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn, initialView: "bill" } as any)}
+                        className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-[12px] rounded-lg flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        title="Print updated invoice with remaining active medicines"
+                      >
+                        <Printer size={13} /> Print Modified Bill
+                      </button>
+                      <button 
+                        onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn, initialView: "return_voucher" } as any)}
+                        className="px-3.5 py-1.5 bg-purple-700 hover:bg-purple-800 text-white font-semibold text-[12px] rounded-lg flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                        title="Print credit note refund voucher for returned medicines"
+                      >
+                        <RotateCcw size={13} /> Print Return Voucher
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -662,11 +930,20 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
           {/* Section 2: Loaded Bill Details & Return Quantities */}
           {searchedBill && (
             <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden space-y-6">
-              {/* Original Bill Info Card */}
+              {/* Bill Info Card */}
               <div className="p-6 bg-[#F8FAFC] border-b border-[#DDE2EC]">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">Original Bill Details</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
+                        {existingReturnsForSearchedBill.length > 0 ? "Active Modified Bill Details" : "Original Bill Details"}
+                      </span>
+                      {existingReturnsForSearchedBill.length > 0 && (
+                        <span className="px-2 py-0.5 text-[10px] bg-purple-100 text-purple-700 font-bold rounded-full border border-purple-200">
+                          MODIFIED · {existingReturnsForSearchedBill.length} PAST RETURN(S)
+                        </span>
+                      )}
+                    </div>
                     <h4 className="text-[18px] font-bold text-[#0F1624] font-mono mt-0.5">{searchedBill.billNumber}</h4>
                     <p className="text-[12px] text-[#64748B]">
                       Billed on {new Date(searchedBill.createdAt).toLocaleString()} · Created by {searchedBill.createdBy || "Pharmacist"}
@@ -686,19 +963,31 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                       <span className="font-semibold text-[#0F1624]">{searchedBill.doctorName}</span>
                     </div>
                     <div>
-                      <span className="text-[11px] text-[#94A3B8] uppercase block">Original Total</span>
-                      <span className="font-bold text-[16px] text-[#1B4FD8]">
-                        ₹{(searchedBill.totalAmount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      <span className="text-[11px] text-[#94A3B8] uppercase block">
+                        {existingReturnsForSearchedBill.length > 0 ? "Current Bill Total" : "Original Total"}
                       </span>
+                      <span className="font-bold text-[17px] text-teal-700">
+                        ₹{currentActiveBillTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </span>
+                      {existingReturnsForSearchedBill.length > 0 && (
+                        <span className="block text-[10px] text-gray-500 font-mono">
+                          Orig: ₹{(searchedBill.totalAmount || 0).toFixed(2)} · Ret: -₹{allPreviousRefundAmount.toFixed(2)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {existingReturnsForSearchedBill.length > 0 && (
-                  <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded text-[12px] text-amber-800 flex items-center gap-2">
-                    <AlertCircle size={14} className="text-amber-600 shrink-0" />
-                    <span>
-                      Notice: This bill has {existingReturnsForSearchedBill.length} previous return transaction(s). Only remaining eligible quantities are returnable.
+                  <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg text-[12px] text-purple-900 flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={15} className="text-purple-600 shrink-0" />
+                      <span>
+                        <strong>Subsequent Return:</strong> This bill already has <strong>{existingReturnsForSearchedBill.length} return transaction(s)</strong> totaling <strong>₹{allPreviousRefundAmount.toFixed(2)}</strong> refunded. The current bill amount is <strong>₹{currentActiveBillTotal.toFixed(2)}</strong>.
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-bold text-purple-700 bg-white px-2 py-0.5 rounded border border-purple-200">
+                      Remaining medicines eligible below
                     </span>
                   </div>
                 )}
@@ -855,29 +1144,41 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                   </div>
 
                   {/* Financial Comparison */}
-                  <div className="bg-white p-4 rounded border border-[#DDE2EC] shadow-sm space-y-2">
+                  <div className="bg-white p-4 rounded-xl border border-[#DDE2EC] shadow-2xs space-y-2">
                     <div className="flex justify-between items-center text-[13px]">
-                      <span className="text-[#64748B]">Previous Bill Amount:</span>
-                      <span className="font-bold text-[#0F1624] font-mono">
-                        ₹{returnCalculations.originalTotalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      <span className="text-[#64748B]">Current Bill Amount:</span>
+                      <span className="font-bold text-[#0F1624] font-mono text-[14px]">
+                        ₹{returnCalculations.currentBillAmountBeforeReturn.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
 
+                    {returnCalculations.allPreviousRefundAmount > 0 && (
+                      <div className="flex justify-between items-center text-[11px] text-gray-500 border-t border-dashed border-[#F1F5F9] pt-1.5">
+                        <span>(Original Bill: ₹{returnCalculations.originalTotalAmount.toFixed(2)} · Prior Returns: -₹{returnCalculations.allPreviousRefundAmount.toFixed(2)})</span>
+                      </div>
+                    )}
+
                     <div className="flex justify-between items-center text-[13px] text-amber-700 font-semibold border-t border-dashed border-[#E2E8F0] pt-2">
                       <span className="flex items-center gap-1">
-                        <CornerDownRight size={13} /> Difference / Refund Amount:
+                        <CornerDownRight size={13} /> Current Return Refund:
                       </span>
                       <span className="font-bold text-[15px] font-mono">
                         -₹{returnCalculations.totalRefundAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center text-[14px] text-indigo-900 font-bold border-t border-[#DDE2EC] pt-2">
-                      <span>Modified Bill Amount:</span>
-                      <span className="text-[17px] font-mono">
+                    <div className="flex justify-between items-center text-[14px] text-teal-900 font-bold border-t-2 border-teal-600 pt-2 bg-teal-50/50 p-2.5 rounded-lg">
+                      <span>New Modified Bill Total:</span>
+                      <span className="text-[17px] font-mono text-teal-800">
                         ₹{returnCalculations.modifiedTotalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                       </span>
                     </div>
+
+                    {returnCalculations.cumulativeRefundAmount > 0 && (
+                      <div className="text-right text-[11px] text-purple-700 font-semibold">
+                        Total Cumulative Refund: ₹{returnCalculations.cumulativeRefundAmount.toFixed(2)}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -908,13 +1209,22 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                     </button>
 
                     {processedModifiedBill && processedReturn && (
-                      <button 
-                        onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn })}
-                        className="px-5 py-2.5 rounded text-white text-[13px] font-bold flex items-center gap-2 shadow-sm transition-colors hover:bg-green-700"
-                        style={{ background: "#16a34a" }}
-                      >
-                        <Printer size={15} /> Print Modified Bill
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn, initialView: "bill" } as any)}
+                          className="px-4 py-2.5 rounded text-white text-[13px] font-bold flex items-center gap-2 shadow-sm transition-colors hover:bg-emerald-800 cursor-pointer"
+                          style={{ background: "#059669" }}
+                        >
+                          <Printer size={15} /> Print Modified Bill
+                        </button>
+                        <button 
+                          onClick={() => setPrintReturnModal({ bill: processedModifiedBill, returnRecord: processedReturn, initialView: "return_voucher" } as any)}
+                          className="px-4 py-2.5 rounded text-white text-[13px] font-bold flex items-center gap-2 shadow-sm transition-colors hover:bg-purple-800 cursor-pointer"
+                          style={{ background: "#7c3aed" }}
+                        >
+                          <RotateCcw size={15} /> Print Return Voucher
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -977,16 +1287,23 @@ export default function SalesReturns({ onNavigate }: SalesReturnsProps) {
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <button 
-                              onClick={() => handlePrintPastReturn(ret)}
-                              title="Print Return Bill"
-                              className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-[#DDE2EC] text-[#334155] rounded hover:bg-gray-50 flex items-center gap-1 transition-colors"
+                              onClick={() => handlePrintPastReturn(ret, "bill")}
+                              title="Print Modified Bill"
+                              className="px-2 py-1 text-[11px] font-bold bg-teal-50 border border-teal-200 text-teal-800 rounded hover:bg-teal-100 flex items-center gap-1 transition-colors cursor-pointer"
                             >
-                              <Printer size={12} /> Print
+                              <Printer size={12} /> Modified Bill
+                            </button>
+                            <button 
+                              onClick={() => handlePrintPastReturn(ret, "return_voucher")}
+                              title="Print Return Refund Voucher"
+                              className="px-2 py-1 text-[11px] font-bold bg-purple-50 border border-purple-200 text-purple-800 rounded hover:bg-purple-100 flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <RotateCcw size={12} /> Voucher
                             </button>
                             <button 
                               onClick={() => handleDeleteReturn(ret)}
                               title="Remove from Returns History"
-                              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                              className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
                             >
                               <Trash2 size={13} />
                             </button>

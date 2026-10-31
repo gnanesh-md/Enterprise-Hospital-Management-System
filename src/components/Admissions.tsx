@@ -3,6 +3,7 @@ import { Icon } from "./icons"
 import { BedCard, bedOccupantName, type BedCardData } from "./bed/BedCard"
 import { AdmissionPaymentType } from "./insurance/integrations"
 import { Modal } from "./insurance/ui"
+import { BedDatabase } from "../services/bedDb"
 import { apiFetch, reportError } from "../lib/api"
 import { formatDateTimeIST } from "../lib/format"
 import type { Notice } from "../types"
@@ -23,6 +24,8 @@ type Summary = {
 type ErBedRequest = {
   id: number
   visit_no: string
+  patient_id?: string | null
+  er_visit_id?: number | null
   patient_name: string | null
   patient_last_name: string | null
   is_unknown_patient: boolean
@@ -269,8 +272,26 @@ export default function Admissions({ setNotice, navigate }: Props) {
                         </div>
                       </div>
                       <button
-                        onClick={goToBedManagement}
-                        className="px-4 py-1.5 bg-[#1B4FD8] text-white text-[12px] font-medium rounded hover:bg-[#1740B4] shadow-sm"
+                        onClick={() => {
+                          BedDatabase.setPendingAllocation({
+                            patient_id:
+                              req.patient_id ||
+                              `P-ER-${req.er_visit_id || req.id}`,
+                            name: req.patient_name || "Emergency Patient",
+                            last_name: req.patient_last_name || undefined,
+                            source: "ER",
+                            visit_no: req.visit_no,
+                            er_bed_request_id: req.id,
+                            er_visit_id: req.er_visit_id || undefined,
+                            requested_level_of_care: req.requested_level_of_care,
+                            requested_specialty:
+                              req.requested_specialty || undefined,
+                            clinical_notes: `ER Admission Request (${req.visit_no}) for ${req.requested_level_of_care}`,
+                            timestamp: req.requested_at,
+                          })
+                          goToBedManagement()
+                        }}
+                        className="px-4 py-1.5 bg-[#1B4FD8] hover:bg-[#1740B4] text-white text-[12px] font-medium rounded shadow-sm transition-colors cursor-pointer"
                       >
                         Assign Bed
                       </button>

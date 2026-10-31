@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
-import { Building2, Calculator, FileCheck2, Handshake, Package as PackageIcon, Percent, Plus, Trash2 } from "lucide-react"
+import { Building2, Calculator, FileCheck2, Handshake, Package as PackageIcon, Percent, Plus, Trash2, Sparkles, Search, BookOpen, CheckCircle2, UserCheck, Clock, ShieldCheck } from "lucide-react"
 import { InsuranceEngineService } from "../../services/insuranceDb"
 import type { ClaimEncounterType, DocumentCategory, DocumentRule, InsuranceCompanyConfig, PackageComponent, PackageMaster, PricingRuleSet, TpaConfig } from "../../types/insurance"
 import { Card, Empty, PageHeader, Field, Modal, Tag, attempt, btn, fieldBase, fieldCls, inr, useNotify, type Notify } from "./ui"
+import { DEPT_SOP_DATA } from "./InsuranceSopModal"
 
 // Masters the whole engine runs on: insurance companies, TPAs, procedure
 // packages, multiple-surgery pricing rules and document rules. One page per
@@ -490,18 +491,38 @@ function PackageCalculator({ packages }: { packages: PackageMaster[] }) {
   )
 }
 
-export type MasterSection = "insurers" | "tpas" | "packages" | "pricing" | "docrules"
+export type MasterSection = "insurers" | "tpas" | "packages" | "pricing" | "docrules" | "sop_rules"
 
-const SECTION_META: Record<MasterSection, { title: string ;subtitle: string ;icon: typeof Building2 }> = {
-  insurers: { title: "Insurance Companies", subtitle: "Network status, integration, SLAs and the documents each insurer requires.", icon: Building2 },
-  tpas: { title: "TPAs", subtitle: "Third-party administrators, the insurers they handle and how to reach them.", icon: Handshake },
-  packages: { title: "Packages", subtitle: "Fixed-price procedure packages: what they cover, their price and pricing rule.", icon: PackageIcon },
-  pricing: { title: "Pricing Rules", subtitle: "Multiple-surgery rules shared by packages — 1st 100%, 2nd 50%, 3rd 25% …", icon: Percent },
-  docrules: { title: "Document Rules", subtitle: "Which documents are required at each stage, per encounter type and insurer.", icon: FileCheck2 },
+const SECTION_META: Record<MasterSection, { title: string; subtitle: string; icon: typeof Building2 }> = {
+  insurers: { title: "Insurance Companies", subtitle: "Empaneled insurers, network status, gateway integrations, SLAs, and pre-auth form templates.", icon: Building2 },
+  tpas: { title: "Third-Party Administrators (TPAs)", subtitle: "TPA networks, associated insurers, desk helpline contacts, and submission portals.", icon: Handshake },
+  packages: { title: "Procedure Packages", subtitle: "Fixed-rate procedure packages: bundled components, base prices, GST rates, and multiple-surgery pricing.", icon: PackageIcon },
+  pricing: { title: "Multiple-Surgery Pricing Rules", subtitle: "Standard percentage discount matrices shared across surgical packages (e.g. 1st 100%, 2nd 50%, 3rd 25%).", icon: Percent },
+  docrules: { title: "Document Compliance Rules", subtitle: "Stage-wise mandatory document checklists per encounter type and insurer.", icon: FileCheck2 },
+  sop_rules: { title: "Department Rules & Eligibility SOPs", subtitle: "Official Insurance Dept guidelines, room rent capping, pre-auth SLAs, and leave coverage handover protocols for all staff.", icon: BookOpen },
 }
 
-const SECTIONS: MasterSection[] = ["insurers", "tpas", "packages", "pricing", "docrules"]
-const SECTION_TAB: Record<MasterSection, string> = { insurers: "Insurers", tpas: "TPAs", packages: "Packages", pricing: "Pricing rules", docrules: "Document rules" }
+const SECTIONS: MasterSection[] = ["insurers", "tpas", "packages", "pricing", "docrules", "sop_rules"]
+const SECTION_TAB: Record<MasterSection, { label: string; icon: typeof Building2 }> = {
+  insurers: { label: "Insurers", icon: Building2 },
+  tpas: { label: "TPAs", icon: Handshake },
+  packages: { label: "Packages", icon: PackageIcon },
+  pricing: { label: "Pricing Rules", icon: Percent },
+  docrules: { label: "Document Rules", icon: FileCheck2 },
+  sop_rules: { label: "Dept Rules & SOPs", icon: BookOpen },
+}
+
+const INSURER_BADGES: Record<string, { bg: string; text: string; label: string }> = {
+  "Care Health Insurance": { bg: "bg-amber-400", text: "text-blue-950 font-black", label: "CARE" },
+  "Care Health": { bg: "bg-amber-400", text: "text-blue-950 font-black", label: "CARE" },
+  "Star Health & Allied Insurance": { bg: "bg-sky-900", text: "text-white font-black", label: "STAR" },
+  "Star Health": { bg: "bg-sky-900", text: "text-white font-black", label: "STAR" },
+  "ICICI Lombard General Insurance": { bg: "bg-amber-700", text: "text-white font-black", label: "ICICI" },
+  "ICICI Lombard": { bg: "bg-amber-700", text: "text-white font-black", label: "ICICI" },
+  "HDFC ERGO General Insurance": { bg: "bg-red-600", text: "text-white font-black", label: "HDFC" },
+  "FHPL (Family Health Plan TPA)": { bg: "bg-purple-600", text: "text-white font-black", label: "FHPL" },
+  "Medi Assist TPA": { bg: "bg-teal-600", text: "text-white font-black", label: "MEDI" },
+}
 
 export default function MastersPage({ section = "insurers" }: { section?: MasterSection }) {
   const m = useMasters()
@@ -509,127 +530,260 @@ export default function MastersPage({ section = "insurers" }: { section?: Master
   const [tab, setTab] = useState<MasterSection>(section)
   useEffect(() => setTab(section), [section])
   const meta = SECTION_META[tab]
+
+  const counts: Record<MasterSection, number> = {
+    insurers: m.insurers.length,
+    tpas: m.tpas.length,
+    packages: m.packages.length,
+    pricing: m.ruleSets.length,
+    docrules: m.docRules.length,
+    sop_rules: DEPT_SOP_DATA.length,
+  }
+
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50 overflow-hidden">
+    <div className="flex-1 flex flex-col h-full bg-[#F8FAFC] overflow-y-auto">
       {toastNode}
-      <PageHeader title="Insurance setup" subtitle="Insurers, TPAs, packages and the rules the claim process uses." />
-      <div className="bg-white border-b border-slate-200 px-6 flex gap-1 overflow-x-auto" role="tablist">
-        {SECTIONS.map((x) => (
-          <button
-            key={x}
-            type="button"
-            role="tab"
-            aria-selected={tab === x}
-            onClick={() => setTab(x)}
-            className={`h-11 px-3 -mb-px border-b-2 text-[13px] font-medium whitespace-nowrap cursor-pointer ${tab === x ? "border-blue-600 text-slate-900" : "border-transparent text-slate-500 hover:text-slate-800"}`}
-          >
-            {SECTION_TAB[x]}
-          </button>
-        ))}
-      </div>
-      <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-        <p className="text-[13px] text-slate-500">{meta.subtitle}</p>
-        {tab === "insurers" && <InsurersSection m={m} notify={notify} />}
-        {tab === "tpas" && <TpasSection m={m} notify={notify} />}
-        {tab === "packages" && <PackagesSection m={m} notify={notify} />}
-        {tab === "pricing" && <PricingSection m={m} notify={notify} />}
-        {tab === "docrules" && <DocRulesSection m={m} notify={notify} />}
+
+      <div className="p-6 max-w-[1750px] mx-auto w-full space-y-5">
+        {/* Page Title & Subtitle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+              <Building2 size={22} className="fill-white/20" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                Insurance Master Data &amp; Rule Engine
+              </h1>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Manage empaneled insurers, TPAs, surgical package tariffs, multi-procedure discount rules, and compliance checklists.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab Navigation Controls Bar */}
+        <div className="bg-white border border-slate-200/90 rounded-2xl p-2 shadow-2xs">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none" role="tablist">
+            {SECTIONS.map((x) => {
+              const Icon = SECTION_TAB[x].icon
+              const isActive = tab === x
+              return (
+                <button
+                  key={x}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setTab(x)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-2 ${
+                    isActive
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70"
+                  }`}
+                >
+                  <Icon size={15} />
+                  <span>{SECTION_TAB[x].label}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10.5px] font-mono font-bold ${
+                      isActive ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    {counts[x]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Section Description */}
+        <div className="bg-blue-50/60 border border-blue-200/80 rounded-xl p-3.5 flex items-center gap-2.5 text-xs text-blue-900 font-medium">
+          <Sparkles size={16} className="text-blue-600 shrink-0" />
+          <span>{meta.subtitle}</span>
+        </div>
+
+        {/* Tab Content */}
+        <div className="space-y-4">
+          {tab === "insurers" && <InsurersSection m={m} notify={notify} />}
+          {tab === "tpas" && <TpasSection m={m} notify={notify} />}
+          {tab === "packages" && <PackagesSection m={m} notify={notify} />}
+          {tab === "pricing" && <PricingSection m={m} notify={notify} />}
+          {tab === "docrules" && <DocRulesSection m={m} notify={notify} />}
+          {tab === "sop_rules" && <SopRulesSection />}
+        </div>
       </div>
     </div>
   )
 }
 
 type M = ReturnType<typeof useMasters>
-const statusTag = (s: "Active" | "Inactive") => <Tag tone={s === "Active" ? "emerald" : "slate"}>{s === "Active" ? "" : ""} {s}</Tag>
+const statusTag = (s: "Active" | "Inactive") => (
+  <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold border ${s === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
+    {s}
+  </span>
+)
+const editBtn = (onClick: () => void) => (
+  <button type="button" className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg shadow-2xs transition-colors cursor-pointer" onClick={onClick}>
+    Edit
+  </button>
+)
+
+function InsurersSection({ m, notify }: { m: M; notify: Notify }) {
+  const [edit, setEdit] = useState<InsuranceCompanyConfig | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+
+  const filteredInsurers = useMemo(() => {
+    if (!searchQuery.trim()) return m.insurers
+    const q = searchQuery.toLowerCase()
+    return m.insurers.filter(
+      (i) =>
+        i.companyName.toLowerCase().includes(q) ||
+        i.companyCode.toLowerCase().includes(q) ||
+        (i.tpaName && i.tpaName.toLowerCase().includes(q))
+    )
+  }, [m.insurers, searchQuery])
+
+  return (
+    <>
+      {edit && (
+        <Modal wide title={edit.id ? `Edit ${edit.companyName}` : "New Insurance Company"} onClose={() => setEdit(null)}>
+          <InsurerForm initial={edit} notify={notify} onDone={() => (setEdit(null), m.reload())} />
+        </Modal>
+      )}
+      <div className="bg-white border border-slate-200/90 rounded-2xl shadow-2xs overflow-hidden">
+        <div className="p-4 border-b border-slate-200/80 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h3 className="text-sm font-bold text-slate-900">Empaneled Insurance Companies</h3>
+            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+              {filteredInsurers.length} active configurations
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search insurer or TPA…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 h-8.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-medium"
+              />
+            </div>
+
+            <button
+              type="button"
+              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              onClick={() => setEdit(blankInsurer())}
+            >
+              <Plus size={14} />
+              <span>Add Insurer</span>
+            </button>
+          </div>
+        </div>
+
+        {filteredInsurers.length === 0 ? (
+          <div className="p-12 text-center text-slate-400">
+            <Building2 size={32} className="mx-auto mb-2 text-slate-300" />
+            <p className="text-xs font-semibold text-slate-600">No insurers match your search query</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/90 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4">Insurer / Code</th>
+                  <th className="py-3 px-4">TPA Network</th>
+                  <th className="py-3 px-4">Pre-Auth Form Template</th>
+                  <th className="py-3 px-4">Network Status</th>
+                  <th className="py-3 px-4">Integration Mode</th>
+                  <th className="py-3 px-4">Pre-Auth / Settlement SLA</th>
+                  <th className="py-3 px-4 text-center">Docs Checklist</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {filteredInsurers.map((i) => {
+                  const insBadge = INSURER_BADGES[i.companyName] || {
+                    bg: "bg-blue-700",
+                    text: "text-white font-black",
+                    label: i.companyName.slice(0, 4).toUpperCase(),
+                  }
+
+                  return (
+                    <tr key={i.id} className="hover:bg-blue-50/30 transition-colors">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wider shrink-0 ${insBadge.bg} ${insBadge.text}`}>
+                            {insBadge.label}
+                          </span>
+                          <div>
+                            <div className="font-bold text-slate-900">{i.companyName}</div>
+                            <div className="text-[10.5px] font-mono text-slate-400">
+                              {i.companyCode} • {i.preAuthEmail || i.contactEmail}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-slate-800">
+                        {i.tpaName || "Direct / In-House"}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10.5px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                            {i.preAuthFormCode || "IRDAI-STD"}
+                          </span>
+                          {i.preAuthFormDocumentName && (
+                            <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-bold">
+                              PDF FORM
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[10.5px] text-slate-400 capitalize mt-0.5">
+                          {(i.preAuthFormTemplate || "irdai_standard").replace("_", " ")}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-bold border ${
+                          i.networkStatus === "Non-Network"
+                            ? "bg-rose-50 text-rose-700 border-rose-200"
+                            : i.networkStatus === "Preferred Provider"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}>
+                          {i.networkStatus}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-slate-700">
+                        {i.integrationType}
+                      </td>
+                      <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                        {i.slaDaysForPreAuth}d / {i.slaDaysForClaimSettlement}d
+                      </td>
+                      <td className="py-3 px-4 text-center font-bold text-blue-700">
+                        {i.documentRequirements.length} docs
+                      </td>
+                      <td className="py-3 px-4">{statusTag(i.status)}</td>
+                      <td className="py-3 px-4 text-center">{editBtn(() => setEdit(i))}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
 const th = (h: string) => (
   <th key={h} className="px-3 py-2 text-left whitespace-nowrap">
     {h}
   </th>
 )
 const headRow = (hs: string[]) => <tr className="bg-slate-50 border-b border-slate-100 text-[12px] font-medium text-slate-500">{hs.map(th)}</tr>
-const editBtn = (onClick: () => void) => (
-  <button type="button" className={btn.plain} onClick={onClick}>
-    Edit
-  </button>
-)
-
-function InsurersSection({ m, notify }: { m: M ;notify: Notify }) {
-  const [edit, setEdit] = useState<InsuranceCompanyConfig | null>(null)
-  return (
-    <>
-      {edit && (
-        <Modal wide title={edit.id ? `Edit ${edit.companyName}` : "New insurance company"} onClose={() => setEdit(null)}>
-          <InsurerForm initial={edit} notify={notify} onDone={() => (setEdit(null), m.reload())} />
-        </Modal>
-      )}
-      <Card
-        emoji=""
-        title="Insurance companies"
-        subtitle={`${m.insurers.length} configured`}
-        pad={false}
-        actions={
-          <button type="button" className={btn.primary} onClick={() => setEdit(blankInsurer())}>
-            <Plus size={13} /> Insurance company
-          </button>
-        }
-      >
-        {m.insurers.length === 0 ? (
-          <Empty emoji="" title="No insurers configured" />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-[12.5px]">
-              <thead>{headRow(["Insurer", "TPA", "Pre-Auth Form Format", "Network", "Integration", "SLA pre-auth / settle", "Docs", "Status", ""])}</thead>
-              <tbody>
-                {m.insurers.map((i) => (
-                  <tr key={i.id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2.5">
-                      <div className="font-semibold text-slate-900">{i.companyName}</div>
-                      <div className="text-[11px] tabular-nums text-slate-500">
-                        {i.companyCode} · {i.preAuthEmail || i.contactEmail}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5">{i.tpaName || "Direct"}</td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-[11px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                          {i.preAuthFormCode || "IRDAI-STD"}
-                        </span>
-                        {i.preAuthFormDocumentName && (
-                          <span className="text-[10.5px] text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200 font-medium truncate max-w-[120px]" title={i.preAuthFormDocumentName}>
-                            PDF
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] text-slate-400 capitalize">
-                        {(i.preAuthFormTemplate || "irdai_standard").replace("_", " ")}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Tag tone={i.networkStatus === "Non-Network" ? "rose" : i.networkStatus === "Preferred Provider" ? "emerald" : "blue"}>
-                        {i.networkStatus === "Non-Network" ? "" : i.networkStatus === "Preferred Provider" ? "" : ""} {i.networkStatus}
-                      </Tag>
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      {{ Portal: "", API: "", Email: "", Manual: "" }[i.integrationType ?? "Portal"]} {i.integrationType}
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      {i.slaDaysForPreAuth}d / {i.slaDaysForClaimSettlement}d
-                    </td>
-                    <td className="px-3 py-2.5" title={i.documentRequirements.join(", ")}>
-                      {i.documentRequirements.length}
-                    </td>
-                    <td className="px-3 py-2.5">{statusTag(i.status)}</td>
-                    <td className="px-3 py-2.5">{editBtn(() => setEdit(i))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-    </>
-  )
-}
 
 const blankTpa = (): TpaConfig => ({ id: "", name: "", code: "", contactPhone: "", email: "", portalUrl: "", integrationType: "Portal", insurerIds: [], slaDaysForPreAuth: 1, status: "Active" })
 
@@ -1095,6 +1249,103 @@ function DocRuleForm({ initial, insurers, notify, onDone }: { initial: DocumentR
         <button type="button" className={btn.primary} onClick={() => attempt(notify, () => InsuranceEngineService.saveDocumentRule(f), "Document rule saved.") && onDone()}>
           Save rule
         </button>
+      </div>
+    </div>
+  )
+}
+
+function SopRulesSection() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCat, setSelectedCat] = useState("all")
+
+  const filteredCategories = DEPT_SOP_DATA.map((cat) => {
+    const rules = cat.rules.filter(
+      (r) =>
+        r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        r.details.some((d) => d.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    return { ...cat, rules }
+  }).filter((cat) => (selectedCat === "all" || cat.id === selectedCat) && cat.rules.length > 0)
+
+  return (
+    <div className="space-y-5">
+      {/* SOP Section Header Banner */}
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <BookOpen className="text-emerald-400" size={20} />
+            <h3 className="text-base font-extrabold tracking-tight">Insurance Department Operating Guidelines &amp; Duty Handover SOPs</h3>
+            <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+              Department Master Standard
+            </span>
+          </div>
+          <p className="text-xs text-blue-200">
+            Standard operating procedures for room rent capping, cashless intake mandates, pre-auth SLAs, and leave coverage duty protocols.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="relative w-full md:w-64">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Filter rules &amp; SLAs…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 h-8.5 text-xs bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200/60 focus:bg-white focus:text-slate-900 focus:outline-none transition-all"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Rules Content */}
+      <div className="space-y-6">
+        {filteredCategories.map((cat) => {
+          const Icon = cat.icon
+          return (
+            <div key={cat.id} className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <Icon size={16} />
+                  </div>
+                  <h4 className="text-sm font-extrabold text-slate-900">{cat.title}</h4>
+                </div>
+                <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
+                  {cat.badge}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {cat.rules.map((rule) => (
+                  <div key={rule.id} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <h5 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                        {rule.title}
+                      </h5>
+                      {rule.tag && (
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-200/80 text-slate-700">
+                          {rule.tag}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium">{rule.summary}</p>
+                    <ul className="space-y-1 pt-1">
+                      {rule.details.map((d, idx) => (
+                        <li key={idx} className="text-[11.5px] text-slate-700 flex items-start gap-1.5">
+                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0 mt-0.5" />
+                          <span>{d}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -19,6 +19,8 @@ import {
   Calendar,
   Sparkles,
   BarChart3,
+  Landmark,
+  Moon,
 } from "lucide-react"
 
 import { Icon, type IconProps } from "./components/icons"
@@ -42,6 +44,7 @@ import type { Notice } from "./types"
 import { apiFetch } from "./lib/api"
 
 import Laboratory from "./components/Laboratory"
+import LaboratoryManagementSuite from "./components/laboratory/LaboratoryManagementSuite"
 
 import Pharmacy from "./components/Pharmacy"
 import EmergencyUI from "./components/Emergency"
@@ -51,6 +54,7 @@ import LabBillingQueue from "./components/LabBillingQueue"
 import InsuranceClaims from "./components/insurance/ClaimsHome"
 import InsuranceSettlementPage from "./components/insurance/SettlementPage"
 import InsuranceMastersPage from "./components/insurance/MastersPage"
+import EnhancedAuditRulesPage from "./components/insurance/EnhancedAuditRulesPage"
 import InsuranceDashboardView from "./components/insurance/InsuranceDashboardView"
 import InsuranceCommandDashboard from "./components/insurance/InsuranceCommandDashboard"
 import CashlessCaseBoard from "./components/insurance/CashlessCaseBoard"
@@ -88,7 +92,6 @@ import OrderDrawer from "./components/OrderDrawer"
 import CommandPalette from "./components/CommandPalette"
 
 import Registration from "./components/Registration"
-
 import NurseStation from "./components/NurseStation"
 
 import OPWorkflow from "./components/OPWorkflow"
@@ -114,14 +117,19 @@ import QueueManagement from "./components/QueueManagement"
 import OPManagement from "./components/OPManagement"
 import OPDProcedures from "./components/OPDProcedures"
 import DoctorPortal from "./components/doctor/DoctorPortal"
+import DoctorsOverview from "./components/doctor/DoctorsOverview"
 
 import DoctorScheduling from "./components/DoctorScheduling"
 
 import PatientExperience from "./components/PatientExperience"
+import PatientMessages from "./components/messaging/PatientMessages"
 
 import HRMS from "./components/HRMS"
+import { HrmsDatabase } from "./services/hrmsDb"
 
 import Employees from "./components/Employees"
+
+import ApplyLeaveModal from "./components/hrms/ApplyLeaveModal"
 
 import Admissions from "./components/Admissions"
 
@@ -136,10 +144,17 @@ import Administration from "./components/Administration"
 import OpReportsPage from "./components/reports/OpReportsPage"
 
 import GeneralReportsOverviewPage from "./components/reports/GeneralReportsOverviewPage"
+import PatientPoliciesPage from "./components/insurance/PatientPoliciesPage"
 
 import GenericReportPage, {
   ReportType,
 } from "./components/reports/GenericReportPage"
+
+import AccountsModule from "./components/AccountsModule"
+import MessagesPanel from "./components/MessagesPanel"
+import { useMediaQuery } from "./hooks/useMediaQuery"
+import PageErrorBoundary from "./components/PageErrorBoundary"
+import HelpModal from "./components/HelpModal"
 
 import { AuditDatabase } from "./services/auditDb"
 
@@ -152,6 +167,7 @@ import {
 } from "./services/doctorPortalDb"
 
 import { LabOrderDatabase } from "./services/labOrdersDb"
+import { LabInventoryDatabase } from "./services/labInventoryDb"
 import { PharmacyDatabase, isAwaitingVerification } from "./services/pharmacyDb"
 import { ErDatabase } from "./services/erDb"
 import { BedDatabase } from "./services/bedDb"
@@ -169,7 +185,7 @@ const insuranceModule = (m: string): string =>
         : m
 
 
-type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "radiology" | "radiology_reports" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds"
+type Module = "dashboard" | "patients" | "appointments" | "emergency" | "emergency_ui" | "clinical" | "inpatient" | "nursing" | "laboratory" | "lab_dashboard" | "lab_orders_collection" | "lab_workbench" | "lab_review_reports" | "lab_admin_config" | "lab_orders" | "lab_sample_collection" | "lab_sample_reception" | "lab_worklists" | "lab_analyzers" | "lab_result_entry" | "lab_pathologist_review" | "lab_critical_alerts" | "lab_reports" | "lab_test_master" | "lab_quality_analytics" | "lab_settings" | "lab_processing" | "lab_critical" | "lab_catalog" | "lab_inventory" | "lab_analytics" | "lab_tat" | "radiology" | "radiology_reports" | "pharmacy" | "pharmacy_dispensing" | "pharmacy_rx" | "pharmacy_ocr" | "pharmacy_returns" | "pharmacy_supplier_returns" | "pharmacy_medicine" | "pharmacy_category" | "pharmacy_suppliers" | "pharmacy_po" | "pharmacy_grn" | "pharmacy_ledger" | "pharmacy_transfers" | "pharmacy_expiry" | "pharmacy_write_off" | "pharmacy_analytics" | "pharmacy_notifications" | "pharmacy_users" | "pharmacy_audit" | "pharmacy_settings" | "surgery" | "billing" | "billing_op" | "billing_ip" | "billing_er" | "billing_unified" | "billing_revenue" | "icu" | "icu_micu" | "icu_sicu" | "icu_ccu" | "icu_nicu" | "icu_picu" | "discharge" | "triage" | "insurance" | "insurance_overview" | "insurance_desk" | "insurance_board" | "insurance_case" | "insurance_discharge" | "insurance_reports" | "insurance_preauth" | "insurance_eligibility" | "insurance_claims" | "insurance_queries" | "insurance_emails" | "insurance_settlement" | "insurance_reconciliation" | "insurance_masters" | "insurance_tpas" | "insurance_packages" | "insurance_pricing" | "insurance_docrules" | "insurance_patient_policies" | "analytics" | "reports" | "reports_overview" | "reports_patients" | "reports_op" | "reports_er" | "reports_inpatient" | "reports_appointments" | "reports_doctors" | "reports_pharmacy" | "reports_laboratory" | "reports_radiology" | "reports_beds" | "reports_admissions" | "reports_discharges" | "reports_staff" | "admin" | "chart" | "register" | "outpatient" | "queue" | "op_management" | "op_registration" | "op_workflow" | "op_nurse" | "opd_procedures" | "doctor_workflow" | "doctor_portal" | "scheduling" | "lab_billing" | "admissions" | "readmission" | "payments" | "revenue_reports" | "reports_pharmacy_damaged" | "reports_supplier_returns" | "hrms" | "employees" | "patient_exp" | "patient_messages" | "intelligence" | "ocr" | "dpi_ocr" | "symptom_ai" | "clinical_rag" | "clinical_summaries" | "bulk_ai" | "nl_filtering" | "beds" | "accounts" | "accounts_dashboard" | "accounts_coa" | "accounts_gl" | "accounts_receipts" | "accounts_payments" | "accounts_ar" | "accounts_ap" | "accounts_cash_bank" | "accounts_pharmacy" | "accounts_insurance" | "accounts_tax" | "accounts_budget" | "accounts_assets" | "accounts_reports" | "accounts_period_close" | "accounts_audit" | "accounts_manager"
 
 interface NavItem {
   key: Module
@@ -182,7 +198,6 @@ interface NavItem {
 
   children?: { key: Module; label: string; group?: string }[]
 }
-
 
 const NAV: NavItem[] = [
   { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
@@ -200,6 +215,8 @@ const NAV: NavItem[] = [
       { key: "register", label: "Registration" },
 
       { key: "appointments", label: "Appointments" },
+
+      { key: "patient_messages", label: "Patient Messages" },
     ],
   },
 
@@ -270,7 +287,20 @@ const NAV: NavItem[] = [
     ],
   },
 
-  { key: "laboratory", label: "Laboratory", Icon: FlaskConical },
+  {
+    key: "laboratory",
+    label: "Laboratory",
+    Icon: FlaskConical,
+    children: [
+      { key: "lab_dashboard", label: "Lab Dashboard" },
+      { key: "lab_orders_collection", label: "Lab Orders & Sample Collection" },
+      { key: "lab_workbench", label: "Lab Workbench" },
+      { key: "lab_reports", label: "Lab Reports" },
+      { key: "lab_inventory", label: "Lab Inventory & Consumables" },
+      { key: "lab_quality_analytics", label: "Quality & Analytics" },
+      { key: "lab_admin_config", label: "Admin Configuration" },
+    ],
+  },
 
   {
     key: "radiology",
@@ -286,6 +316,7 @@ const NAV: NavItem[] = [
     key: "pharmacy",
     label: "Pharmacy",
     Icon: Pill,
+    badge: 3,
 
     children: [
       { key: "pharmacy", label: "Dashboard" },
@@ -296,56 +327,64 @@ const NAV: NavItem[] = [
       },
       {
         key: "pharmacy_rx",
-        label: "Prescription Queue",
+        label: "Doctor Prescriptions",
         group: "Sales & Dispensing",
       },
       {
         key: "pharmacy_returns",
-        label: "Sales Returns",
+        label: "Patient Returns & Refunds",
         group: "Sales & Dispensing",
       },
-      { key: "pharmacy_medicine", label: "Medicine Master", group: "Catalog" },
+      {
+        key: "pharmacy_medicine",
+        label: "Medicine Catalog & Batches",
+        group: "Medicine Master",
+      },
       {
         key: "pharmacy_suppliers",
-        label: "Suppliers",
-        group: "Inventory Management",
-      },
-      {
-        key: "pharmacy_supplier_returns",
-        label: "Supplier Returns",
-        group: "Inventory Management",
-      },
-      {
-        key: "pharmacy_po",
-        label: "Purchase Orders",
-        group: "Procurement & Receiving",
+        label: "Suppliers Directory",
+        group: "Suppliers & Purchases",
       },
       {
         key: "pharmacy_ocr",
-        label: "Scan Invoice (GRN)",
-        group: "Procurement & Receiving",
+        label: "Inward Stock Entry (GRN)",
+        group: "Suppliers & Purchases",
       },
-      { key: "pharmacy_ledger", label: "Inventory Ledger", group: "Inventory" },
-
+      {
+        key: "pharmacy_supplier_returns",
+        label: "Supplier Returns (Debit Notes)",
+        group: "Suppliers & Purchases",
+      },
+      {
+        key: "pharmacy_ledger",
+        label: "Stock Movement Ledger",
+        group: "Stock & Inventory",
+      },
       {
         key: "pharmacy_expiry",
-        label: "Expiry Management",
-        group: "Inventory",
+        label: "Expiry & Low Stock Alerts",
+        group: "Stock & Inventory",
       },
-
+      {
+        key: "pharmacy_write_off",
+        label: "Medicine Disposal & Write-Off",
+        group: "Stock & Inventory",
+      },
       {
         key: "pharmacy_analytics",
-        label: "Analytics & Reports",
-        group: "Reporting",
+        label: "Pharmacy Analytics & Reports",
+        group: "Reports & Administration",
       },
-
       {
         key: "pharmacy_notifications",
-        label: "Notifications",
-        group: "Administration",
+        label: "Alerts & Notifications",
+        group: "Reports & Administration",
       },
-
-      { key: "pharmacy_audit", label: "Audit Log", group: "Administration" },
+      {
+        key: "pharmacy_audit",
+        label: "Pharmacy Audit Log",
+        group: "Reports & Administration",
+      },
     ],
   },
 
@@ -383,15 +422,13 @@ const NAV: NavItem[] = [
 
     children: [
       { key: "insurance_overview", label: "Command Dashboard" },
+      { key: "insurance_patient_policies", label: "Patient Policies" },
       { key: "insurance_eligibility", label: "New Patient / Intake" },
       { key: "insurance_preauth", label: "Pre-Authorization" },
-      { key: "insurance_board", label: "Cashless Case Board" },
       { key: "insurance_claims", label: "Claims & Queries" },
       { key: "insurance_emails", label: "Email & TPA Decision Hub" },
       { key: "insurance_settlement", label: "Settlements" },
-      { key: "insurance_packages", label: "Billing & Packages" },
-      { key: "insurance_masters", label: "Master Data" },
-      { key: "insurance_reports", label: "Reports" },
+      { key: "insurance_masters", label: "Master Setup" },
       { key: "insurance_docrules", label: "Audit Log & Rules" },
     ],
 
@@ -399,18 +436,32 @@ const NAV: NavItem[] = [
   },
 
   {
-    key: "hrms",
-    label: "HR & Staff",
-    Icon: UsersRound,
+    key: "accounts",
+    label: "Accounts & Finance",
+    Icon: Landmark,
 
     children: [
-      { key: "hrms", label: "HRMS" },
-
-      { key: "employees", label: "Employees" },
+      { key: "accounts", label: "Finance Dashboard", group: "Overview" },
+      { key: "accounts_coa", label: "Chart of Accounts", group: "General Ledger" },
+      { key: "accounts_gl", label: "General Ledger & Journals", group: "General Ledger" },
+      { key: "accounts_receipts", label: "Receipt Vouchers", group: "Vouchers & Cash" },
+      { key: "accounts_payments", label: "Payment Vouchers", group: "Vouchers & Cash" },
+      { key: "accounts_cash_bank", label: "Cash & Bank", group: "Vouchers & Cash" },
+      { key: "accounts_ar", label: "Accounts Receivable (AR)", group: "Sub-Ledgers" },
+      { key: "accounts_ap", label: "Accounts Payable (AP)", group: "Sub-Ledgers" },
+      { key: "accounts_pharmacy", label: "Pharmacy Accounts", group: "Operational Accounts" },
+      { key: "accounts_insurance", label: "Insurance Accounts", group: "Operational Accounts" },
+      { key: "accounts_tax", label: "GST & Tax Setup", group: "Tax & Compliance" },
+      { key: "accounts_budget", label: "Budgeting & Cost Centres", group: "Management" },
+      { key: "accounts_assets", label: "Fixed Assets", group: "Assets" },
+      { key: "accounts_reports", label: "Financial Statements", group: "Reporting" },
+      { key: "accounts_period_close", label: "Period Closing", group: "Closing" },
+      { key: "accounts_audit", label: "Audit & Integrations", group: "Compliance" },
+      { key: "accounts_manager", label: "Finance Manager Hub", group: "Administration" },
     ],
   },
 
-  { key: "scheduling", label: "Doctor Scheduling", Icon: Calendar },
+  { key: "hrms", label: "HR & Staff", Icon: UsersRound },
 
   {
     key: "intelligence",
@@ -426,7 +477,7 @@ const NAV: NavItem[] = [
 
       { key: "bulk_ai", label: "Bulk Patient AI" },
 
-      { key: "nl_filtering", label: "NL Patient Filtering" },
+      { key: "nl_filtering", label: "PatientReach AI" },
     ],
   },
 
@@ -536,6 +587,7 @@ const NAV: NavItem[] = [
 // the raw module key ("Pharmacy_rx") for anything nobody had added yet.
 
 const BREADCRUMB_OVERRIDES: Record<string, string | string[]> = {
+  laboratory: "Laboratory",
   chart: "Patient Chart",
 
   register: "Registration",
@@ -547,6 +599,7 @@ const BREADCRUMB_OVERRIDES: Record<string, string | string[]> = {
   doctor_workflow: "Doctor Workspace",
   doctor_portal: "Doctor Workspace",
   patient_exp: "Patient Experience",
+  patient_messages: ["Reception", "Patient Messages"],
 
   clinical_rag: "Clinical RAG",
 
@@ -761,7 +814,7 @@ function NotificationPanel({
   const unreadCount = items.filter((i) => !readState[i.id]).length
 
   return (
-    <div className="absolute right-0 top-full mt-1 w-84 bg-white border border-[#DDE2EC] rounded shadow-xl z-50 overflow-hidden">
+    <div className="fixed left-2 right-2 top-12 sm:absolute sm:left-auto sm:right-0 sm:top-full mt-1 sm:w-84 bg-white border border-[#DDE2EC] rounded shadow-xl z-50 overflow-hidden">
       <div className="px-3.5 py-2.5 border-b border-[#DDE2EC] bg-[#FAFCFF] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[12.5px] font-bold text-gray-900">
@@ -1031,6 +1084,26 @@ function getRoleProfile(roleId: string, username?: string): StaffProfile {
     }
   }
 
+  if (r.includes("hr") || u === "hr") {
+    return {
+      id: "HR-001",
+      name: "Radhika Sharma",
+      role: "ROLE_HR",
+      title: "HR Administrator",
+      department: "Human Resources & Payroll",
+    }
+  }
+
+  if (r.includes("staff") || u === "staff") {
+    return {
+      id: "STF-101",
+      name: "Ramesh Verma",
+      role: "ROLE_STAFF",
+      title: "Healthcare Staff Member",
+      department: "General Ward Support",
+    }
+  }
+
   if (r.includes("doctor") || u === "doctor") {
     return {
       id: "DOC-402",
@@ -1105,6 +1178,8 @@ export default function App() {
 
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
 
+  const [globalApplyLeaveOpen, setGlobalApplyLeaveOpen] = useState(false)
+
   const [notice, setNotice] = useState<Notice | null>(null)
 
   const stableSetNotice = useCallback((n: Notice | null) => setNotice(n), [])
@@ -1112,6 +1187,8 @@ export default function App() {
   const [module, setModule] = useState<Module>("dashboard")
   // Insurance pages link to one another by case, e.g. a query row -> its claim.
   const [insuranceCaseId, setInsuranceCaseId] = useState<string | undefined>()
+  // Which Master Setup tab to open when navigating there (insurers by default).
+  const [mastersSection, setMastersSection] = useState<"insurers" | "tpas" | "packages" | "pricing" | "docrules">("insurers")
   const openInsurance = (m: string, caseId?: string) => {
     setInsuranceCaseId(caseId)
     setModule(insuranceModule(m) as Module)
@@ -1156,7 +1233,89 @@ export default function App() {
     [],
   )
 
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  useEffect(
+    () => LabInventoryDatabase.subscribe(() => setBadgeTick((t) => t + 1)),
+    [],
+  )
+
+  // Below lg (phones, portrait tablets) the sidebar is an off-canvas drawer:
+  // a fixed 288px column would leave a phone ~90px for the page itself. On
+  // small laptops (lg..xl) it starts as the icon rail so the page keeps most
+  // of the width; the toggle still expands it.
+  const isCompactViewport = useMediaQuery("(max-width: 1023px)")
+  const isNarrowLaptop = useMediaQuery("(max-width: 1279px)")
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(isNarrowLaptop)
+  const [sidebarHovered, setSidebarHovered] = useState(false)
+  const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setSidebarCollapsed(isNarrowLaptop)
+  }, [isNarrowLaptop])
+
+  useEffect(() => {
+    if (!sidebarCollapsed) {
+      if (hoverLeaveTimerRef.current) {
+        clearTimeout(hoverLeaveTimerRef.current)
+        hoverLeaveTimerRef.current = null
+      }
+      setSidebarHovered(false)
+    }
+  }, [sidebarCollapsed])
+
+  useEffect(() => {
+    return () => {
+      if (hoverLeaveTimerRef.current) clearTimeout(hoverLeaveTimerRef.current)
+    }
+  }, [])
+
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  useEffect(() => {
+    if (!isCompactViewport) setMobileNavOpen(false)
+  }, [isCompactViewport])
+
+  useEffect(() => {
+    if (!mobileNavOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileNavOpen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [mobileNavOpen])
+
+  // The drawer shows full labels; the icon rail only exists on wide screens.
+  // When closed, moving cursor to the sidebar opens it completely; removing cursor closes it.
+  const isHoverExpanded = sidebarCollapsed && sidebarHovered && !isCompactViewport
+  const railCollapsed = sidebarCollapsed && !sidebarHovered && !isCompactViewport
+  const isSidebarOpen = isCompactViewport ? mobileNavOpen : !railCollapsed
+
+  const handleSidebarMouseEnter = () => {
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current)
+      hoverLeaveTimerRef.current = null
+    }
+    if (sidebarCollapsed && !isCompactViewport) {
+      setSidebarHovered(true)
+    }
+  }
+
+  const handleSidebarMouseLeave = () => {
+    if (hoverLeaveTimerRef.current) {
+      clearTimeout(hoverLeaveTimerRef.current)
+    }
+    // Smooth grace window (200ms) before slow, smooth collapse
+    hoverLeaveTimerRef.current = setTimeout(() => {
+      setSidebarHovered(false)
+      hoverLeaveTimerRef.current = null
+    }, 200)
+  }
+
+  // Picking a page from the drawer should reveal the page, not leave the menu
+  // covering it. Expanding a parent group does not close it.
+  const closeMobileNav = () => {
+    if (isCompactViewport) setMobileNavOpen(false)
+  }
 
   // Keppler OCR is a whole separate React app in an iframe: unmounting it on
 
@@ -1187,6 +1346,9 @@ export default function App() {
   const [cmdOpen, setCmdOpen] = useState(false)
 
   const [notifOpen, setNotifOpen] = useState(false)
+  const [messagesOpen, setMessagesOpen] = useState(false)
+  const [messagesUnreadCount, setMessagesUnreadCount] = useState(3)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const [globalSearch, setGlobalSearch] = useState("")
 
@@ -1247,8 +1409,12 @@ export default function App() {
       module !== "dashboard" &&
       !userPermissions.includes(module)
     ) {
-      // Check if it matches a child module
+      // Check if it matches laboratory sub-modules
+      if (module.startsWith("lab_") && userPermissions.includes("laboratory")) {
+        return
+      }
 
+      // Check if it matches a child module
       const parentMatch = NAV.find((n) =>
         n.children?.some((c) => c.key === module),
       )
@@ -1260,29 +1426,34 @@ export default function App() {
   }, [module, loggedIn, userPermissions])
 
   const handleLogout = () => {
-    let curUsername = activeStaff.name
     try {
-      const curData = localStorage.getItem("hospai_current_user")
-      if (curData) {
-        const u = JSON.parse(curData)
-        if (u && u.user) curUsername = u.user
-      }
-    } catch { }
+      let curUsername = activeStaff.name
+      try {
+        const curData = localStorage.getItem("hospai_current_user")
+        if (curData) {
+          const u = JSON.parse(curData)
+          if (u && u.user) curUsername = u.user
+        }
+      } catch { }
 
-    AuditDatabase.logEvent(
-      "Logout",
-      "Authentication",
-      `User ${activeStaff.name} logged out.`,
-      "Success",
-      activeStaff.id,
-      curUsername,
-    )
+      try {
+        AuditDatabase.logEvent(
+          "Logout",
+          "Authentication",
+          `User ${activeStaff.name} logged out.`,
+          "Success",
+          activeStaff.id,
+          curUsername,
+        )
+      } catch { }
 
-    try {
-      localStorage.removeItem("hospai_current_user")
-    } catch { }
-
-    setLoggedIn(false)
+      try {
+        localStorage.removeItem("hospai_current_user")
+      } catch { }
+    } finally {
+      setRoleMenuOpen(false)
+      setLoggedIn(false)
+    }
   }
 
   const switchRole = (
@@ -1317,24 +1488,27 @@ export default function App() {
 
   const handleLogin = (userData: {
     user: string
-
     role: string
-
     staffId: string
-
+    staffName?: string
+    staffTitle?: string
+    staffDepartment?: string
     permissions: string[]
-
     doctorId?: string
   }) => {
     try {
       localStorage.setItem(
         "hospai_current_user",
-        JSON.stringify({ user: userData.user, staffId: userData.staffId, role: userData.role }),
+        JSON.stringify({
+          user: userData.user,
+          staffId: userData.staffId,
+          role: userData.role,
+          name: userData.staffName,
+        }),
       )
     } catch { }
 
     setUserRole(userData.role)
-
     setUserPermissions(userData.permissions)
 
     const isDoctor =
@@ -1345,35 +1519,56 @@ export default function App() {
       ? resolveDoctorAccount({
         doctorId: userData.doctorId,
         username: userData.user,
-        name: userData.user,
+        name: userData.staffName || userData.user,
       })
       : null
 
     setActiveDoctor(doctor)
 
-    setActiveStaff(
-      doctor
-        ? {
-          id: doctor.staffId,
+    if (doctor) {
+      setActiveStaff({
+        id: doctor.staffId,
+        name: doctor.name,
+        role: "ROLE_DOCTOR",
+        title: doctor.qualification,
+        department: `${doctor.specialty} · ${doctor.room}`,
+      })
+    } else if (userData.staffName) {
+      setActiveStaff({
+        id: userData.staffId,
+        name: userData.staffName,
+        role: userData.role,
+        title: userData.staffTitle || "Hospital Staff",
+        department: userData.staffDepartment || "Clinical Operations",
+      })
+    } else {
+      setActiveStaff(getRoleProfile(userData.role, userData.user))
+    }
 
-          name: doctor.name,
-
-          role: "ROLE_DOCTOR",
-
-          title: doctor.qualification,
-
-          department: `${doctor.specialty} · ${doctor.room}`,
-        }
-        : getRoleProfile(userData.role, userData.user),
-    )
+    let defaultModule: Module = "dashboard"
+    const userRoleKey = userData.user.trim().toLowerCase()
+    if (doctor) {
+      defaultModule = "doctor_portal"
+    } else if (userData.role === "ROLE_NURSE" || userRoleKey === "nurse") {
+      defaultModule = "nursing"
+    } else if (userData.role === "ROLE_PHARMACY" || userRoleKey === "pharmacy") {
+      defaultModule = "pharmacy"
+    } else if (userData.role === "ROLE_LAB" || userRoleKey === "lab") {
+      defaultModule = "laboratory"
+    } else if (userData.role === "ROLE_RECEPTION" || userRoleKey === "reception") {
+      defaultModule = "op_management"
+    } else if (userData.role === "ROLE_BILLING" || userRoleKey === "billing") {
+      defaultModule = "billing"
+    } else if (userData.role === "ROLE_INSURANCE" || userRoleKey === "insurance") {
+      defaultModule = "insurance"
+    } else if (userData.role === "ROLE_FINANCE" || userRoleKey === "finance" || userRoleKey === "accountant") {
+      defaultModule = "accounts"
+    } else if (userData.role === "ROLE_HR" || userRoleKey === "hr") {
+      defaultModule = "hrms"
+    }
 
     setLoggedIn(true)
-
-    // A physician's home is their own portal -- the inbox of patients appointed
-
-    // to them -- not the hospital-wide dashboard.
-
-    setModule(doctor ? "doctor_portal" : "dashboard")
+    setModule(defaultModule)
   }
 
   const toggleFullscreen = () => {
@@ -1381,24 +1576,58 @@ export default function App() {
       document.documentElement
         .requestFullscreen()
         .then(() => setIsFullscreen(true))
-        .catch(() => { })
+        .catch(() => {
+          setIsFullscreen((prev) => !prev)
+        })
     } else {
       if (document.exitFullscreen) {
         document
           .exitFullscreen()
           .then(() => setIsFullscreen(false))
-          .catch(() => { })
+          .catch(() => {
+            setIsFullscreen(false)
+          })
       }
     }
   }
 
-  // Ctrl+K
+  useEffect(() => {
+    const onFs = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener("fullscreenchange", onFs)
+    return () => document.removeEventListener("fullscreenchange", onFs)
+  }, [])
 
+  // Global Shortcuts (Ctrl+K, F11, ?, Esc)
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      const isInput =
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault()
         setCmdOpen(true)
+        return
+      }
+
+      if (e.key === "F11") {
+        e.preventDefault()
+        toggleFullscreen()
+        return
+      }
+
+      if (!isInput && (e.key === "?" || (e.shiftKey && e.key === "/"))) {
+        e.preventDefault()
+        setHelpOpen((o) => !o)
+        return
+      }
+
+      if (e.key === "Escape") {
+        setCmdOpen(false)
+        setHelpOpen(false)
       }
     }
 
@@ -1413,9 +1642,10 @@ export default function App() {
   // open an insurance page on a case without threading a prop down to it.
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const d = (e as CustomEvent<{ module: string; caseId?: string }>).detail
+      const d = (e as CustomEvent<{ module: string; caseId?: string; section?: typeof mastersSection }>).detail
       if (!d?.module) return
       setInsuranceCaseId(d.caseId)
+      if (d.section) setMastersSection(d.section)
       if (d.caseId && (d.module === "insurance" || d.module === "insurance_case" || d.module === "insurance_claims")) {
         setModule("insurance_case")
       } else if (d.module === "insurance_preauth") {
@@ -1477,9 +1707,33 @@ export default function App() {
           ? DoctorPortalDatabase.getUnreadCount(activeDoctor.id)
           : 0,
 
-        laboratory: LabOrderDatabase.getLabWorklist().filter(
-          (o) => o.status !== "Completed",
+        laboratory: 0,
+        lab_orders_collection: LabOrderDatabase.getLabWorklist().filter(
+          (o) => o.billing.status === "Paid" && o.status === "Billed",
         ).length,
+        lab_workbench: LabOrderDatabase.getLabWorklist().filter(
+          (o) => (o.status === "Sample Collected" || o.status === "In Progress"),
+        ).length,
+        lab_sample_collection: LabOrderDatabase.getLabWorklist().filter(
+          (o) => o.billing.status === "Paid" && o.status === "Billed",
+        ).length,
+        lab_processing: LabOrderDatabase.getLabWorklist().filter(
+          (o) => (o.status === "Sample Collected" || o.status === "In Progress"),
+        ).length,
+        lab_critical: LabOrderDatabase.getLabWorklist().filter((o) =>
+          o.tests.some(
+            (t) =>
+              t.flag === "Critical" ||
+              Object.values(t.results || {}).some((r) => r.flag === "Critical"),
+          ),
+        ).length,
+        lab_reports: 0,
+        lab_catalog: 0,
+        lab_inventory: LabInventoryDatabase.getItems().filter(
+          (i) => i.status === "Low Stock" || i.status === "Expiring Soon" || i.status === "Expired"
+        ).length,
+        lab_analytics: 0,
+        lab_tat: 0,
 
         // Shared helper, not a list kept here: this badge omitted "Sent To Pharmacy"
 
@@ -1505,6 +1759,14 @@ export default function App() {
         ...prev,
         doctor_portal: 0,
         laboratory: 0,
+        lab_sample_collection: 0,
+        lab_processing: 0,
+        lab_critical: 0,
+        lab_reports: 0,
+        lab_catalog: 0,
+        lab_inventory: 0,
+        lab_analytics: 0,
+        lab_tat: 0,
         pharmacy_rx: 0,
         pharmacy_dispensing: 0,
         pharmacy_expiry: 0,
@@ -1605,7 +1867,9 @@ export default function App() {
       className="flex flex-col overflow-hidden bg-[#F0F2F5]"
       style={{
         fontFamily: "'Inter', system-ui, sans-serif",
-        height: `${100 / zoomLevel}vh`,
+        // dvh, not vh: on phones vh includes the area under the browser's
+        // toolbar, which pushed the bottom of every page out of reach.
+        height: `${100 / zoomLevel}dvh`,
         width: `${100 / zoomLevel}vw`,
         zoom: zoomLevel,
       }}
@@ -1615,144 +1879,190 @@ export default function App() {
       ) : (
         <>
           {/* ── Top Header ───────────────────────────────────────────────── */}
-          <header className="bg-[#0C1524] border-b border-[#1E2D42] h-12 flex items-center gap-3 px-3 flex-shrink-0 z-40">
+          <header className="bg-[#0C1524] border-b border-[#1E2D42] h-12 flex items-center gap-1.5 sm:gap-3 px-2 sm:px-3.5 flex-shrink-0 z-40 text-slate-200 shadow-sm">
             {/* Sidebar toggle */}
             <button
-              onClick={() => setSidebarCollapsed((c) => !c)}
-              className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white transition-colors rounded-lg hover:bg-white/10"
-              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              data-sidebar-toggle
+              onClick={() => {
+                if (hoverLeaveTimerRef.current) {
+                  clearTimeout(hoverLeaveTimerRef.current)
+                  hoverLeaveTimerRef.current = null
+                }
+                setSidebarHovered(false)
+                if (isCompactViewport) {
+                  setMobileNavOpen((o) => !o)
+                } else {
+                  setSidebarCollapsed((c) => !c)
+                }
+              }}
+              className="group w-8 h-8 flex-shrink-0 flex items-center justify-center text-[#94A3B8] hover:text-white transition-colors rounded-lg hover:bg-white/10 cursor-pointer"
+              title={
+                isCompactViewport
+                  ? mobileNavOpen
+                    ? "Close menu"
+                    : "Open menu"
+                  : !railCollapsed
+                    ? "Collapse sidebar"
+                    : "Expand sidebar"
+              }
+              aria-label="Toggle navigation menu"
+              aria-expanded={isSidebarOpen}
             >
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <path
-                  d="M3 4.5h12M3 9h12M3 13.5h12"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
+              {/* Smooth animated hamburger icon morphing between 3-bar menu and left arrow */}
+              <div className="w-[18px] h-[18px] relative flex flex-col justify-center items-center pointer-events-none group-hover:scale-105 transition-transform duration-200">
+                {/* Top bar */}
+                <span
+                  className="absolute h-[1.6px] bg-current rounded-full transition-all duration-500 ease-in-out"
+                  style={{
+                    width: isSidebarOpen ? "9px" : "14px",
+                    left: "2px",
+                    top: isSidebarOpen ? "8.2px" : "4px",
+                    transformOrigin: "2px 50%",
+                    transform: isSidebarOpen ? "rotate(-45deg)" : "none",
+                  }}
                 />
-              </svg>
+                {/* Middle bar */}
+                <span
+                  className="absolute h-[1.6px] bg-current rounded-full transition-all duration-500 ease-in-out"
+                  style={{
+                    width: "14px",
+                    left: "2px",
+                    top: "8.2px",
+                  }}
+                />
+                {/* Bottom bar */}
+                <span
+                  className="absolute h-[1.6px] bg-current rounded-full transition-all duration-500 ease-in-out"
+                  style={{
+                    width: isSidebarOpen ? "9px" : "14px",
+                    left: "2px",
+                    top: isSidebarOpen ? "8.2px" : "12.4px",
+                    transformOrigin: "2px 50%",
+                    transform: isSidebarOpen ? "rotate(45deg)" : "none",
+                  }}
+                />
+              </div>
             </button>
 
-            {/* Global Search */}
-            <div className="w-[400px] ml-auto mr-4 group">
-              <button
-                onClick={() => setCmdOpen(true)}
-                className="w-full relative flex items-center h-9 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-left text-[13px] text-[#94A3B8] transition-all shadow-sm hover:shadow-[0_0_15px_rgba(27,79,216,0.15)] overflow-hidden"
-              >
-                <span className="absolute left-3 text-[#64748B] group-hover:text-blue-400 transition-colors">
-                  <Icon.Search />
-                </span>
-                <span className="pl-10 pr-16 flex-1 truncate">
-                  Search patients, MRN, appointments...
-                </span>
-                <div className="absolute right-2 flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                  <kbd className="bg-black/30 border border-white/10 text-white text-[10px] px-2 py-0.5 rounded shadow-sm font-mono tracking-wider">
-                    Ctrl
-                  </kbd>
-                  <kbd className="bg-black/30 border border-white/10 text-white text-[10px] px-2 py-0.5 rounded shadow-sm font-mono tracking-wider">
-                    K
-                  </kbd>
-                </div>
-                {/* Inner glow */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-400/5 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-              </button>
-            </div>
-
-            {/* Quick Create */}
-            <div className="relative ml-2">
-              <button
-                onClick={() => setNewMenuOpen((o) => !o)}
-                className="flex items-center gap-1.5 h-7 px-2.5 bg-[#1B4FD8] hover:bg-[#1740B4] rounded text-white text-[12px] font-medium transition-colors"
-              >
-                <Icon.Plus /> New
-              </button>
-              {newMenuOpen && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-[#DDE2EC] rounded shadow-lg z-50 py-1">
-                  <button
-                    onClick={() => {
-                      setModule("register")
-                      setNewMenuOpen(false)
-                    }}
-                    className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
-                  >
-                    New Patient
-                  </button>
-                  <button
-                    onClick={() => {
-                      setModule("appointments")
-                      setNewMenuOpen(false)
-                    }}
-                    className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
-                  >
-                    New Appointment
-                  </button>
-                  <button
-                    onClick={() => {
-                      setModule("chart")
-                      setOrderOpen(true)
-                      setNewMenuOpen(false)
-                    }}
-                    className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-[#F8FAFC] text-gray-700"
-                  >
-                    New Order
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="ml-auto flex items-center gap-1">
-              {/* Font Controls */}
-              <div className="flex items-center bg-white/5 rounded px-1 mr-1">
+            {/* Top Middle: Search bar + New button */}
+            <div className="flex-1 min-w-0 flex items-center justify-center gap-1.5 sm:gap-2.5 px-0 sm:px-3 max-w-2xl mx-auto">
+              {/* Global Search */}
+              <div className="w-full min-w-0 max-w-[420px] group">
                 <button
-                  title="Smaller text"
+                  onClick={() => setCmdOpen(true)}
+                  aria-label="Search"
+                  className="w-full relative flex items-center h-8 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg text-left text-[12.5px] text-[#94A3B8] transition-all overflow-hidden cursor-pointer"
+                >
+                  <span className="absolute left-2.5 text-[#64748B] group-hover:text-blue-400 transition-colors">
+                    <Icon.Search />
+                  </span>
+                  <span className="pl-9 pr-2 md:pr-16 flex-1 truncate text-[#94A3B8]">
+                    <span className="sm:hidden">Search…</span>
+                    <span className="hidden sm:inline">
+                      Search patients, MRN, appointments, reports...
+                    </span>
+                  </span>
+                  <div className="absolute right-2 hidden md:flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                    <kbd className="bg-black/40 border border-white/10 text-white text-[9.5px] px-1.5 py-0.5 rounded font-mono">
+                      Ctrl
+                    </kbd>
+                    <kbd className="bg-black/40 border border-white/10 text-white text-[9.5px] px-1.5 py-0.5 rounded font-mono">
+                      K
+                    </kbd>
+                  </div>
+                </button>
+              </div>
+
+              {/* Quick Create + New */}
+              <div className="relative flex-shrink-0">
+                <button
+                  onClick={() => setNewMenuOpen((o) => !o)}
+                  aria-label="New"
+                  className="flex items-center gap-1.5 h-8 px-2 sm:px-3 bg-[#1B68F8] hover:bg-blue-600 rounded-lg text-white text-[12px] font-semibold transition-colors shadow-xs cursor-pointer"
+                >
+                  <Icon.Plus /> <span className="hidden sm:inline">New</span>
+                </button>
+                {newMenuOpen && (
+                  <div className="absolute top-full right-0 sm:right-auto sm:left-0 mt-1 w-48 bg-[#0F172A] border border-[#1E2D42] rounded-lg shadow-xl z-50 py-1 text-slate-200">
+                    <button
+                      onClick={() => {
+                        setModule("register")
+                        setNewMenuOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-white/5 text-slate-200"
+                    >
+                      New Patient
+                    </button>
+                    <button
+                      onClick={() => {
+                        setModule("appointments")
+                        setNewMenuOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-white/5 text-slate-200"
+                    >
+                      New Appointment
+                    </button>
+                    <button
+                      onClick={() => {
+                        setModule("chart")
+                        setOrderOpen(true)
+                        setNewMenuOpen(false)
+                      }}
+                      className="w-full text-left px-4 py-1.5 text-[12px] hover:bg-white/5 text-slate-200"
+                    >
+                      New Order
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-0.5 sm:gap-1.5 ml-auto flex-shrink-0">
+              {/* Text Size Zoom Controls -- pinch-zoom covers this on phones */}
+              <div
+                className="hidden md:flex items-center gap-1 px-1.5 py-1 bg-white/[0.04] hover:bg-white/[0.07] border border-[#1E2D42] rounded-lg transition-colors mr-1"
+                title={`Text Size Zoom (Current scale: ${Math.round(zoomLevel * 100)}%)`}
+              >
+                <button
+                  type="button"
                   onClick={() =>
-                    setZoomLevel((z) =>
-                      Math.max(0.7, Math.round((z - 0.1) * 10) / 10),
-                    )
+                    setZoomLevel((z) => Math.max(0.7, Math.round((z - 0.1) * 10) / 10))
                   }
-                  className="w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-white text-[10px] font-bold"
+                  title="Decrease text size (A-)"
+                  className="px-2 py-0.5 bg-white/10 hover:bg-blue-600 text-slate-200 hover:text-white rounded text-[11px] font-bold font-mono transition-colors cursor-pointer border border-white/10 hover:border-blue-500 active:scale-95"
                 >
                   A-
                 </button>
                 <button
-                  title="Reset text size to 100%"
+                  type="button"
                   onClick={() => setZoomLevel(1)}
-                  className={`h-6 min-w-6 px-1 flex items-center justify-center font-bold hover:text-white ${zoomLevel === 1
-                    ? "text-[#94A3B8] text-[12px]"
-                    : "text-[#F59E0B] text-[10px]"
-                    }`}
+                  title={zoomLevel === 1 ? "Scale is 100%" : "Reset text size to 100%"}
+                  className="px-2 py-0.5 bg-white/10 hover:bg-slate-700 text-slate-200 hover:text-white rounded text-[11px] font-bold font-mono transition-colors cursor-pointer border border-white/10 hover:border-slate-500 active:scale-95"
                 >
-                  {zoomLevel === 1 ? "A" : `${Math.round(zoomLevel * 100)}%`}
+                  {Math.round(zoomLevel * 100)}%
                 </button>
                 <button
-                  title="Larger text"
+                  type="button"
                   onClick={() =>
-                    setZoomLevel((z) =>
-                      Math.min(1.2, Math.round((z + 0.1) * 10) / 10),
-                    )
+                    setZoomLevel((z) => Math.min(1.3, Math.round((z + 0.1) * 10) / 10))
                   }
-                  className="w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-white text-[14px] font-bold"
+                  title="Increase text size (A+)"
+                  className="px-2 py-0.5 bg-white/10 hover:bg-blue-600 text-slate-200 hover:text-white rounded text-[11px] font-bold font-mono transition-colors cursor-pointer border border-white/10 hover:border-blue-500 active:scale-95"
                 >
                   A+
                 </button>
               </div>
 
-              {/* Fullscreen */}
-              <button
-                onClick={toggleFullscreen}
-                className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors mr-1"
-              >
-                {isFullscreen ? <Icon.Minimize /> : <Icon.Maximize />}
-              </button>
-
               {/* Notifications */}
               <div className="relative">
                 <button
                   onClick={() => setNotifOpen((n) => !n)}
-                  className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors"
+                  className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Notifications"
                 >
                   <Icon.Bell />
-                  <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-[#DC2626] rounded-full text-[9px] text-white font-bold flex items-center justify-center">
-                    !
+                  <span className="absolute top-0.5 right-0.5 w-3 h-3 bg-[#DC2626] rounded-full text-[8px] text-white font-bold flex items-center justify-center">
+                    1
                   </span>
                 </button>
                 {notifOpen && (
@@ -1764,46 +2074,82 @@ export default function App() {
               </div>
 
               {/* Messages */}
-              <button className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors">
-                <Icon.Message />
-                <span className="absolute top-1 right-1 w-3 h-3 bg-[#16A34A] rounded-full text-[8px] text-white font-bold flex items-center justify-center">
-                  3
-                </span>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setMessagesOpen((m) => !m)}
+                  className="relative w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Staff Messages & Clinical Handovers"
+                >
+                  <Icon.Message />
+                  {messagesUnreadCount > 0 && (
+                    <span className="absolute top-0.5 right-0.5 w-3 h-3 bg-[#16A34A] rounded-full text-[8px] text-white font-bold flex items-center justify-center">
+                      {messagesUnreadCount}
+                    </span>
+                  )}
+                </button>
+                {messagesOpen && (
+                  <MessagesPanel
+                    onClose={() => setMessagesOpen(false)}
+                    onNavigate={(m, s) => navigate(m, s)}
+                    onUnreadChange={(count) => setMessagesUnreadCount(count)}
+                  />
+                )}
+              </div>
+
+              {/* Theme Toggle (Moon) */}
+              <button
+                type="button"
+                className="hidden md:flex w-8 h-8 items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="Toggle Theme"
+              >
+                <Moon size={15} />
+              </button>
+
+              {/* Fullscreen */}
+              <button
+                onClick={toggleFullscreen}
+                className="hidden md:flex w-8 h-8 items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                title="Toggle Fullscreen"
+              >
+                {isFullscreen ? <Icon.Minimize /> : <Icon.Maximize />}
               </button>
 
               {/* Help */}
-              <button className="w-8 h-8 flex items-center justify-center text-[#94A3B8] hover:text-white rounded hover:bg-white/10 transition-colors text-[13px] font-bold">
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                title="Hospital System Help & Keyboard Shortcuts"
+                className="hidden sm:flex w-8 h-8 items-center justify-center text-[#94A3B8] hover:text-white rounded-lg hover:bg-white/10 transition-colors text-[13px] font-bold cursor-pointer"
+              >
                 ?
               </button>
 
-              {/* Role Switcher Menu */}
-              <div className="relative ml-1 pl-3 border-l border-white/10">
+              {/* Role Switcher / User Profile */}
+              <div className="relative ml-0.5 sm:ml-1 pl-1 sm:pl-2.5 border-l border-[#1E2D42]">
                 <button
                   onClick={() => setRoleMenuOpen(!roleMenuOpen)}
-                  className="flex items-center gap-2 text-left hover:bg-white/10 p-1.5 rounded transition-colors cursor-pointer"
+                  className="flex items-center gap-2 text-left hover:bg-white/5 p-1 rounded-lg transition-colors cursor-pointer"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#1B4FD8] flex items-center justify-center text-[11px] font-semibold text-white flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-[#1E293B] border border-white/15 flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 shadow-2xs">
                     {activeStaff.name
                       .split(" ")
                       .map((n) => n[0])
                       .join("")
-                      .slice(0, 2)}
+                      .slice(0, 2) || "SA"}
                   </div>
-                  <div className="hidden md:block">
-                    <div className="text-[11.5px] font-medium text-white leading-tight flex items-center gap-1">
-                      <span>{activeStaff.name}</span>
-                      <span className="text-[9px] bg-blue-500/30 text-blue-200 px-1 rounded font-mono">
-                        ▼ Role
-                      </span>
+                  <div className="hidden lg:block">
+                    <div className="text-xs font-bold text-white leading-tight">
+                      {activeStaff.name || "System Administrator"}
                     </div>
-                    <div className="text-[10px] text-[#93C5FD]">
-                      {activeStaff.title}
+                    <div className="text-[10px] text-[#94A3B8] font-medium">
+                      {activeStaff.title || "Hospital Administrator"}
                     </div>
                   </div>
                 </button>
 
                 {roleMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-64 bg-white border border-[#CBD5E1] shadow-2xl rounded-none z-50 p-2 text-[12px] space-y-1">
+                  <div className="absolute right-0 top-full mt-1.5 w-64 max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-4rem)] overflow-y-auto bg-white border border-[#CBD5E1] shadow-2xl rounded-none z-50 p-2 text-[12px] space-y-1">
                     <div className="px-2 py-1 text-[10px] font-bold text-[#64748B] uppercase tracking-wider border-b border-[#E2E8F0]">
                       Switch Active Portal / Role
                     </div>
@@ -1820,6 +2166,27 @@ export default function App() {
                         username: "admin",
                         label: "Hospital Administrator",
                         icon: "🏢",
+                      },
+
+                      {
+                        roleId: "ROLE_FINANCE",
+                        username: "finance",
+                        label: "Accountant / Finance Officer",
+                        icon: "🏛️",
+                      },
+
+                      {
+                        roleId: "ROLE_HR",
+                        username: "hr",
+                        label: "HR Administrator",
+                        icon: "👥",
+                      },
+
+                      {
+                        roleId: "ROLE_STAFF",
+                        username: "staff",
+                        label: "General Hospital Staff",
+                        icon: "👤",
                       },
 
                       {
@@ -1859,11 +2226,13 @@ export default function App() {
                     ].map((r) => {
                       const permissions =
                         r.roleId === "ROLE_SUPERADMIN" ||
-                          r.roleId === "ROLE_ADMIN"
+                          r.roleId === "ROLE_ADMIN" ||
+                          r.roleId === "ROLE_FINANCE" ||
+                          r.roleId === "ROLE_HR"
                           ? ALL_SYSTEM_MODULES
                           : RoleDatabase.getRoles().find(
                             (role) => role.id === r.roleId,
-                          )?.allowedModules || ["dashboard"]
+                          )?.allowedModules || ["dashboard", "employees"]
 
                       return (
                         <button
@@ -1890,9 +2259,20 @@ export default function App() {
                       )
                     })}
                     <div className="border-t border-[#E2E8F0] pt-1 mt-1">
+                      {/* The header's help button is hidden on phones. */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRoleMenuOpen(false)
+                          setHelpOpen(true)
+                        }}
+                        className="sm:hidden w-full text-left px-2.5 py-1 text-[11px] text-[#334155] hover:bg-[#F8FAFC] font-semibold rounded transition-colors"
+                      >
+                        Help &amp; shortcuts
+                      </button>
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-2.5 py-1 text-[11px] text-[#B91C1C] hover:bg-red-50 font-semibold"
+                        className="w-full text-left px-2.5 py-1 text-[11px] text-[#B91C1C] hover:bg-red-50 font-semibold rounded transition-colors"
                       >
                         Sign Out
                       </button>
@@ -1922,52 +2302,85 @@ export default function App() {
           {/* ── Body ─────────────────────────────────────────────────────── */}
           <div className="flex flex-1 overflow-hidden">
             {/* ── Sidebar ──────────────────────────────────────────────── */}
+            {/* Drawer backdrop (phones / portrait tablets) */}
+            {isCompactViewport && mobileNavOpen && (
+              <div
+                className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-[1px]"
+                onClick={() => setMobileNavOpen(false)}
+                aria-hidden="true"
+              />
+            )}
             <aside
-              className={`bg-[#0C1524] border-r border-[#1E2D42] flex-shrink-0 flex flex-col transition-all duration-200 overflow-y-auto ${sidebarCollapsed ? "w-14" : "w-72"
+              aria-label="Main navigation"
+              onMouseEnter={handleSidebarMouseEnter}
+              onMouseLeave={handleSidebarMouseLeave}
+              className={`bg-[#0C1524] border-r border-[#1E2D42] flex-shrink-0 flex flex-col overflow-y-auto overscroll-contain transition-[width,box-shadow] duration-500 ease-in-out ${isCompactViewport
+                ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] shadow-2xl transition-[transform,visibility] duration-300 ease-in-out ${mobileNavOpen ? "translate-x-0" : "-translate-x-full invisible"}`
+                : `overflow-x-hidden ${railCollapsed ? "w-14" : "w-72"} ${isHoverExpanded ? "shadow-2xl shadow-black/50 z-20" : ""}`
                 }`}
             >
               {/* Top Logo Section */}
-              <div className="flex items-center justify-center py-3.5 px-3 border-b border-[#1E2D42]/80 flex-shrink-0 text-center w-full">
-                {sidebarCollapsed ? (
+              <div className="relative flex items-center justify-center py-3.5 px-3 border-b border-[#1E2D42]/80 flex-shrink-0 text-center w-full">
+                {isCompactViewport && (
+                  <button
+                    type="button"
+                    onClick={() => setMobileNavOpen(false)}
+                    aria-label="Close menu"
+                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 text-[18px] leading-none cursor-pointer"
+                  >
+                    ×
+                  </button>
+                )}
+                {railCollapsed ? (
                   <HospAILogo variant="icon" className="w-10 h-10 mx-auto" />
                 ) : (
-                  <HospAILogo variant="horizontal" className="h-40 w-full justify-center mx-auto" />
+                  <HospAILogo variant="horizontal" className="h-24 lg:h-40 w-full justify-center mx-auto" />
                 )}
               </div>
               <div
-                className={`flex-1 py-2 ${sidebarCollapsed ? "px-1" : "px-2"}`}
+                className={`flex-1 py-2 ${railCollapsed ? "px-1" : "px-2"}`}
               >
                 {NAV.map((item) => {
                   // Module-based Access Control Filtering
-
-                  const hasAccess = userPermissions.includes(item.key)
+                  const hasAccess =
+                    userPermissions.includes(item.key) ||
+                    item.children?.some((c) => userPermissions.includes(c.key))
 
                   if (!hasAccess) return null
 
                   // Sub-items inherit the parent's access unless the role actually enumerates
-
                   // sub-module keys -- otherwise a role granted only "pharmacy" would collapse
-
                   // the whole Pharmacy tree down to its Dashboard entry.
-
                   const subModulesGranted = item.children?.some(
                     (c) =>
                       c.key !== item.key && userPermissions.includes(c.key),
                   )
 
-                  const filteredChildren = item.children?.filter(
-                    (c) =>
+                  const filteredChildren = item.children?.filter((c) => {
+                    // Strictly isolate HRMS from regular staff
+                    if (item.key === "hrms") {
+                      return userPermissions.includes(c.key)
+                    }
+                    return (
                       c.key === item.key ||
                       (item.key === "reports" &&
                         userPermissions.includes("reports")) ||
                       (item.key === "insurance" &&
                         userPermissions.includes("insurance")) ||
+                      (item.key === "laboratory" &&
+                        userPermissions.includes("laboratory")) ||
+                      (c.key === "pharmacy_write_off" &&
+                        (userPermissions.includes("pharmacy") ||
+                          userPermissions.includes("pharmacy_ledger") ||
+                          userPermissions.includes("pharmacy_expiry"))) ||
                       !subModulesGranted ||
-                      userPermissions.includes(c.key),
-                  )
+                      userPermissions.includes(c.key)
+                    )
+                  })
 
                   const isActive =
                     module === item.key ||
+                    (item.key === "laboratory" && (module === "laboratory" || module.startsWith("lab_"))) ||
                     filteredChildren?.some((c) => c.key === module)
 
                   const isExpanded = expanded.includes(item.key)
@@ -1987,7 +2400,7 @@ export default function App() {
                     <div key={item.key} className="relative group">
                       <div
                         className={
-                          sidebarCollapsed
+                          railCollapsed
                             ? `w-10 h-10 mx-auto my-1 flex items-center justify-center rounded-xl cursor-pointer transition-all duration-150 relative ${isActive
                               ? "bg-[#1B4FD8] text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-400/40"
                               : "hover:bg-white/10 text-white"
@@ -1996,7 +2409,7 @@ export default function App() {
                         }
                         onClick={() => {
                           if (filteredChildren && filteredChildren.length > 0) {
-                            if (sidebarCollapsed) {
+                            if (railCollapsed) {
                               if (item.key === "intelligence") {
                                 setModule("intelligence")
                               } else {
@@ -2017,25 +2430,26 @@ export default function App() {
                           } else {
                             setInsuranceCaseId(undefined)
                             setModule(item.key)
+                            closeMobileNav()
                           }
                         }}
-                        title={sidebarCollapsed ? item.label : undefined}
+                        title={railCollapsed ? item.label : undefined}
                       >
                         <item.Icon
-                          size={sidebarCollapsed ? 20 : 18}
-                          className={`${sidebarCollapsed
-                            ? "w-5 h-5 transition-transform duration-150 group-hover:scale-110 flex-shrink-0"
+                          size={railCollapsed ? 20 : 18}
+                          className={`${railCollapsed
+                            ? "w-5 h-5 flex-shrink-0"
                             : "w-4.5 h-4.5 mr-3 flex-shrink-0"
-                            } ${isActive ? "text-white" : "text-[#94A3B8] group-hover:text-white"}`}
+                            } nav-icon ${isActive ? "text-white" : "text-[#94A3B8] group-hover:text-white"}`}
                         />
 
                         {/* Collapsed Badge Dot */}
-                        {sidebarCollapsed && navBadge && !isActive && (
+                        {railCollapsed && navBadge && !isActive && (
                           <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#DC2626] border border-[#0C1524] rounded-full"></span>
                         )}
 
                         {/* Collapsed Hover Tooltip */}
-                        {sidebarCollapsed && (
+                        {railCollapsed && !sidebarHovered && (
                           <div className="absolute left-full ml-3 px-3 py-1.5 bg-[#0F172A] text-white text-[12px] font-semibold rounded-lg shadow-2xl border border-white/10 whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 flex items-center gap-2">
                             <span>{item.label}</span>
                             {navBadge && (
@@ -2046,46 +2460,47 @@ export default function App() {
                           </div>
                         )}
 
-                        {!sidebarCollapsed && (
-                          <>
+                        {!railCollapsed && (
+                          <div className="flex-1 min-w-0 flex items-center justify-between sidebar-fade-in">
                             <span className="flex-1 truncate">
                               {item.label}
                             </span>
                             {navBadge && !isActive && (
-                              <span className="badge bg-[#DC2626] text-white">
+                              <span className="badge bg-[#DC2626] text-white ml-1">
                                 {navBadge}
                               </span>
                             )}
                             {filteredChildren &&
                               filteredChildren.length > 0 && (
                                 <span
-                                  className={`transition-transform ${isExpanded ? "rotate-90" : ""
+                                  className={`transition-transform duration-200 ml-1 ${isExpanded ? "rotate-90" : ""
                                     }`}
                                 >
                                   <Icon.ChevronRight />
                                 </span>
                               )}
-                          </>
+                          </div>
                         )}
                       </div>
-                      {!sidebarCollapsed &&
+                      {!railCollapsed &&
                         filteredChildren &&
                         filteredChildren.length > 0 &&
                         isExpanded && (
-                          <div className="space-y-0.5 my-1">
+                          <div className="space-y-0.5 my-1 sidebar-fade-in">
                             {/* Ungrouped children (a module's own Dashboard) sit directly under the parent. */}
                             {filteredChildren
                               .filter((c) => !c.group)
                               .map((child) => (
                                 <div
                                   key={`${child.key}_${child.label}`}
-                                  className={`nav-item sub ${module === child.key && isActive
+                                  className={`nav-item sub ${(module === child.key || (child.key === "laboratory" && module === "lab_catalog")) && isActive
                                     ? "active"
                                     : ""
                                     }`}
                                   onClick={() => {
                                     setInsuranceCaseId(undefined)
                                     setModule(child.key)
+                                    closeMobileNav()
                                   }}
                                 >
                                   {child.label}
@@ -2146,7 +2561,7 @@ export default function App() {
                                     >
                                       <GroupIcon
                                         size={16}
-                                        className="w-4 h-4"
+                                        className="w-4 h-4 nav-icon"
                                       />
                                       <span className="flex-1 truncate">
                                         {group}
@@ -2171,9 +2586,10 @@ export default function App() {
                                               key={`${child.key}_${child.label}`}
                                               className={`nav-item sub justify-between ${isChildActive ? "active" : ""
                                                 }`}
-                                              onClick={() =>
+                                              onClick={() => {
                                                 setModule(child.key)
-                                              }
+                                                closeMobileNav()
+                                              }}
                                             >
                                               <span className="flex-1 truncate">
                                                 {child.label}
@@ -2236,7 +2652,10 @@ export default function App() {
                                           ? "active"
                                           : ""
                                           }`}
-                                        onClick={() => setModule(child.key)}
+                                        onClick={() => {
+                                          setModule(child.key)
+                                          closeMobileNav()
+                                        }}
                                       >
                                         <span className="flex-1 truncate">
                                           {child.label}
@@ -2259,37 +2678,42 @@ export default function App() {
                 })}
               </div>
 
-              {sidebarCollapsed ? (
-                <div className="p-2 border-t border-[#1E2D42]/60 flex justify-center">
-                  <button
-                    onClick={() => setCmdOpen(true)}
-                    title="Command Palette (Ctrl+K)"
-                    className="w-8 h-8 flex items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 transition-colors"
-                  >
-                    <Icon.Cmd size={18} className="w-8 h-8 p-1.5" />
-                  </button>
-                </div>
-              ) : (
-                <div className="p-3 border-t border-[#1E2D42]">
-                  <button
-                    onClick={() => setCmdOpen(true)}
-                    className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded border border-white/10 text-[#64748B] hover:text-white hover:border-white/20 transition-colors text-[11.5px]"
-                  >
-                    <Icon.Cmd />
-                    <span>Command Palette</span>
-                    <kbd className="ml-auto font-mono text-[10px]">Ctrl+K</kbd>
-                  </button>
-                </div>
-              )}
+              <div className="border-t border-[#1E2D42]/80 flex-shrink-0 overflow-hidden">
+                {railCollapsed ? (
+                  <div className="p-2 flex justify-center">
+                    <button
+                      onClick={() => setCmdOpen(true)}
+                      title="Command Palette (Ctrl+K)"
+                      className="w-8 h-8 flex items-center justify-center rounded-lg text-[#94A3B8] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      <Icon.Cmd size={18} className="w-8 h-8 p-1.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-3 sidebar-fade-in">
+                    <button
+                      onClick={() => {
+                        closeMobileNav()
+                        setCmdOpen(true)
+                      }}
+                      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded border border-white/10 text-[#64748B] hover:text-white hover:border-white/20 transition-colors text-[11.5px] cursor-pointer whitespace-nowrap"
+                    >
+                      <Icon.Cmd />
+                      <span>Command Palette</span>
+                      <kbd className="ml-auto font-mono text-[10px]">Ctrl+K</kbd>
+                    </button>
+                  </div>
+                )}
+              </div>
             </aside>
 
             {/* ── Main Workspace ───────────────────────────────────────── */}
             <main
               ref={mainRef}
-              className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden"
+              className="app-main flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto overflow-x-auto"
             >
               {/* Breadcrumb strip */}
-              <div className="bg-white border-b border-slate-200 px-5 py-2 flex items-center gap-2 text-xs text-slate-500 flex-shrink-0 font-medium">
+              <div className="bg-white border-b border-slate-200 px-3 sm:px-5 py-2 flex items-center gap-2 text-xs text-slate-500 flex-shrink-0 font-medium overflow-x-auto whitespace-nowrap">
                 <button
                   type="button"
                   onClick={() => setModule("dashboard")}
@@ -2315,6 +2739,7 @@ export default function App() {
               </div>
 
               {/* Module Content */}
+              <PageErrorBoundary resetKey={module}>
               {module === "dashboard" && (
                 <Dashboard
                   navigate={navigate}
@@ -2402,8 +2827,12 @@ export default function App() {
                 />
               )}
               {module === "nursing" && <NursingPortal />}
-              {module === "laboratory" && (
-                <Laboratory technician={activeStaff.name} />
+              {(module === "laboratory" || (module.startsWith("lab_") && module !== "lab_billing")) && (
+                <LaboratoryManagementSuite
+                  technician={activeStaff.name}
+                  activeSubPage={module}
+                  onNavigate={(m) => setModule(m as Module)}
+                />
               )}
               {(module === "pharmacy" || module.startsWith("pharmacy_")) && (
                 <Pharmacy
@@ -2433,6 +2862,45 @@ export default function App() {
               )}
               {module === "billing" && (
                 <BillingDashboard onNavigate={(m) => setModule(m as Module)} />
+              )}
+              {(module === "accounts" || module.startsWith("accounts_")) && (
+                <AccountsModule
+                  initialTab={
+                    module === "accounts_coa"
+                      ? "coa"
+                      : module === "accounts_gl"
+                        ? "gl"
+                        : module === "accounts_receipts"
+                          ? "receipts"
+                          : module === "accounts_payments"
+                            ? "payments"
+                            : module === "accounts_ar"
+                              ? "ar"
+                              : module === "accounts_ap"
+                                ? "ap"
+                                : module === "accounts_cash_bank"
+                                  ? "cash_bank"
+                                  : module === "accounts_pharmacy"
+                                    ? "pharmacy"
+                                    : module === "accounts_insurance"
+                                      ? "insurance"
+                                      : module === "accounts_tax"
+                                        ? "tax"
+                                        : module === "accounts_budget"
+                                          ? "budget"
+                                          : module === "accounts_assets"
+                                            ? "assets"
+                                            : module === "accounts_reports"
+                                              ? "statements"
+                                              : module === "accounts_period_close"
+                                                ? "closing"
+                                                : module === "accounts_audit"
+                                                  ? "audit"
+                                                  : module === "accounts_manager"
+                                                    ? "manager"
+                                                    : "dashboard"
+                  }
+                />
               )}
               {(module === "radiology" || module === "radiology_reports") && (
                 <Radiology initialTab={module === "radiology_reports" ? "reports" : "worklist"} />
@@ -2468,7 +2936,10 @@ export default function App() {
                     if (page === "board") setModule("insurance_board" as any)
                     else if (page === "preauth") setModule("insurance_preauth" as any)
                     else if (page === "intake") setModule("insurance_eligibility" as any)
-                    else if (page === "claims") setModule("insurance_claims" as any)
+                    else if (page === "claims") {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
                     else if (page === "emails") setModule("insurance_emails" as any)
                     else if (page === "settlements") setModule("insurance_settlement" as any)
                     else if (page === "masters") setModule("insurance_masters" as any)
@@ -2476,7 +2947,10 @@ export default function App() {
                       setInsuranceCaseId(caseId)
                       setModule("insurance_case" as any)
                     }
-                    else setModule("insurance_claims" as any)
+                    else {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
                   }}
                 />
               )}
@@ -2487,14 +2961,32 @@ export default function App() {
                   onOpenIntake={() => setModule("insurance_eligibility" as any)}
                 />
               )}
-              {/* Page 2: Cashless Case Board */}
+              {/* Page 2: Insurance Command Dashboard (reused for board key) */}
               {(module === "insurance_board" as any) && (
-                <CashlessCaseBoard
-                  onOpenCase={(id) => { setInsuranceCaseId(id); setModule("insurance_case" as any) }}
-                  onOpenIntake={() => setModule("insurance_eligibility" as any)}
+                <InsuranceCommandDashboard
+                  onNavigate={(page, caseId) => {
+                    if (page === "preauth") setModule("insurance_preauth" as any)
+                    else if (page === "intake") setModule("insurance_eligibility" as any)
+                    else if (page === "claims") {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_claims" as any)
+                    }
+                    else if (page === "emails") setModule("insurance_emails" as any)
+                    else if (page === "settlements") setModule("insurance_settlement" as any)
+                    else if (page === "masters") setModule("insurance_masters" as any)
+                    else if (page === "case" && caseId) {
+                      setInsuranceCaseId(caseId)
+                      setModule("insurance_case" as any)
+                    }
+                    else {
+                      if (caseId) setInsuranceCaseId(caseId)
+                      setModule("insurance_overview" as any)
+                    }
+                  }}
                 />
               )}
               {/* Page 3: Intake */}
+              {module === "insurance_patient_policies" && <PatientPoliciesPage />}
               {module === "insurance_eligibility" && (
                 <InsuranceIntakeView
                   onBack={() => setModule("insurance_overview" as any)}
@@ -2552,15 +3044,12 @@ export default function App() {
               {(module === "insurance_settlement" || module === "insurance_reconciliation") && (
                 <InsuranceSettlementPage onNavigate={openInsurance} initialCaseId={insuranceCaseId} />
               )}
-              {module === "insurance_masters" && <InsuranceMastersPage section="insurers" />}
+              {module === "insurance_masters" && <InsuranceMastersPage section={mastersSection} />}
               {module === "insurance_tpas" && <InsuranceMastersPage section="tpas" />}
-              {module === "insurance_packages" && <InsuranceMastersPage section="packages" />}
-              {module === "insurance_pricing" && <InsuranceMastersPage section="pricing" />}
-              {module === "insurance_docrules" && <InsuranceMastersPage section="docrules" />}
-              {/* Page 15: Insurance Reports */}
-              {(module === "insurance_reports" as any) && (
-                <InsuranceReportsView onBack={() => setModule("insurance_overview" as any)} />
-              )}
+              {module === "insurance_packages" && <EnhancedAuditRulesPage initialTab="packages" />}
+              {module === "insurance_pricing" && <EnhancedAuditRulesPage initialTab="packages" />}
+              {module === "insurance_docrules" && <EnhancedAuditRulesPage initialTab="audit" />}
+              {(module === "insurance_reports" as any) && <EnhancedAuditRulesPage initialTab="reports" />}
 
               {(module === "reports" || module === "reports_overview") && (
                 <GeneralReportsOverviewPage
@@ -2688,29 +3177,32 @@ export default function App() {
                 />
               )}
               {module === "patient_exp" && <PatientExperience />}
-              {(module === "doctor_workflow" || module === "doctor_portal") && (
-                <DoctorPortal
-                  doctor={
-                    activeDoctor ||
-                    resolveDoctorAccount({ name: activeStaff.name })
-                  }
-                  onOpenErVisit={(visitId) => {
-                    setSelectedTriageVisitId(visitId)
-
-                    setModule("triage")
-                  }}
-                />
-              )}
-              {module === "scheduling" && <DoctorScheduling />}
+              {module === "patient_messages" && <PatientMessages />}
+              {(module === "doctor_workflow" || module === "doctor_portal") &&
+                // A physician gets their own workspace. Anyone else (admin,
+                // superadmin, etc.) gets the Doctors overview and cannot open
+                // individual doctor workspaces.
+                (activeDoctor ? (
+                  <DoctorPortal
+                    key={activeDoctor.id}
+                    doctor={activeDoctor}
+                    onOpenErVisit={(visitId) => {
+                      setSelectedTriageVisitId(visitId)
+                      setModule("triage")
+                    }}
+                  />
+                ) : (
+                  <DoctorsOverview />
+                ))}
               {module === "admissions" && (
                 <Admissions setNotice={setNotice} navigate={navigate} />
               )}
               {module === "readmission" && (
                 <Readmission setNotice={setNotice} />
               )}
-              {module === "payments" && <PaymentCollection />}
-              {module === "hrms" && <HRMS />}
-              {module === "employees" && <Employees />}
+              {(module === "hrms" || module === "employees" || module === "scheduling") && (
+                <HRMS onNavigate={(m) => setModule(m as any)} />
+              )}
               {module === "ocr" && <SmartOCR setNotice={setNotice} />}
               {ocrMounted && (
                 <div
@@ -2729,6 +3221,7 @@ export default function App() {
               {module === "intelligence" && (
                 <IntelligenceHub navigate={navigate} />
               )}
+              </PageErrorBoundary>
             </main>
           </div>
 
@@ -2756,6 +3249,38 @@ export default function App() {
 
               setModule("chart")
             }}
+          />
+
+          {globalApplyLeaveOpen && (
+            <ApplyLeaveModal
+              isOpen={globalApplyLeaveOpen}
+              onClose={() => setGlobalApplyLeaveOpen(false)}
+              loggedInStaffId={activeStaff.id}
+              loggedInStaffName={activeStaff.name}
+              isSelfService={userRole !== "ROLE_ADMIN" && userRole !== "ROLE_SUPERADMIN" && userRole !== "ROLE_HR"}
+            />
+          )}
+
+          <HelpModal
+            isOpen={helpOpen}
+            onClose={() => setHelpOpen(false)}
+            onOpenCommandPalette={() => setCmdOpen(true)}
+            onZoomIn={() =>
+              setZoomLevel((z) =>
+                Math.min(1.2, Math.round((z + 0.1) * 10) / 10),
+              )
+            }
+            onZoomOut={() =>
+              setZoomLevel((z) =>
+                Math.max(0.7, Math.round((z - 0.1) * 10) / 10),
+              )
+            }
+            onZoomReset={() => setZoomLevel(1)}
+            currentZoom={zoomLevel}
+            onToggleFullscreen={toggleFullscreen}
+            isFullscreen={isFullscreen}
+            onNavigate={(m) => navigate(m)}
+            onOpenMessages={() => setMessagesOpen(true)}
           />
         </>
       )}

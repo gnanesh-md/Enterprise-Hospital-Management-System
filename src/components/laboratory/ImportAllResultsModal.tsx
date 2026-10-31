@@ -126,13 +126,13 @@ export default function ImportAllResultsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
+      <div className="bg-white rounded-none shadow-2xl border border-gray-200 w-full max-w-5xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-150">
         
         {/* Header */}
         <div className="bg-linear-to-r from-emerald-700 via-teal-700 to-emerald-800 text-white px-6 py-4 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold px-2 py-0.5 rounded bg-emerald-500/40 uppercase tracking-wider">
+              <span className="text-xs font-bold px-2 py-0.5 rounded-none bg-emerald-500/40 uppercase tracking-wider">
                 Batch Import Tool
               </span>
               <span className="text-xs text-emerald-100">
@@ -150,7 +150,7 @@ export default function ImportAllResultsModal({
           </div>
           <button
             onClick={onClose}
-            className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors font-bold"
+            className="text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-none transition-colors font-bold cursor-pointer"
           >
             ✕
           </button>
@@ -165,7 +165,7 @@ export default function ImportAllResultsModal({
                 <strong>Billing Settlement Pending:</strong> Patient investigations have not been settled at Billing Desk. Result saving is restricted.
               </span>
             </div>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-200 text-amber-900 uppercase">
+            <span className="text-[11px] font-bold px-2 py-0.5 rounded-none bg-amber-200 text-amber-900 uppercase">
               Restricted
             </span>
           </div>
@@ -179,7 +179,7 @@ export default function ImportAllResultsModal({
               <button
                 key={t.testId}
                 onClick={() => setActiveTab(idx)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-none text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   isSelected
                     ? "bg-emerald-700 text-white shadow-xs"
                     : "bg-white text-gray-700 hover:bg-emerald-100/60 border border-emerald-200"
@@ -225,24 +225,24 @@ export default function ImportAllResultsModal({
                 return (
                   <div
                     key={param.id}
-                    className="p-2.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-white transition-colors"
+                    className="p-2.5 rounded-none border border-gray-200 bg-gray-50 hover:bg-white transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-xs font-bold text-gray-800">
                         {param.name}
                       </label>
                       {cur.flag === "H" && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-none bg-amber-100 text-amber-800">
                           High
                         </span>
                       )}
                       {cur.flag === "L" && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-100 text-blue-800">
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-none bg-blue-100 text-blue-800">
                           Low
                         </span>
                       )}
                       {cur.flag === "Critical" && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-red-600 text-white animate-pulse">
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-none bg-red-600 text-white animate-pulse">
                           Critical
                         </span>
                       )}
@@ -253,7 +253,7 @@ export default function ImportAllResultsModal({
                         <select
                           value={cur.value}
                           onChange={(e) => handleParamChange(param.name, e.target.value)}
-                          className="flex-1 text-xs px-2.5 py-1.5 border rounded bg-white font-medium"
+                          className="flex-1 text-xs px-2.5 py-1.5 border border-gray-300 rounded-none bg-white font-medium"
                         >
                           <option value="">Select...</option>
                           {param.options?.map((opt) => (
@@ -268,7 +268,7 @@ export default function ImportAllResultsModal({
                           step="any"
                           value={cur.value}
                           onChange={(e) => handleParamChange(param.name, e.target.value)}
-                          className="flex-1 text-xs font-semibold px-2.5 py-1.5 border rounded bg-white"
+                          className="flex-1 text-xs font-semibold px-2.5 py-1.5 border border-gray-300 rounded-none bg-white"
                           placeholder="Enter value"
                         />
                       )}
@@ -287,12 +287,12 @@ export default function ImportAllResultsModal({
                 )
               })
             ) : (
-              <div className="col-span-2 p-4 bg-gray-50 rounded-lg">
+              <div className="col-span-2 p-4 bg-gray-50 rounded-none border border-gray-200">
                 <input
                   type="text"
                   value={currentTest.results[currentTest.testName]?.value || ""}
                   onChange={(e) => handleParamChange(currentTest.testName, e.target.value)}
-                  className="w-full text-xs p-2 border rounded bg-white"
+                  className="w-full text-xs p-2 border border-gray-300 rounded-none bg-white"
                 />
               </div>
             )}
@@ -311,12 +311,12 @@ export default function ImportAllResultsModal({
                 next[activeTab].clinicalComments = e.target.value
                 setTestsData(next)
               }}
-              className="w-full text-xs p-2 border rounded-lg bg-white"
+              className="w-full text-xs p-2 border border-gray-300 rounded-none bg-white"
             />
           </div>
 
           {/* Technician & Verifier Info */}
-          <div className="grid grid-cols-2 gap-4 bg-emerald-50/40 p-3 rounded-lg border border-emerald-200">
+          <div className="grid grid-cols-2 gap-4 bg-emerald-50/40 p-3 rounded-none border border-emerald-200">
             <div>
               <label className="text-xs font-semibold text-gray-600 block mb-1">
                 Technologist
@@ -325,7 +325,7 @@ export default function ImportAllResultsModal({
                 type="text"
                 value={technician}
                 onChange={(e) => setTechnician(e.target.value)}
-                className="w-full text-xs px-2.5 py-1.5 border rounded bg-white"
+                className="w-full text-xs px-2.5 py-1.5 border border-gray-300 rounded-none bg-white"
               />
             </div>
             <div>
@@ -336,7 +336,7 @@ export default function ImportAllResultsModal({
                 type="text"
                 value={verifier}
                 onChange={(e) => setVerifier(e.target.value)}
-                className="w-full text-xs px-2.5 py-1.5 border rounded bg-white"
+                className="w-full text-xs px-2.5 py-1.5 border border-gray-300 rounded-none bg-white"
               />
             </div>
           </div>
@@ -347,7 +347,7 @@ export default function ImportAllResultsModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-50 cursor-pointer"
           >
             Cancel
           </button>
@@ -361,7 +361,7 @@ export default function ImportAllResultsModal({
                   ? "Action restricted: Billing payment is pending at reception desk"
                   : "Save all test results"
               }
-              className={`px-6 py-2 text-xs font-bold rounded-lg transition-colors shadow-sm flex items-center gap-1.5 ${
+              className={`px-6 py-2 text-xs font-bold rounded-none transition-colors shadow-sm flex items-center gap-1.5 ${
                 order.billing.status === "Paid"
                   ? "text-white bg-emerald-600 hover:bg-emerald-700 cursor-pointer"
                   : "text-gray-400 bg-gray-300 border border-gray-300 cursor-not-allowed opacity-75"

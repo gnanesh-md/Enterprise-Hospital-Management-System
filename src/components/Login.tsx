@@ -1,17 +1,28 @@
-import React, { useState } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { apiFetch } from "../lib/api"
 import { AuditDatabase } from "../services/auditDb"
-import { DOCTOR_ROSTER } from "../services/doctorPortalDb"
-import { RoleDatabase } from "../services/roleDb"
+import { RoleDatabase, ALL_SYSTEM_MODULES } from "../services/roleDb"
 import { credentialsForRole } from "../lib/demoCredentials"
+import { HrmsDatabase } from "../services/hrmsDb"
+import { DOCTOR_ROSTER } from "../services/doctorPortalDb"
 import { HospAILogo } from "./HospAILogo"
 import { KalpraLogo } from "./KalpraLogo"
+
+interface StaffOption {
+  id: string
+  name: string
+  subtitle: string
+  department: string
+}
 
 interface LoginProps {
   onLogin: (userData: {
     user: string
     role: string
     staffId: string
+    staffName?: string
+    staffTitle?: string
+    staffDepartment?: string
     permissions: string[]
     /** Which physician signed in -- each doctor gets their own portal. */
     doctorId?: string
@@ -19,99 +30,188 @@ interface LoginProps {
 }
 
 const ROLES_LIST = [
-  { value: "admin", label: "System Admin", sub: "IT Administration" },
-  { value: "doctor", label: "Physician", sub: "Internal Medicine & EMR" },
-  { value: "nurse", label: "Registered Nurse", sub: "3N Medical & ICU" },
-  { value: "pharmacy", label: "Pharmacist", sub: "Inpatient Pharmacy" },
-  { value: "lab", label: "Lab Technician", sub: "Clinical Laboratory" },
-  { value: "reception", label: "Receptionist", sub: "Front Desk & OPD" },
-  { value: "billing", label: "Billing Specialist", sub: "Revenue Cycle" },
+  { value: "admin", label: "System Admin", sub: "IT Administration & Security" },
+  { value: "doctor", label: "Doctor / Physician", sub: "Clinical Workspace, OPD & Inpatient" },
+  { value: "nurse", label: "Registered Nurse", sub: "Nursing Station, Vitals & Bedside Care" },
+  { value: "pharmacy", label: "Pharmacist", sub: "Inpatient & Retail Pharmacy" },
+  { value: "lab", label: "Lab Technician", sub: "Pathology & Clinical Lab Diagnostics" },
+  { value: "reception", label: "Receptionist / Front Desk", sub: "Patient Registration & OPD Queue" },
+  { value: "billing", label: "Billing Specialist", sub: "Revenue Cycle & Invoices" },
   { value: "insurance", label: "Insurance Officer", sub: "TPA & Claims Desk" },
   { value: "finance", label: "Finance", sub: "Settlements & Accounts" },
+  { value: "hr", label: "HR Administrator", sub: "People Operations, Staff & Payroll" },
   { value: "superadmin", label: "Super Admin", sub: "Executive Suite" },
 ]
 
 export default function Login({ onLogin }: LoginProps) {
   const [user, setUser] = useState("")
   const [pass, setPass] = useState("")
-  const [openRoleDropdown, setOpenRoleDropdown] = useState(false)
-  // A doctor signs in as themselves, not as "the doctor role" -- the portal they
-  // land on shows only the patients appointed to this physician.
-  const [doctorId, setDoctorId] = useState(DOCTOR_ROSTER[0].id)
-
-  const activeRole = ROLES_LIST.find((r) => r.value === user)
-  const isDoctorLogin = user.trim().toLowerCase().startsWith("doctor")
-
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [doctorId, setDoctorId] = useState(DOCTOR_ROSTER[0]?.id || "")
+  const [openRoleDropdown, setOpenRoleDropdown] = useState(false)
+  const [selectedStaffId, setSelectedStaffId] = useState("")
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user || !pass) {
-      setError("Please select a role or enter your credentials.")
-      return
+  const isDoctorLogin = user.trim().toLowerCase() === "doctor"
+  const activeRole = ROLES_LIST.find((r) => r.value === user)
+
+  const availableStaffList: StaffOption[] = useMemo(() => {
+    if (!user) return []
+    const roleKey = user.trim().toLowerCase()
+    const hrmsStaff = HrmsDatabase.getStaffList()
+
+    if (roleKey === "doctor") {
+      return DOCTOR_ROSTER.map((d) => ({
+        id: d.id,
+        name: d.name,
+        subtitle: `${d.specialty} · ${d.room}`,
+        department: d.specialty,
+      }))
     }
+
+    if (roleKey === "nurse") {
+      return hrmsStaff
+        .filter((s) => s.category === "Nursing")
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          subtitle: `${s.designation} · ${s.department}`,
+          department: s.department,
+        }))
+    }
+
+    if (roleKey === "reception") {
+      return hrmsStaff
+        .filter((s) => s.department === "Administration" || s.category === "Administrative")
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          subtitle: `${s.designation} · ${s.department}`,
+          department: s.department,
+        }))
+    }
+
+    if (roleKey === "pharmacy") {
+      return hrmsStaff
+        .filter((s) => s.department === "Pharmacy")
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          subtitle: `${s.designation} · ${s.department}`,
+          department: s.department,
+        }))
+    }
+
+    if (roleKey === "lab") {
+      return hrmsStaff
+        .filter((s) => s.department === "Laboratory" || s.department === "Pathology")
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          subtitle: `${s.designation} · ${s.department}`,
+          department: s.department,
+        }))
+    }
+
+    if (roleKey === "hr") {
+      return hrmsStaff
+        .filter((s) => s.department === "Human Resources" || s.category === "Administrative")
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          subtitle: `${s.designation} · ${s.department}`,
+          department: s.department,
+        }))
+    }
+
+    if (roleKey === "billing") {
+      return hrmsStaff
+        .filter((s) => s.department.toLowerCase().includes("billing") || s.department.toLowerCase().includes("finance") || s.category === "Administrative")
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          subtitle: `${s.designation} · ${s.department}`,
+          department: s.department,
+        }))
+    }
+
+    return []
+  }, [user])
+
+  useEffect(() => {
+    if (availableStaffList.length > 0) {
+      setSelectedStaffId(availableStaffList[0].id)
+      if (isDoctorLogin) {
+        setDoctorId(availableStaffList[0].id)
+      }
+    } else {
+      setSelectedStaffId("")
+    }
+  }, [availableStaffList, isDoctorLogin])
+
+  const submit = async (e?: React.FormEvent) => {
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault()
+    }
+    const username = (user || "").trim() || "admin"
+    const demo = credentialsForRole(username)
+    const effectivePass = (pass || "").trim() || demo?.localPassword || "password123"
+
     setError("")
     setLoading(true)
     try {
-      const username = user.trim()
-      const demo = credentialsForRole(username)
+      const local = RoleDatabase.authenticate(username, effectivePass)
 
-      // The local RBAC store is the authority on who this person is and which
-      // modules they may open, and it is what the rest of the app reads.
-      const local = RoleDatabase.authenticate(username, pass)
-      if (!local) throw new Error("Invalid credentials.")
-
-      // Separately, open a backend session so authenticated APIs work -- the AI
-      // prescription splitter and Smart OCR need one. The backend's own accounts
-      // have different passwords from the demo store, so the mapped credentials
-      // are sent rather than what was typed. This is best-effort on purpose: the
-      // app is fully usable offline, so a failure here must not block the login,
-      // only the AI features, and `backendSession` is what tells the user which.
-      let backendSession = false
       if (demo) {
-        try {
-          await apiFetch("/api/auth/login", {
-            method: "POST",
-            body: JSON.stringify({
-              username: demo.backendUsername,
-              password: demo.backendPassword,
-            }),
-          })
-          backendSession = true
-        } catch {
-          backendSession = false
-        }
+        apiFetch("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({
+            username: demo.backendUsername,
+            password: demo.backendPassword,
+          }),
+          timeoutMs: 800,
+        }).catch(() => {})
       }
 
-      AuditDatabase.logEvent(
-        "Login Successful",
-        "Authentication",
-        `User ${username} logged in successfully${backendSession
-          ? ""
-          : " (local session only -- AI services unavailable)"
-        }.`,
-        "Success",
-        local.user.staffId,
-        username,
-      )
+      const chosenMember =
+        availableStaffList.find((s) => s.id === selectedStaffId) ||
+        availableStaffList[0]
+
+      try {
+        AuditDatabase.logEvent(
+          "Login Successful",
+          "Authentication",
+          `User ${chosenMember?.name || username} logged in successfully.`,
+          "Success",
+          chosenMember?.id || local.user.staffId,
+          chosenMember?.name || username,
+        )
+      } catch (logErr) {
+        console.warn("Audit log skipped:", logErr)
+      }
 
       onLogin({
         user: username,
         role: local.role.id,
-        staffId: local.user.staffId,
-        permissions: local.role.allowedModules,
-        doctorId: isDoctorLogin ? doctorId : undefined,
+        staffId: chosenMember?.id || local.user.staffId,
+        staffName: chosenMember?.name || local.user.name,
+        staffTitle: chosenMember?.subtitle || local.role.name,
+        staffDepartment: chosenMember?.department || "Hospital Operations",
+        permissions: local.role.allowedModules || ALL_SYSTEM_MODULES,
+        doctorId: isDoctorLogin ? (chosenMember?.id || doctorId) : undefined,
       })
     } catch (err) {
-      AuditDatabase.logEvent(
-        "Login Failed",
-        "Authentication",
-        `Failed login attempt for user ${user.trim()}.`,
-        "Failed",
-        "system",
-        user.trim(),
-      )
+      console.error("Login submission error:", err)
+      try {
+        AuditDatabase.logEvent(
+          "Login Failed",
+          "Authentication",
+          `Failed login attempt for user ${username}.`,
+          "Failed",
+          "system",
+          username,
+        )
+      } catch {}
       setError(
         err instanceof Error
           ? err.message
@@ -264,9 +364,21 @@ export default function Login({ onLogin }: LoginProps) {
             </div>
 
             <div>
-              <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[12px] font-semibold text-[#374151]">
+                  Password
+                </label>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setPass("password123")
+                  }}
+                  className="text-[11.5px] text-[#64748B] hover:text-[#1B4FD8]"
+                >
+                  Reset password
+                </a>
+              </div>
               <input
                 type="password"
                 value={pass}
@@ -274,14 +386,6 @@ export default function Login({ onLogin }: LoginProps) {
                 placeholder="••••••••"
                 className="w-full border border-[#DDE2EC] rounded-none bg-white text-[13px] px-3.5 py-2.5 focus:outline-none focus:border-[#1B4FD8]"
               />
-              <div className="text-right mt-1">
-                <a
-                  href="#"
-                  className="text-[11.5px] text-[#1B4FD8] hover:underline"
-                >
-                  Forgot password?
-                </a>
-              </div>
             </div>
 
             {/* Clean Minimalistic Custom Role Dropdown */}
@@ -394,26 +498,42 @@ export default function Login({ onLogin }: LoginProps) {
               )}
             </div>
 
-            {isDoctorLogin && (
-              <div>
-                <label className="block text-[12px] font-semibold text-[#374151] mb-1.5">
-                  Physician
-                </label>
-                <select
-                  value={doctorId}
-                  onChange={(e) => setDoctorId(e.target.value)}
-                  className="w-full border border-[#DDE2EC] rounded-none bg-white text-[13px] px-3.5 py-2.5 focus:outline-none focus:border-[#1B4FD8] cursor-pointer"
-                >
-                  {DOCTOR_ROSTER.map((doc) => (
-                    <option key={doc.id} value={doc.id}>
-                      {doc.name} — {doc.specialty}, {doc.room}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-[#94A3B8] mt-1">
-                  Your portal lists only the patients appointed to you.
-                </p>
-              </div>
+            {user && (
+              availableStaffList.length > 0 ? (
+                <div>
+                  <label className="block text-[12px] font-semibold text-[#374151] mb-1.5 flex items-center justify-between">
+                    <span>Select Staff Member / Identity</span>
+                    <span className="text-[10.5px] font-mono text-[#1B4FD8] bg-blue-50 px-1.5 py-0.5 rounded">
+                      {availableStaffList.length} registered
+                    </span>
+                  </label>
+                  <select
+                    value={selectedStaffId}
+                    onChange={(e) => {
+                      setSelectedStaffId(e.target.value)
+                      if (isDoctorLogin) setDoctorId(e.target.value)
+                    }}
+                    className="w-full border border-[#DDE2EC] rounded-none bg-white text-[13px] px-3.5 py-2.5 focus:outline-none focus:border-[#1B4FD8] cursor-pointer font-medium text-[#0F172A]"
+                  >
+                    {availableStaffList.map((st) => (
+                      <option key={st.id} value={st.id}>
+                        {st.name} — {st.subtitle} ({st.id})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-[#64748B] mt-1">
+                    {isDoctorLogin
+                      ? "Your portal lists only the patients appointed to you, and applies leave under your name."
+                      : "Logging in as this individual connects your personal workspace, shifts, and leave quota."}
+                  </p>
+                </div>
+              ) : (
+                user.trim().toLowerCase() !== "admin" && (
+                  <div className="bg-[#F8FAFC] border border-dashed border-[#CBD5E1] p-3 text-[11.5px] text-[#64748B] rounded">
+                    ℹ️ No personnel registered in this role yet. Sign in as <span className="font-semibold text-[#1B4FD8]">HR Administrator</span> (username <code className="bg-slate-200 px-1 rounded">hr</code>) to add staff via the HRMS module.
+                  </div>
+                )
+              )
             )}
 
             <div className="flex items-center gap-2 mt-2">

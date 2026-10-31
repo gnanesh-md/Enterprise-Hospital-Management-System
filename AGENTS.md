@@ -266,6 +266,77 @@ Both stores are localStorage-backed with `BroadcastChannel` fan-out, like the re
 `hospai_rbac_roles_v3` (bumped from v2) is what grants the new `doctor_portal` and `lab_billing`
 modules to existing browsers.
 
+**Who sees what.** A physician (`activeDoctor`) gets their own portal. Any other role with
+`doctor_portal` (admin, superadmin) gets **Doctors**
+([src/components/doctor/DoctorsOverview.tsx](src/components/doctor/DoctorsOverview.tsx)): every doctor's
+patients with a visit track, consultations, lab orders, prescriptions and an activity timeline, plus
+the **Unclaimed patients** queue where a doctor can be assigned. "Open workspace" shows that
+doctor's own portal under an amber "viewing as administrator" bar. It used to drop the admin into
+whichever doctor `resolveDoctorAccount` fell back to. The data comes from
+[src/services/doctorOversight.ts](src/services/doctorOversight.ts), derived on every read like the live
+board; records match a doctor by account id, else by name, and a name with no account
+("Dr. Vance") is listed as an unlinked doctor rather than dropped.
+
+**Signing in.** The login's Doctor role lists `DOCTOR_ROSTER` (ids `IMP-…`), because the pick is
+passed to `resolveDoctorAccount` as `doctorId`. It used to list HRMS staff: empty whenever HRMS had
+no doctors, and their ids never matched, so every doctor signed in as the same fallback physician.
+Each doctor can also sign in with their own `username` from `doctorMaster.ts` (password `password123`).
+
+**Inbox.** Tabs *My queue / Unclaimed / Finished* with search. Unclaimed patients (registered
+without a doctor, same specialty) were fetched but never rendered; *Take patient* claims them
+without a blocking `alert()`. Arrival times go through
+[src/services/encounterTime.ts](src/services/encounterTime.ts): reception writes bare clock times
+("10:30 AM", meaning today) and dated strings ("12-Jan-2026 09:15 AM"), and `new Date("10:30 AM")` is
+Invalid Date -- every wait timer read "--" and newest-first sorting was arbitrary.
+
+## Clinical Summaries → discharge summary
+
+**Hosp AI → Clinical Summaries** opens on *Discharge summary*: search a patient (name / UMR / phone),
+pick a stay, get the complete summary; the old PDF summarizer is the second tab
+([src/components/clinicalSummaries/](src/components/clinicalSummaries/)).
+
+[src/services/dischargeSummaryCompiler.ts](src/services/dischargeSummaryCompiler.ts) has two layers, kept apart:
+
+- **Record** (`compileDischargeSummary`): copies only what desks recorded -- bed discharges, ICU
+  discharges, current beds, ER visits, OP encounters, doctor-portal consultations, prescriptions, lab
+  orders, OT booklets, and the backend EMR. A missing field is `null` and the page says "Not recorded".
+  Do **not** reuse `GlobalSearchService.getPatientActivityProfile` here: it fills gaps with invented
+  values (age 38, O+, a placeholder phone).
+- **Narrative** (`generateDischargeNarrative`): one Qwen call per patient / stay, at temperature 0,
+  writes the hospital course, advice, follow-up and warning signs from a pruned fact sheet. It also lists
+  diagnoses and discharge medicines *stated in the notes*, which the page shows only when none are
+  coded or prescribed, tagged "confirm". If vLLM is down it falls back to `recordBasedNarrative`.
+
+The stores share no patient key, so records join by any shared id and, failing that, by full name
+(never across conflicting ages); a name-only link puts a "verify identity" warning on the summary.
+Stays are windowed by date (admission − 3 days → discharge + 1 day), because clinical rows carry no
+admission id. The backend EMR is read with a raw `fetch`, never `apiFetch`, whose offline mock
+invents demographics. Print uses `.printable-area`; PDF and Send use
+`buildCompiledDischargeSummaryDocument` in [src/lib/patientDocuments.ts](src/lib/patientDocuments.ts).
+
+**Review before signing** ([useDischargeReview.ts](src/components/clinicalSummaries/useDischargeReview.ts)):
+only the AI-written narrative is editable (hospital course, advice, follow-up, warning signs,
+condition); recorded facts are corrected at the desk that recorded them. Edits, the checklist and
+the "reviewed by" stamp live per patient + stay + scope in localStorage
+(`hospai_discharge_review_v1:*`, not yet saved to the chart), and any edit after sign-off reopens the
+review. Print, PDF, copy and Send all go through `withEdits()`, and the PDF says "not yet reviewed"
+until someone has. The page is `PatientSearchPanel` + `ReviewPanel` + `SummaryDocument`, wired by
+`PatientDischargeSummary`; children of its scroll column are `shrink-0`, because a flex column
+otherwise squashes the document instead of scrolling it.
+
+## Document branding
+
+Printed clinical documents carry one identity from [src/lib/branding.ts](src/lib/branding.ts): the
+hospital's own logo and name on the left, HospAI on the right, "Powered by Kalpra Tech" at the foot.
+Screen/print use `DocumentBrandHeader` / `PoweredByKalpra`
+([src/components/branding/DocumentBranding.tsx](src/components/branding/DocumentBranding.tsx)) -- the
+discharge summary and the OP clinical journey print sheet (`PatientJourneyModal.tsx`); every patient
+PDF gets the same header and footer in `buildPatientPdf`. The hospital logo is uploaded under
+**Patient Messages → Templates & routing** (scaled to 600 × 240, stored in
+`hospai_hospital_logo_v1`); until then the hospital's initials stand in. Use the cropped marks in
+`src/assets/brandMarks.ts`, not `HOSPAI_LOGO_BASE64` on paper: that logo sets "Hosp" in white for the
+dark sidebar and vanishes on a white page. `public/*.png` are Git LFS pointers, not images.
+
 ## Insurance department
 
 One insurance engine shared by OP / IP / ER / OT / ICU —

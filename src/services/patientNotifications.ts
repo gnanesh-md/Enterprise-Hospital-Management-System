@@ -1,45 +1,78 @@
-import { DBOPEncounter } from "./db"
-
 /**
- * Messages addressed to the patient's own phone, plus the matching alert for
- * the OP department floor.
+ * The outbox: every message addressed to a patient's phone, plus the matching
+ * alerts for the OP department floor.
  *
- * ## This does not send anything
+ * This file only *stores* messages. Composing and sending them is
+ * `patientMessaging.ts`, which hands each one to the backend's
+ * `/api/messaging/send` (Twilio SMS / WhatsApp) and writes the outcome back
+ * here.
  *
- * There is no SMS gateway wired into this app. Every message is written to an
- * **outbox** with status `queued`, which is exactly what it is: a record of what
- * should go out, waiting for a provider to be connected. Nothing here may claim
- * a message was delivered, because nothing here can know that -- telling a
- * receptionist "the patient has been notified" when no SMS left the building is
- * how a patient ends up sitting in a waiting room nobody called.
+ * ## A status means what it says
  *
- * When a gateway is added, `dispatchQueued()` is the seam: hand it a sender and
- * it walks the outbox, marking each entry `sent` or `failed` with the reason.
+ * - `queued`  -- not sent yet: the messaging service was unreachable, or is not
+ *                set up. `error` says which. Retried from Patient Messages.
+ * - `sent`    -- accepted by the provider. Not the same as delivered.
+ * - `delivered` / `read` -- the provider's delivery receipt said so.
+ * - `failed`  -- the provider refused it; `error`/`hint` say why. Retrying an
+ *                invalid number does not make it valid, so these are not
+ *                retried automatically.
+ * - `manual`  -- handed to the desk's own WhatsApp or SMS app. We know the app
+ *                was opened, not that the message went.
+ *
+ * Nothing here may claim a message was delivered without the provider saying
+ * so -- telling a receptionist "the patient has been notified" when no SMS left
+ * the building is how a patient ends up sitting in a waiting room nobody called.
  */
 
-export type NotificationChannel = "sms" | "op-floor"
-export type NotificationStatus = "queued" | "sent" | "failed"
+export type NotificationChannel = "sms" | "whatsapp" | "email" | "op-floor"
+export type MessageChannel = Exclude<NotificationChannel, "op-floor">
+export type NotificationStatus =
+  | "queued"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed"
+  | "manual"
 
 export interface PatientNotification {
   id: string
+  /** OP encounter it belongs to, or "" for a message not tied to one. */
   encounterId: string
   umr: string
   patientName: string
-  /** The patient's number for `sms`; empty for an on-screen floor alert. */
+  /** The patient's number; empty for an on-screen floor alert. */
   phone: string
+  email?: string
   channel: NotificationChannel
-  /** What the patient (or the floor) is being told. */
+  /** What triggered it -- a `MessageKind` from patientMessaging.ts. */
+  kind?: string
+  /** What the patient (or the floor) is being told. `{link}` marks where the
+   *  document link goes once the server has one. */
   message: string
   status: NotificationStatus
-  /** Why a dispatch failed, once a gateway exists to fail. */
+  /** Why it is still queued, or why it failed. */
   error?: string
+  /** What the desk can do about `error`, when the server knows. */
+  hint?: string
+  documentTitle?: string
+  /** Whether the document actually went with it (attached / linked). */
+  documentAttached?: boolean
+  /** The PDF, kept only while the message is queued so a retry can resend it.
+   *  Dropped once sent -- the outbox is not a document store. */
+  documentBase64?: string
+  documentFilename?: string
+  /** `patient_messages.id` on the server, for matching delivery receipts. */
+  serverId?: number
+  providerSid?: string
   createdAt: string
+  updatedAt?: string
   /** Read state for the OP floor alerts. */
   read?: boolean
 }
 
 const OUTBOX_KEY = "hospai_patient_notifications_v1"
 const CHANNEL = "hospai_patient_notifications"
+const MAX_ENTRIES = 300
 
 const listeners = new Set<() => void>()
 let channel: BroadcastChannel | null = null
@@ -63,7 +96,7 @@ function read(): PatientNotification[] {
   if (typeof window === "undefined") return []
   try {
     const raw = window.localStorage.getItem(OUTBOX_KEY)
-    return raw ? JSON.parse(raw) as PatientNotification[] : []
+    return raw ? (JSON.parse(raw) as PatientNotification[]) : []
   } catch {
     return []
   }
@@ -73,9 +106,25 @@ function write(all: PatientNotification[]) {
   try {
     window.localStorage.setItem(OUTBOX_KEY, JSON.stringify(all))
   } catch {
-    // A full quota must not break the clinical action that triggered the
-    // message -- the patient still gets called, the record just is not kept.
-    return
+    // Over quota: the queued PDFs are the only large thing in here, so drop
+    // them rather than the record of what was sent. A message whose PDF was
+    // dropped can still be resent from the screen it came from.
+    try {
+      const slim = all.map((n) =>
+        n.documentBase64
+          ? {
+              ...n,
+              documentBase64: undefined,
+              error: `${n.error || "Not sent"} -- the PDF could not be kept for a retry; resend it from the original screen.`,
+            }
+          : n,
+      )
+      window.localStorage.setItem(OUTBOX_KEY, JSON.stringify(slim))
+    } catch {
+      // A full quota must not break the clinical action that triggered the
+      // message -- the patient still gets called, the record just is not kept.
+      return
+    }
   }
   listeners.forEach((fn) => fn())
   ensureCrossTab()
@@ -92,8 +141,14 @@ export function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
+/** Every entry, newest first. */
 export function getOutbox(): PatientNotification[] {
   return read()
+}
+
+/** Messages to patients' phones (not floor alerts), newest first. */
+export function getPatientMessages(): PatientNotification[] {
+  return read().filter((n) => n.channel !== "op-floor")
 }
 
 /** Undelivered floor alerts, newest first. */
@@ -109,106 +164,47 @@ export function markFloorAlertsRead(ids: string[]) {
   write(read().map((n) => (set.has(n.id) ? { ...n, read: true } : n)))
 }
 
-function push(entry: Omit<PatientNotification, "id" | "createdAt" | "status">) {
+/** Adds an entry and returns its id. */
+export function pushNotification(
+  entry: Omit<PatientNotification, "id" | "createdAt" | "status"> & {
+    status?: NotificationStatus
+  },
+): string {
+  const id = `MSG-${Date.now()}-${Math.random().toString(36).slice(-4)}`
   const all = read()
   all.unshift({
     ...entry,
-    id: `MSG-${Date.now()}-${Math.random().toString(36).slice(-4)}`,
-    status: "queued",
+    id,
+    status: entry.status || "queued",
     createdAt: new Date().toISOString(),
   })
   // Keep the outbox from growing without bound on a long-running desk.
-  write(all.slice(0, 300))
+  write(all.slice(0, MAX_ENTRIES))
+  return id
 }
 
-/**
- * The doctor has called this patient into the room.
- *
- * Raises two things at once: a message for the patient's phone, and an alert for
- * the OP floor so the sister knows to walk them through.
- */
-export function notifyPatientCalled(
-  encounter: DBOPEncounter,
-  doctorName: string,
+/** Applies several patches in one write (one storage event, one re-render). */
+export function updateNotifications(
+  patches: { id: string ;patch: Partial<PatientNotification> }[],
 ) {
-  const room = encounter.room || "the consulting room"
-  const token = encounter.queueToken ? ` (token ${encounter.queueToken})` : ""
-
-  push({
-    encounterId: encounter.id,
-    umr: encounter.umr,
-    patientName: encounter.patientName,
-    phone: encounter.phone || "",
-    channel: "sms",
-    message:
-      `${encounter.patientName}${token}: ${doctorName} is ready for you now. ` +
-      `Please proceed to ${room}. — Imperial Hospitals`,
-  })
-
-  push({
-    encounterId: encounter.id,
-    umr: encounter.umr,
-    patientName: encounter.patientName,
-    phone: "",
-    channel: "op-floor",
-    message: `${doctorName} has called ${encounter.patientName} into ${room}${token}.`,
-    read: false,
-  })
+  if (!patches.length) return
+  const byId = new Map(patches.map((p) => [p.id, p.patch]))
+  const now = new Date().toISOString()
+  write(
+    read().map((n) => {
+      const patch = byId.get(n.id)
+      if (!patch) return n
+      const next = { ...n, ...patch, updatedAt: now }
+      // The PDF is only kept while there is still a send to retry.
+      if (next.status !== "queued") delete next.documentBase64
+      return next
+    }),
+  )
 }
 
-/**
- * The OP desk has called this patient through to the nurse station.
- *
- * Only the patient is messaged here -- the nurse already sees them on her
- * waiting list, so a floor alert would be telling her something she is looking at.
- */
-export function notifyPatientCalledToNurse(encounter: DBOPEncounter) {
-  const token = encounter.queueToken ? ` (token ${encounter.queueToken})` : ""
-  push({
-    encounterId: encounter.id,
-    umr: encounter.umr,
-    patientName: encounter.patientName,
-    phone: encounter.phone || "",
-    channel: "sms",
-    message:
-      `${encounter.patientName}${token}: please come to the OP nurse station now for your ` +
-      `blood pressure and weight before seeing the doctor. — Imperial Hospitals`,
-  })
-}
-
-/**
- * Hand the queued messages to a real sender once one exists.
- *
- * Deliberately not called anywhere yet: with no gateway configured there is
- * nothing to hand them to, and marking them `sent` without a send would make the
- * outbox lie.
- */
-export async function dispatchQueued(
-  send: (n: PatientNotification) => Promise<void>,
-): Promise<{ sent: number ;failed: number }> {
-  const all = read()
-  let sent = 0
-  let failed = 0
-
-  for (const n of all) {
-    if (n.status !== "queued" || n.channel !== "sms") continue
-    if (!n.phone.trim()) {
-      n.status = "failed"
-      n.error = "No phone number on the patient record"
-      failed++
-      continue
-    }
-    try {
-      await send(n)
-      n.status = "sent"
-      sent++
-    } catch (e) {
-      n.status = "failed"
-      n.error = e instanceof Error ? e.message : "Send failed"
-      failed++
-    }
-  }
-
-  write(all)
-  return { sent, failed }
+export function updateNotification(
+  id: string,
+  patch: Partial<PatientNotification>,
+) {
+  updateNotifications([{ id, patch }])
 }

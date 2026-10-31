@@ -65,6 +65,8 @@ export interface LabOrderTest {
   technician?: string
   verifier?: string
   verifiedAt?: string
+  processingStartedAt?: string
+  processingCompletedAt?: string
 }
 
 export interface LabOrderEvent {
@@ -91,6 +93,8 @@ export interface LabOrder {
   clinicalNotes?: string
   tests: LabOrderTest[]
   status: LabOrderStatus
+  processingStartedAt?: string
+  processingCompletedAt?: string
   createdAt: string
   updatedAt: string
   billing: {
@@ -112,39 +116,39 @@ export interface LabOrder {
  * Falls back to lab catalogue schema price, then DEFAULT_TEST_PRICE.
  */
 const PRICE_BOOK: { match: string; price: number }[] = [
-  { match: "complete blood count", price: 350 },
-  { match: "cbc", price: 350 },
-  { match: "esr", price: 200 },
-  { match: "crp", price: 650 },
-  { match: "lipid", price: 850 },
-  { match: "liver function", price: 900 },
-  { match: "lft", price: 900 },
-  { match: "renal function", price: 850 },
-  { match: "kft", price: 850 },
-  { match: "rft", price: 850 },
-  { match: "creatinine", price: 250 },
-  { match: "urea", price: 250 },
-  { match: "electrolyte", price: 600 },
-  { match: "troponin", price: 1800 },
-  { match: "d-dimer", price: 1600 },
-  { match: "bnp", price: 2400 },
-  { match: "hba1c", price: 700 },
-  { match: "blood sugar", price: 150 },
-  { match: "glucose", price: 150 },
-  { match: "thyroid", price: 750 },
-  { match: "tsh", price: 450 },
-  { match: "vitamin", price: 1500 },
-  { match: "ferritin", price: 900 },
-  { match: "urine", price: 250 },
-  { match: "stool", price: 300 },
-  { match: "culture", price: 1200 },
-  { match: "biopsy", price: 3500 },
-  { match: "blood group", price: 200 },
+  { match: "complete blood count", price: 740 },
+  { match: "cbc", price: 740 },
+  { match: "esr", price: 140 },
+  { match: "crp", price: 570 },
+  { match: "lipid", price: 1250 },
+  { match: "liver function", price: 1320 },
+  { match: "lft", price: 1320 },
+  { match: "renal function", price: 660 },
+  { match: "kft", price: 660 },
+  { match: "rft", price: 660 },
+  { match: "creatinine", price: 260 },
+  { match: "urea", price: 260 },
+  { match: "electrolyte", price: 1050 },
+  { match: "troponin", price: 1000 },
+  { match: "d-dimer", price: 2800 },
+  { match: "bnp", price: 3450 },
+  { match: "hba1c", price: 1120 },
+  { match: "blood sugar", price: 80 },
+  { match: "glucose", price: 80 },
+  { match: "thyroid", price: 1320 },
+  { match: "tsh", price: 500 },
+  { match: "vitamin", price: 2640 },
+  { match: "ferritin", price: 1300 },
+  { match: "urine", price: 300 },
+  { match: "stool", price: 250 },
+  { match: "culture", price: 660 },
+  { match: "biopsy", price: 1650 },
+  { match: "blood group", price: 170 },
   { match: "serology", price: 800 },
-  { match: "dengue", price: 1100 },
-  { match: "malaria", price: 450 },
-  { match: "hiv", price: 900 },
-  { match: "hbsag", price: 700 },
+  { match: "dengue", price: 1490 },
+  { match: "malaria", price: 300 },
+  { match: "hiv", price: 830 },
+  { match: "hbsag", price: 660 },
   { match: "x-ray", price: 450 },
   { match: "xray", price: 450 },
   { match: "ultrasound", price: 1400 },
@@ -514,6 +518,186 @@ function getInitialDemoOrders(): LabOrder[] {
         { at: d1, actor: "STAT Phlebotomy", action: "Sample Collected", detail: "STAT specimen tubes received" },
       ],
     },
+    {
+      id: "LAB-2026-0088",
+      encounterId: "ENC-10088-1",
+      umr: "UMR10088",
+      patientName: "Appanna Chinnapati",
+      age: 54,
+      sex: "Male",
+      phone: "9848022338",
+      opNumber: "OP10088",
+      doctorId: "DOC-004",
+      doctorName: "Dr. Vikram Seth",
+      department: "Emergency Medicine / Trauma",
+      diagnosis:
+        "Blunt Abdominal Trauma, Grade IV Splenic Rupture with Hemoperitoneum in Hemorrhagic Shock",
+      clinicalNotes:
+        "STAT trauma emergency panel, massive transfusion protocol, serial ABG and coagulation profile",
+      status: "Completed",
+      createdAt: "2026-10-04T02:35:00.000Z",
+      updatedAt: "2026-10-04T02:50:00.000Z",
+      billing: {
+        status: "Paid",
+        invoiceNo: "INV-2026-0088",
+        subtotal: 4500,
+        discount: 0,
+        total: 4500,
+        mode: "Insurance",
+        receiptNo: "RCPT-2026-8801",
+        paidAt: "2026-10-04T02:35:00.000Z",
+        collectedBy: "ER Billing Desk",
+      },
+      tests: [
+        {
+          id: "LT-1",
+          name: "Complete Blood Count (CBC)",
+          category: "HEMATOLOGY",
+          urgency: "STAT",
+          price: 740,
+          status: "Completed",
+          resultedAt: "2026-10-04T02:45:00.000Z",
+          results: {
+            "Hemoglobin (Hb)": { value: "6.6", unit: "g/dL", referenceRange: "13.0 - 17.0", flag: "L" },
+            "Total Leukocyte Count (TLC)": { value: "19200", unit: "/cumm", referenceRange: "4000 - 11000", flag: "H" },
+            "Platelets": { value: "82000", unit: "/cumm", referenceRange: "150000 - 450000", flag: "L" },
+            "Hematocrit (PCV)": { value: "20.4", unit: "%", referenceRange: "40.0 - 50.0", flag: "L" },
+          },
+        },
+        {
+          id: "LT-2",
+          name: "Arterial Blood Gas (ABG)",
+          category: "BIOCHEMISTRY",
+          urgency: "STAT",
+          price: 1200,
+          status: "Completed",
+          resultedAt: "2026-10-04T02:40:00.000Z",
+          results: {
+            "pH": { value: "7.22", referenceRange: "7.35 - 7.45", flag: "L" },
+            "Lactate": { value: "5.4", unit: "mmol/L", referenceRange: "0.5 - 2.0", flag: "Critical" },
+            "Base Excess": { value: "-9.2", unit: "mmol/L", referenceRange: "-2 to +2", flag: "L" },
+            "pCO2": { value: "48", unit: "mmHg", referenceRange: "35 - 45", flag: "H" },
+            "pO2": { value: "72", unit: "mmHg", referenceRange: "80 - 100", flag: "L" },
+            "HCO3": { value: "15.0", unit: "mmol/L", referenceRange: "22 - 26", flag: "L" },
+          },
+        },
+        {
+          id: "LT-3",
+          name: "Coagulation Profile (PT/INR)",
+          category: "HEMATOLOGY",
+          urgency: "STAT",
+          price: 900,
+          status: "Completed",
+          resultedAt: "2026-10-04T02:45:00.000Z",
+          results: {
+            "Prothrombin Time (PT)": { value: "22.4", unit: "sec", referenceRange: "11.0 - 14.0", flag: "H" },
+            "INR": { value: "1.85", referenceRange: "0.8 - 1.2", flag: "H" },
+            "aPTT": { value: "44.0", unit: "sec", referenceRange: "25 - 35", flag: "H" },
+          },
+        },
+        {
+          id: "LT-4",
+          name: "Renal Function Test (RFT)",
+          category: "BIOCHEMISTRY",
+          urgency: "STAT",
+          price: 660,
+          status: "Completed",
+          resultedAt: "2026-10-04T02:48:00.000Z",
+          results: {
+            "Serum Creatinine": { value: "1.8", unit: "mg/dL", referenceRange: "0.7 - 1.3", flag: "H" },
+            "Blood Urea": { value: "58", unit: "mg/dL", referenceRange: "15 - 40", flag: "H" },
+            "Serum Sodium (Na+)": { value: "135", unit: "mEq/L", referenceRange: "135 - 145", flag: "" },
+            "Serum Potassium (K+)": { value: "4.8", unit: "mEq/L", referenceRange: "3.5 - 5.0", flag: "" },
+          },
+        },
+      ],
+      history: [
+        { at: "2026-10-04T02:35:00.000Z", actor: "Dr. Vikram Seth", action: "Ordered", detail: "STAT Trauma Panel & ABG" },
+        { at: "2026-10-04T02:35:00.000Z", actor: "ER Billing Desk", action: "Payment collected", detail: "₹4,500 via Insurance" },
+        { at: "2026-10-04T02:40:00.000Z", actor: "Central Lab", action: "Sample Collected", detail: "Arterial and venous blood samples collected STAT" },
+        { at: "2026-10-04T02:50:00.000Z", actor: "Lab Biochemist", action: "Completed", detail: "Critical values telephoned to ER Trauma Bay 1" },
+      ],
+    },
+    {
+      id: "LAB-2026-0089",
+      encounterId: "ENC-10088-1",
+      umr: "UMR10088",
+      patientName: "Appanna Chinnapati",
+      age: 54,
+      sex: "Male",
+      phone: "9848022338",
+      opNumber: "OP10088",
+      doctorId: "DOC-VANCE",
+      doctorName: "Dr. Vance",
+      department: "Surgical ICU / General Surgery",
+      diagnosis:
+        "Post-op Day 10 Exploratory Laparotomy & Splenectomy, Weaned from ICU — Pre-discharge Evaluation",
+      clinicalNotes: "Recovery check prior to step-down to ward and home discharge",
+      status: "Completed",
+      createdAt: "2026-10-14T07:00:00.000Z",
+      updatedAt: "2026-10-14T08:30:00.000Z",
+      billing: {
+        status: "Paid",
+        invoiceNo: "INV-2026-0089",
+        subtotal: 2600,
+        discount: 0,
+        total: 2600,
+        mode: "Card",
+        receiptNo: "RCPT-2026-8822",
+        paidAt: "2026-10-14T07:00:00.000Z",
+        collectedBy: "ICU Billing",
+      },
+      tests: [
+        {
+          id: "LT-1",
+          name: "Complete Blood Count (CBC)",
+          category: "HEMATOLOGY",
+          urgency: "Routine",
+          price: 740,
+          status: "Completed",
+          resultedAt: "2026-10-14T08:15:00.000Z",
+          results: {
+            "Hemoglobin (Hb)": { value: "11.2", unit: "g/dL", referenceRange: "13.0 - 17.0", flag: "" },
+            "Total Leukocyte Count (TLC)": { value: "8600", unit: "/cumm", referenceRange: "4000 - 11000", flag: "" },
+            "Platelets": { value: "220000", unit: "/cumm", referenceRange: "150000 - 450000", flag: "" },
+          },
+        },
+        {
+          id: "LT-2",
+          name: "Arterial Blood Gas (ABG)",
+          category: "BIOCHEMISTRY",
+          urgency: "Routine",
+          price: 1200,
+          status: "Completed",
+          resultedAt: "2026-10-14T08:10:00.000Z",
+          results: {
+            "pH": { value: "7.41", referenceRange: "7.35 - 7.45", flag: "" },
+            "Lactate": { value: "1.1", unit: "mmol/L", referenceRange: "0.5 - 2.0", flag: "" },
+            "Base Excess": { value: "+0.4", unit: "mmol/L", referenceRange: "-2 to +2", flag: "" },
+            "pCO2": { value: "39", unit: "mmHg", referenceRange: "35 - 45", flag: "" },
+            "pO2": { value: "96", unit: "mmHg", referenceRange: "80 - 100", flag: "" },
+          },
+        },
+        {
+          id: "LT-3",
+          name: "Renal Function Test (RFT)",
+          category: "BIOCHEMISTRY",
+          urgency: "Routine",
+          price: 660,
+          status: "Completed",
+          resultedAt: "2026-10-14T08:20:00.000Z",
+          results: {
+            "Serum Creatinine": { value: "0.9", unit: "mg/dL", referenceRange: "0.7 - 1.3", flag: "" },
+            "Blood Urea": { value: "28", unit: "mg/dL", referenceRange: "15 - 40", flag: "" },
+          },
+        },
+      ],
+      history: [
+        { at: "2026-10-14T07:00:00.000Z", actor: "Dr. Vance", action: "Ordered", detail: "Pre-discharge ICU Resolution Panel" },
+        { at: "2026-10-14T07:00:00.000Z", actor: "ICU Billing", action: "Payment collected", detail: "₹2,600 via Card" },
+        { at: "2026-10-14T08:30:00.000Z", actor: "Central Lab", action: "Completed", detail: "All values normalized" },
+      ],
+    },
   ]
 }
 
@@ -533,8 +717,14 @@ function readOrders(): LabOrder[] {
       return initial.map(normalizeOrder)
     }
 
-    // Auto-sanitize legacy cached demo results (e.g. Troponin 0.01, CBC 14.2, etc.)
     let mutated = false
+    const initial = getInitialDemoOrders()
+    const currentIds = new Set(parsed.map((o) => o.id))
+    const missing = initial.filter((o) => !currentIds.has(o.id))
+    if (missing.length > 0) {
+      parsed.push(...missing)
+      mutated = true
+    }
     const sanitized = parsed.map((order) => {
       let orderMutated = false
       let tests = order.tests.map((t) => {
@@ -966,25 +1156,40 @@ export class LabOrderDatabase {
     status: LabOrderStatus,
     actor: string,
   ): LabOrder | undefined {
-    return this.mutate(id, (order) => ({
-      ...order,
-      status,
-      tests:
-        status === "Sample Collected" || status === "In Progress"
-          ? order.tests.map((t) =>
-              t.status === "Completed" || t.status === "Verified"
-                ? t
-                : {
-                    ...t,
-                    status: (status === "In Progress" ? "Processing" : status) as LabTestStatus,
-                  },
-            )
-          : order.tests,
-      history: [
-        ...order.history,
-        { at: new Date().toISOString(), actor, action: status },
-      ],
-    }))
+    return this.mutate(id, (order) => {
+      const now = new Date().toISOString()
+      return {
+        ...order,
+        status,
+        processingStartedAt:
+          status === "In Progress"
+            ? order.processingStartedAt || now
+            : order.processingStartedAt,
+        processingCompletedAt:
+          status === "Completed"
+            ? order.processingCompletedAt || now
+            : order.processingCompletedAt,
+        tests:
+          status === "Sample Collected" || status === "In Progress"
+            ? order.tests.map((t) =>
+                t.status === "Completed" || t.status === "Verified"
+                  ? t
+                  : {
+                      ...t,
+                      status: (status === "In Progress" ? "Processing" : status) as LabTestStatus,
+                      processingStartedAt:
+                        status === "In Progress"
+                          ? t.processingStartedAt || now
+                          : t.processingStartedAt,
+                    },
+              )
+            : order.tests,
+        history: [
+          ...order.history,
+          { at: now, actor, action: status },
+        ],
+      }
+    })
   }
 
   /**
@@ -999,6 +1204,8 @@ export class LabOrderDatabase {
   ): LabOrder | undefined {
     return this.mutate(orderId, (order) => {
       const now = new Date().toISOString()
+      const isStartingProcessing = status === "Processing" || status === "In Progress"
+      const isCompleting = status === "Verified" || status === "Completed" || status === "Result Entered"
       const tests = order.tests.map((t) => {
         if (t.id !== testId && t.name !== testId) return t
         return {
@@ -1006,10 +1213,18 @@ export class LabOrderDatabase {
           status,
           sampleCollectedAt:
             status === "Sample Collected"
-              ? now
+              ? (t.sampleCollectedAt || now)
               : t.sampleCollectedAt,
           sampleCollector: extra?.sampleCollector || t.sampleCollector,
           technician: extra?.technician || t.technician,
+          processingStartedAt:
+            isStartingProcessing
+              ? t.processingStartedAt || now
+              : t.processingStartedAt,
+          processingCompletedAt:
+            isCompleting
+              ? t.processingCompletedAt || now
+              : t.processingCompletedAt,
           verifier: extra?.verifier || t.verifier,
           verifiedAt:
             status === "Verified" || status === "Completed"
@@ -1038,6 +1253,14 @@ export class LabOrderDatabase {
         ...order,
         tests,
         status: nextOrderStatus,
+        processingStartedAt:
+          isStartingProcessing
+            ? order.processingStartedAt || now
+            : order.processingStartedAt,
+        processingCompletedAt:
+          allCompleted
+            ? order.processingCompletedAt || now
+            : order.processingCompletedAt,
         history: [
           ...order.history,
           {
@@ -1068,6 +1291,12 @@ export class LabOrderDatabase {
     }
   ): LabOrder | undefined {
     return this.mutate(orderId, (order) => {
+      // Payment enforcement: results can only be entered if patient bill has been paid
+      if (order.billing?.status !== "Paid") {
+        console.warn(`[LabOrderDatabase] Blocked result entry: Order ${orderId} has unpaid billing status: ${order.billing?.status}`)
+        return order
+      }
+
       const now = new Date().toISOString()
       const tests = order.tests.map((t) => {
         if (t.id !== testId && t.name !== testId) return t
@@ -1079,6 +1308,7 @@ export class LabOrderDatabase {
         const hasLow = paramValues.some((r) => r.flag === "L")
         const flag: LabOrderTest["flag"] = hasCritical ? "Critical" : hasHigh ? "H" : hasLow ? "L" : ""
 
+        const isCompleting = data.status === "Completed" || data.status === "Verified" || data.status === "Result Entered"
         return {
           ...t,
           status: data.status,
@@ -1090,6 +1320,9 @@ export class LabOrderDatabase {
           clinicalComments: data.clinicalComments,
           technician: data.technician || data.actor,
           resultedAt: t.resultedAt || now,
+          processingStartedAt: t.processingStartedAt || t.sampleCollectedAt || now,
+          processingCompletedAt:
+            isCompleting ? (t.processingCompletedAt || now) : t.processingCompletedAt,
           verifier:
             data.verifier ||
             (data.status === "Verified" || data.status === "Completed"
@@ -1116,6 +1349,9 @@ export class LabOrderDatabase {
         ...order,
         tests,
         status: nextOrderStatus,
+        processingStartedAt: order.processingStartedAt || now,
+        processingCompletedAt:
+          allCompleted ? (order.processingCompletedAt || now) : order.processingCompletedAt,
         history: [
           ...order.history,
           {
@@ -1174,6 +1410,8 @@ export class LabOrderDatabase {
           clinicalComments: "",
           technician: actor,
           resultedAt: now,
+          processingStartedAt: t.processingStartedAt || t.sampleCollectedAt || now,
+          processingCompletedAt: t.processingCompletedAt || now,
           verifier: verifierName,
           verifiedAt: now,
         }
@@ -1183,6 +1421,8 @@ export class LabOrderDatabase {
         ...order,
         tests,
         status: "Completed",
+        processingStartedAt: order.processingStartedAt || now,
+        processingCompletedAt: order.processingCompletedAt || now,
         history: [
           ...order.history,
           {
@@ -1211,6 +1451,8 @@ export class LabOrderDatabase {
         status: "Completed" as LabTestStatus,
         technician: t.technician || actor,
         resultedAt: t.resultedAt || now,
+        processingStartedAt: t.processingStartedAt || t.sampleCollectedAt || now,
+        processingCompletedAt: t.processingCompletedAt || now,
         verifier: t.verifier || verifierName,
         verifiedAt: t.verifiedAt || now,
       }))
@@ -1219,6 +1461,8 @@ export class LabOrderDatabase {
         ...order,
         tests,
         status: "Completed",
+        processingStartedAt: order.processingStartedAt || now,
+        processingCompletedAt: order.processingCompletedAt || now,
         history: [
           ...order.history,
           {

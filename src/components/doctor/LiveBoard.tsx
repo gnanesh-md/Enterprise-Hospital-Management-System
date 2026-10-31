@@ -1,6 +1,21 @@
 import React, { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  Ban,
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  FlaskConical,
+  HeartPulse,
+  Hourglass,
+  Pill,
+  Receipt,
+  Siren,
+  Stethoscope,
+} from "lucide-react";
 import { Btn } from "../shared";
 import { formatElapsed } from "../../hooks/useLiveClinic";
+import { encounterArrivalIso } from "../../services/encounterTime";
 import { DoctorAccount } from "../../services/doctorPortalDb";
 import { LabOrderDatabase } from "../../services/labOrdersDb";
 import { InsuranceEngineService } from "../../services/insuranceDb";
@@ -30,19 +45,19 @@ const SEVERITY_STYLES: Record<LiveAlert["severity"], { border: string; bg: strin
   info: { border: "#E2E8F0", bg: "#F8FAFC", text: "#475569", dot: "#64748B", label: "Update" },
 };
 
-const KIND_ICONS: Record<LiveAlert["kind"], string> = {
-  "new-patient": "🔔",
-  "vitals-ready": "🩹",
-  "waiting-long": "⏳",
-  "in-consultation": "🩺",
-  "lab-awaiting-payment": "🧾",
-  "lab-in-progress": "🧪",
-  "lab-result": "📊",
-  "lab-critical": "⚠",
-  "rx-ready": "💊",
-  "rx-dispensed": "✅",
-  "rx-rejected": "⛔",
-  "er-assignment": "🚨",
+const KIND_ICONS: Record<LiveAlert["kind"], React.ComponentType<{ size?: number; className?: string }>> = {
+  "new-patient": Bell,
+  "vitals-ready": HeartPulse,
+  "waiting-long": Hourglass,
+  "in-consultation": Stethoscope,
+  "lab-awaiting-payment": Receipt,
+  "lab-in-progress": FlaskConical,
+  "lab-result": BarChart3,
+  "lab-critical": AlertTriangle,
+  "rx-ready": Pill,
+  "rx-dispensed": CheckCircle2,
+  "rx-rejected": Ban,
+  "er-assignment": Siren,
 };
 
 export default function LiveBoard({
@@ -102,12 +117,13 @@ export default function LiveBoard({
         .map((c) => {
           const warn = InsuranceEngineService.checkThresholdWarning(c);
           return (
-            <div key={c.id} className="bg-amber-50 border border-amber-300 text-amber-900 text-[12.5px] px-4 py-3 rounded-none shadow-2xs flex items-center justify-between font-medium">
+            <div key={c.id} className="bg-amber-50 border border-amber-300 text-amber-900 text-[12.5px] px-4 py-3 rounded-[10px] flex items-center justify-between font-medium">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-amber-800">⚠️ Pre-Auth Threshold Alert:</span>
+                <AlertTriangle size={15} className="text-amber-700 shrink-0" />
+                <span className="font-bold text-amber-800">Pre-auth threshold:</span>
                 <span>{c.patientName} ({c.mrn}) — {warn.message}</span>
               </div>
-              <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2.5 py-1 rounded-none font-mono">
+              <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2.5 py-1 rounded-full font-mono">
                 {warn.percentageConsumed}% Limit
               </span>
             </div>
@@ -115,7 +131,7 @@ export default function LiveBoard({
         })}
 
       {feedback && (
-        <div className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E40AF] text-[12.5px] px-3.5 py-2.5 rounded-none flex items-start gap-2">
+        <div className="bg-[#EFF6FF] border border-[#BFDBFE] text-[#1E40AF] text-[12.5px] px-3.5 py-2.5 rounded-[10px] flex items-start gap-2">
           <span className="flex-1">{feedback}</span>
           <button type="button" onClick={() => setFeedback(null)} className="font-bold">✕</button>
         </div>
@@ -123,9 +139,9 @@ export default function LiveBoard({
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         {/* ── Live queue ───────────────────────────────────────────────── */}
-        <section className="xl:col-span-2 bg-white border border-[#DDE2EC] rounded-none flex flex-col">
+        <section className="xl:col-span-2 bg-white border border-[#DDE2EC] rounded-[12px] overflow-hidden flex flex-col">
           <div className="px-4 py-2.5 border-b border-[#DDE2EC] flex items-center justify-between">
-            <h3 className="text-[13px] font-bold text-gray-900">My live queue</h3>
+            <h3 className="text-[13.5px] font-semibold text-[#0F172A]">My live queue</h3>
             <span className="flex items-center gap-1.5 text-[11px] text-[#64748B]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
               live
@@ -133,36 +149,43 @@ export default function LiveBoard({
           </div>
 
           {board.active && (
-            <div className="px-4 py-3 bg-[#EFF6FF] border-b border-[#BFDBFE]">
+            <div className="px-4 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-sm">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="min-w-0">
-                  <div className="text-[10.5px] uppercase tracking-wide text-[#1B4FD8] font-bold">In the room now</div>
-                  <div className="text-[13px] font-bold text-gray-900 truncate">{board.active.encounter.patientName}</div>
-                  <div className="text-[11px] font-mono text-[#64748B]">
+                  <div className="flex items-center gap-1.5 text-[10.5px] uppercase tracking-wide text-blue-100 font-extrabold">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    In the room now
+                  </div>
+                  <div className="text-[14px] font-bold text-white truncate mt-0.5">{board.active.encounter.patientName}</div>
+                  <div className="text-[11px] font-mono text-blue-200">
                     {board.active.encounter.umr} · {board.active.encounter.opNumber}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-[10.5px] text-[#64748B]">Consulting</div>
-                  <div className="text-[15px] font-bold font-mono text-[#1B4FD8]">
-                    {formatElapsed(board.active.encounter.timestamps?.arrival, now)}
+                <div className="text-right bg-white/10 backdrop-blur-xs px-2.5 py-1.5 rounded-lg border border-white/20">
+                  <div className="text-[10px] text-blue-100 font-medium uppercase tracking-wider">Consulting</div>
+                  <div className="text-[16px] font-bold font-mono text-white">
+                    {formatElapsed(encounterArrivalIso(board.active.encounter) || board.active.encounter.timestamps?.arrival, now)}
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 mt-2">
-                <Btn variant="primary" size="xs" onClick={() => onGoToSheet(board.active!.encounter.id)}>
+              <div className="flex gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => onGoToSheet(board.active!.encounter.id)}
+                  className="px-3 py-1.5 rounded-md bg-white text-blue-700 text-[12px] font-bold hover:bg-blue-50 transition-colors shadow-xs cursor-pointer"
+                >
                   Open consultation
-                </Btn>
-                <Btn
-                  variant="outline"
-                  size="xs"
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     holdPatient(board.active!.encounter.id);
                     setFeedback(`${board.active!.encounter.patientName} put back in the queue.`);
                   }}
+                  className="px-3 py-1.5 rounded-md bg-white/15 text-white text-[12px] font-semibold hover:bg-white/25 transition-colors border border-white/20 cursor-pointer"
                 >
                   Put on hold
-                </Btn>
+                </button>
               </div>
             </div>
           )}
@@ -176,34 +199,59 @@ export default function LiveBoard({
               board.queue.map((entry, index) => {
                 const overdue = entry.waitingMinutes >= LONG_WAIT_MINUTES;
                 return (
-                  <div key={entry.encounter.id} className="px-4 py-2.5">
+                  <div
+                    key={entry.encounter.id}
+                    className={`px-4 py-3 transition-colors border-l-[4px] hover:bg-slate-50/80 ${
+                      overdue
+                        ? "border-l-rose-500 bg-rose-50/25"
+                        : index === 0
+                        ? "border-l-blue-500 bg-blue-50/20"
+                        : "border-l-amber-400 bg-amber-50/10"
+                    }`}
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-mono font-bold text-[#94A3B8]">#{index + 1}</span>
-                          <span className="text-[12.5px] font-semibold text-gray-900 truncate">
+                          <span
+                            className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md ${
+                              index === 0
+                                ? "bg-amber-100 text-amber-900 border border-amber-300 font-extrabold"
+                                : index === 1
+                                ? "bg-slate-100 text-slate-700 font-bold"
+                                : "text-[#94A3B8]"
+                            }`}
+                          >
+                            #{index + 1}
+                          </span>
+                          <span className="text-[13px] font-bold text-gray-900 truncate">
                             {entry.encounter.patientName}
                           </span>
                           <span
-                            className={`text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded-none ${
-                              entry.isNewPatient ? "bg-[#DCFCE7] text-[#15803D]" : "bg-[#F1F5F9] text-[#475569]"
+                            className={`text-[10px] font-bold px-1.5 py-[1px] rounded-[5px] border ${
+                              entry.isNewPatient ? "bg-[#DCFCE7] text-[#15803D] border-[#BBF7D0]" : "bg-[#EEF2FF] text-[#4338CA] border-[#C7D2FE]"
                             }`}
                           >
                             {entry.isNewPatient ? "New" : "Revisit"}
                           </span>
                         </div>
-                        <div className="text-[11px] text-[#64748B] mt-0.5 line-clamp-1">
+                        <div className="text-[11.5px] text-[#64748B] mt-0.5 line-clamp-1">
                           {entry.encounter.chiefComplaint || "No chief complaint recorded"}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <div className={`text-[12.5px] font-mono font-bold ${overdue ? "text-[#B91C1C]" : "text-[#475569]"}`}>
-                          {formatElapsed(entry.encounter.timestamps?.arrival || entry.encounter.registrationTime, now)}
+                        <div
+                          className={`text-[11.5px] font-mono font-bold px-2 py-0.5 rounded-full border inline-block ${
+                            overdue
+                              ? "bg-rose-50 text-rose-700 border-rose-200 animate-pulse"
+                              : "bg-amber-50 text-amber-800 border-amber-200"
+                          }`}
+                        >
+                          {formatElapsed(encounterArrivalIso(entry.encounter) || entry.encounter.timestamps?.arrival || entry.encounter.registrationTime, now)}
                         </div>
-                        <div className="text-[10px] text-[#94A3B8]">waiting</div>
+                        <div className="text-[10px] text-[#94A3B8] mt-0.5">waiting</div>
                       </div>
                     </div>
-                    <div className="flex gap-1.5 mt-1.5">
+                    <div className="flex gap-2 mt-2">
                       <Btn variant="primary" size="xs" onClick={() => handleCallIn(entry.encounter.id)}>
                         Call in
                       </Btn>
@@ -219,13 +267,13 @@ export default function LiveBoard({
         </section>
 
         {/* ── Alerts ───────────────────────────────────────────────────── */}
-        <section className="xl:col-span-3 bg-white border border-[#DDE2EC] rounded-none flex flex-col">
+        <section className="xl:col-span-3 bg-white border border-[#DDE2EC] rounded-[12px] overflow-hidden flex flex-col">
           <div className="px-4 py-2.5 border-b border-[#DDE2EC] flex items-center justify-between gap-2 flex-wrap">
             <div>
-              <h3 className="text-[13px] font-bold text-gray-900">
+              <h3 className="text-[13.5px] font-semibold text-[#0F172A]">
                 Needs my attention
                 {needsAction.length > 0 && (
-                  <span className="ml-2 text-[10px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 py-0.5 rounded-none">
+                  <span className="ml-2 text-[10px] font-bold bg-[#FEE2E2] text-[#B91C1C] px-1.5 py-0.5 rounded-full">
                     {needsAction.length}
                   </span>
                 )}
@@ -259,7 +307,7 @@ export default function LiveBoard({
           <div className="flex-1 divide-y divide-[#F1F5F9] max-h-[560px] overflow-y-auto">
             {visibleAlerts.length === 0 ? (
               <div className="px-4 py-10 text-center">
-                <div className="text-2xl mb-2">✓</div>
+                <CheckCircle2 size={26} className="mx-auto mb-2 text-[#86EFAC]" />
                 <p className="text-[12.5px] font-semibold text-[#334155]">Nothing needs you right now</p>
                 <p className="text-[11.5px] text-[#94A3B8] mt-1">
                   New appointments, lab results, billing hold-ups and pharmacy movements appear here as they happen.
@@ -289,48 +337,93 @@ export default function LiveBoard({
 
 function LivePulse({ board, now }: { board: ReturnType<typeof buildDoctorLiveBoard>; now: number }) {
   const { pulse } = board;
-  const tiles: { label: string; value: string; tone?: string; hint?: string }[] = [
-    { label: "Waiting", value: String(pulse.waiting), tone: pulse.waiting > 4 ? "text-[#B91C1C]" : undefined },
+  const tiles: {
+    label: string;
+    value: string;
+    hint?: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    cardStyle: string;
+    numStyle: string;
+    labelStyle: string;
+  }[] = [
+    {
+      label: "Waiting",
+      value: String(pulse.waiting),
+      icon: Hourglass,
+      cardStyle: "bg-gradient-to-br from-amber-50/90 to-amber-100/30 border-amber-200 border-t-[3px] border-t-amber-500",
+      numStyle: pulse.waiting > 4 ? "text-rose-700" : "text-amber-900",
+      labelStyle: "text-amber-800",
+    },
     {
       label: "Longest wait",
       value: pulse.longestWaitMinutes ? `${pulse.longestWaitMinutes}m` : "--",
-      tone: pulse.longestWaitMinutes >= LONG_WAIT_MINUTES ? "text-[#B91C1C]" : undefined,
       hint: pulse.averageWaitMinutes ? `avg ${pulse.averageWaitMinutes}m` : undefined,
+      icon: AlertTriangle,
+      cardStyle: "bg-gradient-to-br from-rose-50/90 to-rose-100/30 border-rose-200 border-t-[3px] border-t-rose-500",
+      numStyle: pulse.longestWaitMinutes >= LONG_WAIT_MINUTES ? "text-rose-700" : "text-rose-900",
+      labelStyle: "text-rose-800",
     },
-    { label: "Seen today", value: String(pulse.completedToday) },
+    {
+      label: "Seen today",
+      value: String(pulse.completedToday),
+      icon: CheckCircle2,
+      cardStyle: "bg-gradient-to-br from-emerald-50/90 to-emerald-100/30 border-emerald-200 border-t-[3px] border-t-emerald-500",
+      numStyle: "text-emerald-900",
+      labelStyle: "text-emerald-800",
+    },
     {
       label: "Results ready",
       value: String(pulse.resultsReady),
-      tone: pulse.resultsReady > 0 ? "text-[#15803D]" : undefined,
+      icon: BarChart3,
+      cardStyle: "bg-gradient-to-br from-blue-50/90 to-blue-100/30 border-blue-200 border-t-[3px] border-t-blue-500",
+      numStyle: pulse.resultsReady > 0 ? "text-blue-700 font-extrabold" : "text-blue-900",
+      labelStyle: "text-blue-800",
     },
     {
       label: "Lab in progress",
       value: String(pulse.labInProgress),
       hint: pulse.labAwaitingPayment ? `${pulse.labAwaitingPayment} unpaid` : undefined,
+      icon: FlaskConical,
+      cardStyle: "bg-gradient-to-br from-violet-50/90 to-violet-100/30 border-violet-200 border-t-[3px] border-t-violet-500",
+      numStyle: "text-violet-900",
+      labelStyle: "text-violet-800",
     },
     {
       label: "At pharmacy",
       value: String(pulse.rxAwaitingPharmacy),
       hint: pulse.rxDispensed ? `${pulse.rxDispensed} dispensed` : undefined,
+      icon: Pill,
+      cardStyle: "bg-gradient-to-br from-teal-50/90 to-teal-100/30 border-teal-200 border-t-[3px] border-t-teal-500",
+      numStyle: "text-teal-900",
+      labelStyle: "text-teal-800",
     },
   ];
 
   return (
-    <div className="bg-white border border-[#DDE2EC] rounded-none px-4 py-3">
+    <div className="bg-white border border-[#DDE2EC] rounded-[12px] px-4 py-3 shadow-xs">
       <div className="flex items-center justify-between mb-2.5">
-        <h3 className="text-[13px] font-bold text-gray-900">Clinic right now</h3>
-        <span className="text-[11px] font-mono text-[#64748B]">
+        <h3 className="text-[13.5px] font-bold text-[#0F172A] flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          Clinic Pulse Right Now
+        </h3>
+        <span className="text-[11px] font-mono text-[#64748B] bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
           {new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
         </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-        {tiles.map(tile => (
-          <div key={tile.label} className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-none px-3 py-2">
-            <div className="text-[10px] uppercase tracking-wide text-[#94A3B8] font-bold">{tile.label}</div>
-            <div className={`text-[17px] font-bold font-mono ${tile.tone || "text-gray-900"}`}>{tile.value}</div>
-            {tile.hint && <div className="text-[10px] text-[#94A3B8]">{tile.hint}</div>}
-          </div>
-        ))}
+        {tiles.map(tile => {
+          const IconComponent = tile.icon;
+          return (
+            <div key={tile.label} className={`border rounded-[10px] px-3 py-2.5 shadow-xs transition-transform hover:-translate-y-0.5 ${tile.cardStyle}`}>
+              <div className="flex items-center justify-between">
+                <span className={`text-[20px] font-extrabold leading-none tabular-nums ${tile.numStyle}`}>{tile.value}</span>
+                <IconComponent size={16} className={tile.labelStyle} />
+              </div>
+              <div className={`text-[11.5px] font-bold mt-2 ${tile.labelStyle}`}>{tile.label}</div>
+              {tile.hint && <div className="text-[10px] opacity-75 font-medium mt-0.5 truncate">{tile.hint}</div>}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -360,13 +453,23 @@ function AlertRow({
       style={alert.acknowledged ? undefined : { backgroundColor: alert.severity === "info" ? undefined : style.bg }}
     >
       <div className="flex items-start gap-3">
-        <span className="text-base leading-none mt-0.5">{KIND_ICONS[alert.kind]}</span>
+        {(() => {
+          const KindIcon = KIND_ICONS[alert.kind];
+          return (
+            <span
+              className="w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0"
+              style={{ backgroundColor: alert.severity === "info" ? "#F1F5F9" : "#FFFFFF", color: style.text, border: `1px solid ${style.border}` }}
+            >
+              <KindIcon size={15} />
+            </span>
+          );
+        })()}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[12.5px] font-semibold text-gray-900">{alert.title}</span>
             {alert.severity !== "info" && (
               <span
-                className="text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded-none border"
+                className="text-[10px] font-semibold px-1.5 py-[1px] rounded-[5px] border"
                 style={{ color: style.text, borderColor: style.border, backgroundColor: "#FFFFFF" }}
               >
                 {style.label}

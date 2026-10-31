@@ -15,6 +15,7 @@ import {
   MasterDoctor,
 } from "../services/doctorMaster"
 import PatientJourneyModal from "./PatientJourneyModal"
+import { whatsAppHandoffUrl, smsHandoffUrl } from "../services/patientMessaging"
 
 const DEPARTMENTS = [
   "All Departments",
@@ -594,11 +595,14 @@ export function AppointmentBookingModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-[#DDE2EC] bg-[#F8FAFC] flex items-center justify-between">
-          <div className="text-[11.5px] text-[#64748B]">
-            Consultation fee is collected once the doctor is assigned.
+        <div className="px-6 py-3.5 border-t border-[#DDE2EC] bg-[#F8FAFC] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[12px] text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded border border-emerald-200">
+            <span>📱</span>
+            <span>
+              <strong>Instant Patient Alert:</strong> SMS &amp; WhatsApp confirmation will be messaged to <strong>{phone || "patient"}</strong> immediately upon booking.
+            </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <button
               type="button"
               onClick={onClose}
@@ -610,9 +614,9 @@ export function AppointmentBookingModal({
               type="button"
               disabled={!result || !patient}
               onClick={handleSchedule}
-              className="px-4 py-2 bg-[#1B4FD8] hover:bg-[#1740B4] text-white text-[12.5px] font-bold shadow-xs cursor-pointer disabled:opacity-50"
+              className="px-4 py-2 bg-[#1B4FD8] hover:bg-[#1740B4] text-white text-[12.5px] font-bold shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
-              Confirm Appointment Booking
+              <span>⚡</span> Confirm &amp; Send Patient Alert
             </button>
           </div>
         </div>
@@ -653,6 +657,9 @@ export default function Appointments({
     doctor: string
     dept: string
     room: string
+    phone?: string
+    token?: string
+    time?: string
   } | null>(null)
   const weekDays = useMemo(() => getDynamicWeekDays(), [])
   const todayIdx = useMemo(() => {
@@ -779,6 +786,9 @@ export default function Appointments({
       doctor: booked.doctor,
       dept: booked.dept,
       room: booked.room,
+      phone: booked.phone,
+      token: booked.token,
+      time: booked.time,
     })
   }
 
@@ -871,19 +881,61 @@ export default function Appointments({
         </div>
       </div>
 
-      {/* Just Booked Banner */}
+      {/* Just Booked Banner with Instant Patient Message Notification */}
       {justBooked && (
-        <div className="mx-6 mt-3 rounded-none border border-[#86EFAC] bg-[#F0FDF4] px-4 py-2.5 flex items-center justify-between gap-3 flex-shrink-0">
+        <div className="mx-6 mt-3 rounded-none border border-[#86EFAC] bg-[#F0FDF4] px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3 flex-shrink-0 animate-in fade-in">
           <div>
-            <p className="text-[13px] font-bold text-[#166534]">
-              🎉 Appointment Booked — {justBooked.name} with {justBooked.doctor}
-            </p>
-            <p className="text-[11.5px] text-[#15803D] mt-0.5">
-              UMR: {justBooked.umr} · {justBooked.dept} · {justBooked.room}.
-              Collect the consultation fee, then direct patient for vitals.
+            <div className="flex items-center gap-2">
+              <span className="text-base">🎉</span>
+              <p className="text-[13.5px] font-bold text-[#166534]">
+                Appointment Booked — {justBooked.name} with {justBooked.doctor}
+              </p>
+              {justBooked.token && (
+                <span className="text-[11px] font-bold bg-[#DCFCE7] text-[#15803D] px-2 py-0.5 rounded border border-[#BBF7D0]">
+                  Token {justBooked.token}
+                </span>
+              )}
+            </div>
+            <p className="text-[12px] text-[#15803D] mt-1">
+              UMR: <strong className="font-mono">{justBooked.umr}</strong> · {justBooked.dept} · {justBooked.room}.
+              {justBooked.phone && (
+                <span className="ml-2 font-medium text-emerald-800">
+                  📱 Immediate SMS &amp; WhatsApp message dispatched to +91 {justBooked.phone}
+                </span>
+              )}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {justBooked.phone && (
+              <>
+                <a
+                  href={
+                    whatsAppHandoffUrl(
+                      justBooked.phone,
+                      `Dear ${justBooked.name}, your appointment with ${justBooked.doctor} (${justBooked.dept}) is confirmed. Token ${justBooked.token}, Room ${justBooked.room}. Imperial Hospitals`,
+                    ) || "#"
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 bg-[#25D366] hover:bg-[#20BD5A] text-white text-[11.5px] font-bold rounded-none shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                  title="Open in WhatsApp directly"
+                >
+                  <span>💬</span> Open WhatsApp
+                </a>
+                <a
+                  href={
+                    smsHandoffUrl(
+                      justBooked.phone,
+                      `Dear ${justBooked.name}, your appointment with ${justBooked.doctor} (${justBooked.dept}) is confirmed. Token ${justBooked.token}, Room ${justBooked.room}. Imperial Hospitals`,
+                    ) || "#"
+                  }
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-[11.5px] font-bold rounded-none shadow-xs transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                  title="Open SMS app directly"
+                >
+                  <span>📲</span> Open SMS
+                </a>
+              </>
+            )}
             {onGoToBilling && (
               <button
                 type="button"
@@ -896,7 +948,7 @@ export default function Appointments({
             <button
               type="button"
               onClick={() => setJustBooked(null)}
-              className="text-[12px] font-bold text-[#166534] hover:underline cursor-pointer"
+              className="text-[12px] font-bold text-[#166534] hover:underline cursor-pointer ml-1"
             >
               Dismiss
             </button>
@@ -991,9 +1043,10 @@ export default function Appointments({
       {/* Main Appointments Workspace */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {view === "week" && (
-          <div className="bg-white border border-[#DDE2EC] rounded-none overflow-hidden mb-4 shadow-2xs">
+          <div className="bg-white border border-[#DDE2EC] rounded-none overflow-x-auto overflow-y-hidden mb-4 shadow-2xs">
+            {/* Eight columns can't fit a phone; the strip scrolls instead. */}
             <div
-              className="grid border-b border-[#DDE2EC]"
+              className="grid border-b border-[#DDE2EC] min-w-[640px]"
               style={{ gridTemplateColumns: "80px repeat(7, 1fr)" }}
             >
               <div className="bg-[#F8FAFC] border-r border-[#DDE2EC] flex items-center justify-center font-bold text-[11px] text-[#64748B]">

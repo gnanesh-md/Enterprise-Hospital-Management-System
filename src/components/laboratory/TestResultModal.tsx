@@ -126,7 +126,7 @@ export default function TestResultModal({
   const isCultureTest = testDef?.subModule?.includes("Culture") || test.name.includes("C/S")
 
   return (
-    <div className="flex-1 bg-white rounded-xl shadow-xs border border-gray-200 flex flex-col overflow-hidden animate-in fade-in duration-150">
+    <div className="flex-1 bg-white rounded-none shadow-xs border border-gray-200 flex flex-col overflow-hidden animate-in fade-in duration-150">
       
       {/* Top Header / Navigation Bar */}
       <div className="bg-slate-900 text-white px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800">
@@ -134,14 +134,14 @@ export default function TestResultModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs"
+            className="px-3 py-1.5 text-xs font-bold text-white bg-slate-800 hover:bg-slate-700 rounded-none border border-slate-700 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
           >
             <span>←</span> Back to Patient Investigations
           </button>
           <div className="h-6 w-px bg-slate-700 mx-1 hidden sm:block" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/30 text-blue-300 uppercase tracking-wider">
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-none bg-blue-500/30 text-blue-300 uppercase tracking-wider">
                 {testDef?.category || test.category}
               </span>
               {testDef?.subModule && (
@@ -150,7 +150,7 @@ export default function TestResultModal({
                 </span>
               )}
               {test.urgency === "STAT" && (
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-red-600 text-white animate-pulse">
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-none bg-red-600 text-white animate-pulse">
                   STAT PRIORITY
                 </span>
               )}
@@ -166,14 +166,14 @@ export default function TestResultModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
+            className="px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-none border border-slate-700 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
+            className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-none transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
           >
             <span>💾</span> Save Results
           </button>
@@ -217,7 +217,7 @@ export default function TestResultModal({
         <div className="flex items-center gap-2">
           <span className="text-gray-400">Billing:</span>
           <span
-            className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
+            className={`px-2.5 py-0.5 rounded-none font-bold text-[11px] ${
               order.billing.status === "Paid"
                 ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
                 : "bg-amber-100 text-amber-800 border border-amber-300"
@@ -253,7 +253,7 @@ export default function TestResultModal({
                   return (
                     <div
                       key={param.id}
-                      className="p-3.5 rounded-xl bg-gray-50/80 hover:bg-white border border-gray-200 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between space-y-2.5"
+                      className="p-3.5 rounded-none bg-gray-50/80 hover:bg-white border border-gray-200 hover:border-blue-300 hover:shadow-xs transition-all flex flex-col justify-between space-y-2.5"
                     >
                       {/* Header: Parameter Name, Reference Range & Flag */}
                       <div className="flex items-start justify-between gap-2">
@@ -273,22 +273,22 @@ export default function TestResultModal({
                         {/* Flag / Reference Indicator */}
                         <div className="shrink-0 flex items-center gap-1.5">
                           {current.flag === "H" && (
-                            <span className="px-2 py-0.5 text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 rounded">
+                            <span className="px-2 py-0.5 text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 rounded-none">
                               ▲ High
                             </span>
                           )}
                           {current.flag === "L" && (
-                            <span className="px-2 py-0.5 text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300 rounded">
+                            <span className="px-2 py-0.5 text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-300 rounded-none">
                               ▼ Low
                             </span>
                           )}
                           {current.flag === "Critical" && (
-                            <span className="px-2 py-0.5 text-[11px] font-bold bg-red-600 text-white rounded animate-pulse">
+                            <span className="px-2 py-0.5 text-[11px] font-bold bg-red-600 text-white rounded-none animate-pulse">
                               CRITICAL
                             </span>
                           )}
                           {!current.flag && current.value && (
-                            <span className="px-2 py-0.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded">
+                            <span className="px-2 py-0.5 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-none">
                               ✓ Normal
                             </span>
                           )}
@@ -312,7 +312,7 @@ export default function TestResultModal({
                                 )
                               }
                               placeholder="Enter value"
-                              className="w-full text-xs font-semibold px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                              className="w-full text-xs font-semibold px-3 py-2 rounded-none border border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
                             />
                             {param.unit && (
                               <span className="absolute right-3 top-2 text-xs text-gray-400 font-medium pointer-events-none">
@@ -328,7 +328,7 @@ export default function TestResultModal({
                             onChange={(e) =>
                               handleValueChange(param.name, e.target.value)
                             }
-                            className="w-full text-xs font-medium px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full text-xs font-medium px-3 py-2 rounded-none border border-gray-300 focus:ring-1 focus:ring-blue-500 bg-white"
                           >
                             <option value="">Select option</option>
                             {param.options?.map((opt) => (
@@ -363,7 +363,7 @@ export default function TestResultModal({
                                   type="button"
                                   key={opt}
                                   onClick={() => handleValueChange(param.name, opt)}
-                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border transition-all text-center ${
+                                  className={`flex-1 py-1.5 text-xs font-semibold rounded-none border transition-all text-center cursor-pointer ${
                                     isChecked
                                       ? isAbnormal
                                         ? "bg-red-600 text-white border-red-600 shadow-xs"
@@ -389,7 +389,7 @@ export default function TestResultModal({
                               handleValueChange(param.name, e.target.value)
                             }
                             placeholder={param.placeholder || "Enter description / observation"}
-                            className="w-full text-xs px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="w-full text-xs px-3 py-2 rounded-none border border-gray-300 focus:ring-1 focus:ring-blue-500 bg-white"
                           />
                         )}
                       </div>
@@ -400,7 +400,7 @@ export default function TestResultModal({
             ) : (
               // Generic fallback if not explicitly found in catalogue
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="p-3.5 rounded-xl bg-gray-50/80 border border-gray-200 flex flex-col justify-between space-y-2">
+                <div className="p-3.5 rounded-none bg-gray-50/80 border border-gray-200 flex flex-col justify-between space-y-2">
                   <label className="text-xs font-bold text-gray-900 block">
                     Observed Result Value
                   </label>
@@ -417,11 +417,11 @@ export default function TestResultModal({
                         },
                       })
                     }
-                    className="w-full text-xs px-3 py-2 rounded-lg border border-gray-300 bg-white focus:ring-2 focus:ring-blue-500 font-semibold"
+                    className="w-full text-xs px-3 py-2 rounded-none border border-gray-300 bg-white focus:ring-1 focus:ring-blue-500 font-semibold"
                     placeholder="Enter test result"
                   />
                 </div>
-                <div className="p-3.5 rounded-xl bg-gray-50/80 border border-gray-200 flex flex-col justify-between space-y-2">
+                <div className="p-3.5 rounded-none bg-gray-50/80 border border-gray-200 flex flex-col justify-between space-y-2">
                   <label className="text-xs font-bold text-gray-900 block">
                     Unit & Reference Range
                   </label>
@@ -435,7 +435,7 @@ export default function TestResultModal({
 
           {/* Microbiology Culture & Sensitivity Table if Applicable */}
           {isCultureTest && (
-            <div className="border border-indigo-200 rounded-lg p-3 bg-indigo-50/40">
+            <div className="border border-indigo-200 rounded-none p-3 bg-indigo-50/40">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-bold text-indigo-950 uppercase">
                   Antibiotic Susceptibility Testing (AST) Panel
@@ -467,7 +467,7 @@ export default function TestResultModal({
                               next[idx].zone = e.target.value
                               setCultureRows(next)
                             }}
-                            className="px-2 py-0.5 border rounded w-20 text-xs bg-gray-50"
+                            className="px-2 py-0.5 border rounded-none w-20 text-xs bg-gray-50 border-gray-300"
                           />
                         </td>
                         <td className="p-2">
@@ -479,7 +479,7 @@ export default function TestResultModal({
                               next[idx].mic = e.target.value
                               setCultureRows(next)
                             }}
-                            className="px-2 py-0.5 border rounded w-24 text-xs bg-gray-50"
+                            className="px-2 py-0.5 border rounded-none w-24 text-xs bg-gray-50 border-gray-300"
                           />
                         </td>
                         <td className="p-2">
@@ -490,7 +490,7 @@ export default function TestResultModal({
                               next[idx].susceptibility = e.target.value as any
                               setCultureRows(next)
                             }}
-                            className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                            className={`px-2 py-0.5 rounded-none text-xs font-bold border ${
                               row.susceptibility === "Sensitive"
                                 ? "bg-emerald-100 text-emerald-800 border-emerald-300"
                                 : row.susceptibility === "Intermediate"
@@ -521,12 +521,12 @@ export default function TestResultModal({
                 rows={2}
                 value={clinicalComments}
                 onChange={(e) => setClinicalComments(e.target.value)}
-                className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 bg-white resize-none"
+                className="w-full text-xs p-2.5 rounded-none border border-gray-300 focus:ring-1 focus:ring-blue-500 bg-white resize-none"
                 placeholder="Enter remarks, morphological observations, or clinical notes..."
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-50 p-3 rounded-none border border-gray-200">
               <div>
                 <label className="text-xs font-semibold text-gray-600 block mb-1">
                   Medical Lab Technologist (MLT)
@@ -535,7 +535,7 @@ export default function TestResultModal({
                   type="text"
                   value={technician}
                   onChange={(e) => setTechnician(e.target.value)}
-                  className="w-full text-xs px-3 py-1.5 rounded border border-gray-300 bg-white"
+                  className="w-full text-xs px-3 py-1.5 rounded-none border border-gray-300 bg-white"
                 />
               </div>
               <div>
@@ -546,7 +546,7 @@ export default function TestResultModal({
                   type="text"
                   value={verifier}
                   onChange={(e) => setVerifier(e.target.value)}
-                  className="w-full text-xs px-3 py-1.5 rounded border border-gray-300 bg-white"
+                  className="w-full text-xs px-3 py-1.5 rounded-none border border-gray-300 bg-white"
                 />
               </div>
             </div>
@@ -558,7 +558,7 @@ export default function TestResultModal({
         <button
           type="button"
           onClick={onClose}
-          className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors shadow-xs flex items-center gap-1.5"
+          className="px-4 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-300 rounded-none hover:bg-gray-100 transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer"
         >
           <span>←</span> Back to Patient Investigations
         </button>
@@ -566,14 +566,14 @@ export default function TestResultModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSave}
-            className="px-6 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm flex items-center gap-1.5"
+            className="px-6 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-none transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
           >
             <span>💾</span> Save Results
           </button>

@@ -1,4 +1,9 @@
-import { seedPharmacyHospitalData, seedTestPrescriptionForSelling } from "./pharmacySeedData"
+import {
+  seedPharmacyHospitalData,
+  seedTestPrescriptionForSelling,
+  ensurePharmacyDataSeeded,
+  SEED_PRESCRIPTIONS,
+} from "./pharmacySeedData"
 
 export interface AppUser {
   id: string
@@ -48,15 +53,23 @@ export interface AppCategory {
 export interface AppSupplier {
   id: string
   supplierName: string
+  name?: string
   contactInformation: string
+  contactPerson?: string
   phone?: string
+  phoneNumber?: string
   email?: string
   address: string
   gstInformation: string
-  licenseDetails: string
+  gstNumber?: string
+  licenseDetails?: string
   paymentTerms: string
   status: "Active" | "Inactive"
+  activeStatus?: "Active" | "Inactive"
+  rating?: number
   createdAt: string
+  gstin?: string
+  contact?: string
 }
 
 export interface AppMedicine {
@@ -64,7 +77,15 @@ export interface AppMedicine {
   medicineName: string
   genericName: string
   brandName: string
+  name?: string
+  form?: string
+  mrp?: number
+  purchasePrice?: number
+  batchNumber?: string
+  expiryDate?: string
+  stock?: number
   hsnCode?: string
+  packing?: string
   categoryId?: string
   manufacturer: string
   dosageForm: string
@@ -80,6 +101,7 @@ export interface AppMedicine {
   createdAt: string
   mnfCode?: string
   binNo?: string
+  supplierName?: string
 }
 
 // FEFO enabled Batch
@@ -97,11 +119,13 @@ export interface AppBatch {
   // lean path omits is optional rather than a lie about what is on disk.
   quantity: number
   mrp: number
+  discount?: number
   grnId?: string
   status?: string
   initialQuantity?: number
   sellingPrice?: number
   supplierId?: string
+  supplierName?: string
   invoiceNumber?: string
   location?: string // Phase 4 - Transfer capability
   createdAt: string
@@ -153,7 +177,7 @@ export interface AppGRN {
   createdAt: string
 }
 
-export type StockTransactionType = "PURCHASE_RECEIVED" | "DISPENSED" | "RETURNED" | "EXPIRED" | "ADJUSTMENT" | "DAMAGED" | "TRANSFER_OUT" | "TRANSFER_IN" | "SUPPLIER_RETURN"
+export type StockTransactionType = "PURCHASE_RECEIVED" | "DISPENSED" | "RETURNED" | "EXPIRED" | "ADJUSTMENT" | "DAMAGED" | "WRITE_OFF" | "TRANSFER_OUT" | "TRANSFER_IN" | "SUPPLIER_RETURN"
 
 export interface AppStockTransaction {
   id: string
@@ -309,6 +333,12 @@ export interface AppPharmacyBill {
   createdAt: string
   isModifiedReturnBill?: boolean
   originalBillNumber?: string
+  paymentsData?: {
+    amounts: Record<string, number>
+    refs?: Record<string, string>
+  }
+  totalPaid?: number
+  balanceDue?: number
 }
 
 // Phase 4 - Returns, Transfers, Expiry
@@ -432,6 +462,30 @@ export interface AppStockAdjustment {
   createdAt: string
 }
 
+export interface AppMedicineWriteOff {
+  id: string
+  receiptNumber: string
+  date: string
+  medicineId: string
+  medicineName: string
+  medicineCode?: string
+  genericName?: string
+  batchId: string
+  batchNumber: string
+  expiryDate?: string
+  unitOfMeasure: string
+  quantity: number
+  previousStock: number
+  remainingStock: number
+  unitCost: number
+  totalLossValue: number
+  reason: string
+  remarks?: string
+  writtenOffBy: string
+  status: "COMPLETED" | "CANCELLED"
+  createdAt: string
+}
+
 const USERS_KEY = "hospai_pharm_users_v4"
 const NOTIFICATIONS_KEY = "hospai_pharm_notifications_v4"
 const DISMISSED_NOTIFICATIONS_KEY = "hospai_pharm_dismissed_notifs_v4"
@@ -452,6 +506,231 @@ const TRANSFERS_KEY = "hospai_pharm_transfers_v4"
 const SUPPLIER_RETURNS_KEY = "hospai_pharm_supp_returns_v4"
 const ADJUSTMENTS_KEY = "hospai_pharm_adjustments_v4"
 const CLARIFICATIONS_KEY = "hospai_pharm_clarifications_v4"
+const WRITE_OFFS_KEY = "hospai_pharm_write_offs_v4"
+
+// In-memory fallback map if browser localStorage quota is completely filled
+const memoryStorageFallback: Record<string, string> = {}
+
+/**
+ * Removes legacy storage keys, massive base64 images, and trims non-critical logs
+ * to ensure localStorage always has abundant free quota.
+ */
+export function cleanupStorageQuota(): void {
+  if (typeof window === "undefined") return
+
+  try {
+    const keysToRemove: string[] = []
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i)
+      if (!k) continue
+      // Remove legacy pharmacy version keys (v1, v2, v3, or temporary demo/ocr keys)
+      if (
+        (k.startsWith("hospai_pharm_") ||
+          k.startsWith("pharm_") ||
+          k.startsWith("pharmacy_") ||
+          k.startsWith("_v2_pharmacy_")) &&
+        (k.includes("_v1") ||
+          k.includes("_v2") ||
+          k.includes("_v3") ||
+          k.includes("_demo") ||
+          k.includes("temp"))
+      ) {
+        keysToRemove.push(k)
+      }
+      // Remove massive OCR scan caches or base64 preview keys
+      if (
+        k.startsWith("hospai_ocr_") ||
+        k.startsWith("receipt_preview_") ||
+        k.startsWith("temp_image_") ||
+        k.startsWith("temp_pdf_")
+      ) {
+        keysToRemove.push(k)
+      }
+    }
+    keysToRemove.forEach((k) => {
+      try {
+        window.localStorage.removeItem(k)
+      } catch {}
+    })
+
+    // Strip massive base64 images from prescriptions (can be 2-5MB each!)
+    try {
+      const rxRaw = window.localStorage.getItem(PRESCRIPTIONS_KEY)
+      if (rxRaw) {
+        const rxs = JSON.parse(rxRaw)
+        if (Array.isArray(rxs)) {
+          let rxModified = false
+          rxs.forEach((rx: any) => {
+            if (rx.imageUrl && typeof rx.imageUrl === "string" && rx.imageUrl.startsWith("data:image")) {
+              rx.imageUrl = undefined
+              rxModified = true
+            }
+          })
+          if (rxModified) {
+            window.localStorage.setItem(PRESCRIPTIONS_KEY, JSON.stringify(rxs))
+          }
+        }
+      }
+    } catch {}
+
+    // Trim audit logs to latest 25 entries
+    try {
+      const logsRaw = window.localStorage.getItem(AUDIT_LOGS_KEY)
+      if (logsRaw) {
+        const logs = JSON.parse(logsRaw)
+        if (Array.isArray(logs) && logs.length > 25) {
+          window.localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs.slice(-25)))
+        }
+      }
+    } catch {}
+
+    
+    // Trim stock transactions to latest 500 entries
+    try {
+      const txsRaw = window.localStorage.getItem(STOCK_TXS_KEY)
+      if (txsRaw) {
+        const txs = JSON.parse(txsRaw)
+        if (Array.isArray(txs) && txs.length > 500) {
+          window.localStorage.setItem(STOCK_TXS_KEY, JSON.stringify(txs.slice(-500)))
+        }
+      }
+    } catch {}
+
+    // Trim notifications to latest 50 entries
+    try {
+      const notifsRaw = window.localStorage.getItem(NOTIFICATIONS_KEY)
+      if (notifsRaw) {
+        const notifs = JSON.parse(notifsRaw)
+        if (Array.isArray(notifs) && notifs.length > 50) {
+          window.localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifs.slice(0, 50)))
+        }
+      }
+    } catch {
+      try {
+        window.localStorage.removeItem(NOTIFICATIONS_KEY)  
+      } catch {} 
+    } 
+
+    // Trim read/dismissed tracking
+    try {
+      const dRaw = window.localStorage.getItem(DISMISSED_NOTIFICATIONS_KEY)
+      if (dRaw) {
+        const d = JSON.parse(dRaw)
+        if (Array.isArray(d) && d.length > 50) {
+          window.localStorage.setItem(DISMISSED_NOTIFICATIONS_KEY, JSON.stringify(d.slice(-50)))
+        }
+      }
+      const rRaw = window.localStorage.getItem(READ_NOTIFICATIONS_KEY)
+      if (rRaw) {
+        const r = JSON.parse(rRaw)
+        if (Array.isArray(r) && r.length > 50) {
+          window.localStorage.setItem(READ_NOTIFICATIONS_KEY, JSON.stringify(r.slice(-50)))
+        }
+      }
+    } catch {}
+  } catch (e) {
+    console.warn("[PharmacyDb] Error during storage quota cleanup:", e)
+  }
+}
+
+export function safeStorageSetItem(key: string, value: string): void {
+  if (typeof window === "undefined") return
+
+  // Fast path: try saving directly
+  try {
+    window.localStorage.setItem(key, value)
+    delete memoryStorageFallback[key]
+    return
+  } catch (err) {
+    console.warn(`[PharmacyDb] Quota exceeded on first attempt for "${key}". Cleaning up storage...`)
+  }
+
+  // Pass 1: Prune obsolete keys, strip large base64 images, trim logs
+  try {
+    cleanupStorageQuota()
+    window.localStorage.setItem(key, value)
+    delete memoryStorageFallback[key]
+    return
+  } catch (secondErr) {
+    console.warn(`[PharmacyDb] Second attempt for "${key}" after cleanup failed. Deep pruning non-critical data...`)
+  }
+
+  // Pass 2: Deep prune non-critical transient tables to free immediate space
+  try {
+    // If the key itself is a non-critical notification or log, trim value down
+    if (key === NOTIFICATIONS_KEY || key === DISMISSED_NOTIFICATIONS_KEY || key === READ_NOTIFICATIONS_KEY) {
+      try {
+        const parsed = JSON.parse(value)
+        if (Array.isArray(parsed) && parsed.length > 10) {
+          const trimmedVal = JSON.stringify(parsed.slice(0, 10))
+          window.localStorage.setItem(key, trimmedVal)
+          delete memoryStorageFallback[key]
+          return
+        }
+      } catch {}
+    }
+
+    // Free up space by removing non-critical transient keys
+    try {
+      window.localStorage.removeItem(DISMISSED_NOTIFICATIONS_KEY)
+      window.localStorage.removeItem(READ_NOTIFICATIONS_KEY)
+      window.localStorage.removeItem(NOTIFICATIONS_KEY)
+      window.localStorage.removeItem(AUDIT_LOGS_KEY)
+    } catch {}
+
+    const billsRaw = window.localStorage.getItem(BILLS_KEY)
+    if (billsRaw) {
+      const bills = JSON.parse(billsRaw)
+      if (Array.isArray(bills) && bills.length > 100) {
+        window.localStorage.setItem(BILLS_KEY, JSON.stringify(bills.slice(-100)))
+      }
+    }
+    const txsRaw = window.localStorage.getItem(STOCK_TXS_KEY)
+    if (txsRaw) {
+      const txs = JSON.parse(txsRaw)
+      if (Array.isArray(txs) && txs.length > 100) {
+        window.localStorage.setItem(STOCK_TXS_KEY, JSON.stringify(txs.slice(-100)))
+      }
+    }
+
+    window.localStorage.setItem(key, value)
+    delete memoryStorageFallback[key]
+    return
+  } catch (thirdErr) {
+    console.warn(`[PharmacyDb] Preserving "${key}" in memory & sessionStorage fallback.`)
+    memoryStorageFallback[key] = value
+    try {
+      window.sessionStorage.setItem(key, value)
+    } catch {}
+    try {
+      window.localStorage.removeItem(key)
+    } catch {}
+  }
+}
+
+export function safeStorageGetItem(key: string): string | null {
+  if (typeof window === "undefined") return null
+  // 1. In-memory authoritative cache first (holds newest state if localStorage hit quota)
+  if (memoryStorageFallback[key] !== undefined) {
+    return memoryStorageFallback[key]
+  }
+  // 2. Primary persistent store (localStorage)
+  try {
+    const val = window.localStorage.getItem(key)
+    if (val !== null) return val
+  } catch {}
+  // 3. SessionStorage fallback
+  try {
+    const sVal = window.sessionStorage.getItem(key)
+    if (sVal !== null) return sVal
+  } catch {}
+  return null
+}
+
+// Auto-run quota cleanup on initialization to maintain storage headroom
+if (typeof window !== "undefined") {
+  cleanupStorageQuota()
+}
 
 /**
  * Purges all sample, demo, test, and seed data from the Pharmacy stores.
@@ -566,7 +845,7 @@ export function purgeSampleData(): boolean {
         }
         const filtered = meds.filter((m: any) => !isSampleMed(m))
         if (filtered.length !== meds.length) {
-          window.localStorage.setItem(MEDICINES_KEY, JSON.stringify(filtered))
+          safeStorageSetItem(MEDICINES_KEY, JSON.stringify(filtered))
           changed = true
         }
       } catch {}
@@ -585,7 +864,7 @@ export function purgeSampleData(): boolean {
           return true
         })
         if (filtered.length !== batches.length) {
-          window.localStorage.setItem(BATCHES_KEY, JSON.stringify(filtered))
+          safeStorageSetItem(BATCHES_KEY, JSON.stringify(filtered))
           changed = true
         }
       } catch {}
@@ -637,7 +916,7 @@ export function purgeSampleData(): boolean {
             return true
           })
           if (filtered.length !== pos.length) {
-            window.localStorage.setItem(key, JSON.stringify(filtered))
+            safeStorageSetItem(key, JSON.stringify(filtered))
             changed = true
           }
         } catch {}
@@ -676,7 +955,7 @@ export function purgeSampleData(): boolean {
           return true
         })
         if (filtered.length !== grns.length) {
-          window.localStorage.setItem(GRNS_KEY, JSON.stringify(filtered))
+          safeStorageSetItem(GRNS_KEY, JSON.stringify(filtered))
           changed = true
         }
       } catch {}
@@ -742,7 +1021,7 @@ export function purgeSampleData(): boolean {
           return true
         })
         if (filtered.length !== returns.length) {
-          window.localStorage.setItem(RETURNS_KEY, JSON.stringify(filtered))
+          safeStorageSetItem(RETURNS_KEY, JSON.stringify(filtered))
           changed = true
         }
       } catch {}
@@ -764,7 +1043,7 @@ export function purgeSampleData(): boolean {
           return true
         })
         if (filtered.length !== sups.length) {
-          window.localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(filtered))
+          safeStorageSetItem(SUPPLIERS_KEY, JSON.stringify(filtered))
           changed = true
         }
       } catch {}
@@ -782,7 +1061,7 @@ export function purgeSampleData(): boolean {
           return true
         })
         if (filtered.length !== cats.length) {
-          window.localStorage.setItem(CATEGORIES_KEY, JSON.stringify(filtered))
+          safeStorageSetItem(CATEGORIES_KEY, JSON.stringify(filtered))
           changed = true
         }
       } catch {}
@@ -852,7 +1131,7 @@ export function purgeSampleData(): boolean {
           return true
         })
         if (filtered.length !== bills.length) {
-          window.localStorage.setItem(BILLS_KEY, JSON.stringify(filtered))
+          safeStorageSetItem(BILLS_KEY, JSON.stringify(filtered))
           changed = true
         }
       } catch {}
@@ -869,7 +1148,7 @@ export function purgeSampleData(): boolean {
             !SAMPLE_BATCH_IDS.has(t.batchId),
         )
         if (filtered.length !== txs.length) {
-          window.localStorage.setItem(STOCK_TXS_KEY, JSON.stringify(filtered))
+          safeStorageSetItem(STOCK_TXS_KEY, JSON.stringify(filtered))
           changed = true
         }
       } catch {}
@@ -891,7 +1170,7 @@ export function purgeSampleData(): boolean {
               !(typeof sr.id === "string" && sr.id.startsWith("SR-2026-00")),
           )
           if (filtered.length !== srs.length) {
-            window.localStorage.setItem(key, JSON.stringify(filtered))
+            safeStorageSetItem(key, JSON.stringify(filtered))
             changed = true
           }
         } catch {}
@@ -915,7 +1194,10 @@ export function purgeSampleData(): boolean {
 export function clearAllPharmacyData(): void {
   if (typeof window === "undefined") return
   try {
-    // Scan and remove any existing pharmacy keys across all versions
+    // Clear in-memory fallback cache
+    Object.keys(memoryStorageFallback).forEach((k) => delete memoryStorageFallback[k])
+
+    // Scan and remove any existing pharmacy keys across all versions from both localStorage and sessionStorage
     const toRemove: string[] = []
     for (let i = 0; i < window.localStorage.length; i++) {
       const k = window.localStorage.key(i)
@@ -924,13 +1206,19 @@ export function clearAllPharmacyData(): void {
         (k.startsWith("hospai_pharm_") ||
           k.startsWith("pharm_") ||
           k.startsWith("pharmacy_") ||
+          k.startsWith("_v2_pharmacy_") ||
           k.includes("pharmacy")) &&
         k !== "hospai_pharmacy_upi_id"
       ) {
         toRemove.push(k)
       }
     }
-    toRemove.forEach((k) => window.localStorage.removeItem(k))
+    toRemove.forEach((k) => {
+      window.localStorage.removeItem(k)
+      try {
+        window.sessionStorage.removeItem(k)
+      } catch {}
+    })
 
     // Explicitly initialize all stores to empty lists so zero demo records remain
     window.localStorage.setItem(CATEGORIES_KEY, "[]")
@@ -947,10 +1235,13 @@ export function clearAllPharmacyData(): void {
     window.localStorage.setItem(SUPPLIER_RETURNS_KEY, "[]")
     window.localStorage.setItem(ADJUSTMENTS_KEY, "[]")
     window.localStorage.setItem(CLARIFICATIONS_KEY, "[]")
+    window.localStorage.setItem(WRITE_OFFS_KEY, "[]")
     window.localStorage.setItem(NOTIFICATIONS_KEY, "[]")
     window.localStorage.setItem(AUDIT_LOGS_KEY, "[]")
     window.localStorage.setItem(USERS_KEY, "[]")
-    window.localStorage.setItem("hospai_pharm_fresh_demo_purged_v3", "true")
+    window.localStorage.removeItem("_v2_pharmacy_dispense_rx")
+    window.localStorage.setItem("hospai_pharm_fresh_clean_slate_v2026_ready", "true")
+    window.localStorage.setItem("hospai_pharm_scratch_clean_slate_v3_applied", "true")
 
     window.dispatchEvent(new Event("storage"))
     window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
@@ -959,30 +1250,44 @@ export function clearAllPharmacyData(): void {
   }
 }
 
-// Automatically purge demo and seed data once so the application opens completely clean for fresh hospital demo
+// Auto-run scratch clean slate on startup if not already applied
 if (typeof window !== "undefined") {
   try {
-    const isCleanPurged = window.localStorage.getItem("hospai_pharm_fresh_demo_purged_v3")
-    if (!isCleanPurged) {
+    const SCRATCH_WIPE_TOKEN = "hospai_pharm_scratch_clean_slate_v3_applied"
+    if (!window.localStorage.getItem(SCRATCH_WIPE_TOKEN)) {
       clearAllPharmacyData()
-      window.localStorage.setItem("hospai_pharm_fresh_demo_purged_v3", "true")
     }
-  } catch (e) {
-    console.error("Failed to purge demo pharmacy data:", e)
+  } catch (err) {
+    console.error("Failed to run clean-slate wipe:", err)
   }
 }
+
+// Expose utility globally for manual testing if needed
+if (typeof window !== "undefined") {
+  try {
+    ;(window as any).clearAllPharmacyData = clearAllPharmacyData
+    ;(window as any).purgeSamplePharmacyData = purgeSampleData
+    ;(window as any).seedPharmacyHospitalData = seedPharmacyHospitalData
+    ;(window as any).ensurePharmacyDataSeeded = ensurePharmacyDataSeeded
+  } catch (e) {
+    console.error("Failed to bind pharmacy window utilities:", e)
+  }
+}
+
+export const INITIAL_SEED_PRESCRIPTIONS: AppPrescription[] = SEED_PRESCRIPTIONS
 
 export class PharmacyDatabase {
   static purgeSampleData = purgeSampleData
   static clearAllPharmacyData = clearAllPharmacyData
   static seedHospitalTestData = seedPharmacyHospitalData
   static seedTestPrescriptionForSelling = seedTestPrescriptionForSelling
+  static ensureDataSeeded = ensurePharmacyDataSeeded
   // Categories
 
   static getUsers(): AppUser[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(USERS_KEY)
+      const stored = safeStorageGetItem(USERS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -990,7 +1295,7 @@ export class PharmacyDatabase {
   }
   static saveUsers(users: AppUser[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(USERS_KEY, JSON.stringify(users))
+      safeStorageSetItem(USERS_KEY, JSON.stringify(users))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1012,7 +1317,7 @@ export class PharmacyDatabase {
   static getDismissedNotificationIds(): string[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(DISMISSED_NOTIFICATIONS_KEY)
+      const stored = safeStorageGetItem(DISMISSED_NOTIFICATIONS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1025,9 +1330,9 @@ export class PharmacyDatabase {
       const dismissed = this.getDismissedNotificationIds()
       if (!dismissed.includes(id)) {
         dismissed.push(id)
-        window.localStorage.setItem(
+        safeStorageSetItem(
           DISMISSED_NOTIFICATIONS_KEY,
-          JSON.stringify(dismissed),
+          JSON.stringify(dismissed.slice(-30)),
         )
       }
       let notifs = this.getNotifications()
@@ -1046,7 +1351,7 @@ export class PharmacyDatabase {
   static getReadNotificationIds(): string[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(READ_NOTIFICATIONS_KEY)
+      const stored = safeStorageGetItem(READ_NOTIFICATIONS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1063,9 +1368,9 @@ export class PharmacyDatabase {
         const idx = readIds.indexOf(id)
         if (idx > -1) readIds.splice(idx, 1)
       }
-      window.localStorage.setItem(
+      safeStorageSetItem(
         READ_NOTIFICATIONS_KEY,
-        JSON.stringify(readIds),
+        JSON.stringify(readIds.slice(-30)),
       )
       const notifs = this.getNotifications()
       const idx = notifs.findIndex((n) => n.id === id)
@@ -1090,9 +1395,9 @@ export class PharmacyDatabase {
           if (!readIds.includes(id)) readIds.push(id)
         })
       }
-      window.localStorage.setItem(
+      safeStorageSetItem(
         READ_NOTIFICATIONS_KEY,
-        JSON.stringify(readIds),
+        JSON.stringify(readIds.slice(-30)),
       )
       const notifs = this.getNotifications()
       notifs.forEach((n) => {
@@ -1107,7 +1412,7 @@ export class PharmacyDatabase {
   static getNotifications(): AppNotification[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(NOTIFICATIONS_KEY)
+      const stored = safeStorageGetItem(NOTIFICATIONS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1116,12 +1421,17 @@ export class PharmacyDatabase {
 
   static saveNotifications(notifications: AppNotification[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        NOTIFICATIONS_KEY,
-        JSON.stringify(notifications),
-      )
-      window.dispatchEvent(new Event("storage"))
-      window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
+      try {
+        const trimmed = Array.isArray(notifications) ? notifications.slice(0, 20) : []
+        safeStorageSetItem(
+          NOTIFICATIONS_KEY,
+          JSON.stringify(trimmed),
+        )
+        window.dispatchEvent(new Event("storage"))
+        window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
+      } catch (err) {
+        console.warn("[PharmacyDb] Failed to save notifications:", err)
+      }
     }
   }
 
@@ -1149,34 +1459,39 @@ export class PharmacyDatabase {
     actionLabel?: string,
     category?: AppNotification["category"],
   ) {
-    const notifs = this.getNotifications()
-    const newNotif: AppNotification = {
-      id: "NOTIF" + Date.now() + Math.floor(Math.random() * 1000),
-      title,
-      message,
-      type,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      read: false,
-      actionPage,
-      actionLabel,
-      category,
-    }
-    notifs.unshift(newNotif)
-    this.saveNotifications(notifs)
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("hospai_pharmacy_toast", { detail: newNotif }),
-      )
+    try {
+      const notifs = this.getNotifications()
+      const newNotif: AppNotification = {
+        id: "NOTIF" + Date.now() + Math.floor(Math.random() * 1000),
+        title,
+        message,
+        type,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        read: false,
+        actionPage,
+        actionLabel,
+        category,
+      }
+      notifs.unshift(newNotif)
+      this.saveNotifications(notifs)
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("hospai_pharmacy_toast", { detail: newNotif }),
+        )
+      }
+    } catch (e) {
+      console.warn("[PharmacyDb] Non-blocking addNotification failure:", e)
     }
   }
 
   static getAuditLogs(): AppAuditLog[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(AUDIT_LOGS_KEY)
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(AUDIT_LOGS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1184,7 +1499,7 @@ export class PharmacyDatabase {
   }
   static saveAuditLogs(logs: AppAuditLog[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(logs))
+      safeStorageSetItem(AUDIT_LOGS_KEY, JSON.stringify(logs.slice(-50)))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1193,7 +1508,8 @@ export class PharmacyDatabase {
   static getCategories(): AppCategory[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(CATEGORIES_KEY)
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(CATEGORIES_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1201,7 +1517,7 @@ export class PharmacyDatabase {
   }
   static saveCategories(categories: AppCategory[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories))
+      safeStorageSetItem(CATEGORIES_KEY, JSON.stringify(categories))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1230,16 +1546,36 @@ export class PharmacyDatabase {
   static getSuppliers(): AppSupplier[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(SUPPLIERS_KEY)
-      const list: AppSupplier[] = stored ? JSON.parse(stored) : []
-      return Array.isArray(list) ? list : []
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(SUPPLIERS_KEY)
+      let list: AppSupplier[] = stored ? JSON.parse(stored) : []
+      if (!Array.isArray(list)) list = []
+      if (!list.some((s) => (s.supplierName || "").toLowerCase().includes("vh medicals"))) {
+        list.push({
+          id: "SUP-VH-01",
+          supplierName: "VH MEDICALS AND CHEMICALS",
+          contactInformation: "Distributor & Wholesaler",
+          phone: "+91 98480 12345",
+          email: "orders@vhmedicals.com",
+          address: "Pharma Complex, Main Road",
+          gstInformation: "37AABCV1234F1Z5",
+          licenseDetails: "DL-AP-1029/2024",
+          paymentTerms: "Credit 30 Days",
+          status: "Active",
+          createdAt: new Date().toISOString(),
+        })
+        if (typeof window !== "undefined") {
+          safeStorageSetItem(SUPPLIERS_KEY, JSON.stringify(list))
+        }
+      }
+      return list
     } catch {
       return []
     }
   }
   static saveSuppliers(suppliers: AppSupplier[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(SUPPLIERS_KEY, JSON.stringify(suppliers))
+      safeStorageSetItem(SUPPLIERS_KEY, JSON.stringify(suppliers))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1268,16 +1604,40 @@ export class PharmacyDatabase {
   static getMedicines(): AppMedicine[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(MEDICINES_KEY)
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(MEDICINES_KEY)
       const list: AppMedicine[] = stored ? JSON.parse(stored) : []
-      return Array.isArray(list) ? list : []
+      if (Array.isArray(list)) {
+        let changed = false
+        const seenIds = new Set<string>()
+        const seenNames = new Set<string>()
+        const uniqueList: AppMedicine[] = []
+
+        for (const m of list) {
+          const id = (m.id || "").toLowerCase().trim()
+          const name = (m.medicineName || m.brandName || (m as any).name || "").toLowerCase().trim()
+          if (!id || (seenIds.has(id) && seenNames.has(name))) {
+            changed = true
+            continue
+          }
+          if (id) seenIds.add(id)
+          if (name) seenNames.add(name)
+          uniqueList.push(m)
+        }
+
+        if (changed && typeof window !== "undefined") {
+          safeStorageSetItem(MEDICINES_KEY, JSON.stringify(uniqueList))
+        }
+        return uniqueList
+      }
+      return []
     } catch {
       return []
     }
   }
   static saveMedicines(medicines: AppMedicine[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(MEDICINES_KEY, JSON.stringify(medicines))
+      safeStorageSetItem(MEDICINES_KEY, JSON.stringify(medicines))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1291,15 +1651,41 @@ export class PharmacyDatabase {
 
   static updateMedicine(id: string, updates: any) {
     const meds = this.getMedicines()
-    const idx = meds.findIndex((m) => m.id === id)
+    const targetId = (id || "").toLowerCase().trim()
+    let idx = meds.findIndex((m) => (m.id || "").toLowerCase().trim() === targetId)
+
+    if (idx === -1) {
+      const searchName = (updates.medicineName || updates.brandName || updates.name || "").trim().toLowerCase()
+      if (searchName) {
+        idx = meds.findIndex((m) => 
+          (m.medicineName || "").trim().toLowerCase() === searchName || 
+          (m.brandName || "").trim().toLowerCase() === searchName ||
+          ((m as any).name || "").trim().toLowerCase() === searchName
+        )
+      }
+    }
+
+    const resolvedName = updates.medicineName || updates.name || updates.brandName || (idx !== -1 ? (meds[idx].medicineName || meds[idx].brandName) : "Medicine")
     if (idx !== -1) {
       meds[idx] = {
         ...meds[idx],
         ...updates,
-        medicineName: updates.name || meds[idx].medicineName,
+        medicineName: resolvedName,
+        brandName: updates.brandName || resolvedName,
       }
-      this.saveMedicines(meds)
+    } else {
+      meds.push({
+        id,
+        ...updates,
+        medicineName: resolvedName,
+        brandName: updates.brandName || resolvedName,
+        status: "Active",
+          gstInformation: "36AAACH7409R1ZZ",
+          activeStatus: "Active",
+        createdAt: new Date().toISOString(),
+      } as any)
     }
+    this.saveMedicines(meds)
   }
 
   static deleteMedicine(id: string) {
@@ -1307,20 +1693,302 @@ export class PharmacyDatabase {
     this.saveMedicines(meds.filter((m) => m.id !== id))
   }
 
+  /**
+   * High-performance, atomic bulk import of medicines and opening inventory batches.
+   * Processes all rows in-memory, eliminates ID collisions, links duplicate names
+   * to multiple batches, auto-registers suppliers, and saves in a single atomic transaction.
+   */
+  static bulkImportMedicines(payload: {
+    rows: any[]
+    updateExisting?: boolean
+    createOpeningBatches?: boolean
+  }): { addedCount: number; updatedCount: number; batchesCreated: number } {
+    if (typeof window === "undefined") {
+      return { addedCount: 0, updatedCount: 0, batchesCreated: 0 }
+    }
+
+    cleanupStorageQuota()
+
+    const updateExisting = payload.updateExisting !== false
+    const createOpeningBatches = payload.createOpeningBatches !== false
+
+    const meds = this.getMedicines()
+    const batches = this.getBatches()
+    const txs = this.getStockTransactions()
+    const sups = this.getSuppliers()
+
+    let addedCount = 0
+    let updatedCount = 0
+    let batchesCreated = 0
+
+    // Index existing medicines by lowercased name and ID
+    const medMapByName = new Map<string, AppMedicine>()
+    const medMapById = new Map<string, AppMedicine>()
+    meds.forEach((m) => {
+      const id = (m.id || "").toLowerCase().trim()
+      const n1 = (m.medicineName || "").toLowerCase().trim()
+      const n2 = (m.brandName || "").toLowerCase().trim()
+      const n3 = ((m as any).name || "").toLowerCase().trim()
+      if (id) medMapById.set(id, m)
+      if (n1) medMapByName.set(n1, m)
+      if (n2) medMapByName.set(n2, m)
+      if (n3) medMapByName.set(n3, m)
+    })
+
+    // Index existing batches by (medicineId + "___" + batchNumber)
+    const batchMap = new Map<string, AppBatch>()
+    batches.forEach((b) => {
+      const bKey = `${(b.medicineId || "").toLowerCase().trim()}___${(b.batchNumber || "").toLowerCase().trim()}`
+      batchMap.set(bKey, b)
+    })
+
+    // Index existing suppliers
+    const supSet = new Set<string>()
+    sups.forEach((s) => {
+      const sName = (s.supplierName || s.name || "").toLowerCase().trim()
+      if (sName) supSet.add(sName)
+    })
+
+    const nowIso = new Date().toISOString()
+    const todayDate = nowIso.split("T")[0]
+
+    payload.rows.forEach((row, i) => {
+      const rawName = (row.name || row.medicineName || row.productName || "").trim()
+      if (!rawName) return
+
+      const cleanName = rawName.toUpperCase()
+      const nameKey = cleanName.toLowerCase()
+      const supplierName = (row.supplierName || "VH MEDICALS AND CHEMICALS").trim()
+      const mnfCode = (row.mnfCode || row.manufacturer || "MANK").trim().toUpperCase()
+      const dosageForm = (row.form || row.dosageForm || "TABLET").trim().toUpperCase()
+      const packing = (row.pack || row.packing || "1's").trim()
+      const strength = (row.strength || row.pack || "").trim()
+      const hsnCode = (row.hsnCode || "3004 039").trim()
+      const mrp = Number(row.mrp) > 0 ? Number(row.mrp) : 100
+      const purchasePrice = Number(row.purchasePrice) > 0 ? Number(row.purchasePrice) : +(mrp * 0.75).toFixed(2)
+      const discount = Number(row.discount) || 0
+      const gst = Number(row.gst) >= 0 ? Number(row.gst) : 5
+      const stock = Math.max(0, Number(row.stock) || 0)
+      const batchNum = (row.batchNumber || ("BT" + Math.floor(100000 + Math.random() * 900000))).trim()
+      const expiryDate = row.expiryDate ? row.expiryDate.trim() : "2028-03-31"
+      const binNo = (row.binNo || "").trim()
+
+      // Auto-register Supplier if not already present
+      const supKey = supplierName.toLowerCase()
+      if (supKey && !supSet.has(supKey)) {
+        const newSup: AppSupplier = {
+          id: `SUP-${Date.now()}-${i + 1}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+          supplierName: supplierName,
+          contactInformation: "Sales Rep",
+          contactPerson: "Sales Rep",
+          phoneNumber: "9876543210",
+          email: `orders@${supKey.replace(/[^a-z0-9]/g, "") || "supplier"}.com`,
+          address: "Central Medical Distributor Hub",
+          gstNumber: "36AAACH7409R1ZZ",
+          paymentTerms: "30 Days",
+          status: "Active",
+          gstInformation: "36AAACH7409R1ZZ",
+          activeStatus: "Active",
+          rating: 5,
+          createdAt: nowIso,
+        }
+        sups.push(newSup)
+        supSet.add(supKey)
+      }
+
+      // Check if medicine exists
+      let targetMed = medMapByName.get(nameKey)
+
+      if (targetMed && updateExisting) {
+        targetMed.medicineName = cleanName
+        targetMed.brandName = cleanName
+        targetMed.name = cleanName as any
+        targetMed.genericName = (row.generic || cleanName).toUpperCase()
+        targetMed.supplierName = supplierName as any
+        targetMed.dosageForm = dosageForm as any
+        targetMed.form = dosageForm as any
+        targetMed.packing = packing as any
+        targetMed.strength = strength
+        targetMed.manufacturer = mnfCode
+        targetMed.mnfCode = mnfCode as any
+        targetMed.hsnCode = hsnCode
+        targetMed.taxPercentage = gst
+        targetMed.binNo = binNo as any
+        targetMed.mrp = mrp as any
+        targetMed.purchasePrice = purchasePrice as any
+        targetMed.batchNumber = batchNum as any
+        targetMed.expiryDate = expiryDate as any
+        targetMed.activeStatus = "Active"
+        updatedCount++
+      } else if (!targetMed) {
+        const uniqueMedId = `MED-${Date.now()}-${i + 1}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+        const newMedRecord: any = {
+          id: uniqueMedId,
+          brandName: cleanName,
+          medicineName: cleanName,
+          name: cleanName,
+          genericName: (row.generic || cleanName).toUpperCase(),
+          supplierName,
+          strength,
+          packing,
+          dosageForm,
+          form: dosageForm,
+          manufacturer: mnfCode,
+          mnfCode,
+          taxPercentage: gst,
+          status: "Active",
+          gstInformation: "36AAACH7409R1ZZ",
+          activeStatus: "Active",
+          hsnCode,
+          binNo,
+          barcode: "890" + Math.floor(1000000000 + Math.random() * 9000000000),
+          scheduleType: row.schedule || "H",
+          controlledSubstanceFlag: row.schedule === "X" || row.schedule === "H1",
+          categoryId: row.category || dosageForm,
+          reorderLevel: 15,
+          stock: stock,
+          currentStock: stock,
+          mrp,
+          purchasePrice,
+          batchNumber: batchNum,
+          expiryDate,
+          createdAt: nowIso,
+        }
+        meds.push(newMedRecord)
+        medMapByName.set(nameKey, newMedRecord)
+        medMapById.set(uniqueMedId.toLowerCase(), newMedRecord)
+        targetMed = newMedRecord
+        addedCount++
+      }
+
+      // Add Batch & Inventory Movement Ledger
+      if (createOpeningBatches && stock > 0 && targetMed) {
+        const bKey = `${targetMed.id.toLowerCase().trim()}___${batchNum.toLowerCase().trim()}`
+        let existingBatch = batchMap.get(bKey)
+        let targetBatchId = ""
+
+        if (existingBatch) {
+          existingBatch.quantity = (Number(existingBatch.quantity) || 0) + stock
+          existingBatch.availableQuantity = (Number(existingBatch.availableQuantity) || 0) + stock
+          existingBatch.mrp = mrp
+          existingBatch.purchasePrice = purchasePrice
+          existingBatch.expiryDate = expiryDate
+          existingBatch.location = binNo || existingBatch.location || "Main Pharmacy"
+          targetBatchId = existingBatch.id
+        } else {
+          targetBatchId = `BAT-${Date.now()}-${i + 1}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`
+          const newBatch: AppBatch = {
+            id: targetBatchId,
+            medicineId: targetMed.id,
+            batchNumber: batchNum,
+            expiryDate: expiryDate,
+            manufacturingDate: todayDate,
+            quantity: stock,
+            availableQuantity: stock,
+            mrp,
+            purchasePrice,
+            discount,
+            supplierName,
+            location: binNo || "Main Pharmacy",
+            grnId: "IMPORT_OPENING",
+            status: "Available",
+            createdAt: nowIso,
+          }
+          batches.push(newBatch)
+          batchMap.set(bKey, newBatch)
+          batchesCreated++
+        }
+
+        // Add Ledger Transaction
+        txs.push({
+          id: `TXN-${Date.now()}-${i + 1}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+          date: nowIso,
+          medicineId: targetMed.id,
+          batchId: targetBatchId,
+          quantity: stock,
+          transactionType: "PURCHASE_RECEIVED",
+          userId: "Hospital Inventory Manager",
+          reason: `Bulk Import Opening Stock: ${cleanName}`,
+        })
+      }
+    })
+
+    // Synchronize overall medicine stock with batch totals
+    meds.forEach((m) => {
+      const medBatches = batches.filter((b) => b.medicineId === m.id)
+      if (medBatches.length > 0) {
+        const totalAvail = medBatches.reduce((acc, b) => acc + (Number(b.availableQuantity) || 0), 0)
+        m.stock = Math.max(0, totalAvail)
+        ;(m as any).currentStock = Math.max(0, totalAvail)
+        const latestBatch = medBatches[medBatches.length - 1]
+        m.mrp = latestBatch.mrp || m.mrp
+        m.purchasePrice = latestBatch.purchasePrice || m.purchasePrice
+        m.batchNumber = latestBatch.batchNumber || m.batchNumber
+        m.expiryDate = latestBatch.expiryDate || m.expiryDate
+      }
+    })
+
+    // Atomic persistence in single writes
+    safeStorageSetItem(MEDICINES_KEY, JSON.stringify(meds))
+    safeStorageSetItem(BATCHES_KEY, JSON.stringify(batches))
+    safeStorageSetItem(STOCK_TXS_KEY, JSON.stringify(txs.slice(-500)))
+    safeStorageSetItem(SUPPLIERS_KEY, JSON.stringify(sups))
+
+    // Audit Log & Notification
+    this.logAudit(
+      "Inventory Manager",
+      "Bulk Import",
+      "Medicine Master",
+      "BULK",
+      `Imported ${payload.rows.length} medicines: ${addedCount} added, ${updatedCount} updated, ${batchesCreated} batches created.`
+    )
+
+    this.addNotification(
+      "Medicines Imported to Inventory",
+      `Bulk imported ${payload.rows.length} medicines: ${addedCount} new added, ${updatedCount} updated, ${batchesCreated} batches registered in Inventory Ledger.`,
+      "info",
+      "Medicine Master",
+      "View Inventory",
+      "stock"
+    )
+
+    window.dispatchEvent(new Event("storage"))
+    window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
+
+    return { addedCount, updatedCount, batchesCreated }
+  }
+
   // Batches
   static getBatches(): AppBatch[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(BATCHES_KEY)
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(BATCHES_KEY)
       const list: AppBatch[] = stored ? JSON.parse(stored) : []
-      return Array.isArray(list) ? list : []
+      if (Array.isArray(list)) {
+        let changed = false
+        list.forEach((b: any) => {
+          if (b.expiryDate && typeof b.expiryDate === "string") {
+            const healed = b.expiryDate.replace(/^00(\d{2})/, "20$1")
+            if (healed !== b.expiryDate) {
+              b.expiryDate = healed
+              changed = true
+            }
+          }
+        })
+        if (changed && typeof window !== "undefined") {
+          safeStorageSetItem(BATCHES_KEY, JSON.stringify(list))
+        }
+        return list
+      }
+      return []
     } catch {
       return []
     }
   }
   static saveBatches(batches: AppBatch[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(BATCHES_KEY, JSON.stringify(batches))
+      safeStorageSetItem(BATCHES_KEY, JSON.stringify(batches))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1328,40 +1996,69 @@ export class PharmacyDatabase {
 
   static updateBatch(id: string, updates: Partial<AppBatch>) {
     const batches = this.getBatches()
-    const idx = batches.findIndex((b) => b.id === id)
+    const targetId = (id || "").toLowerCase().trim()
+    let idx = batches.findIndex((b) => (b.id || "").toLowerCase().trim() === targetId)
+
+    if (idx === -1 && updates.batchNumber) {
+      idx = batches.findIndex(
+        (b) =>
+          b.batchNumber?.toLowerCase().trim() === updates.batchNumber?.toLowerCase().trim() &&
+          (!updates.medicineId || b.medicineId === updates.medicineId)
+      )
+    }
+
     if (idx !== -1) {
       batches[idx] = { ...batches[idx], ...updates }
       this.saveBatches(batches)
+    } else if (updates.medicineId && updates.batchNumber) {
+      this.addBatch({
+        id,
+        ...updates,
+      })
     }
   }
 
-  static addBatch(batch: any) {
+  static addBatch(batch: any): string {
     const batches = this.getBatches()
-    batches.push({
-      id: "B" + Date.now() + Math.floor(Math.random() * 100),
+    const targetId = batch.id || ("BAT" + Date.now() + Math.floor(Math.random() * 1000))
+    const existingIdx = batches.findIndex((b) => b.id === targetId)
+
+    const batchRecord: AppBatch = {
+      ...batch,
+      id: targetId,
       medicineId: batch.medicineId,
       batchNumber: batch.batchNumber,
       expiryDate: batch.expiryDate,
-      manufacturingDate: batch.mfg || "2024-01-01",
-      quantity: batch.quantity,
-      availableQuantity: batch.availableQuantity ?? batch.quantity,
-      purchasePrice: batch.purchasePrice,
-      supplierId: batch.supplierId || "SUP-01",
-      invoiceNumber: batch.invoiceNumber || "INV-GEN-01",
-      mrp: batch.mrp,
-      grnId: batch.grnId || "GRN-SYS",
+      manufacturingDate: batch.manufacturingDate || batch.mfg || new Date().toISOString().split("T")[0],
+      quantity: Number(batch.quantity) || 0,
+      availableQuantity: Number(batch.availableQuantity !== undefined ? batch.availableQuantity : batch.quantity) || 0,
+      purchasePrice: Number(batch.purchasePrice) || 0,
+      supplierId: batch.supplierId || "",
+      supplierName: batch.supplierName || "",
+      invoiceNumber: batch.invoiceNumber || "",
+      mrp: Number(batch.mrp) || 0,
+      discount: Number(batch.discount) || 0,
+      grnId: batch.grnId || "",
       location: batch.location || "Main Pharmacy",
-      status: "Available",
-      createdAt: new Date().toISOString(),
-    })
+      status: batch.status || "Available",
+      createdAt: batch.createdAt || new Date().toISOString(),
+    }
+
+    if (existingIdx !== -1) {
+      batches[existingIdx] = { ...batches[existingIdx], ...batchRecord }
+    } else {
+      batches.push(batchRecord)
+    }
     this.saveBatches(batches)
+    return targetId
   }
 
   // Purchase Orders
   static getPurchaseOrders(): AppPurchaseOrder[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(POS_KEY)
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(POS_KEY)
       const list: AppPurchaseOrder[] = stored ? JSON.parse(stored) : []
       return Array.isArray(list) ? list : []
     } catch {
@@ -1370,7 +2067,7 @@ export class PharmacyDatabase {
   }
   static savePurchaseOrders(pos: AppPurchaseOrder[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(POS_KEY, JSON.stringify(pos))
+      safeStorageSetItem(POS_KEY, JSON.stringify(pos))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1395,7 +2092,8 @@ export class PharmacyDatabase {
   static getGRNs(): AppGRN[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(GRNS_KEY)
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(GRNS_KEY)
       if (!stored) return []
       const list: AppGRN[] = JSON.parse(stored)
       return Array.isArray(list) ? list : []
@@ -1405,7 +2103,7 @@ export class PharmacyDatabase {
   }
   static saveGRNs(grns: AppGRN[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(GRNS_KEY, JSON.stringify(grns))
+      safeStorageSetItem(GRNS_KEY, JSON.stringify(grns))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1421,7 +2119,7 @@ export class PharmacyDatabase {
   static getStockTransactions(): AppStockTransaction[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(STOCK_TXS_KEY)
+      const stored = safeStorageGetItem(STOCK_TXS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1429,7 +2127,7 @@ export class PharmacyDatabase {
   }
   static saveStockTransactions(txs: AppStockTransaction[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(STOCK_TXS_KEY, JSON.stringify(txs))
+      safeStorageSetItem(STOCK_TXS_KEY, JSON.stringify(txs.slice(-50)))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1445,8 +2143,18 @@ export class PharmacyDatabase {
   static getPrescriptions(): AppPrescription[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(PRESCRIPTIONS_KEY)
-      const prescriptions: AppPrescription[] = stored ? JSON.parse(stored) : []
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(PRESCRIPTIONS_KEY)
+      let prescriptions: AppPrescription[] = stored ? JSON.parse(stored) : []
+      if (!Array.isArray(prescriptions)) return []
+
+      const currentIds = new Set(prescriptions.map((p) => p.id))
+      const missing = INITIAL_SEED_PRESCRIPTIONS.filter((p) => !currentIds.has(p.id))
+      if (missing.length > 0) {
+        const merged = [...missing, ...prescriptions]
+        this.savePrescriptions(merged)
+        return merged
+      }
       return prescriptions
     } catch {
       return []
@@ -1454,7 +2162,7 @@ export class PharmacyDatabase {
   }
   static savePrescriptions(rx: AppPrescription[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(PRESCRIPTIONS_KEY, JSON.stringify(rx))
+      safeStorageSetItem(PRESCRIPTIONS_KEY, JSON.stringify(rx))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1464,16 +2172,49 @@ export class PharmacyDatabase {
   static getBills(): AppPharmacyBill[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(BILLS_KEY)
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(BILLS_KEY)
       let bills: AppPharmacyBill[] = stored ? JSON.parse(stored) : []
-      return Array.isArray(bills) ? bills : []
+      if (!Array.isArray(bills)) return []
+
+      // Self-heal: filter out any mock/seed bills from generalReports
+      const filtered = bills.filter((b) => !b.id?.startsWith("BILL-REP-"))
+      let changed = filtered.length !== bills.length
+      bills = filtered
+
+      // Self-heal: ensure modified return bills with 0 remaining items are strictly 0 totalAmount
+      bills = bills.map((b) => {
+        if (b.isModifiedReturnBill || b.billNumber?.startsWith("MOD-")) {
+          const hasRemainingItems = Array.isArray(b.items) && b.items.some((it) => (it.quantity || 0) > 0)
+          if (!hasRemainingItems && ((b.totalAmount || 0) !== 0 || (b.subTotal || 0) !== 0 || (b.tax || 0) !== 0)) {
+            changed = true
+            return {
+              ...b,
+              totalAmount: 0,
+              subTotal: 0,
+              tax: 0,
+              taxableTotal: 0,
+              cgstTotal: 0,
+              sgstTotal: 0,
+              items: [],
+              paymentStatus: "Paid",
+            }
+          }
+        }
+        return b
+      })
+
+      if (changed) {
+        safeStorageSetItem(BILLS_KEY, JSON.stringify(bills))
+      }
+      return bills
     } catch {
       return []
     }
   }
   static saveBills(bills: AppPharmacyBill[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(BILLS_KEY, JSON.stringify(bills))
+      safeStorageSetItem(BILLS_KEY, JSON.stringify(bills))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1485,13 +2226,66 @@ export class PharmacyDatabase {
     this.saveBills(bills)
   }
 
+  static updatePharmacyBill(billId: string, updates: Partial<AppPharmacyBill>): AppPharmacyBill | null {
+    const bills = this.getBills()
+    const target = (billId || "").toLowerCase().trim()
+    const updateBillNo = ((updates as any)?.billNumber || "").toLowerCase().trim()
+    const updateId = ((updates as any)?.id || "").toLowerCase().trim()
+
+    const idx = bills.findIndex(
+      (b) =>
+        (b.id || "").toLowerCase().trim() === target ||
+        (b.billNumber || "").toLowerCase().trim() === target ||
+        (updateBillNo && (b.billNumber || "").toLowerCase().trim() === updateBillNo) ||
+        (updateId && (b.id || "").toLowerCase().trim() === updateId) ||
+        (b.originalBillNumber && (b.originalBillNumber || "").toLowerCase().trim() === target)
+    )
+    if (idx !== -1) {
+      bills[idx] = { ...bills[idx], ...updates }
+      this.saveBills(bills)
+      return bills[idx]
+    }
+    return null
+  }
+
   // Returns
   static getReturns(): AppPharmacyReturn[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(RETURNS_KEY)
+      ensurePharmacyDataSeeded()
+      const stored = safeStorageGetItem(RETURNS_KEY)
       let list: AppPharmacyReturn[] = stored ? JSON.parse(stored) : []
-      return Array.isArray(list) ? list : []
+      if (!Array.isArray(list)) return []
+
+      // Self-healing migration: if all items from original bill were returned, ensure refundAmount covers full bill total
+      let changed = false
+      const billsStored = safeStorageGetItem(BILLS_KEY)
+      const allBills: AppPharmacyBill[] = billsStored ? JSON.parse(billsStored) : []
+
+      list = list.map((r) => {
+        const origBill = allBills.find(
+          (b) =>
+            !b.isModifiedReturnBill &&
+            (b.billNumber === r.originalBillNumber || b.id === r.originalBillId),
+        )
+        if (origBill && origBill.totalAmount) {
+          const origTotalQty = (origBill.items || []).reduce((s, it) => s + (it.quantity || 0), 0)
+          const retTotalQty = (r.items || []).reduce((s, it) => s + (it.returnQuantity || 0), 0) || r.returnQuantity || 0
+          if (origTotalQty > 0 && retTotalQty >= origTotalQty && (r.refundAmount || 0) < origBill.totalAmount) {
+            changed = true
+            return {
+              ...r,
+              refundAmount: origBill.totalAmount,
+            }
+          }
+        }
+        return r
+      })
+
+      if (changed) {
+        safeStorageSetItem(RETURNS_KEY, JSON.stringify(list))
+      }
+      return list
     } catch {
       return []
     }
@@ -1506,7 +2300,7 @@ export class PharmacyDatabase {
         seen.add(key)
         return true
       })
-      window.localStorage.setItem(RETURNS_KEY, JSON.stringify(uniqueReturns))
+      safeStorageSetItem(RETURNS_KEY, JSON.stringify(uniqueReturns))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1535,12 +2329,16 @@ export class PharmacyDatabase {
   }
 
   static getReturnsForBill(billNumberOrId: string): AppPharmacyReturn[] {
+    if (!billNumberOrId) return []
     const allReturns = this.getReturns()
-    return allReturns.filter(
-      (r) =>
-        r.originalBillNumber === billNumberOrId ||
-        r.originalBillId === billNumberOrId,
-    )
+    const query = billNumberOrId.toLowerCase().trim()
+    return allReturns.filter((r) => {
+      const origNo = (r.originalBillNumber || "").toLowerCase()
+      const origId = (r.originalBillId || "").toLowerCase()
+      const modNo = (r.modifiedBillNumber || "").toLowerCase()
+      const modId = (r.modifiedBillId || "").toLowerCase()
+      return origNo === query || origId === query || modNo === query || modId === query
+    })
   }
 
   static processMedicineReturn(
@@ -1548,29 +2346,31 @@ export class PharmacyDatabase {
     returnedItems: AppPharmacyReturnItem[],
     returnReason: string,
     notes?: string,
-  ): { returnRecord: AppPharmacyReturn ;modifiedBill: AppPharmacyBill } {
+  ): { returnRecord: AppPharmacyReturn; modifiedBill: AppPharmacyBill } {
     const returnNumber =
       "RET-" +
       new Date().getFullYear() +
       "-" +
       String(Math.floor(10000 + Math.random() * 90000))
-    const modifiedBillNumber =
+    const targetBillNumber =
       originalBill.originalBillNumber || originalBill.billNumber
     const now = new Date().toISOString()
 
-    const refundAmount = returnedItems.reduce(
-      (sum, item) => sum + (item.refundAmount || 0),
-      0,
-    )
-    const modifiedTotalAmount = Math.max(
-      0,
-      (originalBill.totalAmount || 0) - refundAmount,
-    )
+    // 1. Fetch current bills and find the true original bill to keep master items list
+    const allBills = this.getBills()
+    const trueOriginalBill =
+      allBills.find(
+        (b) =>
+          !b.isModifiedReturnBill &&
+          (b.billNumber === targetBillNumber || b.originalBillNumber === targetBillNumber),
+      ) || originalBill
 
-    // Calculate previous returns to accurately determine line items
-    const previousReturns = this.getReturnsForBill(originalBill.billNumber)
+    // 2. Fetch all previous returns for this bill
+    const previousReturns = this.getReturnsForBill(targetBillNumber)
     const previouslyReturnedMap: Record<string, number> = {}
+    let allPreviousRefundAmount = 0
     previousReturns.forEach((ret) => {
+      allPreviousRefundAmount += (ret.refundAmount || 0)
       ;(ret.items || []).forEach((item) => {
         const key = `${item.medicineId}_${item.batchNumber}`
         previouslyReturnedMap[key] =
@@ -1587,8 +2387,19 @@ export class PharmacyDatabase {
       }
     })
 
-    // 1. Build modified bill items
-    const modifiedBillItems: AppPharmacyBillItem[] = originalBill.items
+    const refundAmount = returnedItems.reduce(
+      (sum, item) => sum + (item.refundAmount || 0),
+      0,
+    )
+    const baseOriginalTotal = trueOriginalBill.totalAmount || 0
+
+    // 3. Build modified bill items using master items
+    const masterItems =
+      trueOriginalBill.items && trueOriginalBill.items.length > 0
+        ? trueOriginalBill.items
+        : originalBill.items
+
+    const modifiedBillItems: AppPharmacyBillItem[] = masterItems
       .map((origItem) => {
         const key = `${origItem.medicineId}_${origItem.batchNumber}`
         const prevReturned = previouslyReturnedMap[key] || 0
@@ -1623,38 +2434,51 @@ export class PharmacyDatabase {
       })
       .filter((item) => item.quantity > 0)
 
-    const subTotal = modifiedBillItems.reduce(
-      (s, i) => s + (i.taxableAmount || 0),
+    const isAllRemainingReturned = modifiedBillItems.length === 0
+    const calculatedRefund = returnedItems.reduce(
+      (sum, item) => sum + (item.refundAmount || 0),
       0,
     )
-    const cgstTotal = modifiedBillItems.reduce(
-      (s, i) => s + (i.cgstAmount || 0),
-      0,
-    )
-    const sgstTotal = modifiedBillItems.reduce(
-      (s, i) => s + (i.sgstAmount || 0),
-      0,
-    )
+    const effectiveRefundAmount = isAllRemainingReturned
+      ? Math.max(calculatedRefund, baseOriginalTotal - allPreviousRefundAmount)
+      : calculatedRefund
+
+    const subTotal = isAllRemainingReturned
+      ? 0
+      : modifiedBillItems.reduce((s, i) => s + (i.taxableAmount || 0), 0)
+    const cgstTotal = isAllRemainingReturned
+      ? 0
+      : modifiedBillItems.reduce((s, i) => s + (i.cgstAmount || 0), 0)
+    const sgstTotal = isAllRemainingReturned
+      ? 0
+      : modifiedBillItems.reduce((s, i) => s + (i.sgstAmount || 0), 0)
     const totalTax = cgstTotal + sgstTotal
+    const itemsTotal = modifiedBillItems.reduce(
+      (s, i) => s + (i.totalPrice || 0),
+      0,
+    )
+    const modifiedTotalAmount = isAllRemainingReturned
+      ? 0
+      : Math.max(0, Number(itemsTotal.toFixed(2)))
 
     const modifiedBill: AppPharmacyBill = {
-      id: "PB-" + Date.now(),
-      billNumber: modifiedBillNumber,
-      originalBillNumber: originalBill.billNumber,
+      id: "MOD-" + Date.now(),
+      billNumber: targetBillNumber,
+      originalBillNumber: targetBillNumber,
       isModifiedReturnBill: true,
-      patientId: originalBill.patientId,
-      patientName: originalBill.patientName,
-      uhid: originalBill.uhid,
-      doctorName: originalBill.doctorName,
-      department: originalBill.department,
-      billType: originalBill.billType,
+      patientId: trueOriginalBill.patientId,
+      patientName: trueOriginalBill.patientName,
+      uhid: trueOriginalBill.uhid,
+      doctorName: trueOriginalBill.doctorName,
+      department: trueOriginalBill.department,
+      billType: trueOriginalBill.billType,
       paymentStatus:
-        modifiedTotalAmount === 0 ? "Paid" : originalBill.paymentStatus,
-      paymentMode: originalBill.paymentMode,
-      prescriptionId: originalBill.prescriptionId,
+        modifiedTotalAmount === 0 ? "Paid" : trueOriginalBill.paymentStatus,
+      paymentMode: trueOriginalBill.paymentMode,
+      prescriptionId: trueOriginalBill.prescriptionId,
       items: modifiedBillItems,
       subTotal,
-      discount: originalBill.discount || 0,
+      discount: isAllRemainingReturned ? 0 : trueOriginalBill.discount || 0,
       tax: totalTax,
       taxableTotal: subTotal,
       cgstTotal,
@@ -1664,30 +2488,29 @@ export class PharmacyDatabase {
       createdAt: now,
     }
 
-    // 2. Create the return record
+    // 4. Create the return record
     const returnRecord: AppPharmacyReturn = {
       id: "RET-" + Date.now(),
       returnNumber,
-      patientUhid: originalBill.uhid,
-      patientName: originalBill.patientName,
-      patientId: originalBill.patientId,
-      doctorName: originalBill.doctorName,
-      department: originalBill.department,
-      originalBillId: originalBill.id,
-      originalBillNumber: originalBill.billNumber,
+      patientUhid: trueOriginalBill.uhid,
+      patientName: trueOriginalBill.patientName,
+      patientId: trueOriginalBill.patientId,
+      doctorName: trueOriginalBill.doctorName,
+      department: trueOriginalBill.department,
+      originalBillId: trueOriginalBill.id,
+      originalBillNumber: targetBillNumber,
       modifiedBillId: modifiedBill.id,
-      modifiedBillNumber: modifiedBill.billNumber,
+      modifiedBillNumber: targetBillNumber,
       items: returnedItems,
-      // For legacy single-item schema compatibility
       medicineId: returnedItems[0]?.medicineId || "",
       batchNumber: returnedItems[0]?.batchNumber || "",
       returnQuantity: returnedItems.reduce(
         (sum, i) => sum + i.returnQuantity,
         0,
       ),
-      originalTotalAmount: originalBill.totalAmount,
+      originalTotalAmount: baseOriginalTotal,
       modifiedTotalAmount,
-      refundAmount,
+      refundAmount: effectiveRefundAmount,
       returnReason,
       notes,
       approvedBy: "Pharmacist",
@@ -1696,37 +2519,68 @@ export class PharmacyDatabase {
       createdAt: now,
     }
 
-    // 3. Save return record
+    // 5. Save return record
     const returns = this.getReturns()
     returns.unshift(returnRecord)
     this.saveReturns(returns)
 
-    // 4. Save modified bill (IMPORTANT: Original bill is preserved untouched)
-    this.addPharmacyBill(modifiedBill)
+    // 6. Save modified bill (replace previous modified bill for this billNumber, keep original)
+    const currentBills = this.getBills()
+    const updatedBills = currentBills.filter(
+      (b) =>
+        !(
+          b.isModifiedReturnBill &&
+          (b.billNumber === targetBillNumber ||
+            b.originalBillNumber === targetBillNumber)
+        ),
+    )
+    updatedBills.unshift(modifiedBill)
+    this.saveBills(updatedBills)
 
     // 5. Restock batches and record stock transactions
     const batches = this.getBatches()
+    const medicines = this.getMedicines()
+
     returnedItems.forEach((item) => {
       if (item.returnQuantity <= 0) return
 
-      const batch = batches.find(
+      let batch = batches.find(
         (b) =>
           b.medicineId === item.medicineId &&
-          b.batchNumber === item.batchNumber,
+          b.batchNumber?.trim().toLowerCase() === item.batchNumber?.trim().toLowerCase(),
       )
+      if (!batch) {
+        batch = batches.find((b) => b.medicineId === item.medicineId)
+      }
+
       if (batch) {
-        batch.availableQuantity += item.returnQuantity
+        batch.availableQuantity = (batch.availableQuantity || 0) + item.returnQuantity
         this.updateBatch(batch.id, batch)
       } else {
         this.addBatch({
           medicineId: item.medicineId,
-          batchNumber: item.batchNumber,
+          batchNumber: item.batchNumber || "B" + Math.floor(100000 + Math.random() * 900000),
           expiryDate: item.expiryDate || "2027-12-31",
           quantity: item.returnQuantity,
           availableQuantity: item.returnQuantity,
           purchasePrice: (item.unitPrice || 0) * 0.7,
           mrp: item.unitPrice || 0,
         })
+      }
+
+      // Directly update the medicine master stock as well
+      const med = medicines.find(
+        (m) =>
+          m.id === item.medicineId ||
+          m.medicineName?.toLowerCase() === item.medicineName?.toLowerCase() ||
+          m.brandName?.toLowerCase() === item.medicineName?.toLowerCase(),
+      )
+      if (med) {
+        const curStock = (med as any).stock ?? (med as any).currentStock ?? 0
+        this.updateMedicine(med.id, {
+          stock: curStock + item.returnQuantity,
+          currentStock: curStock + item.returnQuantity,
+        } as any)
       }
 
       this.addTransaction({
@@ -1749,15 +2603,23 @@ export class PharmacyDatabase {
       "Medicine Return",
       "Pharmacy Returns",
       returnNumber,
-      `Processed return ${returnNumber} for bill ${originalBill.billNumber}. Refund: ₹${refundAmount.toFixed(2)}. Modified bill: ${modifiedBillNumber}`,
+      `Processed return ${returnNumber} for bill ${originalBill.billNumber}. Refund: ₹${refundAmount.toFixed(2)}. Modified bill: ${modifiedBill.billNumber}`,
     )
 
     // 7. Push notification
     this.addNotification(
       "Medicine Return Processed",
-      `Return ${returnNumber} processed for bill ${originalBill.billNumber}. Refund amount: ₹${refundAmount.toFixed(2)}`,
+      `Return ${returnNumber} processed for bill ${originalBill.billNumber}. Refund amount: ₹${refundAmount.toFixed(2)}. ${returnedItems.reduce((s, i) => s + i.returnQuantity, 0)} units restocked to inventory.`,
       "info",
+      "Sales & Returns",
+      "View Returns",
+      "return",
     )
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("storage"))
+      window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
+    }
 
     return { returnRecord, modifiedBill }
   }
@@ -1766,7 +2628,7 @@ export class PharmacyDatabase {
   static getTransfers(): AppStockTransfer[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(TRANSFERS_KEY)
+      const stored = safeStorageGetItem(TRANSFERS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1774,7 +2636,7 @@ export class PharmacyDatabase {
   }
   static saveTransfers(transfers: AppStockTransfer[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(TRANSFERS_KEY, JSON.stringify(transfers))
+      safeStorageSetItem(TRANSFERS_KEY, JSON.stringify(transfers))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1784,7 +2646,7 @@ export class PharmacyDatabase {
   static getSupplierReturns(): AppSupplierReturn[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(SUPPLIER_RETURNS_KEY)
+      const stored = safeStorageGetItem(SUPPLIER_RETURNS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1792,7 +2654,7 @@ export class PharmacyDatabase {
   }
   static saveSupplierReturns(returns: AppSupplierReturn[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(SUPPLIER_RETURNS_KEY, JSON.stringify(returns))
+      safeStorageSetItem(SUPPLIER_RETURNS_KEY, JSON.stringify(returns))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
@@ -1814,9 +2676,39 @@ export class PharmacyDatabase {
     const purchaseRate = batch.purchasePrice || 0
     const returnAmount = payload.quantity * purchaseRate
 
+    // Immediately deduct stock from inventory so damaged or returned medicines are removed from shelf
+    batch.availableQuantity -= payload.quantity
+    this.updateBatch(batch.id, batch)
+
+    // Also deduct from overall medicine stock to maintain live inventory balance
+    const medicines = this.getMedicines()
+    const med = medicines.find((m) => m.id === payload.medicineId)
+    if (med) {
+      const currentStock = Number((med as any).stock) || 0
+      const updatedStock = Math.max(0, currentStock - payload.quantity)
+      this.updateMedicine(med.id, { stock: updatedStock } as any)
+    }
+
+    const suppliers = this.getSuppliers()
+    const supObj = suppliers.find((s) => s.id === payload.supplierId)
+    const resolvedSupplierName =
+      payload.supplierName ||
+      supObj?.supplierName ||
+      (supObj as any)?.name ||
+      batch.supplierName ||
+      med?.supplierName ||
+      "Supplier"
+    const resolvedMedicineName =
+      payload.medicineName || med?.medicineName || (med as any)?.name || "Medicine"
+    const resolvedBatchNumber =
+      payload.batchNumber || batch.batchNumber || "Batch"
+
     const newReturn: AppSupplierReturn = {
       ...payload,
       id: "RET-" + Date.now(),
+      supplierName: resolvedSupplierName,
+      medicineName: resolvedMedicineName,
+      batchNumber: resolvedBatchNumber,
       debitNoteNumber:
         "DN-" +
         new Date().getFullYear() +
@@ -1824,23 +2716,46 @@ export class PharmacyDatabase {
         String(Math.floor(1 + Math.random() * 90000)).padStart(5, "0"),
       purchaseRate,
       returnAmount,
-      status: "Draft",
+      status: "Submitted (Stock Deducted)",
       createdBy,
       createdAt: new Date().toISOString(),
     }
 
-    // NOTE: Stock is NOT deducted during "Draft" or "Submitted". It happens at "Approved".
+    // Record stock deduction in Inventory Ledger
+    this.addTransaction({
+      id: "TXN" + Math.floor(Math.random() * 100000),
+      date: new Date().toISOString(),
+      medicineId: payload.medicineId,
+      batchId: payload.batchId,
+      quantity: payload.quantity,
+      transactionType: "SUPPLIER_RETURN",
+      userId: createdBy,
+      reason: `Supplier Return (DN: ${newReturn.debitNoteNumber}): ${payload.reason}`,
+    })
 
     returns.push(newReturn)
     this.saveSupplierReturns(returns)
 
     this.logAudit(
       createdBy,
-      "Return Created",
+      "Supplier Return Submitted",
       "Inventory",
       newReturn.debitNoteNumber,
-      `Draft Return created for ${payload.quantity} units of batch ${batch.batchNumber}`,
+      `Submitted return of ${payload.quantity} units of batch ${batch.batchNumber} to supplier. Stock deducted immediately. Reason: ${payload.reason}`,
     )
+
+    this.addNotification(
+      "Supplier Return Submitted",
+      `Debit Note ${newReturn.debitNoteNumber} issued. ${payload.quantity} units deducted from inventory for supplier return.`,
+      "info",
+      "supplier-returns",
+      "View Debit Note",
+      "return",
+    )
+
+    window.dispatchEvent(new Event("storage"))
+    window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
+
     return newReturn
   }
 
@@ -1857,8 +2772,9 @@ export class PharmacyDatabase {
     rtn.status = newStatus
     rtn.updatedAt = new Date().toISOString()
 
-    // Stock Deduction Logic (only happens exactly when Approved)
-    if (newStatus === "Approved" && oldStatus !== "Approved") {
+    // Stock Deduction Logic (only if not already deducted upon return submission)
+    const alreadyDeducted = oldStatus.includes("Stock Deducted") || (rtn as any).stockDeducted
+    if (newStatus === "Approved" && oldStatus !== "Approved" && !alreadyDeducted) {
       rtn.approvedBy = user
       const batches = this.getBatches()
       const batch = batches.find((b) => b.id === rtn.batchId)
@@ -1923,7 +2839,7 @@ export class PharmacyDatabase {
   static getAdjustments(): AppStockAdjustment[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(ADJUSTMENTS_KEY)
+      const stored = safeStorageGetItem(ADJUSTMENTS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1931,17 +2847,176 @@ export class PharmacyDatabase {
   }
   static saveAdjustments(adjustments: AppStockAdjustment[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(ADJUSTMENTS_KEY, JSON.stringify(adjustments))
+      safeStorageSetItem(ADJUSTMENTS_KEY, JSON.stringify(adjustments))
       window.dispatchEvent(new Event("storage"))
       window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
     }
+  }
+
+  // Medicine Write-Offs (Damaged & Non-Saleable Stock)
+  static getWriteOffs(): AppMedicineWriteOff[] {
+    if (typeof window === "undefined") return []
+    try {
+      const stored = safeStorageGetItem(WRITE_OFFS_KEY)
+      const list: AppMedicineWriteOff[] = stored ? JSON.parse(stored) : []
+      return Array.isArray(list) ? list : []
+    } catch {
+      return []
+    }
+  }
+
+  static saveWriteOffs(writeOffs: AppMedicineWriteOff[]) {
+    if (typeof window !== "undefined") {
+      safeStorageSetItem(WRITE_OFFS_KEY, JSON.stringify(writeOffs))
+      window.dispatchEvent(new Event("storage"))
+      window.dispatchEvent(new CustomEvent("hospai_pharmacy_updated"))
+    }
+  }
+
+  static executeMedicineWriteOff(
+    payload: {
+      medicineId: string
+      batchId: string
+      quantity: number
+      reason: string
+      remarks?: string
+    },
+    user: string = "Pharmacist",
+  ): { success: boolean; writeOff: AppMedicineWriteOff; batch: AppBatch } {
+    // 1. Validate inputs
+    if (!payload.medicineId) throw new Error("Please select a medicine.")
+    if (!payload.batchId) throw new Error("Please select a batch.")
+    if (!payload.quantity || payload.quantity <= 0)
+      throw new Error("Write-off quantity must be greater than zero.")
+    if (!payload.reason || !payload.reason.trim())
+      throw new Error("Reason for write-off is required.")
+
+    // 2. Fetch fresh medicine and batch records
+    const medicines = this.getMedicines()
+    const med = medicines.find((m) => m.id === payload.medicineId)
+    if (!med) throw new Error("Medicine not found in inventory.")
+
+    const batches = this.getBatches()
+    const batch = batches.find((b) => b.id === payload.batchId)
+    if (!batch) throw new Error("Batch not found in inventory.")
+
+    // 3. Revalidate stock availability atomically
+    if (batch.availableQuantity < payload.quantity) {
+      throw new Error(
+        `Insufficient stock: Available quantity is ${batch.availableQuantity}, cannot write off ${payload.quantity}.`,
+      )
+    }
+
+    const previousStock = batch.availableQuantity
+    const remainingStock = previousStock - payload.quantity
+    const unitCost = batch.purchasePrice || 0
+    const totalLossValue = payload.quantity * unitCost
+    const now = new Date().toISOString()
+    const year = new Date().getFullYear()
+
+    // 4. Generate sequential receipt number
+    const writeOffs = this.getWriteOffs()
+    const currentYearPrefix = `WO-${year}-`
+    const currentYearWos = writeOffs.filter((w) =>
+      w.receiptNumber?.startsWith(currentYearPrefix),
+    )
+    let nextSeq = 1
+    if (currentYearWos.length > 0) {
+      const seqs = currentYearWos
+        .map((w) => {
+          const parts = w.receiptNumber.split("-")
+          return parts.length === 3 ? parseInt(parts[2], 10) : 0
+        })
+        .filter((n) => !isNaN(n))
+      if (seqs.length > 0) nextSeq = Math.max(...seqs) + 1
+    }
+    const receiptNumber = `${currentYearPrefix}${String(nextSeq).padStart(6, "0")}`
+
+    // 5. Create write-off record
+    const writeOffRecord: AppMedicineWriteOff = {
+      id: receiptNumber,
+      receiptNumber,
+      date: now,
+      medicineId: med.id,
+      medicineName: med.brandName || med.medicineName,
+      medicineCode: med.hsnCode || med.barcode || med.id,
+      genericName: med.genericName,
+      batchId: batch.id,
+      batchNumber: batch.batchNumber,
+      expiryDate: batch.expiryDate,
+      unitOfMeasure: med.unit || med.dosageForm || "Units",
+      quantity: payload.quantity,
+      previousStock,
+      remainingStock,
+      unitCost,
+      totalLossValue,
+      reason: payload.reason.trim(),
+      remarks: payload.remarks?.trim() || "",
+      writtenOffBy: user,
+      status: "COMPLETED",
+      createdAt: now,
+    }
+
+    // 6. Deduct stock from batch atomically
+    batch.availableQuantity = remainingStock
+    this.updateBatch(batch.id, batch)
+    if ((med as any).stock !== undefined) {
+      (med as any).stock = Math.max(0, ((med as any).stock || 0) - payload.quantity)
+      this.updateMedicine(med.id, med)
+    }
+
+    // 7. Record in stock transactions
+    this.addTransaction({
+      id: "TXN" + Math.floor(Math.random() * 100000),
+      date: now,
+      medicineId: med.id,
+      batchId: batch.id,
+      quantity: payload.quantity,
+      transactionType: "WRITE_OFF",
+      userId: user,
+      reason: `Write-Off (${receiptNumber}): ${payload.reason.trim()}`,
+    })
+
+    // 8. Persist write-off record
+    writeOffs.unshift(writeOffRecord)
+    this.saveWriteOffs(writeOffs)
+
+    // 9. Log in audit log
+    this.logAudit(
+      user,
+      "Medicine Write-Off",
+      "Inventory",
+      receiptNumber,
+      `Written off ${payload.quantity} units of ${writeOffRecord.medicineName} (Batch: ${batch.batchNumber}). Reason: ${payload.reason.trim()}. Loss: ₹${totalLossValue.toFixed(2)}`,
+    )
+
+    // 10. Record notification
+    this.addNotification(
+      `Medicine Written Off (${receiptNumber})`,
+      `${payload.quantity} units of ${writeOffRecord.medicineName} written off from Batch ${batch.batchNumber}. Reason: ${payload.reason.trim()}`,
+      "warning",
+    )
+
+    // 11. Dispatch toast event
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("hospai_pharmacy_toast", {
+          detail: {
+            message: `Write-Off ${receiptNumber} completed successfully. Stock updated.`,
+            type: "success",
+          },
+        }),
+      )
+    }
+
+    return { success: true, writeOff: writeOffRecord, batch }
   }
 
   // Clarifications
   static getClarifications(): AppPrescriptionClarification[] {
     if (typeof window === "undefined") return []
     try {
-      const stored = window.localStorage.getItem(CLARIFICATIONS_KEY)
+      const stored = safeStorageGetItem(CLARIFICATIONS_KEY)
       return stored ? JSON.parse(stored) : []
     } catch {
       return []
@@ -1949,7 +3024,7 @@ export class PharmacyDatabase {
   }
   static saveClarifications(clarifications: AppPrescriptionClarification[]) {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(
+      safeStorageSetItem(
         CLARIFICATIONS_KEY,
         JSON.stringify(clarifications),
       )

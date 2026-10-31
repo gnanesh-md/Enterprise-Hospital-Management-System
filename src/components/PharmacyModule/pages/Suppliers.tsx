@@ -1,6 +1,6 @@
 import { usePharmacyData } from "../data/usePharmacyData"
 import { PharmacyDatabase } from "../../../services/pharmacyDb"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Plus,
   Eye,
@@ -26,6 +26,16 @@ export default function Suppliers({ onNavigate }: SuppliersProps) {
   const [selected, setSelected] = useState<typeof suppliers[0] | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
   const [form, setForm] = useState({
     supplierName: "",
     contactInformation: "",

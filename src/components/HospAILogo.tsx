@@ -1,5 +1,5 @@
 import React from "react"
-import hospaiLogoImg from "../assets/hospai-logo.png"
+import { HOSPAI_LOGO_BASE64 } from "../assets/hospaiLogoBase64"
 
 interface HospAILogoProps {
   className?: string
@@ -9,57 +9,22 @@ interface HospAILogoProps {
 }
 
 export function HospAILogo({
-  className = "h-12",
+  className = "h-10",
   variant = "horizontal",
+  theme = "light",
   size,
 }: HospAILogoProps) {
-  const containerStyle = size
-    ? { width: size, height: size }
-    : undefined
+  const containerStyle = size ? { width: size, height: size } : undefined
 
-  if (variant === "icon") {
-    return (
-      <div
-        style={containerStyle}
-        className={`inline-flex items-center justify-center shrink-0 ${className}`}
-      >
-        <img
-          src={hospaiLogoImg}
-          alt="HospAI"
-          className="w-full h-full object-contain drop-shadow-sm"
-        />
-      </div>
-    )
-  }
-
-  if (variant === "horizontal") {
-    return (
-      <div
-        style={containerStyle}
-        className={`inline-flex items-center justify-center shrink-0 select-none ${className}`}
-      >
-        <img
-          src={hospaiLogoImg}
-          alt="HospAI"
-          className="h-full w-auto max-h-full object-contain mx-auto drop-shadow-sm"
-        />
-      </div>
-    )
-  }
-
-  // Full / Stacked Variant
   return (
-    <div
+    <img
+      src={HOSPAI_LOGO_BASE64}
+      alt="HospAI Logo"
       style={containerStyle}
-      className={`inline-flex flex-col items-center justify-center select-none ${className}`}
-    >
-      <img
-        src={hospaiLogoImg}
-        alt="HospAI"
-        className="w-full h-auto max-h-48 object-contain drop-shadow-md"
-      />
-    </div>
+      className={`object-contain shrink-0 ${className}`}
+    />
   )
 }
 
 export default HospAILogo
+

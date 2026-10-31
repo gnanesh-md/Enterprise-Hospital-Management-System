@@ -458,7 +458,7 @@ Output strictly valid JSON only without markdown formatting.`
 
     // Step 1: Direct Qwen2.5-VL Vision AI OCR Model Call
     const visionResult = await extractWithQwenVisionAI(optimizedBase64)
-    if (visionResult && visionResult.items.length > 0) {
+    if (visionResult && visionResult.items && visionResult.items.length > 0) {
       setInvoiceHeader(visionResult.header)
       setExtractedItems(visionResult.items)
       setProcessing(false)
@@ -528,7 +528,7 @@ Output strictly valid JSON only without markdown formatting.`
                   const textResult = parseMarkdownInvoiceText(
                     resultData.combined_markdown,
                   )
-                  if (textResult && textResult.items.length > 0) {
+                  if (textResult && textResult.items && textResult.items.length > 0) {
                     setInvoiceHeader(textResult.header)
                     setExtractedItems(textResult.items)
                     setProcessing(false)

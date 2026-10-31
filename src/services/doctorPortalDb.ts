@@ -16,6 +16,7 @@ import { ACTIVE_DOCTORS, ACTIVE_SPECIALTIES } from "./doctorMaster"
  */
 
 import { db, DBOPEncounter, DBPatient } from "./db"
+import { encounterArrivalIso, encounterArrivalMs } from "./encounterTime"
 import type {
   ConsultationNoteSummary,
   TranscriptTurn,
@@ -277,12 +278,8 @@ export function isFirstVisit(
     (e) => e.umr.toUpperCase() === encounter.umr.toUpperCase(),
   )
   if (history.length <= 1) return true
-  const earliest = history.reduce((a, b) =>
-    new Date(a.timestamps?.arrival || a.registrationTime) <=
-    new Date(b.timestamps?.arrival || b.registrationTime)
-      ? a
-      : b,
-  )
+  const at = (e: DBOPEncounter) => encounterArrivalMs(e) ?? Number.MAX_SAFE_INTEGER
+  const earliest = history.reduce((a, b) => (at(a) <= at(b) ? a : b))
   return earliest.id === encounter.id
 }
 
@@ -339,15 +336,12 @@ export class DoctorPortalDatabase {
         aiReasoning: e.aiReasoning,
         vitals: e.vitals,
         status: e.status,
-        arrivedAt: e.timestamps?.arrival || e.registrationTime,
+        arrivedAt: encounterArrivalIso(e) || e.timestamps?.arrival || e.registrationTime,
         vitalsBy: e.timestamps?.vitalsBy,
         vitalsAt: e.timestamps?.vitalsRecorded,
         read: readIds.has(`NOTIF-${e.id}`),
       }))
-      .sort(
-        (a, b) =>
-          new Date(b.arrivedAt).getTime() - new Date(a.arrivedAt).getTime(),
-      )
+      .sort((a, b) => (Date.parse(b.arrivedAt) || 0) - (Date.parse(a.arrivedAt) || 0))
   }
 
   /**
@@ -402,15 +396,12 @@ export class DoctorPortalDatabase {
           aiReasoning: e.aiReasoning,
           vitals: e.vitals,
           status: e.status,
-          arrivedAt: e.timestamps?.arrival || e.registrationTime,
+          arrivedAt: encounterArrivalIso(e) || e.timestamps?.arrival || e.registrationTime,
           vitalsBy: e.timestamps?.vitalsBy,
           vitalsAt: e.timestamps?.vitalsRecorded,
           read: readIds.has(`NOTIF-${e.id}`),
         }))
-        .sort(
-          (a, b) =>
-            new Date(b.arrivedAt).getTime() - new Date(a.arrivedAt).getTime(),
-        )
+        .sort((a, b) => (Date.parse(b.arrivedAt) || 0) - (Date.parse(a.arrivedAt) || 0))
     )
   }
 

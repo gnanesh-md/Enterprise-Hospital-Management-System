@@ -1,5 +1,5 @@
 import { usePharmacyData } from "../data/usePharmacyData"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Bell,
   CheckCheck,
@@ -62,8 +62,18 @@ const categoryIcons: Record<string, any> = {
 }
 
 export default function Notifications({ onNavigate }: NotificationsProps) {
-  const { notifications: notifs } = usePharmacyData()
+  const { notifications: notifs, refresh } = usePharmacyData()
   const [activeFilter, setActiveFilter] = useState("All")
+
+  useEffect(() => {
+    const handleUpdate = () => refresh()
+    window.addEventListener("hospai_pharmacy_updated", handleUpdate)
+    window.addEventListener("storage", handleUpdate)
+    return () => {
+      window.removeEventListener("hospai_pharmacy_updated", handleUpdate)
+      window.removeEventListener("storage", handleUpdate)
+    }
+  }, [refresh])
 
   const markAll = () => {
     PharmacyDatabase.markAllNotificationsRead(notifs.map((n) => n.id))
@@ -291,7 +301,10 @@ export default function Notifications({ onNavigate }: NotificationsProps) {
                       <div className="flex items-center gap-2">
                         {actionPage && (
                           <button
-                            onClick={() => onNavigate(actionPage)}
+                            onClick={() => {
+                              markOne(n.id, true)
+                              onNavigate(actionPage)
+                            }}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white bg-[#0F766E] hover:bg-[#115E59] shadow-2xs transition-colors"
                           >
                             <span>{actionLabel || "Take Action"}</span>

@@ -208,11 +208,10 @@ export default function CommandPalette({
           items.push({
             id: `pat-op-${p.umr}`,
             label: p.name,
-            subLabel: `${p.umr} · ${p.age}y ${p.sex} · ${p.phone} ${
-              pEnc
+            subLabel: `${p.umr} · ${p.age}y ${p.sex} · ${p.phone} ${pEnc
                 ? `· OP: ${pEnc.opNumber} (${pEnc.dept || "General Med"})`
                 : ""
-            }`,
+              }`,
             key: "chart",
             type: "patient",
             patientId: p.umr,
@@ -327,7 +326,7 @@ export default function CommandPalette({
   }, [query])
 
   const groups = useMemo(() => {
-    const list: { group: string ;items: CommandItem[] }[] = []
+    const list: { group: string; items: CommandItem[] }[] = []
     if (filteredPatients.length > 0) {
       list.push({
         group: query
@@ -443,9 +442,8 @@ export default function CommandPalette({
                     key={item.id}
                     onClick={() => handleSelect(item)}
                     onMouseEnter={() => setCursor(idx)}
-                    className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
-                      active ? "bg-[#EFF6FF]" : "hover:bg-[#F8FAFC]"
-                    }`}
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${active ? "bg-[#EFF6FF]" : "hover:bg-[#F8FAFC]"
+                      }`}
                   >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       <span className="text-lg w-6 text-center shrink-0">
@@ -454,18 +452,16 @@ export default function CommandPalette({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
-                            className={`text-[13px] font-semibold ${
-                              active ? "text-[#1B4FD8]" : "text-gray-900"
-                            }`}
+                            className={`text-[13px] font-semibold ${active ? "text-[#1B4FD8]" : "text-gray-900"
+                              }`}
                           >
                             {item.label}
                           </span>
                           {item.badge && (
                             <span
-                              className={`text-[10px] font-bold px-2 py-0.2 rounded border shadow-2xs ${
-                                item.badgeColor ||
+                              className={`text-[10px] font-bold px-2 py-0.2 rounded border shadow-2xs ${item.badgeColor ||
                                 "bg-slate-100 text-slate-700 border-slate-200"
-                              }`}
+                                }`}
                             >
                               {item.badge}
                             </span>

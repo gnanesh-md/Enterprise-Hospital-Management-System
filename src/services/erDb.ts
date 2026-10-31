@@ -685,6 +685,23 @@ const INITIAL_PATIENTS: ErPatient[] = [
 
     created_at: new Date(Date.now() - 3600000 * 2).toISOString(),
   },
+
+  {
+    patient_id: "P-100888",
+    name: "Appanna",
+    last_name: "Chinnapati",
+    gender: "Male",
+    age: 54,
+    phone: "9848022338",
+    emergency_contact: "9848022339",
+    emergency_contact_name: "Chinnapati Lakshmi",
+    emergency_contact_relation: "Wife",
+    guardian_name: "Chinnapati Lakshmi (Wife)",
+    address: "D.No. 4-128, Main Road, Kankipadu, Krishna District, Andhra Pradesh - 521151",
+    allergies: "NKDA (No Known Drug Allergies)",
+    blood_group: "B+",
+    created_at: "2026-10-04T02:30:00.000Z",
+  },
 ]
 
 const INITIAL_VISITS: ErVisitRecord[] = [
@@ -4447,6 +4464,190 @@ const INITIAL_VISITS: ErVisitRecord[] = [
 
     consents: [],
   },
+
+  // ── CASE 88: APPANNA CHINNAPATI - HIGHWAY ACCIDENT / BLUNT ABDOMINAL TRAUMA (B1) ──
+  {
+    id: 88,
+    visit_no: "ER-2026-00088",
+    patient_id: "P-100888",
+    is_unknown_patient: false,
+    unknown_patient_label: null,
+    arrival_mode: "ambulance_108",
+    brought_by: "108 Highway Emergency EMT & Chinnapati Lakshmi (Wife)",
+    attendant_name: "Chinnapati Lakshmi",
+    attendant_relation: "Wife",
+    condition_at_arrival:
+      "Polytrauma / Severe Blunt Abdominal Trauma post high-speed two-wheeler collision with tractor on Highway; Hypovolemic shock (BP 82/50, HR 132), generalized peritonism, massive hemoperitoneum on eFAST",
+    arrival_at: "2026-10-04T02:30:00.000Z",
+    status: "closed",
+    assigned_doctor_name: "Dr. Vikram Seth",
+    assigned_specialty: "Emergency Medicine & Trauma",
+    doctor_assigned_at: "2026-10-04T02:32:00.000Z",
+    doctor_accepted_at: "2026-10-04T02:33:00.000Z",
+    triage_category: "B1",
+    triage_bed_label: "ER-B1-01",
+    closed_at: "2026-10-04T03:30:00.000Z",
+    patient_name: "Appanna",
+    patient_last_name: "Chinnapati",
+    patient_gender: "Male",
+    patient_age: 54,
+    patient_phone: "9848022338",
+    patient_emergency_contact: "9848022339",
+    complaints: [
+      {
+        id: 1,
+        complaint:
+          "ద్విచక్ర వాహనం ప్రమాదం అనంతరం తీవ్రమైన కడుపు నొప్పి, కళ్లు తిరగడం, అపస్మారక స్థితి (Severe blunt impact to abdomen following two-wheeler highway collision with tractor, severe abdominal pain, syncope, and dizziness)",
+        severity: "Critical / STAT",
+        case_category: "Trauma / MLC",
+        duration: "1 hour",
+        reported_by: "Chinnapati Lakshmi (Wife)",
+        created_at: "2026-10-04T02:30:00.000Z",
+      },
+      {
+        id: 2,
+        complaint:
+          "తీవ్రమైన శ్వాస ఆడకపోవడం మరియు చెమటలు పట్టడం (Severe dyspnea and cold profuse diaphoresis)",
+        severity: "Critical",
+        case_category: "Shock / Resuscitation",
+        duration: "1 hour",
+        reported_by: "108 EMT",
+        created_at: "2026-10-04T02:32:00.000Z",
+      },
+    ],
+    vitals: [
+      {
+        id: 1,
+        recorded_at: "2026-10-04T02:30:00.000Z",
+        recorded_by: "Triage RN",
+        heart_rate: 132,
+        bp_systolic: 82,
+        bp_diastolic: 50,
+        respiratory_rate: 28,
+        spo2: 88,
+        temperature: 97.4,
+        consciousness_level: "Obtunded",
+        blood_glucose: 142,
+        pain_score: 10,
+        gcs: 12,
+        notes: "Hemorrhagic shock, thready pulse, cold clammy extremities",
+      },
+      {
+        id: 2,
+        recorded_at: "2026-10-04T03:00:00.000Z",
+        recorded_by: "ER Trauma Nurse",
+        heart_rate: 114,
+        bp_systolic: 96,
+        bp_diastolic: 62,
+        respiratory_rate: 22,
+        spo2: 95,
+        temperature: 97.8,
+        consciousness_level: "Drowsy but arousable",
+        blood_glucose: 138,
+        pain_score: 8,
+        gcs: 13,
+        notes: "Post 2L warmed NS & 2 units PRBC STAT under pressure infuser; BP improving",
+      },
+    ],
+    triage: {
+      category: "B1",
+      triage_bed_label: "ER-B1-01",
+      reason:
+        "Severe polytrauma with blunt abdominal injury, Grade IV splenic laceration with hemoperitoneum and hypovolemic shock",
+      triaged_at: "2026-10-04T02:32:00.000Z",
+      assigned_by: "Dr. Anita Roy",
+    },
+    treatments: [
+      {
+        id: 1,
+        intervention_type: "Rapid Sequence Airway & Resuscitation",
+        description:
+          "Bilateral 16G large-bore peripheral lines secured. 2000 mL warmed 0.9% Normal Saline infused under pressure bags. Endotracheal intubation with 7.5mm cuffed tube.",
+        performed_at: "2026-10-04T02:35:00.000Z",
+        administered_by: "Dr. Vikram Seth & Trauma Team",
+      },
+      {
+        id: 2,
+        intervention_type: "Massive Transfusion Protocol (MTP)",
+        description:
+          "Activated MTP: 2 units O+ PRBC infused STAT in ER Bay 1; 2 additional crossmatched units PRBC and 2 units FFP dispatched with patient to Operation Theatre.",
+        performed_at: "2026-10-04T02:45:00.000Z",
+        administered_by: "Trauma Nurse Specialist",
+      },
+      {
+        id: 3,
+        intervention_type: "Focused Assessment with Sonography in Trauma (eFAST)",
+        description:
+          "Bedside ultrasound reveals massive free fluid in splenorenal pouch, Morison's pouch, and pelvis. Shattered splenic architecture.",
+        performed_at: "2026-10-04T02:38:00.000Z",
+        administered_by: "Dr. Vikram Seth",
+      },
+    ],
+    clinical_notes: [
+      {
+        id: 1,
+        note_type: "Primary & Secondary Trauma Survey",
+        author: "Dr. Vikram Seth",
+        content:
+          "54M driver of two-wheeler struck by tractor on Highway. Airway secured with ETT. Breathing: tachypneic, breath sounds bilateral. Circulation: Class III/IV hemorrhagic shock, cold peripheries, pulse 132 feeble. Abdomen: board-like guarding, generalized peritonism, eFAST positive. Immediate damage-control surgical exploration required. Surgical team Dr. Vance notified and waiting in Emergency OR 1.",
+        created_at: "2026-10-04T02:40:00.000Z",
+      },
+    ],
+    investigations: [
+      {
+        id: 1,
+        test_name: "STAT Bedside eFAST Sonography",
+        category: "Radiology / Ultrasound",
+        priority: "STAT",
+        ordered_by: "Dr. Vikram Seth",
+        result: "Positive massive hemoperitoneum, Grade IV splenic laceration",
+        result_summary:
+          "Free fluid in splenorenal recess and pelvis (massive hemoperitoneum)",
+        status: "Completed",
+        ordered_at: "2026-10-04T02:32:00.000Z",
+        verified_at: "2026-10-04T02:38:00.000Z",
+      },
+      {
+        id: 2,
+        test_name: "STAT Arterial Blood Gas (ABG) with Lactate",
+        category: "Biochemistry",
+        priority: "STAT",
+        ordered_by: "Dr. Vikram Seth",
+        result:
+          "pH 7.22, pCO2 48, pO2 72, HCO3 15, Base Excess -9.2, Lactate 5.4 mmol/L",
+        result_summary:
+          "Severe metabolic lactic acidosis secondary to acute blood loss",
+        status: "Completed",
+        ordered_at: "2026-10-04T02:33:00.000Z",
+        verified_at: "2026-10-04T02:42:00.000Z",
+      },
+      {
+        id: 3,
+        test_name: "STAT Complete Hemogram",
+        category: "Hematology",
+        priority: "STAT",
+        ordered_by: "Dr. Vikram Seth",
+        result:
+          "Hb 6.6 g/dL, Hct 20.4%, TLC 19,200/uL, Platelets 82,000/uL",
+        result_summary:
+          "Severe acute post-hemorrhagic anemia, leukocytosis, thrombocytopenia",
+        status: "Completed",
+        ordered_at: "2026-10-04T02:33:00.000Z",
+        verified_at: "2026-10-04T02:48:00.000Z",
+      },
+    ],
+    disposition: {
+      outcome: "transferred",
+      required_specialty: "General Surgery / Trauma Care",
+      clinical_reason:
+        "Shifted STAT to Emergency Operation Theatre (OR 1) for Exploratory Laparotomy and Splenectomy, followed by SICU admission",
+      decided_by: "Dr. Vikram Seth",
+      decided_at: "2026-10-04T03:30:00.000Z",
+      priority: "Emergency STAT",
+    },
+    bed_requests: [],
+    consents: [],
+  },
 ]
 
 const ER_STORAGE_KEY_PATIENTS = "hospai_er_patients_v8"
@@ -4503,15 +4704,26 @@ export class ErDatabase {
 
         const currentIds = new Set(parsed.map((v: any) => v.id))
 
-        const missingPrior = fallbackVisits.filter(
-          (v) => v.status === "closed" && !currentIds.has(v.id),
+        const missing = fallbackVisits.filter(
+          (v) => !currentIds.has(v.id),
         )
 
-        if (missingPrior.length > 0) {
-          const updated = [...parsed, ...missingPrior]
+        if (missing.length > 0) {
+          const updated = [...parsed, ...missing]
 
           window.localStorage.setItem(key, JSON.stringify(updated))
 
+          return updated as unknown as T
+        }
+      }
+
+      if (key === ER_STORAGE_KEY_PATIENTS && Array.isArray(parsed)) {
+        const fallbackPatients = fallback as unknown as ErPatient[]
+        const currentPids = new Set(parsed.map((p: any) => (p.patient_id || "").toUpperCase()))
+        const missing = fallbackPatients.filter((p) => !currentPids.has((p.patient_id || "").toUpperCase()))
+        if (missing.length > 0) {
+          const updated = [...parsed, ...missing]
+          window.localStorage.setItem(key, JSON.stringify(updated))
           return updated as unknown as T
         }
       }
@@ -5256,6 +5468,9 @@ export class ErDatabase {
     assignedDoctorName?: string
 
     assignedSpecialty?: string
+
+    /** Rule-based triage only, no LLM call -- for generated demo visits. */
+    skipAiTriage?: boolean
   }): Promise<{ visit: ErVisitRecord ;patient: ErPatient | null }> {
     let patient: ErPatient | null = null
 
@@ -5402,6 +5617,7 @@ export class ErDatabase {
     const triageCalc = await this.evaluateClinicalTriage(
       visitData.complaintText || "",
       visitData.vitals || {},
+      { ruleBasedOnly: visitData.skipAiTriage },
     )
 
     const finalDoctorName =
@@ -6576,6 +6792,8 @@ export class ErDatabase {
     complaints: string,
 
     vitals: Partial<ErVitalsItem>,
+
+    options: { ruleBasedOnly?: boolean } = {},
   ): Promise<{
     categoryCode: string
 
@@ -6788,6 +7006,8 @@ export class ErDatabase {
         ],
       }
     }
+
+    if (options.ruleBasedOnly) return runRuleBasedFallback()
 
     // Attempt to use Qwen LLM
 

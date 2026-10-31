@@ -30,6 +30,7 @@ logs/
 # Raw Postgres data files from the torn-down local dev cluster -- binary DB
 # files must never be committed.
 /archive/legacy-er-backend/.pgdata/
+/pgdata/
 
 # Symlink to the backend project, target is a machine-local absolute path
 # (not portable across clones/machines).
